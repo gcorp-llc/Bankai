@@ -5,7 +5,7 @@
 # Bankai — High-Performance WordPress Ecosystem
 
 **Developer:** GCORP LLC  
-**Architecture:** Dual-Component (Theme + Modular Core Plugin)  
+**Architecture:** Dual-Component Monorepo (Theme + Modular Core Plugin)  
 **License:** GPLv2 or later  
 
 Bankai یک سیستم دوپایهٔ ساختاریافته برای وردپرس است که با هدف ارتقای حداکثری سرعت، سئوی پیشرفته، مدیریت بهینهٔ رسانه و ادغام پردازش‌های هوش مصنوعی طراحی شده است. این پروژه نیاز سایت به چندین افزونهٔ سنگین و مجزا را از بین می‌برد و تمام امکانات کلیدی را در یک اکوسیستم یکپارچه و عاری از کدهای اضافی ارائه می‌دهد.
@@ -17,7 +17,7 @@ Bankai یک سیستم دوپایهٔ ساختاریافته برای وردپر
 پروژه به دو بخش کاملاً مجزا اما هماهنگ تفکیک شده است تا استانداردهای کارایی و مالکیت داده رعایت شوند:
 
 1. **Bankai Theme (`themes/bankai-theme`)**
-   * پوستهٔ فوق‌العاده سبک بر پایهٔ مفاهیم Astra بدون وابستگی به jQuery.
+   * پوستهٔ فوق‌العاده سبک بر پایه مفاهیم Astra بدون وابستگی به jQuery.
    * سیستم مدیریت پالت رنگ (Dynamic CSS Variables) و مدیریت تایپوگرافی و فونت‌های سفارشی (Font Display Swappable).
    * عاری از کدهای سنگین بک‌اند و ابزارهای سئو جهت عدم وابستگی داده به پوسته.
 
@@ -32,14 +32,14 @@ Bankai یک سیستم دوپایهٔ ساختاریافته برای وردپر
 
 ## 📂 ساختار مخزن (Monorepo Layout)
 
-ساختار مخزن در زمان توسعه به شکل زیر است. لایهٔ توسعه (`packages/ui`, `docs`, `package.json` ریشه) در زمان خروجی گرفتن نهایی فیلتر شده و **فقط** دو پوشهٔ زیپ‌شده مستقل برای آپلود در `wp-content` تولید می‌شوند.
+ساختار مخزن بر پایه **npm Workspaces** تفکیک شده است:
 
 ```text
 bankai/
 ├── package.json                   ← [فقط توسعه] پیکربندی npm workspaces و اسکریپت‌های build
 ├── .distignore                    ← [فقط توسعه] استثناها برای ساخت پکیج زیپ نهایی
 ├── packages/
-│   └── ui/                        ← [فقط توسعه] کامپوننت‌ها و هپلهای مشترک JS/React
+│   └── ui/                        ← [فقط توسعه] کامپوننت‌ها و هپلهای مشترک JS/React (@bankai/ui)
 ├── themes/
 │   └── bankai-theme/              ← [قابل آپلود در wp-content/themes]
 │       ├── style.css              ← هدر استاندارد پوسته
@@ -55,41 +55,81 @@ bankai/
         │   ├── src/               ← سورس React پنل مدیریت
         │   └── build/             ← خروجی کامپایل‌شده افزونه
         └── includes/              ← ماژول‌ها و منطق PHP بک‌اند
-
 ```
 
 ---
 
-## 🛠 پشتهٔ فناوری (Tech Stack)
+## 💻 راهنمای راه‌اندازی محیط توسعه محلی (Local Development Setup)
 
-* **PHP:** حداقل ۷٫۴ (سازگار کامل با PHP 8.1+)
-* **WordPress:** نسخه ۶٫۰ به بالا
-* **Build Tool:** `@wordpress/scripts` (بدون بارگذاری نسخهٔ دوم React روی سرور)
-* **UI Components:** `@wordpress/components` (پشتیبانی نیتیو از RTL، دسترسی‌پذیری و استایل بومی وردپرس)
-* **State Management:** `@wordpress/data`
-* **Data Fetching:** `@wordpress/api-fetch`
-* **Background Tasks:** Action Scheduler (پردازش غیرهمزمان رسانه)
-* **Encryption:** AES-256-GCM (ذخیره‌سازی کلیدهای API)
-
----
-
-## 💻 راهنمای توسعه‌دهندگان (Development Setup)
-
-### پیش‌نیازها
-
-* Node.js نسخه ۱۸ به بالا
-* pnpm یا npm
-
-### نصب وابستگی‌ها و بیلد
+پیش از شروع، مخزن پروژه را کلون کرده و وابستگی‌ها را نصب کنید:
 
 ```bash
-# نصب کل وابستگی‌های Monorepo
+git clone <repository-url>
+cd bankai
 npm install
-
-# اجرای حالت توسعه (Watch Mode)
-npm run dev
-
-# بیلد نهایی فایل‌های JS و CSS برای تولید
-npm run build
-
 ```
+
+برای تست و توسعه، می‌توانید از یکی از دو روش زیر استفاده نمایید:
+
+### روش اول: استفاده از Symlink (میانبر سیستمی - LocalWP / Laragon)
+
+در این روش، یک وردپرس محلی نصب کرده و پوشه‌های توسعهٔ تم و افزونه را مستقیماً به پوشه `wp-content` وصل می‌کنید:
+
+#### ۱. ایجاد Symlink:
+
+- **در لینوکس / مک (دستور Terminal):**
+  ```bash
+  ln -s /path/to/bankai/themes/bankai-theme /path/to/wordpress/wp-content/themes/bankai-theme
+  ln -s /path/to/bankai/plugins/bankai-core /path/to/wordpress/wp-content/plugins/bankai-core
+  ```
+
+- **در ویندوز (دستور Command Prompt با دسترسی Administrator):**
+  ```cmd
+  mklink /D "C:\path\to\wordpress\wp-content\themes\bankai-theme" "C:\path\to\bankai\themes\bankai-theme"
+  mklink /D "C:\path\to\wordpress\wp-content\plugins\bankai-core" "C:\path\to\bankai\plugins\bankai-core"
+  ```
+
+#### ۲. فرایند توسعه:
+1. وارد ترمینال پروژه Monorepo شوید و دستور `npm run dev` را اجرا کنید.
+2. در پیشخوان وردپرس محلی خود، پوسته **Bankai Theme** و افزونه **Bankai Core** را فعال کنید.
+3. هر تغییری در کدهای React یا PHP بدهید، کامپایل شده و در مرورگر قابل مشاهده است.
+
+---
+
+### روش دوم: استفاده از ابزار رسمی Docker وردپرس (`wp-env`)
+
+در صورتی که Docker روی سیستم شما فعال است، نیازی به نصب دستی وردپرس ندارید. ابزار `@wordpress/scripts` یک محیط کامل وردپرس را به‌صورت اتوماتیک ایجاد می‌کند:
+
+1. در ریشه پروژه دستور زیر را بزنید:
+   ```bash
+   npx wp-env start
+   ```
+2. این دستور یک سایت وردپرس محلی کامل روی آدرس `http://localhost:8888` بالا می‌آورد (نام کاربری: `admin` / رمز: `password`).
+3. تم و افزونه شما به‌صورت خودکار روی آن سوار و فعال می‌شوند.
+4. سپس دستور `npm run dev` را جهت watch و کامپایل اتوماتیک اجرا کنید.
+
+---
+
+## 🔄 خلاصه جریان کاری توسعه (Workflow Summary)
+
+```text
+[شما کدهای React/PHP را ویرایش می‌کنید]
+                  ↓
+[دستور npm run dev فایل‌های build را آماده می‌کند]
+                  ↓
+[سرور محلی PHP (LocalWP/Docker) فایل‌های build را رندر کرده و در مرورگر نشان می‌دهد]
+```
+
+---
+
+## 📦 بسته‌بندی و ساخت نسخه نهایی جهت انتشار (Release Packaging)
+
+برای ساخت فایل‌های زیپ تمیز، کامپایل‌شده و آماده نصب در محیط پروداکشن:
+
+```bash
+npm run build:zip
+```
+
+این اسکریپت پوشه `dist/` را ایجاد کرده و دو فایل زیپ مستقل تولید می‌کند:
+- `dist/bankai-theme.zip`
+- `dist/bankai-core.zip`

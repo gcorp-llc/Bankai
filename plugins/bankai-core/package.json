@@ -1,0 +1,16 @@
+{
+  "name": "bankai-core",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bankai Core WordPress plugin package",
+  "scripts": {
+    "build": "wp-scripts build",
+    "dev": "wp-scripts start",
+    "start": "wp-scripts start",
+    "lint:js": "wp-scripts lint-js",
+    "lint:style": "wp-scripts lint-style"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^27.0.0"
+  }
+}
