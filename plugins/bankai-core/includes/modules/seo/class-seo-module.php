@@ -7,32 +7,40 @@
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-	die;
+    die;
 }
 
+/**
+ * Class Bankai_SEO_Module
+ */
 class Bankai_SEO_Module {
 
-	public static function init() {
-		if ( ! Bankai_Module_Switcher::is_active( 'seo' ) ) {
-			return;
-		}
+    /**
+     * Initialize SEO sub-modules.
+     */
+    public static function init() {
+        // بررسی وجود کلاس و فعال بودن ماژول سئو
+        if ( class_exists( 'Bankai_Module_Switcher' ) && ! Bankai_Module_Switcher::is_active( 'seo' ) ) {
+            return;
+        }
 
-		 = BANKAI_CORE_PATH . 'includes/modules/seo/';
-		 = array(
-			'class-post-seo-meta.php',
-			'class-meta-generator.php',
-			'class-schema-builder.php',
-			'class-sitemap.php',
-			'class-redirections.php',
-			'class-advanced-seo-tools.php',
-		);
+        $seo_dir   = BANKAI_CORE_PATH . 'includes/modules/seo/';
+        $seo_files = array(
+            'class-post-seo-meta.php',
+            'class-meta-generator.php',
+            'class-schema-builder.php',
+            'class-sitemap.php',
+            'class-redirections.php',
+            'class-advanced-seo-tools.php',
+        );
 
-		foreach (  as  ) {
-			if ( file_exists(  .  ) ) {
-				require_once  . ;
-			}
-		}
-	}
+        foreach ( $seo_files as $file ) {
+            $file_path = $seo_dir . $file;
+            if ( file_exists( $file_path ) ) {
+                require_once $file_path;
+            }
+        }
+    }
 }
 
 Bankai_SEO_Module::init();
