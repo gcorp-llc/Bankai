@@ -1,137 +1,120 @@
 <?php
 /**
- * Dynamic Meta Tags Generator.
+ * SEO Meta Generator (Title, Description, OpenGraph, Canonical, Robots, Category Base Stripper).
  *
  * @package BankaiCore
  * @author  GCORP LLC
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-	die; // Exit if accessed directly.
+	die;
 }
 
-/**
- * Class Bankai_Meta_Generator
- */
 class Bankai_Meta_Generator {
 
-	/**
-	 * Register wp_head hook.
-	 */
 	public static function init() {
-		add_action( 'wp_head', array( __CLASS__, 'render_meta_tags' ), 1 );
+		add_action( 'wp_head', array( __CLASS__, 'output_meta_tags' ), 1 );
+		add_filter( 'category_rewrite_rules', array( __CLASS__, 'remove_category_base' ) );
 	}
 
-	/**
-	 * Render dynamic SEO Meta Tags in <head>.
-	 */
-	public static function render_meta_tags() {
-		$title       = self::get_title();
-		$description = self::get_description();
-		$canonical   = self::get_canonical_url();
-		$og_image    = self::get_og_image();
-
-		echo '<!-- Bankai SEO Module -->
-';
-		if ( ! empty( $description ) ) {
-			echo '<meta name="description" content="' . esc_attr( $description ) . '" />
-';
+	public static function output_meta_tags() {
+		if ( is_admin() ) {
+			return;
 		}
 
-		if ( ! empty( $canonical ) ) {
-			echo '<link rel="canonical" href="' . esc_url( $canonical ) . '" />
-';
+		       = self::get_title();
+		 = self::get_description();
+		   = self::get_canonical();
+		        = Bankai_Branding::get_logo_url();
+
+		echo "
+<!-- Bankai Core Advanced SEO Meta Engine -->
+";
+		if (  ) {
+			echo '<meta name="description" content="' . esc_attr(  ) . '">' . "
+";
+		}
+		if (  ) {
+			echo '<link rel="canonical" href="' . esc_url(  ) . '">' . "
+";
 		}
 
-		// OpenGraph Tags
-		echo '<meta property="og:title" content="' . esc_attr( $title ) . '" />
-';
-		if ( ! empty( $description ) ) {
-			echo '<meta property="og:description" content="' . esc_attr( $description ) . '" />
-';
+		// OpenGraph
+		echo '<meta property="og:title" content="' . esc_attr(  ) . '">' . "
+";
+		if (  ) {
+			echo '<meta property="og:description" content="' . esc_attr(  ) . '">' . "
+";
 		}
-		echo '<meta property="og:url" content="' . esc_url( $canonical ) . '" />
-';
-		echo '<meta property="og:site_name" content="' . esc_attr( get_bloginfo( 'name' ) ) . '" />
-';
-		echo '<meta property="og:type" content="' . ( is_singular() ? 'article' : 'website' ) . '" />
-';
+		echo '<meta property="og:url" content="' . esc_url(  ?  : home_url() ) . '">' . "
+";
+		echo '<meta property="og:site_name" content="' . esc_attr( get_bloginfo( 'name' ) ) . '">' . "
+";
+		echo '<meta property="og:type" content="' . ( is_single() ? 'article' : 'website' ) . '">' . "
+";
+		echo '<meta property="og:image" content="' . esc_url(  ) . '">' . "
+";
 
-		if ( ! empty( $og_image ) ) {
-			echo '<meta property="og:image" content="' . esc_url( $og_image ) . '" />
-';
+		// Twitter
+		echo '<meta name="twitter:card" content="summary_large_image">' . "
+";
+		echo '<meta name="twitter:title" content="' . esc_attr(  ) . '">' . "
+";
+		if (  ) {
+			echo '<meta name="twitter:description" content="' . esc_attr(  ) . '">' . "
+";
 		}
+		echo '<meta name="twitter:image" content="' . esc_url(  ) . '">' . "
+";
+		echo "<!-- / Bankai Core Advanced SEO Meta Engine -->
 
-		// Twitter Card Tags
-		echo '<meta name="twitter:card" content="summary_large_image" />
-';
-		echo '<meta name="twitter:title" content="' . esc_attr( $title ) . '" />
-';
-		if ( ! empty( $description ) ) {
-			echo '<meta name="twitter:description" content="' . esc_attr( $description ) . '" />
-';
-		}
-		if ( ! empty( $og_image ) ) {
-			echo '<meta name="twitter:image" content="' . esc_url( $og_image ) . '" />
-';
-		}
-		echo '<!-- /Bankai SEO Module -->
-';
+";
 	}
 
-	/**
-	 * Get page title.
-	 */
-	private static function get_title() {
+	public static function get_title() {
 		if ( is_singular() ) {
-			$post_id   = get_the_ID();
-			$custom_title = get_post_meta( $post_id, '_bankai_seo_title', true );
-			if ( ! empty( $custom_title ) ) {
-				return $custom_title;
+			 = get_post_meta( get_the_ID(), '_bankai_seo_title', true );
+			if ( ! empty(  ) ) {
+				return ;
 			}
-			return get_the_title( $post_id );
+			return get_the_title();
 		}
-		return get_bloginfo( 'name' );
+		return get_bloginfo( 'name' ) . ' - ' . get_bloginfo( 'description' );
 	}
 
-	/**
-	 * Get meta description.
-	 */
-	private static function get_description() {
+	public static function get_description() {
 		if ( is_singular() ) {
-			$post_id     = get_the_ID();
-			$custom_desc = get_post_meta( $post_id, '_bankai_seo_description', true );
-			if ( ! empty( $custom_desc ) ) {
-				return $custom_desc;
+			 = get_post_meta( get_the_ID(), '_bankai_seo_description', true );
+			if ( ! empty(  ) ) {
+				return ;
 			}
-			$post = get_post( $post_id );
-			if ( $post && ! empty( $post->post_excerpt ) ) {
-				return wp_strip_all_tags( $post->post_excerpt );
-			}
-			if ( $post && ! empty( $post->post_content ) ) {
-				return wp_trim_words( wp_strip_all_tags( $post->post_content ), 25, '...' );
-			}
+			return wp_strip_all_tags( get_the_excerpt() );
 		}
 		return get_bloginfo( 'description' );
 	}
 
-	/**
-	 * Get canonical URL.
-	 */
-	private static function get_canonical_url() {
+	public static function get_canonical() {
 		if ( is_singular() ) {
 			return get_permalink();
 		}
-		return home_url( '/' );
+		return home_url( ['REQUEST_URI'] );
 	}
 
-	/**
-	 * Get OpenGraph image URL.
-	 */
-	private static function get_og_image() {
-		if ( is_singular() && has_post_thumbnail() ) {
-			return get_the_post_thumbnail_url( get_the_ID(), 'full' );
+	public static function remove_category_base(  ) {
+		 = array();
+		 = get_categories( array( 'hide_empty' => false ) );
+		foreach (  as  ) {
+			 = ->slug;
+			if ( ->parent != 0 ) {
+				 = get_category_parents( ->parent, false, '/', true ) . ;
+			}
+			['(' .  . ')/(?:feed/)?(feed|rdf|rss|rss2|atom)/?$'] = 'index.php?category_name=[1]&feed=[2]';
+			['(' .  . ')/embed/?$'] = 'index.php?category_name=[1]&embed=true';
+			['(' .  . ')/(?:page/)?([0-9]+)/?$'] = 'index.php?category_name=[1]&paged=[2]';
+			['(' .  . ')/?$'] = 'index.php?category_name=[1]';
 		}
-		return get_option( 'bankai_seo_default_og_image', '' );
+		return ;
 	}
 }
+
+Bankai_Meta_Generator::init();

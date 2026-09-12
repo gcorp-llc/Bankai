@@ -33,6 +33,7 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+package-lock.json
 
 # ------------------------------------------------------------------------------
 # IDEs & Code Editors Settings

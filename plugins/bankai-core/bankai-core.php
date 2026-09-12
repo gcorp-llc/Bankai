@@ -67,6 +67,7 @@ if ( ! bankai_core_check_requirements() ) {
  */
 function bankai_core_bootstrap() {
 	$includes = array(
+		BANKAI_CORE_PATH . 'includes/class-branding.php',
 		BANKAI_CORE_PATH . 'includes/class-module-switcher.php',
 		BANKAI_CORE_PATH . 'includes/class-rest-api.php',
 		BANKAI_CORE_PATH . 'includes/class-admin-menu.php',
