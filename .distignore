@@ -1,0 +1,27 @@
+# Git & Repository files
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# Monorepo & Development tools
+package.json
+package-lock.json
+pnpm-lock.yaml
+node_modules/
+packages/
+docs/
+branding/
+
+# Source files (Uncompiled React/JS/SASS)
+**/src/
+**/assets/src/
+**/*.config.js
+**/*.ts
+**/*.tsx
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

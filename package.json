@@ -1,0 +1,21 @@
+{
+  "name": "bankai-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo for Bankai Theme & Core Plugin",
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev": "npm run dev --workspaces",
+    "lint:css": "wp-scripts lint-style",
+    "lint:js": "wp-scripts lint-js",
+    "packages:update": "npm update --workspaces"
+  },
+  "workspaces": [
+    "themes/bankai-theme",
+    "plugins/bankai-core",
+    "packages/ui"
+  ],
+  "devDependencies": {
+    "@wordpress/scripts": "^27.0.0"
+  }
+}
