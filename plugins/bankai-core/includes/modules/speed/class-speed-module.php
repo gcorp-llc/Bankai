@@ -1,36 +1,40 @@
 <?php
 /**
- * Speed Module Controller.
+ * Speed Module Loader.
  *
  * @package BankaiCore
  * @author  GCORP LLC
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-	die; // Exit if accessed directly.
+	die;
 }
 
-/**
- * Class Bankai_Speed_Module
- */
 class Bankai_Speed_Module {
 
-	/**
-	 * Initialize Speed Module hooks if active.
-	 */
 	public static function init() {
-		if ( ! class_exists( 'Bankai_Module_Switcher' ) || ! Bankai_Module_Switcher::is_active( 'speed' ) ) {
+		if ( ! Bankai_Module_Switcher::is_active( 'speed' ) ) {
 			return;
 		}
 
-		require_once BANKAI_CORE_PATH . 'includes/modules/speed/class-dropin-installer.php';
-		require_once BANKAI_CORE_PATH . 'includes/modules/speed/class-host-detector.php';
-		require_once BANKAI_CORE_PATH . 'includes/modules/speed/class-asset-optimizer.php';
-		require_once BANKAI_CORE_PATH . 'includes/modules/speed/class-static-css-builder.php';
+		$dir = BANKAI_CORE_PATH . 'includes/modules/speed/';
+		$files = array(
+			'class-host-detector.php',
+			'class-dropin-installer.php',
+			'class-static-css-builder.php',
+			'class-asset-optimizer.php',
+			'class-page-cache.php',
+			'class-asset-optimization.php',
+			'class-media-lazyload.php',
+			'class-database-cleaner.php',
+			'class-heartbeat-control.php',
+		);
 
-		Bankai_Dropin_Installer::init();
-		Bankai_Asset_Optimizer::init();
-		Bankai_Static_CSS_Builder::init();
+		foreach ( $files as $file ) {
+			if ( file_exists( $dir . $file ) ) {
+				require_once $dir . $file;
+			}
+		}
 	}
 }
 

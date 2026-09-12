@@ -34,7 +34,7 @@ class Bankai_Theme_Customizer {
 		$wp_customize->add_setting(
 			'bankai_primary_color',
 			array(
-				'default'           => '#007cba',
+				'default'           => '#0f172a',
 				'sanitize_callback' => 'sanitize_hex_color',
 			)
 		);
@@ -54,7 +54,7 @@ class Bankai_Theme_Customizer {
 		$wp_customize->add_setting(
 			'bankai_accent_color',
 			array(
-				'default'           => '#00a0d2',
+				'default'           => '#6366f1',
 				'sanitize_callback' => 'sanitize_hex_color',
 			)
 		);
@@ -83,20 +83,33 @@ class Bankai_Theme_Customizer {
 		$wp_customize->add_setting(
 			'bankai_font_family',
 			array(
-				'default'           => 'system-ui',
+				'default'           => 'Vazirmatn, IRANSans, system-ui',
 				'sanitize_callback' => 'sanitize_text_field',
 			)
 		);
 		$wp_customize->add_control(
 			'bankai_font_family',
 			array(
-				'label'    => esc_html__( 'خانواده فونت (Font Family)', 'bankai-theme' ),
-				'section'  => 'bankai_typography_section',
-				'type'     => 'text',
+				'label'       => esc_html__( 'خانواده فونت (Font Family)', 'bankai-theme' ),
+				'section'     => 'bankai_typography_section',
+				'type'        => 'text',
 				'description' => esc_html__( 'نام فونت سفارشی یا فونت سیستم نظیر Vazirmatn, IRANSans, system-ui', 'bankai-theme' ),
 			)
+		);
+	}
+
+	/**
+	 * Enqueue custom CSS to modernize Customizer Controls UI with RTL support.
+	 */
+	public static function enqueue_customizer_styles() {
+		wp_enqueue_style(
+			'bankai-customizer-modern-ui',
+			get_template_directory_uri() . '/assets/css/customizer-modern.css',
+			array(),
+			'1.0.0'
 		);
 	}
 }
 
 add_action( 'customize_register', array( 'Bankai_Theme_Customizer', 'register' ) );
+add_action( 'customize_controls_enqueue_scripts', array( 'Bankai_Theme_Customizer', 'enqueue_customizer_styles' ) );
