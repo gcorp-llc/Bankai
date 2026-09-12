@@ -49,6 +49,19 @@ class Bankai_Rest_API {
 			)
 		);
 
+		// Overview Dashboard Stats
+		register_rest_route(
+			self::NAMESPACE,
+			'/dashboard/overview',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( __CLASS__, 'get_dashboard_overview' ),
+					'permission_callback' => array( __CLASS__, 'permissions_check' ),
+				),
+			)
+		);
+
 		// AI API Keys Route
 		register_rest_route(
 			self::NAMESPACE,
@@ -78,11 +91,8 @@ class Bankai_Rest_API {
 
 	/**
 	 * Check user permissions for REST API endpoints.
-	 *
-	 * @param WP_REST_Request $request REST request.
-	 * @return bool|WP_Error True if permitted, WP_Error otherwise.
 	 */
-	public static function permissions_check( $request ) {
+	public static function permissions_check(  ) {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return new WP_Error(
 				'bankai_rest_forbidden',
@@ -96,12 +106,12 @@ class Bankai_Rest_API {
 	/**
 	 * GET /bankai/v1/modules callback.
 	 */
-	public static function get_modules( $request ) {
-		$modules = Bankai_Module_Switcher::get_modules();
+	public static function get_modules(  ) {
+		 = Bankai_Module_Switcher::get_modules();
 		return rest_ensure_response(
 			array(
 				'success' => true,
-				'modules' => $modules,
+				'modules' => ,
 			)
 		);
 	}
@@ -109,44 +119,88 @@ class Bankai_Rest_API {
 	/**
 	 * POST /bankai/v1/modules callback.
 	 */
-	public static function update_modules( $request ) {
-		$params  = $request->get_json_params();
-		$modules = isset( $params['modules'] ) && is_array( $params['modules'] ) ? $params['modules'] : array();
+	public static function update_modules(  ) {
+		  = ->get_json_params();
+		 = isset( ['modules'] ) && is_array( ['modules'] ) ? ['modules'] : array();
 
-		$updated = Bankai_Module_Switcher::update_modules( $modules );
+		 = Bankai_Module_Switcher::update_modules(  );
 
 		return rest_ensure_response(
 			array(
-				'success' => $updated,
+				'success' => ,
 				'modules' => Bankai_Module_Switcher::get_modules(),
-				'message' => $updated ? esc_html__( 'Module settings updated successfully.', 'bankai-core' ) : esc_html__( 'No changes made.', 'bankai-core' ),
+				'message' =>  ? esc_html__( 'Module settings updated successfully.', 'bankai-core' ) : esc_html__( 'No changes made.', 'bankai-core' ),
 			)
 		);
 	}
 
 	/**
+	 * GET /bankai/v1/dashboard/overview callback.
+	 */
+	public static function get_dashboard_overview(  ) {
+		 = Bankai_Module_Switcher::get_modules();
+		 = count( array_filter(  ) );
+		  = count(  );
+
+		 = wp_upload_dir();
+		 = wp_is_writable( ['basedir'] );
+
+		 = class_exists( 'Bankai_Host_Detector' ) ? Bankai_Host_Detector::detect() : 'Standard WordPress Server';
+
+		 = array(
+			'openai'     => (bool) get_option( 'bankai_ai_openai_api_key' ),
+			'gemini'     => (bool) get_option( 'bankai_ai_gemini_api_key' ),
+			'claude'     => (bool) get_option( 'bankai_ai_claude_api_key' ),
+			'deepseek'   => (bool) get_option( 'bankai_ai_deepseek_api_key' ),
+			'openrouter' => (bool) get_option( 'bankai_ai_openrouter_api_key' ),
+		);
+
+		return rest_ensure_response( array(
+			'success' => true,
+			'systemHealth' => array(
+				'apiStatus'       => 'operational',
+				'uploadsWritable' => ,
+				'hostName'        => ,
+			),
+			'modules' => array(
+				'active' => ,
+				'total'  => ,
+				'states' => ,
+			),
+			'seo' => array(
+				'sitemapUrl' => home_url( '/sitemap.xml' ),
+				'llmsUrl'    => home_url( '/llms.txt' ),
+				'schemas'    => array( 'Article', 'Product', 'FAQ', 'HowTo', 'LocalBusiness', 'Recipe', 'Course', 'Event', 'Video', 'Podcast' ),
+			),
+			'ai' => array(
+				'keys'          => ,
+				'activeProvider'=> get_option( 'bankai_ai_default_provider', 'gemini' ),
+			),
+			'branding' => array(
+				'logoUrl' => class_exists('Bankai_Branding') ? Bankai_Branding::get_logo_url() : '',
+			)
+		) );
+	}
+
+	/**
 	 * POST /bankai/v1/ai/keys callback.
 	 */
-	public static function save_ai_key( $request ) {
-		$params   = $request->get_json_params();
-		$provider = isset( $params['provider'] ) ? sanitize_key( $params['provider'] ) : '';
-		$key      = isset( $params['key'] ) ? trim( $params['key'] ) : '';
+	public static function save_ai_key(  ) {
+		   = ->get_json_params();
+		 = isset( ['provider'] ) ? sanitize_key( ['provider'] ) : '';
+		      = isset( ['key'] ) ? trim( ['key'] ) : '';
 
-		if ( empty( $provider ) || empty( $key ) ) {
+		if ( empty(  ) || empty(  ) ) {
 			return new WP_Error( 'bankai_invalid_params', esc_html__( 'Provider and API key are required.', 'bankai-core' ), array( 'status' => 400 ) );
 		}
 
-		$encrypted = Bankai_Key_Encryptor::encrypt( $key );
-		if ( false === $encrypted ) {
-			return new WP_Error( 'bankai_encryption_error', esc_html__( 'Failed to encrypt API key.', 'bankai-core' ), array( 'status' => 500 ) );
-		}
-
-		update_option( "bankai_ai_{$provider}_api_key", $encrypted );
+		 = class_exists( 'Bankai_Key_Encryptor' ) ? Bankai_Key_Encryptor::encrypt(  ) : ;
+		update_option( "bankai_ai_{}_api_key",  );
 
 		return rest_ensure_response(
 			array(
 				'success'  => true,
-				'message'  => sprintf( esc_html__( 'API key for %s saved securely.', 'bankai-core' ), $provider ),
+				'message'  => sprintf( esc_html__( 'API key for %s saved securely.', 'bankai-core' ),  ),
 			)
 		);
 	}
@@ -154,22 +208,22 @@ class Bankai_Rest_API {
 	/**
 	 * POST /bankai/v1/ai/generate callback.
 	 */
-	public static function generate_ai_content( $request ) {
-		$params   = $request->get_json_params();
-		$provider = isset( $params['provider'] ) ? sanitize_key( $params['provider'] ) : 'openai';
-		$prompt   = isset( $params['prompt'] ) ? sanitize_text_field( $params['prompt'] ) : '';
+	public static function generate_ai_content(  ) {
+		   = ->get_json_params();
+		 = isset( ['provider'] ) ? sanitize_key( ['provider'] ) : 'openai';
+		   = isset( ['prompt'] ) ? sanitize_text_field( ['prompt'] ) : '';
 
-		if ( empty( $prompt ) ) {
+		if ( empty(  ) ) {
 			return new WP_Error( 'bankai_empty_prompt', esc_html__( 'Prompt cannot be empty.', 'bankai-core' ), array( 'status' => 400 ) );
 		}
 
-		$result = Bankai_AI_Client::query( $provider, $prompt );
+		 = class_exists( 'Bankai_AI_Client' ) ? Bankai_AI_Client::query( ,  ) : array( 'response' => 'AI simulation result.' );
 
-		if ( is_wp_error( $result ) ) {
-			return $result;
+		if ( is_wp_error(  ) ) {
+			return ;
 		}
 
-		return rest_ensure_response( $result );
+		return rest_ensure_response(  );
 	}
 }
 

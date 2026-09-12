@@ -1,0 +1,50 @@
+/* Modern Bankai Customizer UI - Dark Slate / Indigo Accent with RTL Support */
+#customize-controls {
+	direction: rtl !important;
+	text-align: right !important;
+	font-family: Vazirmatn, IRANSans, system-ui, -apple-system, sans-serif !important;
+}
+
+#customize-theme-controls .accordion-section-title {
+	background-color: #0f172a !important;
+	color: #f8fafc !important;
+	border-bottom: 1px solid #1e293b !important;
+	padding: 14px 18px !important;
+	font-weight: 600 !important;
+	transition: all 0.2s ease !important;
+}
+
+#customize-theme-controls .accordion-section-title:hover {
+	background-color: #1e1b4b !important;
+	color: #38bdf8 !important;
+}
+
+#customize-theme-controls .control-section .accordion-section-content {
+	background-color: #1e293b !important;
+	color: #e2e8f0 !important;
+}
+
+.customize-control-title {
+	color: #f1f5f9 !important;
+	font-weight: 600 !important;
+	font-size: 13px !important;
+}
+
+.customize-control-description {
+	color: #94a3b8 !important;
+	font-style: normal !important;
+}
+
+.customize-control input[type=text],
+.customize-control select {
+	border-radius: 8px !important;
+	border: 1px solid #334155 !important;
+	background-color: #0f172a !important;
+	color: #f8fafc !important;
+	padding: 8px 12px !important;
+}
+
+.customize-control input[type=text]:focus {
+	border-color: #6366f1 !important;
+	box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3) !important;
+}
