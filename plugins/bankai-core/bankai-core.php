@@ -67,6 +67,8 @@ if ( ! bankai_core_check_requirements() ) {
  */
 function bankai_core_bootstrap() {
 	$includes = array(
+		BANKAI_CORE_PATH . 'includes/class-db-installer.php',
+		BANKAI_CORE_PATH . 'includes/class-dashboard-repository.php',
 		BANKAI_CORE_PATH . 'includes/class-branding.php',
 		BANKAI_CORE_PATH . 'includes/class-module-switcher.php',
 		BANKAI_CORE_PATH . 'includes/class-rest-api.php',
@@ -83,6 +85,16 @@ function bankai_core_bootstrap() {
 			require_once $file;
 		}
 	}
+
+	// Always ensure database tables and seed data exist if needed.
+	if ( class_exists( 'Bankai_DB_Installer' ) ) {
+		Bankai_DB_Installer::maybe_seed_data();
+	}
 }
+
+register_activation_hook( __FILE__, function() {
+	require_once BANKAI_CORE_PATH . 'includes/class-db-installer.php';
+	Bankai_DB_Installer::install();
+} );
 
 bankai_core_bootstrap();
