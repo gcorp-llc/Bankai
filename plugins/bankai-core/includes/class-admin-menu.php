@@ -1,12 +1,12 @@
 <?php
 /**
- * Admin Menu & Asset Loader Class
+ * Admin Menu & Native SSR Asset Loader Class
  *
  * @package BankaiCore
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-    exit;
+    return;
 }
 
 class Bankai_Admin_Menu {
@@ -17,7 +17,7 @@ class Bankai_Admin_Menu {
     }
 
     /**
-     * ثبت منوی اصلی بانکای در پیشخوان وردپرس
+     * Register Bankai Core Menu in WP Admin
      */
     public function register_admin_menu() {
         add_menu_page(
@@ -32,59 +32,68 @@ class Bankai_Admin_Menu {
     }
 
     /**
-     * رندر کانتینر ریشه که React روی آن سوار می‌شود
+     * Render direct Native PHP SSR View Template
      */
     public function render_admin_page() {
-        // شناسه دقیقا باید با bankai-admin-root در src/index.js یکسان باشد
-        echo '<div id="bankai-admin-root"></div>';
+        $template_file = BANKAI_CORE_PATH . 'templates/admin/admin-dashboard.php';
+        if ( file_exists( $template_file ) ) {
+            include $template_file;
+        } else {
+            echo '<div class="notice notice-error"><p>' . esc_html__( 'Bankai Core admin view template not found.', 'bankai-core' ) . '</p></div>';
+        }
     }
 
     /**
-     * لود اسکریپت‌ها، استایل‌ها و ارسال داده‌های REST API به React
+     * Enqueue Alpine.js, HTMX, Cyberpunk Dark CSS and pass window.bankaiData
      */
     public function enqueue_admin_assets( $hook ) {
-        // فقط در صفحه اختصاصی بانکای لود شود
+        // Enqueue only on Bankai Core admin pages
         if ( strpos( $hook, 'bankai-core' ) === false ) {
             return;
         }
 
-        $asset_file = BANKAI_CORE_PATH . 'build/index.asset.php';
-
-        if ( file_exists( $asset_file ) ) {
-            $assets = include $asset_file;
-
-            // ۱. لود استایل‌های پایه کامپوننت‌های وردپرس
-            wp_enqueue_style( 'wp-components' );
-
-            // ۲. لود اسکریپت اصلی React کمپایل‌شده
+        // 1. Enqueue HTMX Library
+        if ( file_exists( BANKAI_CORE_PATH . 'assets/js/htmx.min.js' ) ) {
             wp_enqueue_script(
-                'bankai-admin-app',
-                BANKAI_CORE_URL . 'build/index.js',
-                $assets['dependencies'],
-                $assets['version'],
+                'bankai-htmx',
+                BANKAI_CORE_URL . 'assets/js/htmx.min.js',
+                array(),
+                '1.9.10',
                 true
             );
+        }
 
-            // ۳. لود استایل اختصاصی بانکای در صورت وجود
-            if ( file_exists( BANKAI_CORE_PATH . 'build/style-index.css' ) ) {
-                wp_enqueue_style(
-                    'bankai-admin-style',
-                    BANKAI_CORE_URL . 'build/style-index.css',
-                    array(),
-                    $assets['version']
-                );
-            }
-
-            // ۴. ارسال داده‌های window.bankaiData به React جهت اعتبارسنجی REST API
-            wp_localize_script(
-                'bankai-admin-app',
-                'bankaiData',
-                array(
-                    'restUrl' => esc_url_raw( rest_url( 'bankai/v1' ) ),
-                    'nonce'   => wp_create_nonce( 'wp_rest' ),
-                )
+        // 2. Enqueue Alpine.js Library
+        if ( file_exists( BANKAI_CORE_PATH . 'assets/js/alpine.min.js' ) ) {
+            wp_enqueue_script(
+                'bankai-alpine',
+                BANKAI_CORE_URL . 'assets/js/alpine.min.js',
+                array(),
+                '3.13.5',
+                true
             );
         }
+
+        // 3. Enqueue Bankai Core Admin Custom CSS
+        if ( file_exists( BANKAI_CORE_PATH . 'assets/css/bankai-admin.css' ) ) {
+            wp_enqueue_style(
+                'bankai-admin-style',
+                BANKAI_CORE_URL . 'assets/css/bankai-admin.css',
+                array(),
+                BANKAI_CORE_VERSION
+            );
+        }
+
+        // 4. Localize REST API URL and Security Nonce
+        $script_handle = file_exists( BANKAI_CORE_PATH . 'assets/js/alpine.min.js' ) ? 'bankai-alpine' : 'bankai-htmx';
+        wp_localize_script(
+            $script_handle,
+            'bankaiData',
+            array(
+                'restUrl' => esc_url_raw( rest_url( 'bankai/v1' ) ),
+                'nonce'   => wp_create_nonce( 'wp_rest' ),
+            )
+        );
     }
 }
 
