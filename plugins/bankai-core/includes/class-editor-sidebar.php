@@ -32,7 +32,6 @@ class Bankai_Editor_Sidebar {
         );
 
         foreach ( $meta_keys as $key => $type ) {
-            // استفاده از رشته خالی '' باعث اعمال متا روی همه پست‌تایپ‌ها (Post, Page, CPTs) می‌شود
             register_post_meta(
                 '',
                 $key,
@@ -50,24 +49,19 @@ class Bankai_Editor_Sidebar {
     }
 
     /**
-     * Enqueue Gutenberg editor sidebar React scripts.
+     * Enqueue block editor assets if present.
      */
     public static function enqueue_editor_assets() {
-        // بررسی فعال بودن ماژول سئو
         if ( class_exists( 'Bankai_Module_Switcher' ) && ! Bankai_Module_Switcher::is_active( 'seo' ) ) {
             return;
         }
 
-        $asset_file = BANKAI_CORE_PATH . 'admin/build/index.asset.php';
-
-        if ( file_exists( $asset_file ) ) {
-            $asset = require $asset_file;
-
+        if ( file_exists( BANKAI_CORE_PATH . 'assets/js/bankai-admin.js' ) ) {
             wp_enqueue_script(
                 'bankai-editor-sidebar',
-                BANKAI_CORE_URL . 'admin/build/index.js',
-                isset( $asset['dependencies'] ) ? $asset['dependencies'] : array( 'wp-plugins', 'wp-element', 'wp-edit-post', 'wp-components', 'wp-data' ),
-                isset( $asset['version'] ) ? $asset['version'] : '1.0.0',
+                BANKAI_CORE_URL . 'assets/js/bankai-admin.js',
+                array( 'wp-element', 'wp-components', 'wp-data' ),
+                BANKAI_CORE_VERSION,
                 true
             );
         }
