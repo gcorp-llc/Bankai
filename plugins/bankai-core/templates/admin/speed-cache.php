@@ -67,8 +67,7 @@ $speed_modules = array(
 );
 ?>
 
-<div x-show="activeTab === 'speed'" x-transition>
-    <!-- View 4 Header & Metrics Bar -->
+<!-- View 4 Header & Metrics Bar -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; background-color: #111827; border: 1px solid #1E2D4A; border-radius: 12px; padding: 20px;">
         <div>
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
