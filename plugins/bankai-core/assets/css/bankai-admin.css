@@ -1,4 +1,51 @@
-/* Bankai Core - Cyberpunk Dark Slate Styles */
+/* Bankai Core - Cyberpunk Dark Slate Styles (#080C14) */
+
+/* Global x-cloak to prevent layout flicker / vertical stacking before Alpine initializes */
+[x-cloak] {
+  display: none !important;
+}
+
+/* WP Admin body & container dark background bleed prevention */
+.toplevel_page_bankai-core,
+.toplevel_page_bankai-core #wpwrap,
+.toplevel_page_bankai-core #wpcontent,
+.toplevel_page_bankai-core #wpbody,
+.toplevel_page_bankai-core #wpbody-content,
+.bankai-core_page_bankai-theme-kits,
+.bankai-core_page_bankai-theme-kits #wpwrap,
+.bankai-core_page_bankai-theme-kits #wpcontent,
+.bankai-core_page_bankai-theme-kits #wpbody,
+.bankai-core_page_bankai-theme-kits #wpbody-content,
+.bankai-core_page_bankai-seo-engine,
+.bankai-core_page_bankai-seo-engine #wpwrap,
+.bankai-core_page_bankai-seo-engine #wpcontent,
+.bankai-core_page_bankai-seo-engine #wpbody,
+.bankai-core_page_bankai-seo-engine #wpbody-content,
+.bankai-core_page_bankai-speed-cache,
+.bankai-core_page_bankai-speed-cache #wpwrap,
+.bankai-core_page_bankai-speed-cache #wpcontent,
+.bankai-core_page_bankai-speed-cache #wpbody,
+.bankai-core_page_bankai-speed-cache #wpbody-content,
+.bankai-core_page_bankai-media,
+.bankai-core_page_bankai-media #wpwrap,
+.bankai-core_page_bankai-media #wpcontent,
+.bankai-core_page_bankai-media #wpbody,
+.bankai-core_page_bankai-media #wpbody-content,
+.bankai-core_page_bankai-ai-manifests,
+.bankai-core_page_bankai-ai-manifests #wpwrap,
+.bankai-core_page_bankai-ai-manifests #wpcontent,
+.bankai-core_page_bankai-ai-manifests #wpbody,
+.bankai-core_page_bankai-ai-manifests #wpbody-content,
+.bankai-core_page_bankai-settings,
+.bankai-core_page_bankai-settings #wpwrap,
+.bankai-core_page_bankai-settings #wpcontent,
+.bankai-core_page_bankai-settings #wpbody,
+.bankai-core_page_bankai-settings #wpbody-content {
+  background-color: #080C14 !important;
+  color: #F8FAFC !important;
+  min-height: 100vh !important;
+  padding-bottom: 0 !important;
+}
 
 #bankai-admin-app,
 .bankai-app-wrapper,
@@ -16,33 +63,26 @@
   --bankai-text-muted: #94A3B8;
   --bankai-text-subtle: #64748B;
 
-  background-color: var(--bankai-bg-dark);
-  color: #E2E8F0;
+  background-color: var(--bankai-bg-dark) !important;
+  color: #F8FAFC !important;
   font-family: Inter, Vazirmatn, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   min-height: calc(100vh - 32px);
   margin: -20px 0 0 -20px;
   padding: 0;
-  display: flex;
   box-sizing: border-box;
   position: relative;
   z-index: 1;
 }
 
-/* Ensure WP admin body container doesn't have bottom padding issue */
-.toplevel_page_bankai-core #wpbody-content,
-.bankai-core_page_bankai-theme-kits #wpbody-content,
-.bankai-core_page_bankai-seo-engine #wpbody-content,
-.bankai-core_page_bankai-speed-cache #wpbody-content,
-.bankai-core_page_bankai-ai-manifests #wpbody-content {
-  padding-bottom: 0 !important;
-}
-
 /* RTL Support for main container */
 [dir="rtl"] #bankai-admin-app,
 [dir="rtl"] .bankai-app-wrapper,
-[dir="rtl"] .bankai-admin-wrap {
+[dir="rtl"] .bankai-admin-wrap,
+body.rtl #bankai-admin-app,
+body.rtl .bankai-app-wrapper,
+body.rtl .bankai-admin-wrap {
   margin: -20px -20px 0 0;
-  font-family: Vazirmatn, Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: Vazirmatn, Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
 #bankai-admin-app *,
@@ -55,7 +95,7 @@
 #bankai-admin-app .bankai-sidebar,
 .bankai-app-wrapper .bankai-sidebar,
 .bankai-admin-wrap .bankai-sidebar {
-  width: 260px;
+  width: 100%;
   background-color: var(--bankai-sidebar-bg);
   border-right: 1px solid var(--bankai-card-border);
   padding: 24px 16px;
@@ -66,9 +106,20 @@
   min-height: calc(100vh - 32px);
 }
 
+@media (min-width: 768px) {
+  #bankai-admin-app .bankai-sidebar,
+  .bankai-app-wrapper .bankai-sidebar,
+  .bankai-admin-wrap .bankai-sidebar {
+    width: 260px;
+  }
+}
+
 [dir="rtl"] #bankai-admin-app .bankai-sidebar,
 [dir="rtl"] .bankai-app-wrapper .bankai-sidebar,
-[dir="rtl"] .bankai-admin-wrap .bankai-sidebar {
+[dir="rtl"] .bankai-admin-wrap .bankai-sidebar,
+body.rtl #bankai-admin-app .bankai-sidebar,
+body.rtl .bankai-app-wrapper .bankai-sidebar,
+body.rtl .bankai-admin-wrap .bankai-sidebar {
   border-right: none;
   border-left: 1px solid var(--bankai-card-border);
 }

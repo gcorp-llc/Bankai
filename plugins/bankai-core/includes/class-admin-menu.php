@@ -21,14 +21,15 @@ class Bankai_Admin_Menu {
      */
     public function register_admin_menu() {
         // Main parent menu
+        $icon_url = file_exists( BANKAI_CORE_PATH . 'logo.jpg' ) ? BANKAI_CORE_URL . 'logo.jpg' : 'dashicons-shield';
         add_menu_page(
             __( 'Bankai Core', 'bankai-core' ),
             __( 'Bankai Core', 'bankai-core' ),
             'manage_options',
             'bankai-core',
             array( $this, 'render_admin_page' ),
-            'dashicons-shield',
-            30
+            $icon_url,
+            2
         );
 
         // Submenus

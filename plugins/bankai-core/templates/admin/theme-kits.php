@@ -49,8 +49,7 @@ $starter_kits = array(
 );
 ?>
 
-<div x-show="activeTab === 'theme-kits'" x-transition>
-    <!-- View 2 Header Panel -->
+<!-- View 2 Header Panel -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; background-color: #111827; border: 1px solid #1E2D4A; border-radius: 12px; padding: 20px;">
         <div>
             <h2 style="font-size: 18px; font-weight: 800; color: #F8FAFC; margin: 0; display: flex; align-items: center; gap: 10px;">

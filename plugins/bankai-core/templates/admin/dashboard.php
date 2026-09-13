@@ -73,8 +73,7 @@ $logs404 = array(
 );
 ?>
 
-<div x-show="activeTab === 'overview'" x-transition>
-    <!-- System Telemetry Metrics Grid -->
+<!-- System Telemetry Metrics Grid -->
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
         <div style="background-color: #111827; border: 1px solid #1E2D4A; border-radius: 12px; padding: 20px;">
             <div style="font-size: 11px; color: #64748B; font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">
