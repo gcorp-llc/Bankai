@@ -1,0 +1,6 @@
+{
+  "name": "Bankai WordPress Ecosystem",
+  "description": "High-performance modular WordPress ecosystem with Alpine.js, SSR, SEO Engine, Speed Cache, Media Studio, and AI Content Suite.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

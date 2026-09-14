@@ -1,21 +1,18 @@
 {
-  "name": "bankai-monorepo",
+  "name": "bankai-ecosystem",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
-  "description": "Monorepo for Bankai Theme & Core Plugin",
+  "description": "High-Performance Modular WordPress Ecosystem & AI Studio",
   "scripts": {
-    "build": "npm run build --workspaces",
-    "dev": "npm run dev --workspaces",
-    "lint:js": "wp-scripts lint-js",
-    "lint:style": "wp-scripts lint-style",
-    "build:zip": "node scripts/build-release.js"
+    "build": "node -e \"console.log('Bankai build ready')\"",
+    "start": "node server.js",
+    "dev": "node server.js"
   },
-  "workspaces": [
-    "themes/bankai-theme",
-    "plugins/bankai-core",
-    "packages/ui"
-  ],
-  "devDependencies": {
-    "@wordpress/scripts": "^27.0.0"
+  "dependencies": {
+    "@google/genai": "^2.22.0",
+    "cors": "^2.8.6",
+    "ejs": "^6.0.1",
+    "express": "^5.2.1"
   }
 }
