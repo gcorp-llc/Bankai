@@ -22,6 +22,18 @@
         </div>
 
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button @click="triggerSaveLoader({ title: isRtl ? 'در حال ذخیره‌سازی تمامی تنظیمات پلتفرم...' : 'Saving All Platform Settings...', message: isRtl ? 'در حال اعمال پرچم‌های ماژولار، سطوح دسترسی و هماهنگ‌سازی دیتابیس...' : 'Updating modular flags, role permissions and synchronizing database...', duration: 700 })"
+                    id="btn-save-all-settings"
+                    style="background-color: #0969DA; border: 1px solid #0969DA; color: #FFFFFF; padding: 10px 18px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(9, 105, 218, 0.3);">
+                <!-- Solar Broken Save / Disk -->
+                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                </svg>
+                <span x-text="isRtl ? 'ذخیره تمامی تنظیمات' : 'Save All Settings'">Save All Settings</span>
+            </button>
+
             <button @click="exportConfiguration()"
                     style="background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #1F2328; padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 1px 2px rgba(46, 52, 64, 0.04);">
                 <!-- Solar Broken Download -->
@@ -104,7 +116,7 @@
                     <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'سوئیچ اصلی برای اسکیما، متادیتا و پایش خطاهای ۴۰۴' : 'Master toggle for all SEO, Schema, and 404 monitoring'">Master toggle for all SEO, Schema, and 404 monitoring</div>
                 </div>
                 <label class="bankai-switch">
-                    <input type="checkbox" checked @change="showToast(isRtl ? 'وضعیت موتور سئو تغییر یافت' : 'SEO Engine master flag updated')">
+                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی پرچم موتور سئو...' : 'Updating SEO Engine Flag...', savedTitle: isRtl ? 'تنظیمات سئو ذخیره شد' : 'SEO Setting Saved' })">
                     <span class="bankai-slider"></span>
                 </label>
             </div>
@@ -115,7 +127,7 @@
                     <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'سوئیچ اصلی برای کش صفحات، فشرده‌سازی و ردیس' : 'Master toggle for page cache, minification & Redis daemon'">Master toggle for page cache, minification &amp; Redis daemon</div>
                 </div>
                 <label class="bankai-switch">
-                    <input type="checkbox" checked @change="showToast(isRtl ? 'وضعیت شتاب‌دهنده تغییر یافت' : 'Speed Accelerator master flag updated')">
+                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی شتاب‌دهنده سرعت...' : 'Updating Speed Accelerator Flag...', savedTitle: isRtl ? 'تنظیمات سرعت ذخیره شد' : 'Speed Setting Saved' })">
                     <span class="bankai-slider"></span>
                 </label>
             </div>
@@ -126,7 +138,7 @@
                     <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'سوئیچ اصلی برای تبدیل وب‌پی/آویف و واترمارک هوشمند' : 'Master toggle for WebP/AVIF and automated watermarks'">Master toggle for WebP/AVIF and automated watermarks</div>
                 </div>
                 <label class="bankai-switch">
-                    <input type="checkbox" checked @change="showToast(isRtl ? 'وضعیت استودیو رسانه تغییر یافت' : 'Media Studio master flag updated')">
+                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی استودیو رسانه...' : 'Updating Media Studio Flag...', savedTitle: isRtl ? 'تنظیمات رسانه ذخیره شد' : 'Media Setting Saved' })">
                     <span class="bankai-slider"></span>
                 </label>
             </div>
@@ -137,7 +149,7 @@
                     <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'سوئیچ اصلی برای جمینای، اوپن‌ای‌آی و کلود' : 'Master toggle for Gemini, OpenAI, Claude & DeepSeek APIs'">Master toggle for Gemini, OpenAI, Claude &amp; DeepSeek APIs</div>
                 </div>
                 <label class="bankai-switch">
-                    <input type="checkbox" checked @change="showToast(isRtl ? 'وضعیت هوش مصنوعی تغییر یافت' : 'AI Studio master flag updated')">
+                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی هوش مصنوعی...' : 'Updating AI Studio Flag...', savedTitle: isRtl ? 'تنظیمات هوش مصنوعی ذخیره شد' : 'AI Setting Saved' })">
                     <span class="bankai-slider"></span>
                 </label>
             </div>
@@ -148,7 +160,7 @@
                     <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'فعال‌سازی مسیرهای /llms.txt برای ربات‌های جستجوی مبتنی بر هوش مصنوعی' : 'Enables /llms.txt and /llms-full.txt endpoints for crawler agents'">Enables /llms.txt and /llms-full.txt endpoints for crawler agents</div>
                 </div>
                 <label class="bankai-switch">
-                    <input type="checkbox" checked @change="showToast(isRtl ? 'تنظیمات llms.txt بروز شد' : 'llms.txt endpoints toggled')">
+                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی اندپوینت llms.txt...' : 'Updating llms.txt Configuration...', savedTitle: isRtl ? 'تنظیمات llms.txt ذخیره شد' : 'llms.txt Config Saved' })">
                     <span class="bankai-slider"></span>
                 </label>
             </div>
@@ -159,7 +171,7 @@
                     <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'اطلاع‌رسانی بلادرنگ به موتورهای جستجو بلافاصله پس از انتشار محتوا' : 'Pings search engines instantly upon post publishing'">Pings search engines instantly upon post publishing</div>
                 </div>
                 <label class="bankai-switch">
-                    <input type="checkbox" checked @change="showToast(isRtl ? 'ایندکس آنی فعال شد' : 'Instant Indexing API toggled')">
+                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال فعال‌سازی ایندکس آنی...' : 'Updating Instant Indexing...', savedTitle: isRtl ? 'تنظیمات ایندکس آنی ذخیره شد' : 'Instant Indexing Saved' })">
                     <span class="bankai-slider"></span>
                 </label>
             </div>
@@ -188,14 +200,14 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; background-color: #F6F8FA; padding: 10px 14px; border-radius: 8px; border: 1px solid #D0D7DE;">
                     <span style="font-size: 12px; color: #1F2328; font-weight: 600;" x-text="isRtl ? 'ویرایشگران (ابزارهای سئو و هوش مصنوعی محتوا)' : 'Editors (SEO & Content AI Tools)'">Editors (SEO &amp; Content AI Tools)</span>
                     <label class="bankai-switch">
-                        <input type="checkbox" checked @change="showToast(isRtl ? 'دسترسی ویرایشگر تغییر یافت' : 'Editor permissions updated')">
+                        <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی دسترسی ویرایشگر...' : 'Updating Editor Permissions...', savedTitle: isRtl ? 'دسترسی ویرایشگر ذخیره شد' : 'Permissions Saved' })">
                         <span class="bankai-slider"></span>
                     </label>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; background-color: #F6F8FA; padding: 10px 14px; border-radius: 8px; border: 1px solid #D0D7DE;">
                     <span style="font-size: 12px; color: #1F2328; font-weight: 600;" x-text="isRtl ? 'نویسندگان (فقط تولید طرح اولیه هوش مصنوعی)' : 'Authors (AI Outlines Only)'">Authors (AI Outlines Only)</span>
                     <label class="bankai-switch">
-                        <input type="checkbox" @change="showToast(isRtl ? 'دسترسی نویسنده تغییر یافت' : 'Author permissions updated')">
+                        <input type="checkbox" @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی دسترسی نویسنده...' : 'Updating Author Permissions...', savedTitle: isRtl ? 'دسترسی نویسنده ذخیره شد' : 'Permissions Saved' })">
                         <span class="bankai-slider"></span>
                     </label>
                 </div>

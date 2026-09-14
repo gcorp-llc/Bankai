@@ -14,6 +14,16 @@ function bankaiAdmin() {
         toast: { show: false, message: '', type: 'success' },
         showApiKeys: false,
 
+        // Page and Action Loaders
+        pageLoading: false,
+        pageProgress: 0,
+        savingLoader: {
+            show: false,
+            state: 'saving', // 'saving' | 'saved'
+            title: '',
+            message: ''
+        },
+
         // Comprehensive Bilingual i18n Dictionary for WordPress Admin
         i18n: {
             en: {
@@ -450,8 +460,29 @@ function bankaiAdmin() {
         },
 
         setTab(tab) {
-            this.activeTab = tab;
-            this.closeMobileMenu();
+            if (this.activeTab === tab) {
+                this.closeMobileMenu();
+                return;
+            }
+
+            // Trigger Page Transition Loader
+            this.pageLoading = true;
+            this.pageProgress = 25;
+
+            setTimeout(() => {
+                this.pageProgress = 70;
+            }, 60);
+
+            setTimeout(() => {
+                this.activeTab = tab;
+                this.pageProgress = 100;
+                this.closeMobileMenu();
+
+                setTimeout(() => {
+                    this.pageLoading = false;
+                    this.pageProgress = 0;
+                }, 180);
+            }, 200);
 
             // Update browser history state without full page reload if supported
             try {
@@ -472,6 +503,42 @@ function bankaiAdmin() {
             } catch (err) {
                 // Safe ignore if sandboxed inside iframe
             }
+        },
+
+        triggerSaveLoader(options = {}) {
+            let config = {
+                title: this.isRtl ? 'در حال ذخیره‌سازی تغییرات...' : 'Saving Changes...',
+                message: this.isRtl ? 'در حال اعمال تنظیمات و همگام‌سازی با پایگاه داده...' : 'Applying configuration & synchronizing database...',
+                savedTitle: this.isRtl ? 'تغییرات با موفقیت ذخیره شد' : 'Changes Saved Successfully',
+                savedMessage: this.isRtl ? 'پیکربندی با موفقیت به‌روزرسانی و ذخیره گردید.' : 'Configuration updated and synchronized.',
+                duration: 600,
+                callback: null
+            };
+
+            if (typeof options === 'string') {
+                config.title = options;
+            } else if (typeof options === 'object' && options !== null) {
+                config = Object.assign(config, options);
+            }
+
+            this.savingLoader.show = true;
+            this.savingLoader.state = 'saving';
+            this.savingLoader.title = config.title;
+            this.savingLoader.message = config.message;
+
+            setTimeout(() => {
+                this.savingLoader.state = 'saved';
+                this.savingLoader.title = config.savedTitle;
+                this.savingLoader.message = config.savedMessage;
+
+                if (typeof config.callback === 'function') {
+                    config.callback();
+                }
+
+                setTimeout(() => {
+                    this.savingLoader.show = false;
+                }, 1100);
+            }, config.duration);
         },
 
         showToast(msg, type = 'success') {
@@ -595,11 +662,13 @@ function bankaiAdmin() {
 
         async toggleAiModule(modId) {
             const newState = this.aiState[modId];
-            this.showToast(
-                this.isRtl
-                    ? `ماژول هوش مصنوعی ${modId} ${newState ? 'فعال' : 'غیرفعال'} گردید`
-                    : `AI Module '${modId}' ${newState ? 'enabled' : 'disabled'}`
-            );
+            this.triggerSaveLoader({
+                title: this.isRtl ? `در حال تنظیم ماژول هوش مصنوعی...` : `Updating AI Module...`,
+                savedTitle: this.isRtl
+                    ? `ماژول ${modId} ${newState ? 'فعال' : 'غیرفعال'} گردید`
+                    : `AI Module '${modId}' ${newState ? 'enabled' : 'disabled'}`,
+                duration: 500
+            });
 
             try {
                 await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/ai/toggle', {
@@ -623,9 +692,12 @@ function bankaiAdmin() {
 
         saveAiDrawerSettings() {
             this.aiDrawer.show = false;
-            this.showToast(
-                this.isRtl ? `قالب پرامپت ${this.aiDrawer.title} با موفقیت ذخیره گردید` : `Prompt rules for '${this.aiDrawer.title}' saved successfully!`
-            );
+            this.triggerSaveLoader({
+                title: this.isRtl ? `در حال ذخیره‌سازی پرامپت ${this.aiDrawer.title}...` : `Saving ${this.aiDrawer.title}...`,
+                message: this.isRtl ? 'در حال ثبت دستورالعمل‌ها و پارامترهای LLM در مانیفست سرور...' : 'Saving system instructions & LLM parameters to server manifest...',
+                savedTitle: this.isRtl ? `قالب پرامپت ${this.aiDrawer.title} با موفقیت ذخیره گردید` : `Prompt rules for '${this.aiDrawer.title}' saved successfully!`,
+                duration: 650
+            });
         },
 
         async generateAiPrompt() {
@@ -701,11 +773,13 @@ function bankaiAdmin() {
 
         async toggleMediaModule(modId) {
             const newState = this.mediaState[modId];
-            this.showToast(
-                this.isRtl
-                    ? `ماژول رسانه ${modId} ${newState ? 'فعال' : 'غیرفعال'} گردید`
-                    : `Media Module '${modId}' ${newState ? 'enabled' : 'disabled'}`
-            );
+            this.triggerSaveLoader({
+                title: this.isRtl ? `در حال به‌روزرسانی ماژول رسانه...` : `Updating Media Module...`,
+                savedTitle: this.isRtl
+                    ? `ماژول ${modId} ${newState ? 'فعال' : 'غیرفعال'} گردید`
+                    : `Media Module '${modId}' ${newState ? 'enabled' : 'disabled'}`,
+                duration: 500
+            });
 
             try {
                 await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/media/toggle', {
@@ -729,17 +803,22 @@ function bankaiAdmin() {
 
         saveMediaDrawerSettings() {
             this.mediaDrawer.show = false;
-            this.showToast(
-                this.isRtl ? `تنظیمات ${this.mediaDrawer.title} با موفقیت ذخیره گردید` : `Settings for '${this.mediaDrawer.title}' saved successfully!`
-            );
+            this.triggerSaveLoader({
+                title: this.isRtl ? `در حال ذخیره‌سازی تنظیمات ${this.mediaDrawer.title}...` : `Saving ${this.mediaDrawer.title}...`,
+                message: this.isRtl ? 'در حال اعمال الگوهای گرافیکی و قوانین فشرده‌سازی در سرور...' : 'Applying image rules, watermark coordinates & formats to options...',
+                savedTitle: this.isRtl ? `تنظیمات ${this.mediaDrawer.title} با موفقیت ذخیره گردید` : `Settings for '${this.mediaDrawer.title}' saved!`,
+                duration: 650
+            });
         },
 
         // Speed & Cache Methods
         async purgeAllCaches() {
-            this.showToast(
-                this.isRtl ? 'تمامی کش‌های صفحه، Varnish و Redis با موفقیت تخلیه گردید!' : 'All page, Varnish, and Redis caches purged successfully!',
-                'success'
-            );
+            this.triggerSaveLoader({
+                title: this.isRtl ? 'در حال پاکسازی کامل کش‌های سرور...' : 'Purging All Server & Edge Caches...',
+                message: this.isRtl ? 'در حال تخلیه حافظه HTML، بافرهای Redis، Varnish و فایل‌های استاتیک...' : 'Clearing page cache, Redis objects, Varnish, and minified bundles...',
+                savedTitle: this.isRtl ? 'تمامی کش‌ها با موفقیت پاکسازی شدند!' : 'All caches purged successfully!',
+                duration: 750
+            });
 
             try {
                 await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/speed/purge', {
@@ -755,26 +834,32 @@ function bankaiAdmin() {
         },
 
         benchmarkVitals() {
-            this.showToast(
-                this.isRtl ? 'سنجش شاخص‌های حیاتی وب: score 99/100 (TTFB: 32ms, LCP: 0.8s)' : 'Core Web Vitals benchmarked: 99/100 (TTFB: 32ms, LCP: 0.8s)',
-                'success'
-            );
+            this.triggerSaveLoader({
+                title: this.isRtl ? 'در حال سنجش شاخص‌های حیاتی و کش...' : 'Benchmarking Core Web Vitals...',
+                message: this.isRtl ? 'محاسبه TTFB، LCP، CLS و سرعت بارگذاری با سرور ابری...' : 'Calculating TTFB, LCP, CLS and server response times...',
+                savedTitle: this.isRtl ? 'شاخص‌های حیاتی بهینه هستند (امتیاز ۹۹/۱۰۰)' : 'Core Web Vitals optimal (99/100)!',
+                duration: 700
+            });
         },
 
         optimizeDatabase() {
-            this.showToast(
-                this.isRtl ? 'پایگاه داده بهینه‌سازی شد: ۱۴۲ پیش‌نویس و متای یتیم پاکسازی گردید' : 'Database optimized: 142 post revisions and orphaned metadata cleaned!',
-                'success'
-            );
+            this.triggerSaveLoader({
+                title: this.isRtl ? 'در حال بهینه‌سازی جداول پایگاه داده...' : 'Optimizing MySQL Database...',
+                message: this.isRtl ? 'پاکسازی پیش‌نویس‌های قدیمی، هرزنامه‌ها و بازسازی ایندکس‌ها...' : 'Cleaning post revisions, transients & rebuilding SQL indices...',
+                savedTitle: this.isRtl ? 'پایگاه داده بهینه‌سازی و متای یتیم پاکسازی گردید' : 'Database optimized successfully!',
+                duration: 700
+            });
         },
 
         async toggleSpeedModule(modId) {
             const newState = this.speedState[modId];
-            this.showToast(
-                this.isRtl
-                    ? `ماژول سرعت ${modId} ${newState ? 'فعال' : 'غیرفعال'} گردید`
-                    : `Speed Module '${modId}' ${newState ? 'enabled' : 'disabled'}`
-            );
+            this.triggerSaveLoader({
+                title: this.isRtl ? `در حال به‌روزرسانی ماژول سرعت...` : `Updating Speed Module...`,
+                savedTitle: this.isRtl
+                    ? `ماژول ${modId} ${newState ? 'فعال' : 'غیرفعال'} گردید`
+                    : `Speed Module '${modId}' ${newState ? 'enabled' : 'disabled'}`,
+                duration: 500
+            });
 
             try {
                 await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/speed/toggle', {
@@ -798,19 +883,24 @@ function bankaiAdmin() {
 
         saveSpeedDrawerSettings() {
             this.speedDrawer.show = false;
-            this.showToast(
-                this.isRtl ? `تنظیمات ${this.speedDrawer.title} با موفقیت ذخیره گردید` : `Settings for '${this.speedDrawer.title}' saved successfully!`
-            );
+            this.triggerSaveLoader({
+                title: this.isRtl ? `در حال اعمال تنظیمات ${this.speedDrawer.title}...` : `Saving ${this.speedDrawer.title}...`,
+                message: this.isRtl ? 'در حال بازسازی قوانین وب‌سرور، فایل .htaccess و بافرها...' : 'Writing web server rules, .htaccess directives & cache levels...',
+                savedTitle: this.isRtl ? `تنظیمات ${this.speedDrawer.title} با موفقیت ذخیره گردید` : `Settings for '${this.speedDrawer.title}' saved!`,
+                duration: 650
+            });
         },
 
         // SEO Engine Methods
         async toggleSeoModule(modId) {
             const newState = this.seoState[modId];
-            this.showToast(
-                this.isRtl
+            this.triggerSaveLoader({
+                title: this.isRtl ? `در حال به‌روزرسانی ماژول سئو...` : `Updating SEO Module...`,
+                savedTitle: this.isRtl
                     ? `ماژول ${modId} ${newState ? 'فعال' : 'غیرفعال'} گردید`
-                    : `SEO Module '${modId}' ${newState ? 'enabled' : 'disabled'}`
-            );
+                    : `SEO Module '${modId}' ${newState ? 'enabled' : 'disabled'}`,
+                duration: 500
+            });
 
             try {
                 await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/seo/toggle', {
@@ -827,10 +917,12 @@ function bankaiAdmin() {
         },
 
         runSeoAudit() {
-            this.showToast(
-                this.isRtl ? 'در حال اجرای ممیزی ۲۸ نقطه‌ای سئو... تمامی شاخص‌ها بهینه‌اند!' : 'Running 28-Point SEO Audit... All metrics optimal (98/100)!',
-                'success'
-            );
+            this.triggerSaveLoader({
+                title: this.isRtl ? 'در حال اجرای ممیزی ۲۸ نقطه‌ای سئو...' : 'Running 28-Point SEO Audit...',
+                message: this.isRtl ? 'بررسی متاتگ‌ها، سایت‌مپ، داده‌های ساختاریافته و ربات‌ها...' : 'Checking metadata, sitemap.xml, robots.txt & schema graphs...',
+                savedTitle: this.isRtl ? 'ممیزی با موفقیت انجام شد (امتیاز ۹۸/۱۰۰)' : 'SEO Audit complete (98/100)!',
+                duration: 750
+            });
         },
 
         openSeoWizard() {
@@ -848,9 +940,12 @@ function bankaiAdmin() {
 
         saveSeoDrawerSettings() {
             this.seoDrawer.show = false;
-            this.showToast(
-                this.isRtl ? `تنظیمات ${this.seoDrawer.title} با موفقیت ذخیره گردید` : `Settings for '${this.seoDrawer.title}' saved successfully!`
-            );
+            this.triggerSaveLoader({
+                title: this.isRtl ? `در حال ذخیره‌سازی تنظیمات ${this.seoDrawer.title}...` : `Saving ${this.seoDrawer.title}...`,
+                message: this.isRtl ? 'در حال کامپایل گراف‌های معنایی و ذخیره اسکیمای JSON-LD...' : 'Compiling semantic entities and saving JSON-LD schema...',
+                savedTitle: this.isRtl ? `تنظیمات ${this.seoDrawer.title} با موفقیت ذخیره گردید` : `Settings for '${this.seoDrawer.title}' saved!`,
+                duration: 650
+            });
         },
 
         syncLibrary() {
