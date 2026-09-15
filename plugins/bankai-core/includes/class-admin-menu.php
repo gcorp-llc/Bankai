@@ -31,7 +31,7 @@ class Bankai_Admin_Menu {
             'manage_options',
             'bankai-core',
             [$this, 'render_admin_page'],
-            'dashicons-superhero',
+            BANKAI_CORE_URL . 'assets/images/logo.jpg',
             2 // Position right below Dashboard
         );
 

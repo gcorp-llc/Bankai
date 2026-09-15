@@ -34,7 +34,7 @@ function bankaiAdmin() {
                 wpDashboard: 'WP Admin',
                 allSystemsOptimal: 'ALL SYSTEMS OPTIMAL',
                 lifetimeLicense: 'LIFETIME PRO',
-                
+
                 // Sidebar Tabs
                 navOverview: 'Overview & Telemetry',
                 navThemeKits: 'Theme Kits & Customizer',
@@ -281,10 +281,10 @@ function bankaiAdmin() {
             this.isRtl = !this.isRtl;
             const langCode = this.isRtl ? 'fa' : 'en';
             const dir = this.isRtl ? 'rtl' : 'ltr';
-            
+
             document.documentElement.setAttribute('dir', dir);
             document.documentElement.setAttribute('lang', langCode);
-            
+
             try {
                 localStorage.setItem('bankai_lang', langCode);
             } catch (e) {}
@@ -307,7 +307,7 @@ function bankaiAdmin() {
             import: false,
             reset: false
         },
-        
+
         // Theme Customizer State
         customizer: {
             fontFamily: 'Inter',
