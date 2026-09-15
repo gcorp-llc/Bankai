@@ -89,73 +89,82 @@
 
     <!-- Modular Feature Grid (6 Cards) -->
     <div class="bankai-grid-3" style="margin-bottom: 32px;">
-        <% state.speedModules.forEach(function(mod) { %>
-            <div class="bankai-card bankai-card-interactive" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <!-- Top title + badge + switch -->
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(9, 105, 218, 0.12); display: flex; align-items: center; justify-content: center; color: #0969DA; flex-shrink: 0;">
-                                <% if (mod.id === 'page_caching') { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-                                <% } else if (mod.id === 'asset_optimization') { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /><line x1="10" y1="20" x2="14" y2="4" /></svg>
-                                <% } else if (mod.id === 'database_optimizer') { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></svg>
-                                <% } else if (mod.id === 'object_cache') { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4" /><path d="M9 9h.01M15 9h.01M9 15h6M12 2v2m0 16v2" /></svg>
-                                <% } else if (mod.id === 'server_compression') { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" /></svg>
-                                <% } else { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>
-                                <% } %>
-                            </div>
-                            <div>
-                                <div style="font-weight: 700; font-size: 14px; color: #1F2328;"
-                                     x-text="isRtl ? ('<%= mod.title_fa || mod.title %>') : ('<%= mod.title %>')">
-                                    <%= mod.title %>
+        <?php if (!empty($state['speedModules']) && is_array($state['speedModules'])): ?>
+            <?php foreach ($state['speedModules'] as $mod): 
+                $mod_id = esc_attr($mod['id']);
+                $title_en = esc_attr($mod['title']);
+                $title_fa = esc_attr($mod['title_fa'] ?? $mod['title']);
+                $desc_en = esc_attr($mod['description']);
+                $desc_fa = esc_attr($mod['description_fa'] ?? $mod['description']);
+                $badge = esc_html($mod['badge'] ?? '');
+            ?>
+                <div class="bankai-card bankai-card-interactive" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <!-- Top title + badge + switch -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(9, 105, 218, 0.12); display: flex; align-items: center; justify-content: center; color: #0969DA; flex-shrink: 0;">
+                                    <?php if ($mod['id'] === 'page_caching'): ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                                    <?php elseif ($mod['id'] === 'asset_optimization'): ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /><line x1="10" y1="20" x2="14" y2="4" /></svg>
+                                    <?php elseif ($mod['id'] === 'database_optimizer'): ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></svg>
+                                    <?php elseif ($mod['id'] === 'object_cache'): ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4" /><path d="M9 9h.01M15 9h.01M9 15h6M12 2v2m0 16v2" /></svg>
+                                    <?php elseif ($mod['id'] === 'server_compression'): ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" /></svg>
+                                    <?php else: ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>
+                                    <?php endif; ?>
                                 </div>
-                                <span style="background-color: rgba(9, 105, 218, 0.12); color: #0969DA; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-top: 3px;">
-                                    <%= mod.badge %>
-                                </span>
+                                <div>
+                                    <div style="font-weight: 700; font-size: 14px; color: #1F2328;"
+                                         x-text="isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>'">
+                                        <?php echo esc_html($mod['title']); ?>
+                                    </div>
+                                    <span style="background-color: rgba(9, 105, 218, 0.12); color: #0969DA; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-top: 3px;">
+                                        <?php echo $badge; ?>
+                                    </span>
+                                </div>
                             </div>
+
+                            <label class="bankai-switch">
+                                <input type="checkbox"
+                                       x-model="speedState['<?php echo $mod_id; ?>']"
+                                       @change="toggleSpeedModule('<?php echo $mod_id; ?>')">
+                                <span class="bankai-slider"></span>
+                            </label>
                         </div>
 
-                        <label class="bankai-switch">
-                            <input type="checkbox"
-                                   x-model="speedState.<%= mod.id %>"
-                                   @change="toggleSpeedModule('<%= mod.id %>')">
-                            <span class="bankai-slider"></span>
-                        </label>
+                        <!-- Description -->
+                        <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0 0 16px 0;"
+                           x-text="isRtl ? '<?php echo $desc_fa; ?>' : '<?php echo $desc_en; ?>'">
+                            <?php echo esc_html($mod['description']); ?>
+                        </p>
                     </div>
 
-                    <!-- Description -->
-                    <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0 0 16px 0;"
-                       x-text="isRtl ? ('<%= mod.description_fa || mod.description %>') : ('<%= mod.description %>')">
-                        <%= mod.description %>
-                    </p>
-                </div>
+                    <!-- Action / Settings Drawer Trigger -->
+                    <div style="border-top: 1px solid #D0D7DE; padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11px; font-weight: 700;"
+                              :style="speedState['<?php echo $mod_id; ?>'] ? 'color: #1A7F37;' : 'color: #8C959F;'"
+                              x-text="speedState['<?php echo $mod_id; ?>'] ? t('active') : t('disabled')">
+                            Active
+                        </span>
 
-                <!-- Action / Settings Drawer Trigger -->
-                <div style="border-top: 1px solid #D0D7DE; padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 11px; font-weight: 700;"
-                          :style="speedState.<%= mod.id %> ? 'color: #1A7F37;' : 'color: #8C959F;'"
-                          x-text="speedState.<%= mod.id %> ? t('active') : t('disabled')">
-                        Active
-                    </span>
-
-                    <button @click="openSpeedDrawer('<%= mod.id %>', isRtl ? '<%= mod.title_fa || mod.title %>' : '<%= mod.title %>')"
-                            style="background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #0969DA; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px;">
-                        <!-- Solar Broken Settings -->
-                        <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-                        </svg>
-                        <span x-text="t('configure')">Configure</span>
-                    </button>
+                        <button @click="openSpeedDrawer('<?php echo $mod_id; ?>', isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>')"
+                                style="background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #0969DA; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px;">
+                            <!-- Solar Broken Settings -->
+                            <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3" />
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+                            </svg>
+                            <span x-text="t('configure')">Configure</span>
+                        </button>
+                    </div>
                 </div>
-            </div>
-        <% }); %>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 
     <!-- Speed Module Settings Modal Drawer -->

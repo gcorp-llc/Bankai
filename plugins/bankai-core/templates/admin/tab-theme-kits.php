@@ -116,58 +116,67 @@
         </h3>
 
         <div class="bankai-grid-3">
-            <% state.starterKits.forEach(function(kit) { %>
-                <div class="bankai-card bankai-card-interactive" style="overflow: hidden; display: flex; flex-direction: column;">
-                    <!-- Thumbnail with hover effect -->
-                    <div style="position: relative; height: 180px; overflow: hidden; background-color: #D0D7DE;">
-                        <img src="<%= kit.thumbnail %>" alt="<%= kit.name %>"
-                             style="width: 100%; height: 100%; object-fit: cover;" />
-                        <div style="position: absolute; top: 12px; left: 12px; display: flex; gap: 6px; flex-wrap: wrap;">
-                            <% kit.badges.forEach(function(badge) { %>
-                                <span style="background-color: rgba(255, 255, 255, 0.9); color: #0969DA; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(9, 105, 218, 0.3); box-shadow: 0 1px 3px rgba(46, 52, 64, 0.1);">
-                                    <%= badge %>
-                                </span>
-                            <% }); %>
-                        </div>
-                    </div>
-
-                    <!-- Card Body -->
-                    <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <h4 style="font-size: 16px; font-weight: 800; color: #1F2328; margin: 0 0 8px 0;">
-                                <%= kit.name %>
-                            </h4>
-                            <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0 0 16px 0;">
-                                <%= kit.description %>
-                            </p>
+            <?php if (!empty($state['starterKits']) && is_array($state['starterKits'])): ?>
+                <?php foreach ($state['starterKits'] as $kit): 
+                    $kit_name = esc_attr($kit['name']);
+                    $kit_desc = esc_html($kit['description']);
+                    $kit_thumb = esc_url($kit['thumbnail']);
+                    $kit_json = esc_attr(wp_json_encode($kit));
+                ?>
+                    <div class="bankai-card bankai-card-interactive" style="overflow: hidden; display: flex; flex-direction: column;">
+                        <!-- Thumbnail with hover effect -->
+                        <div style="position: relative; height: 180px; overflow: hidden; background-color: #D0D7DE;">
+                            <img src="<?php echo $kit_thumb; ?>" alt="<?php echo $kit_name; ?>"
+                                 style="width: 100%; height: 100%; object-fit: cover;" />
+                            <div style="position: absolute; top: 12px; left: 12px; display: flex; gap: 6px; flex-wrap: wrap;">
+                                <?php if (!empty($kit['badges']) && is_array($kit['badges'])): ?>
+                                    <?php foreach ($kit['badges'] as $badge): ?>
+                                        <span style="background-color: rgba(255, 255, 255, 0.9); color: #0969DA; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(9, 105, 218, 0.3); box-shadow: 0 1px 3px rgba(46, 52, 64, 0.1);">
+                                            <?php echo esc_html($badge); ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
                         </div>
 
-                        <!-- Card Action Buttons -->
-                        <div style="display: flex; gap: 10px; margin-top: 12px;">
-                            <button @click="showToast(isRtl ? 'پیش‌نمایش آنلاین قالب فعال شد' : 'Live preview active for <%= kit.name %>')"
-                                    style="flex: 1; text-align: center; background-color: #FFFFFF; color: #1F2328; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid #D0D7DE; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 2px rgba(46, 52, 64, 0.04);">
-                                <!-- Solar Broken Eye -->
-                                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                    <circle cx="12" cy="12" r="3" />
-                                </svg>
-                                <span x-text="t('preview')">Preview</span>
-                            </button>
-                            
-                            <button @click="openImportModal(kit)"
-                                    style="flex: 1.2; background-color: #0969DA; border: none; color: #FFFFFF; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(9, 105, 218, 0.3); transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                <!-- Solar Broken Download / Bolt -->
-                                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                    <polyline points="7 10 12 15 17 10" />
-                                    <line x1="12" y1="15" x2="12" y2="3" />
-                                </svg>
-                                <span x-text="t('importKit')">Import Kit</span>
-                            </button>
+                        <!-- Card Body -->
+                        <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <h4 style="font-size: 16px; font-weight: 800; color: #1F2328; margin: 0 0 8px 0;">
+                                    <?php echo esc_html($kit['name']); ?>
+                                </h4>
+                                <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0 0 16px 0;">
+                                    <?php echo $kit_desc; ?>
+                                </p>
+                            </div>
+
+                            <!-- Card Action Buttons -->
+                            <div style="display: flex; gap: 10px; margin-top: 12px;">
+                                <button @click="showToast(isRtl ? 'پیش‌نمایش آنلاین قالب فعال شد' : 'Live preview active for <?php echo esc_js($kit['name']); ?>')"
+                                        style="flex: 1; text-align: center; background-color: #FFFFFF; color: #1F2328; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid #D0D7DE; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 2px rgba(46, 52, 64, 0.04);">
+                                    <!-- Solar Broken Eye -->
+                                    <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                        <circle cx="12" cy="12" r="3" />
+                                    </svg>
+                                    <span x-text="t('preview')">Preview</span>
+                                </button>
+                                
+                                <button @click='openImportModal(<?php echo $kit_json; ?>)'
+                                        style="flex: 1.2; background-color: #0969DA; border: none; color: #FFFFFF; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(9, 105, 218, 0.3); transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                    <!-- Solar Broken Download / Bolt -->
+                                    <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="7 10 12 15 17 10" />
+                                        <line x1="12" y1="15" x2="12" y2="3" />
+                                    </svg>
+                                    <span x-text="t('importKit')">Import Kit</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            <% }); %>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </div>
 

@@ -33,17 +33,19 @@
 
     <!-- Provider Connection Badges Grid -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 24px;">
-        <% state.providers.forEach(function(prov) { %>
-            <div class="bankai-card bankai-card-interactive" style="padding: 14px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                    <span style="font-size: 13px; font-weight: 700; color: #1F2328;"><%= prov.name %></span>
-                    <span style="background-color: rgba(9, 105, 218, 0.15); color: #0969DA; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">
-                        <%= prov.badge %>
-                    </span>
+        <?php if (!empty($state['providers']) && is_array($state['providers'])): ?>
+            <?php foreach ($state['providers'] as $prov): ?>
+                <div class="bankai-card bankai-card-interactive" style="padding: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 13px; font-weight: 700; color: #1F2328;"><?php echo esc_html($prov['name']); ?></span>
+                        <span style="background-color: rgba(9, 105, 218, 0.15); color: #0969DA; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">
+                            <?php echo esc_html($prov['badge']); ?>
+                        </span>
+                    </div>
+                    <div style="font-size: 11px; color: #8C959F;"><?php echo esc_html($prov['models']); ?></div>
                 </div>
-                <div style="font-size: 11px; color: #8C959F;"><%= prov.models %></div>
-            </div>
-        <% }); %>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 
     <!-- Multi-LLM Model & API Provider Configuration Panel -->
@@ -136,73 +138,83 @@
 
     <!-- Modular Feature Grid (6 Cards) -->
     <div class="bankai-grid-3" style="margin-bottom: 32px;">
-        <% state.aiModules.forEach(function(mod) { %>
-            <div class="bankai-card bankai-card-interactive" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <!-- Top title + badge + switch -->
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(9, 105, 218, 0.12); display: flex; align-items: center; justify-content: center; color: #0969DA; flex-shrink: 0;">
-                                <% if (mod.id === 'smart_excerpt_generator') { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>
-                                <% } else if (mod.id === 'llm_manifest_auto') { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>
-                                <% } else if (mod.id === 'meta_desc_auto') { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2m0 16v-2m8-7h-2M4 11H2m13.07-5.07l-1.41 1.41M5.34 16.66l-1.41 1.41m0-11.31l1.41 1.41m9.9 9.9l1.41 1.41M13 11l-9 9" /></svg>
-                                <% } else if (mod.id === 'bulk_content_enricher') { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>
-                                <% } else if (mod.id === 'faq_schema_ai') { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                                <% } else { %>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                                <% } %>
-                            </div>
-                            <div>
-                                <div style="font-weight: 700; font-size: 14px; color: #1F2328;"
-                                     x-text="isRtl ? ('<%= mod.title_fa || mod.title %>') : ('<%= mod.title %>')">
-                                    <%= mod.title %>
+        <?php if (!empty($state['aiModules']) && is_array($state['aiModules'])): ?>
+            <?php foreach ($state['aiModules'] as $mod): 
+                $mod_id = esc_attr($mod['id']);
+                $title_en = esc_attr($mod['title']);
+                $title_fa = esc_attr($mod['title_fa'] ?? $mod['title']);
+                $desc_en = esc_attr($mod['description']);
+                $desc_fa = esc_attr($mod['description_fa'] ?? $mod['description']);
+                $badge = esc_html($mod['badge'] ?? '');
+            ?>
+                <div class="bankai-card bankai-card-interactive" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <!-- Top title + badge + switch -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(9, 105, 218, 0.12); display: flex; align-items: center; justify-content: center; color: #0969DA; flex-shrink: 0;">
+                                    <?php if ($mod['id'] === 'smart_excerpt_generator'): ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>
+                                    <?php elseif ($mod['id'] === 'llm_manifest_auto'): ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>
+                                    <?php elseif ($mod['id'] === 'meta_desc_auto'): ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2m0 16v-2m8-7h-2M4 11H2m13.07-5.07l-1.41 1.41M5.34 16.66l-1.41 1.41m0-11.31l1.41 1.41m9.9 9.9l1.41 1.41M13 11l-9 9" /></svg>
+                                    <?php elseif ($mod['id'] === 'bulk_content_enricher'): ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>
+                                    <?php elseif ($mod['id'] === 'faq_schema_ai'): ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                                    <?php else: ?>
+                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                                    <?php endif; ?>
                                 </div>
-                                <span style="background-color: rgba(9, 105, 218, 0.12); color: #0969DA; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-top: 3px;">
-                                    <%= mod.badge %>
-                                </span>
+                                <div>
+                                    <div style="font-weight: 700; font-size: 14px; color: #1F2328;"
+                                         x-text="isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>'">
+                                        <?php echo esc_html($mod['title']); ?>
+                                    </div>
+                                    <span style="background-color: rgba(9, 105, 218, 0.12); color: #0969DA; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-top: 3px;">
+                                        <?php echo $badge; ?>
+                                    </span>
+                                </div>
                             </div>
+
+                            <label class="bankai-switch">
+                                <input type="checkbox"
+                                       x-model="aiState['<?php echo $mod_id; ?>']"
+                                       @change="toggleAiModule('<?php echo $mod_id; ?>')">
+                                <span class="bankai-slider"></span>
+                            </label>
                         </div>
 
-                        <label class="bankai-switch">
-                            <input type="checkbox"
-                                   x-model="aiState.<%= mod.id %>"
-                                   @change="toggleAiModule('<%= mod.id %>')">
-                            <span class="bankai-slider"></span>
-                        </label>
+                        <!-- Description -->
+                        <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0 0 16px 0;"
+                           x-text="isRtl ? '<?php echo $desc_fa; ?>' : '<?php echo $desc_en; ?>'">
+                            <?php echo esc_html($mod['description']); ?>
+                        </p>
                     </div>
 
-                    <!-- Description -->
-                    <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0 0 16px 0;"
-                       x-text="isRtl ? ('<%= mod.description_fa || mod.description %>') : ('<%= mod.description %>')">
-                        <%= mod.description %>
-                    </p>
-                </div>
+                    <!-- Action / Settings Drawer Trigger -->
+                    <div style="border-top: 1px solid #D0D7DE; padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11px; font-weight: 700;"
+                              :style="aiState['<?php echo $mod_id; ?>'] ? 'color: #1A7F37;' : 'color: #8C959F;'"
+                              x-text="aiState['<?php echo $mod_id; ?>'] ? t('active') : t('disabled')">
+                            Active
+                        </span>
 
-                <!-- Action / Settings Drawer Trigger -->
-                <div style="border-top: 1px solid #D0D7DE; padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 11px; font-weight: 700;"
-                          :style="aiState.<%= mod.id %> ? 'color: #1A7F37;' : 'color: #8C959F;'"
-                          x-text="aiState.<%= mod.id %> ? t('active') : t('disabled')">
-                        Active
-                    </span>
-
-                    <button @click="openAiDrawer('<%= mod.id %>', isRtl ? '<%= mod.title_fa || mod.title %>' : '<%= mod.title %>')"
-                            style="background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #0969DA; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px;">
-                        <!-- Solar Broken Settings -->
-                        <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-                        </svg>
-                        <span x-text="t('configure')">Configure</span>
-                    </button>
+                        <button @click="openAiDrawer('<?php echo $mod_id; ?>', isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>')"
+                                style="background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #0969DA; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px;">
+                            <!-- Solar Broken Settings -->
+                            <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3" />
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+                            </svg>
+                            <span x-text="t('configure')">Configure</span>
+                        </button>
+                    </div>
                 </div>
-            </div>
-        <% }); %>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
     </div>
 
     <!-- AI Module Settings Modal Drawer -->

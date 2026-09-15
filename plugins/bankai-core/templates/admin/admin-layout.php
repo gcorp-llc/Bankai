@@ -6,6 +6,10 @@
  */
 
 defined('ABSPATH') || exit;
+
+if (!isset($state) || !is_array($state)) {
+    $state = Bankai_Admin_Menu::get_admin_state();
+}
 ?>
 <div id="bankai-admin-app"
      x-data="bankaiAdmin()"
