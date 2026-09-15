@@ -143,6 +143,30 @@
             }
             console.log('[Bankai Toast]', type, msg);
         };
+
+        window.toggleLanguage = function() {
+            if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.toggleLanguage === 'function') {
+                return window.bankaiAdminInstance.toggleLanguage();
+            }
+            const app = document.getElementById('bankai-admin-app');
+            if (app && window.Alpine) {
+                try {
+                    const data = window.Alpine.$data(app);
+                    if (data && typeof data.toggleLanguage === 'function') {
+                        return data.toggleLanguage();
+                    }
+                } catch(e) {}
+            }
+            // Fallback DOM toggle
+            const html = document.documentElement;
+            const currentDir = html.getAttribute('dir') || 'ltr';
+            const newDir = currentDir === 'rtl' ? 'ltr' : 'rtl';
+            const newLang = newDir === 'rtl' ? 'fa' : 'en';
+            html.setAttribute('dir', newDir);
+            html.setAttribute('lang', newLang);
+            try { localStorage.setItem('bankai_lang', newLang); } catch(e) {}
+        };
+        window.toggleRtl = window.toggleLanguage;
     </script>
 
     <!-- Bankai Admin & Alpine.js Scripts -->

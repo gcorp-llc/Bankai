@@ -294,6 +294,10 @@ function bankaiAdmin() {
             );
         },
 
+        toggleRtl() {
+            return this.toggleLanguage();
+        },
+
         license: {
             key: 'BANKAI-PRO-9984-X721-LIFETIME',
             active: true
@@ -1026,6 +1030,22 @@ window.showToast = function(msg, type = 'success') {
         return window.bankaiAdminInstance.showToast(msg, type);
     }
 };
+
+window.toggleLanguage = function() {
+    if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.toggleLanguage === 'function') {
+        return window.bankaiAdminInstance.toggleLanguage();
+    }
+    const el = document.getElementById('bankai-admin-app');
+    if (el && window.Alpine) {
+        try {
+            const data = window.Alpine.$data(el);
+            if (data && typeof data.toggleLanguage === 'function') {
+                return data.toggleLanguage();
+            }
+        } catch (e) {}
+    }
+};
+window.toggleRtl = window.toggleLanguage;
 
 // Register with Alpine data repository if Alpine is already present or upon alpine:init
 if (window.Alpine) {
