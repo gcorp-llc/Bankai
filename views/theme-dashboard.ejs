@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پیشخوان قالب Bankai — مشابه قالب آسترا (Astra Theme Dashboard)</title>
+    <meta name="description" content="پیشخوان مدیریت و سفارشی‌سازی قالب وردپرس Bankai الهام‌گرفته از معماری قالب آسترا">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Theme Admin Styles -->
+    <link rel="stylesheet" href="/css/bankai-admin.css">
+
+    <style>
+        [x-cloak] { display: none !important; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #F0F2F5;
+            color: #1F2328;
+            font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* WordPress Top Admin Bar */
+        .wp-admin-bar-mock {
+            height: 34px;
+            background: #1D2327;
+            color: #C3C4C7;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            font-size: 13px;
+            font-weight: 500;
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .wp-bar-items {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .wp-bar-link {
+            color: #C3C4C7;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 8px;
+            height: 34px;
+            transition: all 0.15s;
+        }
+        .wp-bar-link:hover, .wp-bar-link.active {
+            background: #2271B1;
+            color: #FFFFFF;
+        }
+        .wp-badge-tag {
+            background: #3858E9;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+
+        .astra-card {
+            background: #FFFFFF;
+            border: 1px solid #D0D7DE;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(31, 35, 40, 0.04);
+            padding: 24px;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .astra-card:hover {
+            border-color: #0969DA;
+            box-shadow: 0 4px 14px rgba(9, 105, 218, 0.08);
+        }
+
+        .astra-shortcut-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px;
+            background: #F6F8FA;
+            border: 1px solid #E1E4E8;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #1F2328;
+            transition: all 0.2s;
+        }
+        .astra-shortcut-item:hover {
+            background: #FFFFFF;
+            border-color: #0969DA;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(9, 105, 218, 0.12);
+        }
+
+        /* Switch */
+        .astra-switch {
+            position: relative;
+            display: inline-block;
+            width: 42px;
+            height: 22px;
+        }
+        .astra-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .astra-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #D0D7DE;
+            transition: .25s;
+            border-radius: 24px;
+        }
+        .astra-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .25s;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        input:checked + .astra-slider {
+            background-color: #1A7F37;
+        }
+        input:checked + .astra-slider:before {
+            transform: translateX(20px);
+        }
+
+        @media (max-width: 960px) {
+            .astra-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+    </style>
+
+    <!-- Scripts -->
+    <script src="/js/alpine.min.js" defer></script>
+    <script>
+        function astraThemeDashboard() {
+            return {
+                isRtl: true,
+                toast: {
+                    show: false,
+                    message: '',
+                    timer: null
+                },
+                modules: {
+                    transparent_header: true,
+                    sticky_header: true,
+                    mega_menu: true,
+                    white_label: false,
+                    custom_fonts: true,
+                    woocommerce_boost: true,
+                    scroll_to_top: true,
+                    page_headers: true,
+                },
+                modulesList: [
+                    { key: 'transparent_header', title: 'هدر شفاف (Transparent Header)', desc: 'طراحی مدرن هدر شیشه‌ای برای برگه نخست بدون حاشیه پس‌زمینه', icon: '✨' },
+                    { key: 'sticky_header', title: 'هدر چسبان هوشمند (Sticky Header)', desc: 'ثابت ماندن هدر هنگام پیمایش کاربر با افکت کوچک‌سازی ملایم', icon: '📌' },
+                    { key: 'mega_menu', title: 'مگامنو پیشرفته (Advanced Mega Menu)', desc: 'طراحی منوهای چندستونه، افزودن ابزارک، تصاویر و دسته‌بندی‌های غنی', icon: '🗂️' },
+                    { key: 'custom_fonts', title: 'فونت‌های محلی و اختصاصی (Local Fonts)', desc: 'بارگذاری مستقیم فونت‌های وزیرمتن و ایران‌یکان بدون نیاز به اتصال خارجی', icon: '🔤' },
+                    { key: 'woocommerce_boost', title: 'بهینه‌ساز فروشگاهی (WooCommerce Booster)', desc: 'سبد خرید بازشونده شناور، تسویه‌حساب دور از حواس‌پرتی و زوم عکس', icon: '🛍️' },
+                    { key: 'scroll_to_top', title: 'دکمه بازگشت به بالا (Scroll To Top)', desc: 'دکمه شناور نرم با امکان شخصی‌سازی رنگ و استایل آیکون', icon: '⬆️' },
+                    { key: 'page_headers', title: 'طرح عناوین برگه (Page Header & Hero)', desc: 'شخصی‌سازی هیرو بنر، عنوان نوشته، بردکرامب و تصویر پس‌زمینه در بالای برگه', icon: '🖼️' },
+                    { key: 'white_label', title: 'برچسب سفید آژانسی (White Label Pro)', desc: 'تغییر نام و برند قالب Bankai به برند دلخواه کارفرما در کل محیط وردپرس', icon: '🏷️' }
+                ],
+                customizerModal: {
+                    show: false,
+                    title: '',
+                    section: ''
+                },
+                toggleModule(key) {
+                    this.modules[key] = !this.modules[key];
+                    const mod = this.modulesList.find(m => m.key === key);
+                    const state = this.modules[key] ? 'فعال' : 'غیرفعال';
+                    this.showNotice(`ماژول ${mod ? mod.title : key} با موفقیت ${state} شد.`);
+                },
+                showNotice(msg) {
+                    this.toast.message = msg;
+                    this.toast.show = true;
+                    if (this.toast.timer) clearTimeout(this.toast.timer);
+                    this.toast.timer = setTimeout(() => { this.toast.show = false; }, 3000);
+                },
+                openCustomizerPreview(title, section) {
+                    this.customizerModal.title = title;
+                    this.customizerModal.section = section;
+                    this.customizerModal.show = true;
+                }
+            };
+        }
+    </script>
+</head>
+<body x-data="astraThemeDashboard()">
+
+    <!-- WordPress Admin Bar Mock (Top Switcher) -->
+    <header class="wp-admin-bar-mock">
+        <div class="wp-bar-items">
+            <span style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: #FFFFFF;">
+                <svg style="width: 18px; height: 18px; fill: #FFFFFF;" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
+                وردپرس فارسی
+            </span>
+            <a href="/" class="wp-bar-link">
+                <span>⚡ افزونه Bankai Core (پلاگین)</span>
+            </a>
+            <a href="/theme" class="wp-bar-link active">
+                <span>🎨 پیشخوان قالب Bankai (مشابه Astra)</span>
+                <span class="wp-badge-tag">قالب فعال</span>
+            </a>
+            <a href="/preview" class="wp-bar-link" target="_blank">
+                <span>🌐 مشاهده پیش‌نمایش سایت</span>
+            </a>
+        </div>
+        <div class="wp-bar-items">
+            <span style="font-size: 12px; color: #8C8F94;">سلام، مدیر ارشد سیستم</span>
+        </div>
+    </header>
+
+    <!-- Save Notification Toast -->
+    <div x-show="toast.show"
+         x-cloak
+         x-transition
+         style="position: fixed; bottom: 24px; left: 24px; z-index: 99999; background: #1F2328; color: #FFFFFF; padding: 12px 20px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600;">
+        <svg style="width: 18px; height: 18px; color: #2DA44E;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span x-text="toast.message">تغییرات ذخیره شد</span>
+    </div>
+
+    <!-- Main Container -->
+    <main style="max-width: 1240px; margin: 28px auto; padding: 0 16px;">
+
+        <!-- Astra-Style Hero Header Card -->
+        <div class="astra-card" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; border-top: 4px solid #0969DA;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="width: 52px; height: 52px; border-radius: 12px; background: linear-gradient(135deg, #0969DA 0%, #054a99 100%); display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-weight: 800; font-size: 24px; box-shadow: 0 4px 14px rgba(9, 105, 218, 0.3);">
+                    B
+                </div>
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #1F2328;">
+                            پیشخوان و تنظیمات قالب وردپرس Bankai
+                        </h1>
+                        <span style="background: #DDF4FF; color: #0969DA; border: 1px solid #54AEFF; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 12px;">
+                            نسخه ۱.۰.۰ (Astra Engine)
+                        </span>
+                        <span style="background: #DAFBE1; color: #1A7F37; border: 1px solid #4AC26B; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 12px;">
+                            وضعیت: فعال و بهینه‌سازی‌شده
+                        </span>
+                    </div>
+                    <p style="margin: 6px 0 0 0; font-size: 13px; color: #656D76;">
+                        قالب سبک‌وزن و فوق‌سریع وردپرس بر پایه معماری آسترا (Astra)، بدون نیاز به جی‌کوئری، با نمره سرعت ۱۰۰٪ در گوگل پیج‌اسپید و هماهنگی کامل با گوتنبرگ و المنتور.
+                    </p>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <button @click="openCustomizerPreview('سفارشی‌سازی زنده قالب', 'general')"
+                        style="background: #0969DA; color: #FFFFFF; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 8px rgba(9, 105, 218, 0.25); cursor: pointer; transition: all 0.2s;">
+                    <svg style="width: 16px; height: 16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    <span>سفارشی‌سازی زنده قالب (Customizer)</span>
+                </button>
+                <a href="/"
+                   style="background: #FFFFFF; border: 1px solid #D0D7DE; color: #1F2328; padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>بازگشت به افزونه Bankai Core</span> &larr;
+                </a>
+            </div>
+        </div>
+
+        <!-- Classic Astra 2-Column Dashboard Grid -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;" class="astra-grid">
+
+            <!-- Left Main Column -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+
+                <!-- Section 1: Astra Customizer Shortcuts -->
+                <div class="astra-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #EAEEF2;">
+                        <div>
+                            <h2 style="margin: 0; font-size: 16px; font-weight: 700; color: #1F2328;">
+                                میانبرهای سریع سفارشی‌ساز قالب (Astra Customizer Shortcuts)
+                            </h2>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; color: #656D76;">
+                                دسترسی مستقیم و آنی به بخش‌های اصلی سفارشی‌ساز دیداری وردپرس
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;">
+                        <!-- Shortcut 1: Header Builder -->
+                        <div class="astra-shortcut-item" @click="openCustomizerPreview('هدرساز و لوگو (Header Builder)', 'header')" style="cursor: pointer;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="width: 34px; height: 34px; border-radius: 6px; background: #DDF4FF; color: #0969DA; display: flex; align-items: center; justify-content: center;">
+                                    <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+                                </span>
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 700;">هدرساز و لوگو (Header Builder)</div>
+                                    <div style="font-size: 11px; color: #656D76;">لوگو، منوی اصلی، جستجو و CTA</div>
+                                </div>
+                            </div>
+                            <span style="font-size: 12px; color: #0969DA; font-weight: 700;">تنظیم &larr;</span>
+                        </div>
+
+                        <!-- Shortcut 2: Footer Builder -->
+                        <div class="astra-shortcut-item" @click="openCustomizerPreview('فوترساز و کپی‌رایت (Footer Builder)', 'footer')" style="cursor: pointer;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="width: 34px; height: 34px; border-radius: 6px; background: #F3E8FF; color: #8250DF; display: flex; align-items: center; justify-content: center;">
+                                    <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+                                </span>
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 700;">فوترساز و ابزارک‌ها (Footer Builder)</div>
+                                    <div style="font-size: 11px; color: #656D76;">کپی‌رایت، ستون‌های فوتر و شبکه‌های اجتماعی</div>
+                                </div>
+                            </div>
+                            <span style="font-size: 12px; color: #0969DA; font-weight: 700;">تنظیم &larr;</span>
+                        </div>
+
+                        <!-- Shortcut 3: Global Colors -->
+                        <div class="astra-shortcut-item" @click="openCustomizerPreview('پالت رنگ‌های سراسری (Global Colors)', 'colors')" style="cursor: pointer;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="width: 34px; height: 34px; border-radius: 6px; background: #FFEBE9; color: #CF222E; display: flex; align-items: center; justify-content: center;">
+                                    <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 0 0 7 7c0 2-2 3-2 5a3 3 0 0 1-3 3h-2"/></svg>
+                                </span>
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 700;">پالت رنگ‌های سراسری (Global Colors)</div>
+                                    <div style="font-size: 11px; color: #656D76;">رنگ برند اصلی، لینک‌ها و پس‌زمینه</div>
+                                </div>
+                            </div>
+                            <span style="font-size: 12px; color: #0969DA; font-weight: 700;">تنظیم &larr;</span>
+                        </div>
+
+                        <!-- Shortcut 4: Typography -->
+                        <div class="astra-shortcut-item" @click="openCustomizerPreview('تایپوگرافی و فونت‌ها (Typography)', 'typography')" style="cursor: pointer;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="width: 34px; height: 34px; border-radius: 6px; background: #DAFBE1; color: #1A7F37; display: flex; align-items: center; justify-content: center;">
+                                    <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                                </span>
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 700;">تایپوگرافی و فونت‌ها (Typography)</div>
+                                    <div style="font-size: 11px; color: #656D76;">وزیرمتن بهینه‌شده، اندازه هدینگ‌ها و فواصل</div>
+                                </div>
+                            </div>
+                            <span style="font-size: 12px; color: #0969DA; font-weight: 700;">تنظیم &larr;</span>
+                        </div>
+
+                        <!-- Shortcut 5: Container Layout -->
+                        <div class="astra-shortcut-item" @click="openCustomizerPreview('طرح‌بندی کانتینر (Container Layout)', 'layout')" style="cursor: pointer;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="width: 34px; height: 34px; border-radius: 6px; background: #FFF8C5; color: #9A6700; display: flex; align-items: center; justify-content: center;">
+                                    <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                                </span>
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 700;">طرح‌بندی کانتینر (Container Layout)</div>
+                                    <div style="font-size: 11px; color: #656D76;">عرض کانتینر، جعبه‌ای، تمام‌عرض و سایدبار</div>
+                                </div>
+                            </div>
+                            <span style="font-size: 12px; color: #0969DA; font-weight: 700;">تنظیم &larr;</span>
+                        </div>
+
+                        <!-- Shortcut 6: Blog Layout -->
+                        <div class="astra-shortcut-item" @click="openCustomizerPreview('طرح وبلاگ و بایگانی (Blog Layout)', 'blog')" style="cursor: pointer;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="width: 34px; height: 34px; border-radius: 6px; background: #E1F0FF; color: #0550AE; display: flex; align-items: center; justify-content: center;">
+                                    <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                </span>
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 700;">طرح وبلاگ و بایگانی (Blog & Archive)</div>
+                                    <div style="font-size: 11px; color: #656D76;">شبکه‌ای، تصویر شاخص و ساختار متاداده</div>
+                                </div>
+                            </div>
+                            <span style="font-size: 12px; color: #0969DA; font-weight: 700;">تنظیم &larr;</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Astra Pro Style Modular Extensions -->
+                <div class="astra-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #EAEEF2;">
+                        <div>
+                            <h2 style="margin: 0; font-size: 16px; font-weight: 700; color: #1F2328;">
+                                ماژول‌های حرفه‌ای قالب (Astra Pro Style Modular Extensions)
+                            </h2>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; color: #656D76;">
+                                فعال‌سازی اختصاصی امکانات پیشرفته بدون بارگذاری کدهای اضافه و بدون کاهش سرعت
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <template x-for="mod in modulesList" :key="mod.key">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #F6F8FA; border: 1px solid #E1E4E8; border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <span style="font-size: 20px;" x-text="mod.icon"></span>
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="mod.title"></div>
+                                        <div style="font-size: 11px; color: #656D76; margin-top: 2px;" x-text="mod.desc"></div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 14px;">
+                                    <button @click="openCustomizerPreview(mod.title, mod.key)"
+                                            x-show="modules[mod.key]"
+                                            style="background: none; border: none; font-size: 11px; font-weight: 700; color: #0969DA; cursor: pointer; padding: 0;">
+                                        تنظیمات &larr;
+                                    </button>
+                                    <label class="astra-switch">
+                                        <input type="checkbox"
+                                               :checked="modules[mod.key]"
+                                               @change="toggleModule(mod.key)">
+                                        <span class="astra-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Section 3: Starter Templates (سایت‌های آماده آسترا) -->
+                <div class="astra-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div>
+                            <h2 style="margin: 0; font-size: 16px; font-weight: 700; color: #1F2328;">
+                                کتابخانه دموها و سایت‌های آماده (Astra Starter Sites)
+                            </h2>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; color: #656D76;">
+                                راه‌اندازی ۱-کلیکه سایت کامل فروشگاهی، شرکتی و پرتال خبری با گوتنبرگ و ووکامرس
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                        <div style="border: 1px solid #D0D7DE; border-radius: 8px; overflow: hidden; background: #F6F8FA;">
+                            <img src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=400&q=80" style="width: 100%; height: 130px; object-fit: cover;" alt="Demo" />
+                            <div style="padding: 12px;">
+                                <div style="font-weight: 700; font-size: 13px;">فروشگاه آنلاین سایبر (eCommerce)</div>
+                                <div style="font-size: 11px; color: #656D76; margin-top: 4px;">سازگار با ووکامرس و درگاه پرداخت</div>
+                                <div style="margin-top: 10px; display: flex; gap: 8px;">
+                                    <a href="/preview" target="_blank" style="font-size: 11px; background: #0969DA; color: white; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-weight: 700;">پیش‌نمایش</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="border: 1px solid #D0D7DE; border-radius: 8px; overflow: hidden; background: #F6F8FA;">
+                            <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80" style="width: 100%; height: 130px; object-fit: cover;" alt="Demo" />
+                            <div style="padding: 12px;">
+                                <div style="font-weight: 700; font-size: 13px;">شرکتی و استارتاپی (Agency Pro)</div>
+                                <div style="font-size: 11px; color: #656D76; margin-top: 4px;">گوتنبرگ و بلوک‌های ریسپانسیو</div>
+                                <div style="margin-top: 10px; display: flex; gap: 8px;">
+                                    <a href="/preview" target="_blank" style="font-size: 11px; background: #0969DA; color: white; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-weight: 700;">پیش‌نمایش</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="border: 1px solid #D0D7DE; border-radius: 8px; overflow: hidden; background: #F6F8FA;">
+                            <img src="https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=400&q=80" style="width: 100%; height: 130px; object-fit: cover;" alt="Demo" />
+                            <div style="padding: 12px;">
+                                <div style="font-weight: 700; font-size: 13px;">پرتال خبری و مجله (Tech Portal)</div>
+                                <div style="font-size: 11px; color: #656D76; margin-top: 4px;">سرعت لود ۰.۴ ثانیه و سئوی قوی</div>
+                                <div style="margin-top: 10px; display: flex; gap: 8px;">
+                                    <a href="/preview" target="_blank" style="font-size: 11px; background: #0969DA; color: white; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-weight: 700;">پیش‌نمایش</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Sidebar Column -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+
+                <!-- Performance Metrics (Astra Telemetry) -->
+                <div class="astra-card">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                        <span style="width: 8px; height: 8px; border-radius: 50%; background: #1A7F37;"></span>
+                        <h3 style="margin: 0; font-size: 14px; font-weight: 700; color: #1F2328;">
+                            شاخص‌های سرعت و بهینگی (Astra Benchmarks)
+                        </h3>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #F6F8FA; border-radius: 6px;">
+                            <span style="font-size: 12px; color: #656D76;">Google PageSpeed</span>
+                            <span style="font-size: 13px; font-weight: 800; color: #1A7F37;">100 / 100</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #F6F8FA; border-radius: 6px;">
+                            <span style="font-size: 12px; color: #656D76;">حجم اولیه فرانت‌اند</span>
+                            <span style="font-size: 13px; font-weight: 800; color: #0969DA;">&lt; 38 KB</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #F6F8FA; border-radius: 6px;">
+                            <span style="font-size: 12px; color: #656D76;">وابستگی به jQuery</span>
+                            <span style="font-size: 12px; font-weight: 700; color: #1A7F37;">صفر (Pure Vanilla JS)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #F6F8FA; border-radius: 6px;">
+                            <span style="font-size: 12px; color: #656D76;">زمان پاسخ سرور (TTFB)</span>
+                            <span style="font-size: 12px; font-weight: 700; color: #1F2328;">28 میلی‌ثانیه</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compatible Builders -->
+                <div class="astra-card">
+                    <h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 700; color: #1F2328;">
+                        صفحه‌سازهای کاملاً سازگار
+                    </h3>
+                    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px; color: #1F2328;">
+                            <span style="color: #1A7F37;">&#10004;</span> Gutenberg (ویرایشگر بلاک بومی وردپرس)
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; color: #1F2328;">
+                            <span style="color: #1A7F37;">&#10004;</span> Elementor &amp; Elementor Pro
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; color: #1F2328;">
+                            <span style="color: #1A7F37;">&#10004;</span> Spectra (Ultimate Addons for Gutenberg)
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; color: #1F2328;">
+                            <span style="color: #1A7F37;">&#10004;</span> WooCommerce &amp; CartFlows
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Complementary Plugin Connection -->
+                <div style="background: linear-gradient(135deg, #F6F8FA 0%, #EAEEF2 100%); border: 1px solid #D0D7DE; border-radius: 12px; padding: 20px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <span style="background: #0969DA; color: white; width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;">⚡</span>
+                        <h3 style="margin: 0; font-size: 14px; font-weight: 700; color: #1F2328;">
+                            افزونه مکمل Bankai Core
+                        </h3>
+                    </div>
+                    <p style="margin: 0 0 12px 0; font-size: 12px; color: #656D76; line-height: 1.5;">
+                        برای فعال‌سازی قابلیت‌های هوش مصنوعی چندمدلی، مانیفست llms.txt، فشرده‌سازی WebP و موتور سئو خودکار، افزونه Bankai Core در کنار این قالب فعالیت می‌کند.
+                    </p>
+                    <a href="/"
+                       style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #0969DA; text-decoration: none;">
+                        <span>مشاهده پیشخوان افزونه Bankai Core</span> &larr;
+                    </a>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Customizer Simulator Modal -->
+    <div x-show="customizerModal.show"
+         x-cloak
+         class="bankai-modal-overlay"
+         @click.self="customizerModal.show = false"
+         style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 99999;">
+        <div style="background: #FFFFFF; border-radius: 12px; max-width: 600px; width: 90%; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #E1E4E8; padding-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700;" x-text="customizerModal.title">سفارشی‌سازی</h3>
+                <button @click="customizerModal.show = false" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #656D76;">&times;</button>
+            </div>
+            <div style="font-size: 13px; color: #656D76; margin-bottom: 16px; line-height: 1.6;">
+                این بخش مستقیماً با سفارشی‌ساز دیداری وردپرس (<code style="background: #F6F8FA; padding: 2px 6px; border-radius: 4px;">customize.php</code>) و هوک‌های قالب Bankai پیوند دارد. در سایت واقعی وردپرس، با کلیک بر روی این دکمه پنجره سفارشی‌سازی زنده با پیش‌نمایش آنی باز می‌شود.
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button @click="customizerModal.show = false" style="background: #F6F8FA; border: 1px solid #D0D7DE; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">بستن</button>
+                <a href="/preview" target="_blank" style="background: #0969DA; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 700; text-decoration: none;">مشاهده در پیش‌نمایش زنده فرانت‌اند</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,32 @@
+/* Astra-Style Theme Dashboard Stylesheet */
+.bankai-theme-dashboard {
+    box-sizing: border-box;
+}
+
+.bankai-theme-dashboard *,
+.bankai-theme-dashboard *::before,
+.bankai-theme-dashboard *::after {
+    box-sizing: inherit;
+}
+
+.bankai-theme-dashboard [x-cloak] {
+    display: none !important;
+}
+
+.bankai-theme-dashboard a:hover {
+    color: #0969DA;
+}
+
+.bankai-theme-hero-card {
+    transition: box-shadow 0.2s ease;
+}
+
+.bankai-theme-hero-card:hover {
+    box-shadow: 0 4px 12px rgba(31, 35, 40, 0.08) !important;
+}
+
+@media (max-width: 900px) {
+    .bankai-theme-layout-grid {
+        grid-template-columns: 1fr !important;
+    }
+}

@@ -153,13 +153,28 @@ Image Processing: WebP / AVIF Engine Active
 Multilingual: Full Persian (RTL / Vazirmatn) + English (LTR) Support`,
 };
 
-// Render Main Admin Page
+// Render Main Plugin Admin Page
 app.get(['/', '/admin', '/wp-admin'], (req, res) => {
   const activeTab = req.query.page ? getTabFromPage(req.query.page) : 'overview';
   res.render('layout', {
     state: appState,
     initialTab: activeTab,
     isRtl: appState.isRtl,
+  });
+});
+
+// Render Astra-Style Theme Dashboard
+app.get(['/theme', '/theme-dashboard', '/wp-admin/themes.php'], (req, res) => {
+  res.render('theme-dashboard', {
+    state: appState,
+    isRtl: true,
+  });
+});
+
+// Render Live Theme Frontend Preview
+app.get(['/preview', '/site-preview'], (req, res) => {
+  res.render('preview', {
+    state: appState,
   });
 });
 

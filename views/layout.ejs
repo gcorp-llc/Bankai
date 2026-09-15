@@ -151,6 +151,29 @@
     <script src="/js/alpine.min.js" defer></script>
 </head>
 <body>
+    <!-- WordPress Top Admin Bar (Switch between Bankai Plugin and Astra Theme Panel) -->
+    <header class="wp-admin-bar-mock" style="height: 34px; background: #1D2327; color: #C3C4C7; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; font-weight: 500; position: sticky; top: 0; z-index: 99999; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <span style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: #FFFFFF;">
+                <svg style="width: 18px; height: 18px; fill: #FFFFFF;" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
+                وردپرس فارسی
+            </span>
+            <a href="/" style="background: #2271B1; color: #FFFFFF; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; height: 34px; font-size: 12px; font-weight: 700;">
+                <span>⚡ افزونه Bankai Core (پلاگین)</span>
+            </a>
+            <a href="/theme" style="color: #C3C4C7; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; height: 34px; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.color='#fff'; this.style.background='#2271B1';" onmouseout="this.style.color='#C3C4C7'; this.style.background='transparent';">
+                <span>🎨 پیشخوان قالب Bankai (مشابه Astra)</span>
+                <span style="background: #3858E9; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 700;">Astra Theme</span>
+            </a>
+            <a href="/preview" target="_blank" style="color: #C3C4C7; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; height: 34px; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.color='#fff'; this.style.background='#2271B1';" onmouseout="this.style.color='#C3C4C7'; this.style.background='transparent';">
+                <span>🌐 پیش‌نمایش زنده سایت و قالب</span>
+            </a>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 12px; color: #8C8F94;">سلام، مدیر ارشد سیستم</span>
+        </div>
+    </header>
+
     <div id="bankai-admin-app" class="bankai-admin-wrap" x-data="bankaiAdmin()" x-cloak>
         <!-- Ambient Decorative Animated Background Elements (GitHub Light Aesthetic) -->
         <div class="bankai-bg-decorations" aria-hidden="true">

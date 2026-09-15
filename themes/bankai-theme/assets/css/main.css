@@ -1,0 +1,91 @@
+/* Bankai Theme Ultra-Lightweight Frontend CSS */
+:root {
+    --bankai-primary: #0969DA;
+    --bankai-text: #1F2328;
+    --bankai-text-muted: #656D76;
+    --bankai-bg: #FFFFFF;
+    --bankai-bg-alt: #F6F8FA;
+    --bankai-border: #D0D7DE;
+    --bankai-container-max: 1200px;
+}
+
+.bankai-header {
+    background: var(--bankai-bg);
+    border-bottom: 1px solid var(--bankai-border);
+    padding: 16px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.bankai-header-inner {
+    max-width: var(--bankai-container-max);
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bankai-site-logo a {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--bankai-primary);
+    text-decoration: none;
+}
+
+.bankai-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 24px;
+}
+
+.bankai-nav a {
+    color: var(--bankai-text);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: color 0.2s;
+}
+
+.bankai-nav a:hover {
+    color: var(--bankai-primary);
+}
+
+.bankai-content {
+    max-width: var(--bankai-container-max);
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.bankai-hero {
+    padding: 60px 0;
+    text-align: center;
+}
+
+.bankai-hero h1 {
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--bankai-text);
+    margin-bottom: 16px;
+    line-height: 1.2;
+}
+
+.bankai-hero p {
+    font-size: 18px;
+    color: var(--bankai-text-muted);
+    max-width: 600px;
+    margin: 0 auto 24px auto;
+}
+
+.bankai-footer {
+    background: var(--bankai-bg-alt);
+    border-top: 1px solid var(--bankai-border);
+    padding: 32px 0;
+    text-align: center;
+    font-size: 13px;
+    color: var(--bankai-text-muted);
+    margin-top: 80px;
+}
