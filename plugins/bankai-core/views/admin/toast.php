@@ -1,4 +1,6 @@
-<!-- Toast Notification Overlay - GitHub Light Edition -->
+<?php
+defined('ABSPATH') || exit;
+?>
 <div x-show="toast.show"
      x-cloak
      x-transition:enter="transition ease-out duration-300"
