@@ -3,7 +3,8 @@ defined('ABSPATH') || exit;
 $state = $state ?? [];
 ?>
 <style>
-    [x-cloak] { display: none !important; }
+    /* Never cloak the whole admin shell — that produced a blank white WP screen */
+    [x-cloak]:not(#bankai-admin-app) { display: none !important; }
     .bankai-admin-wrap {
         background-color: #F6F8FA;
         color: #1F2328;
@@ -11,6 +12,9 @@ $state = $state ?? [];
         margin: 0;
         padding: 0;
         min-height: calc(100vh - 32px);
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
     }
     .rtl .bankai-admin-wrap,
     [dir="rtl"] .bankai-admin-wrap {
@@ -22,8 +26,7 @@ $state = $state ?? [];
      class="bankai-admin-wrap"
      x-data="bankaiAdmin()"
      :dir="isRtl ? 'rtl' : 'ltr'"
-     :class="isRtl ? 'rtl' : 'ltr'"
-     x-cloak>
+     :class="isRtl ? 'rtl' : 'ltr'">
     <!-- Ambient Decorative Animated Background Elements -->
     <div class="bankai-bg-decorations" aria-hidden="true">
         <div class="bankai-ambient-grid"></div>
@@ -40,7 +43,7 @@ $state = $state ?? [];
     </div>
 
     <!-- Toast Notification -->
-    <?php require_once BANKAI_CORE_VIEWS_DIR . 'admin/toast.php'; ?>
+    <?php include BANKAI_CORE_VIEWS_DIR . 'admin/toast.php'; ?>
 
     <!-- Global Page Switch Progress Bar -->
     <div id="bankai-page-loader"
@@ -54,12 +57,7 @@ $state = $state ?? [];
     <!-- Floating Settings & Actions Saving Loader -->
     <div x-show="savingLoader.show"
          x-cloak
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 transform -translate-y-4 scale-95"
-         x-transition:enter-end="opacity-100 transform translate-y-0 scale-100"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100 transform translate-y-0 scale-100"
-         x-transition:leave-end="opacity-0 transform -translate-y-4 scale-95"
+         x-transition.opacity
          class="bankai-save-loader-overlay"
          id="bankai-save-loader">
         <div class="bankai-save-loader-card"
@@ -96,32 +94,22 @@ $state = $state ?? [];
     <div class="bankai-mobile-overlay"
          x-show="mobileMenuOpen"
          @click="closeMobileMenu()"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
+         x-transition.opacity
          x-cloak></div>
 
     <!-- Top Header Navigation -->
-    <?php require_once BANKAI_CORE_VIEWS_DIR . 'admin/header.php'; ?>
+    <?php include BANKAI_CORE_VIEWS_DIR . 'admin/header.php'; ?>
 
     <!-- Main Body Layout -->
     <div class="bankai-body-layout">
         <!-- Sidebar Navigation -->
-        <?php require_once BANKAI_CORE_VIEWS_DIR . 'admin/sidebar.php'; ?>
+        <?php include BANKAI_CORE_VIEWS_DIR . 'admin/sidebar.php'; ?>
 
         <!-- Main Tabbed Viewport -->
         <main id="bankai-main-content">
             <div x-show="pageLoading"
                  x-cloak
-                 x-transition:enter="transition ease-out duration-150"
-                 x-transition:enter-start="opacity-0"
-                 x-transition:enter-end="opacity-100"
-                 x-transition:leave="transition ease-in duration-150"
-                 x-transition:leave-start="opacity-100"
-                 x-transition:leave-end="opacity-0"
+                 x-transition.opacity
                  class="bankai-tab-loading-overlay">
                 <div class="bankai-loading-pill">
                     <svg class="bankai-spinner" viewBox="0 0 24 24" fill="none">
@@ -147,20 +135,15 @@ $state = $state ?? [];
 </div>
 
 <script>
-    // Safeguard: Ensure x-cloak is removed if Alpine takes time or encounters script delays
     (function() {
-        var uncloak = function() {
-            var el = document.getElementById('bankai-admin-app');
-            if (el && el.hasAttribute('x-cloak')) {
-                el.removeAttribute('x-cloak');
-            }
-        };
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-                setTimeout(uncloak, 250);
-            });
-        } else {
-            setTimeout(uncloak, 250);
+        var app = document.getElementById('bankai-admin-app');
+        if (!app) {
+            return;
         }
+        app.removeAttribute('x-cloak');
+        app.style.display = 'block';
+        app.style.opacity = '1';
+        app.style.visibility = 'visible';
+        app.setAttribute('dir', document.documentElement.getAttribute('dir') === 'rtl' ? 'rtl' : 'ltr');
     })();
 </script>

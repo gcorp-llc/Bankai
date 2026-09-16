@@ -2,14 +2,16 @@
    Bankai Core - GitHub Light Ecosystem Theme (Primer Design System)
    ========================================================================== */
 
-/* Global x-cloak to prevent layout flicker without locking entire screen into white */
+/* Cloak only overlays/toasts — never hide the admin shell (blank white screen) */
 [x-cloak]:not(#bankai-admin-app) {
   display: none !important;
 }
+#bankai-admin-app,
 #bankai-admin-app[x-cloak] {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease-in;
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto;
 }
 
 /* WP Admin body & container light background normalization */
@@ -69,6 +71,16 @@
 .bankai-tab-pane {
   display: block;
   width: 100%;
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Fallback: show overview until Alpine applies x-show inline styles */
+#bankai-main-content > [id^="tab-"] {
+  display: none;
+}
+#bankai-main-content > #tab-overview {
+  display: block;
 }
 
 #bankai-admin-app,
@@ -295,9 +307,9 @@ body.rtl .bankai-admin-wrap {
   z-index: 1;
 }
 
-/* Tab Entrance Animations */
+/* Tab Entrance Animations — do not use animation-fill forwards (it can lock opacity at 0) */
 [id^="tab-"] {
-  animation: tabEntrance 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: tabEntrance 0.26s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes tabEntrance {
@@ -769,7 +781,7 @@ body.rtl .bankai-toast-error,
   }
 }
 
-/* Mobile Sidebar Drawer System */
+/* Mobile Sidebar Drawer System — overlay must stay hidden until Alpine opens the menu */
 .bankai-mobile-overlay {
   display: none;
   position: fixed;
@@ -786,7 +798,6 @@ body.rtl .bankai-toast-error,
   }
 
   .bankai-mobile-overlay {
-    display: block;
     position: fixed;
     inset: 0;
     background-color: rgba(31, 35, 40, 0.48);

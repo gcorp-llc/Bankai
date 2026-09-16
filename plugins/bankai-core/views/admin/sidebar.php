@@ -200,7 +200,11 @@ defined('ABSPATH') || exit;
             <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; color: #656D76; margin-bottom: 4px;">
                 <span x-text="t('memoryLimit')"><?php esc_html_e('Memory Limit', 'bankai-core'); ?></span>
                 <span style="font-family: monospace; color: #0969DA; font-weight: 700;">
-                    <?php echo esc_html(size_format(wp_memory_get_usage()) . ' / ' . ini_get('memory_limit')); ?>
+                    <?php
+                    $memory_used = function_exists('memory_get_usage') ? size_format((int) memory_get_usage(true)) : '—';
+                    $memory_limit = (string) ini_get('memory_limit');
+                    echo esc_html($memory_used . ' / ' . ($memory_limit !== '' ? $memory_limit : '—'));
+                    ?>
                 </span>
             </div>
             <div style="width: 100%; height: 5px; background-color: #D0D7DE; border-radius: 3px; overflow: hidden;">
