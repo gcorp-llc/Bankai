@@ -22,6 +22,7 @@ $state = $state ?? [];
     }
 </style>
 
+
 <div id="bankai-admin-app"
      class="bankai-admin-wrap"
      x-data="bankaiAdmin()"
