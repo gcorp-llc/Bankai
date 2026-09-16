@@ -6,42 +6,41 @@
  * @subpackage Modules
  */
 
-if (!defined('ABSPATH')) {
-    exit;
-}
+defined('ABSPATH') || die;
 
 class Bankai_Media_Watermark {
 
-    private static $instance = null;
+    private static ?Bankai_Media_Watermark $instance = null;
 
-    public static function get_instance() {
-        if (null === self::$instance) {
+    public static function instance(): Bankai_Media_Watermark {
+        if (is_null(self::$instance)) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    public function __construct() {
-        add_filter('wp_handle_upload', array($this, 'process_uploaded_image'));
-        add_action('wp_ajax_bankai_bulk_convert_media', array($this, 'ajax_bulk_convert'));
-        add_action('wp_ajax_bankai_save_watermark_settings', array($this, 'ajax_save_watermark_settings'));
+    public static function get_instance(): Bankai_Media_Watermark {
+        return self::instance();
     }
 
-    /**
-     * Intercept upload to strip EXIF, convert to WebP/AVIF and apply watermark
-     */
-    public function process_uploaded_image($upload) {
-        if (!in_array($upload['type'], array('image/jpeg', 'image/png'), true)) {
+    private function __construct() {
+        add_filter('wp_handle_upload', [$this, 'process_uploaded_image']);
+        add_action('wp_ajax_bankai_bulk_convert_media', [$this, 'ajax_bulk_convert']);
+        add_action('wp_ajax_bankai_save_watermark_settings', [$this, 'ajax_save_watermark_settings']);
+    }
+
+    public function process_uploaded_image(array $upload): array {
+        if (!in_array($upload['type'], ['image/jpeg', 'image/png'], true)) {
             return $upload;
         }
 
         $file_path = $upload['file'];
-        $settings  = get_option('bankai_watermark_settings', array(
+        $settings  = get_option('bankai_watermark_settings', [
             'enabled'  => true,
             'position' => 'bottom-right',
             'opacity'  => 75,
             'text'     => '© BANKAI WP ENGINE'
-        ));
+        ]);
 
         if (!empty($settings['enabled']) && extension_loaded('gd')) {
             $this->apply_text_watermark($file_path, $settings);
@@ -50,10 +49,7 @@ class Bankai_Media_Watermark {
         return $upload;
     }
 
-    /**
-     * Apply GD Text Watermark overlay based on position
-     */
-    private function apply_text_watermark($file_path, $settings) {
+    private function apply_text_watermark(string $file_path, array $settings): void {
         $info = getimagesize($file_path);
         if (!$info) return;
 
@@ -69,13 +65,11 @@ class Bankai_Media_Watermark {
         $width  = imagesx($image);
         $height = imagesy($image);
 
-        // Watermark styling
         $text       = $settings['text'] ?? 'BANKAI';
-        $font_size  = 4; // Built-in GD font size (1 to 5)
+        $font_size  = 4;
         $font_width = imagefontwidth($font_size) * strlen($text);
         $font_height= imagefontheight($font_size);
 
-        // Position calculations
         $margin = 15;
         $x = $margin;
         $y = $margin;
@@ -124,34 +118,26 @@ class Bankai_Media_Watermark {
         imagedestroy($image);
     }
 
-    /**
-     * Save Watermark Studio settings via AJAX
-     */
-    public function ajax_save_watermark_settings() {
+    public function ajax_save_watermark_settings(): void {
         check_ajax_referer('bankai_admin_nonce', 'nonce');
         
         $position = sanitize_text_field($_POST['position'] ?? 'bottom-right');
         $opacity  = intval($_POST['opacity'] ?? 75);
         $text     = sanitize_text_field($_POST['text'] ?? '© BANKAI WP ENGINE');
 
-        $settings = array(
+        $settings = [
             'enabled'  => true,
             'position' => $position,
             'opacity'  => $opacity,
             'text'     => $text
-        );
+        ];
 
         update_option('bankai_watermark_settings', $settings);
-        wp_send_json_success(array('message' => 'Watermark studio settings updated.'));
+        wp_send_json_success(['message' => __('Watermark studio settings updated.', 'bankai-core')]);
     }
 
-    /**
-     * Bulk Convert Media handler stub
-     */
-    public function ajax_bulk_convert() {
+    public function ajax_bulk_convert(): void {
         check_ajax_referer('bankai_admin_nonce', 'nonce');
-        wp_send_json_success(array('message' => 'Bulk image optimization started in background.'));
+        wp_send_json_success(['message' => __('Bulk image optimization started in background.', 'bankai-core')]);
     }
 }
-
-Bankai_Media_Watermark::get_instance();

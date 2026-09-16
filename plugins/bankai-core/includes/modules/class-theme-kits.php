@@ -1,64 +1,74 @@
 <?php
-if (!defined('ABSPATH')) {
-    exit;
-}
+/**
+ * Bankai Core - Starter Theme Kits Manager
+ * 
+ * @package Bankai
+ * @subpackage Modules
+ */
+
+defined('ABSPATH') || die;
 
 class Bankai_Theme_Kits {
 
-    public function __construct() {
-        add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
-        add_action('wp_ajax_bankai_sync_library', array($this, 'handle_sync_library'));
-        add_action('wp_ajax_bankai_import_kit', array($this, 'handle_import_kit'));
+    private static ?Bankai_Theme_Kits $instance = null;
+
+    public static function instance(): Bankai_Theme_Kits {
+        if (is_null(self::$instance)) {
+            self::$instance = new self();
+        }
+        return self::$instance;
     }
 
-    public function enqueue_assets($hook) {
+    private function __construct() {
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('wp_ajax_bankai_sync_library', [$this, 'handle_sync_library']);
+        add_action('wp_ajax_bankai_import_kit', [$this, 'handle_import_kit']);
+    }
+
+    public function enqueue_assets(string $hook): void {
         if (strpos($hook, 'bankai') === false) {
             return;
         }
-        wp_enqueue_style('bankai-theme-kits-css', BANKAI_PLUGIN_URL . 'assets/css/theme-kits.css', array(), BANKAI_VERSION);
-        wp_enqueue_script('bankai-theme-kits-js', BANKAI_PLUGIN_URL . 'assets/js/theme-kits.js', array('jquery', 'alpinejs'), BANKAI_VERSION, true);
+        wp_enqueue_style('bankai-admin-css', bankai_asset_url('css/bankai-admin.css'), [], BANKAI_CORE_VERSION);
+        wp_enqueue_script('bankai-admin-js', bankai_asset_url('js/bankai-admin.js'), ['jquery'], BANKAI_CORE_VERSION, true);
     }
 
-    public function get_starter_kits() {
-        return array(
-            array(
-                'id' => 'news_agency',
-                'name' => 'Journa Media & News Platform',
-                'version' => 'v2.4.0',
+    public function get_starter_kits(): array {
+        return [
+            [
+                'id'          => 'news_agency',
+                'name'        => 'Journa Media & News Platform',
+                'version'     => 'v2.4.0',
                 'description' => 'High-traffic news & magazine template optimized for core web vitals and multilingual support.',
-                'thumbnail' => BANKAI_PLUGIN_URL . 'assets/images/kits/news-kit.jpg',
-                'badges' => array('RTL Ready', 'Next.js App Router', 'Schema Integrated')
-            ),
-            array(
-                'id' => 'fintech_saas',
-                'name' => 'Paypey Modern SaaS Kit',
-                'version' => 'v1.1.0',
+                'thumbnail'   => bankai_asset_url('images/logo.jpg'),
+                'badges'      => ['RTL Ready', 'Next.js App Router', 'Schema Integrated']
+            ],
+            [
+                'id'          => 'fintech_saas',
+                'name'        => 'Paypey Modern SaaS Kit',
+                'version'     => 'v1.1.0',
                 'description' => 'Financial tech startup design system with Lydian lion branding and oxidized green aesthetics.',
-                'thumbnail' => BANKAI_PLUGIN_URL . 'assets/images/kits/fintech-kit.jpg',
-                'badges' => array('Alpine.js', 'Tailwind', 'Light/Dark')
-            )
-        );
+                'thumbnail'   => bankai_asset_url('images/logo.jpg'),
+                'badges'      => ['Alpine.js', 'Tailwind', 'Light/Dark']
+            ]
+        ];
     }
 
-    public function render() {
-        $state = array(
+    public function render(): void {
+        $state = [
             'starterKits' => $this->get_starter_kits()
-        );
-
-        $view_path = BANKAI_PLUGIN_DIR . 'views/admin/theme-kits.php';
-        if (file_exists($view_path)) {
-            include $view_path;
-        }
+        ];
+        bankai_render_view('admin/tab-theme-kits.php', $state);
     }
 
-    public function handle_sync_library() {
+    public function handle_sync_library(): void {
         check_ajax_referer('bankai_admin_nonce', 'nonce');
-        wp_send_json_success(array('message' => 'کتابخانه قالب‌ها با موفقیت به‌روزرسانی شد.'));
+        wp_send_json_success(['message' => __('کتابخانه قالب‌ها با موفقیت به‌روزرسانی شد.', 'bankai-core')]);
     }
 
-    public function handle_import_kit() {
+    public function handle_import_kit(): void {
         check_ajax_referer('bankai_admin_nonce', 'nonce');
         $kit_id = isset($_POST['kit_id']) ? sanitize_text_field($_POST['kit_id']) : '';
-        wp_send_json_success(array('message' => "معماری قالب {$kit_id} با موفقیت پیاده‌سازی شد."));
+        wp_send_json_success(['message' => sprintf(__('معماری قالب %s با موفقیت پیاده‌سازی شد.', 'bankai-core'), $kit_id)]);
     }
 }

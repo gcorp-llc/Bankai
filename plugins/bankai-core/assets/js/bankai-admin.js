@@ -2,6 +2,10 @@
  * Bankai Core - Admin Alpine.js & HTMX Logic
  */
 
+// Bridge WP localized objects
+window.bankaiData = window.bankaiData || window.bankaiCoreData || {};
+window.bankaiCoreData = window.bankaiCoreData || window.bankaiData;
+
 function bankaiAdmin() {
     // Check persisted language preference
     const savedLang = typeof localStorage !== 'undefined' ? localStorage.getItem('bankai_lang') : null;

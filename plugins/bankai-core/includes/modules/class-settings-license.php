@@ -1,27 +1,40 @@
 <?php
-if (!defined('ABSPATH')) {
-    exit;
-}
+/**
+ * Bankai Core - Settings & License Manager
+ * 
+ * @package Bankai
+ * @subpackage Modules
+ */
+
+defined('ABSPATH') || die;
 
 class Bankai_Settings_License {
 
-    private $option_name = 'bankai_platform_settings';
+    private static ?Bankai_Settings_License $instance = null;
+    private string $option_name = 'bankai_platform_settings';
 
-    public function __construct() {
-        add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
-        add_action('wp_ajax_bankai_save_settings', array($this, 'handle_save_settings'));
-        add_action('wp_ajax_bankai_revalidate_license', array($this, 'handle_revalidate_license'));
+    public static function instance(): Bankai_Settings_License {
+        if (is_null(self::$instance)) {
+            self::$instance = new self();
+        }
+        return self::$instance;
     }
 
-    public function enqueue_assets($hook) {
+    private function __construct() {
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('wp_ajax_bankai_save_settings', [$this, 'handle_save_settings']);
+        add_action('wp_ajax_bankai_revalidate_license', [$this, 'handle_revalidate_license']);
+    }
+
+    public function enqueue_assets(string $hook): void {
         if (strpos($hook, 'bankai') === false) {
             return;
         }
-        wp_enqueue_style('bankai-settings-css', BANKAI_PLUGIN_URL . 'assets/css/settings.css', array(), BANKAI_VERSION);
-        wp_enqueue_script('bankai-settings-js', BANKAI_PLUGIN_URL . 'assets/js/settings.js', array('jquery'), BANKAI_VERSION, true);
+        wp_enqueue_style('bankai-admin-css', bankai_asset_url('css/bankai-admin.css'), [], BANKAI_CORE_VERSION);
+        wp_enqueue_script('bankai-admin-js', bankai_asset_url('js/bankai-admin.js'), ['jquery'], BANKAI_CORE_VERSION, true);
     }
 
-    public function get_system_report() {
+    public function get_system_report(): string {
         return sprintf(
             "=== Bankai Core System Diagnostic Log ===\nPHP Version: %s\nWordPress Version: %s\nServer Software: %s\nMemory Limit: %s\nActive License: BNK-PRO-8849-2049-9941-X9 (Lifetime Tier)",
             phpversion(),
@@ -31,32 +44,29 @@ class Bankai_Settings_License {
         );
     }
 
-    public function render() {
-        $settings = get_option($this->option_name, array());
-        $state = array(
+    public function render(): void {
+        $settings = get_option($this->option_name, []);
+        $state = [
             'systemReport' => $this->get_system_report(),
-            'settings' => $settings
-        );
+            'settings'     => $settings
+        ];
 
-        $view_path = BANKAI_PLUGIN_DIR . 'views/admin/settings-license.php';
-        if (file_exists($view_path)) {
-            include $view_path;
-        }
+        bankai_render_view('admin/tab-settings-license.php', $state);
     }
 
-    public function handle_save_settings() {
+    public function handle_save_settings(): void {
         check_ajax_referer('bankai_admin_nonce', 'nonce');
-        $new_settings = isset($_POST['settings']) ? (array) $_POST['settings'] : array();
+        $new_settings = isset($_POST['settings']) ? (array) $_POST['settings'] : [];
         update_option($this->option_name, $new_settings);
-        wp_send_json_success(array('message' => 'تنظیمات سراسری پلتفرم با موفقیت ذخیره گردید.'));
+        wp_send_json_success(['message' => __('تنظیمات سراسری پلتفرم با موفقیت ذخیره گردید.', 'bankai-core')]);
     }
 
-    public function handle_revalidate_license() {
+    public function handle_revalidate_license(): void {
         check_ajax_referer('bankai_admin_nonce', 'nonce');
-        wp_send_json_success(array(
-            'status' => 'valid',
-            'tier' => 'Lifetime Enterprise',
-            'message' => 'اعتبارسنجی لایسنس با موفقیت انجام شد.'
-        ));
+        wp_send_json_success([
+            'status'  => 'valid',
+            'tier'    => 'Lifetime Enterprise',
+            'message' => __('اعتبارسنجی لایسنس با موفقیت انجام شد.', 'bankai-core')
+        ]);
     }
 }

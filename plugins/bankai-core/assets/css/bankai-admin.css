@@ -2,9 +2,14 @@
    Bankai Core - GitHub Light Ecosystem Theme (Primer Design System)
    ========================================================================== */
 
-/* Global x-cloak to prevent layout flicker */
-[x-cloak] {
+/* Global x-cloak to prevent layout flicker without locking entire screen into white */
+[x-cloak]:not(#bankai-admin-app) {
   display: none !important;
+}
+#bankai-admin-app[x-cloak] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease-in;
 }
 
 /* WP Admin body & container light background normalization */
@@ -47,6 +52,23 @@
   color: #1F2328 !important;
   min-height: 100vh !important;
   padding-bottom: 0 !important;
+}
+
+.toplevel_page_bankai-core #wpcontent,
+.bankai-core_page_bankai-theme-kits #wpcontent,
+.bankai-core_page_bankai-seo-engine #wpcontent,
+.bankai-core_page_bankai-speed-cache #wpcontent,
+.bankai-core_page_bankai-media #wpcontent,
+.bankai-core_page_bankai-ai-manifests #wpcontent,
+.bankai-core_page_bankai-settings #wpcontent {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 0 !important;
+}
+
+.bankai-tab-pane {
+  display: block;
+  width: 100%;
 }
 
 #bankai-admin-app,
@@ -373,7 +395,9 @@ body.rtl .bankai-admin-wrap {
   border-left: 3px solid #0969DA;
 }
 
-[dir="rtl"] .bankai-nav-btn.active {
+[dir="rtl"] .bankai-nav-btn.active,
+body.rtl .bankai-nav-btn.active,
+.rtl .bankai-nav-btn.active {
   border-left: none;
   border-right: 3px solid #0969DA;
 }
@@ -583,7 +607,9 @@ textarea:focus {
   transition: .22s;
 }
 
-[dir="rtl"] .bankai-slider:before {
+[dir="rtl"] .bankai-slider:before,
+body.rtl .bankai-slider:before,
+.rtl .bankai-slider:before {
   left: auto;
   right: 3px;
 }
@@ -596,7 +622,9 @@ textarea:focus {
   transform: translateX(16px);
 }
 
-[dir="rtl"] .bankai-switch input:checked + .bankai-slider:before {
+[dir="rtl"] .bankai-switch input:checked + .bankai-slider:before,
+body.rtl .bankai-switch input:checked + .bankai-slider:before,
+.rtl .bankai-switch input:checked + .bankai-slider:before {
   transform: translateX(-16px);
 }
 
@@ -637,7 +665,9 @@ textarea:focus {
   gap: 10px;
 }
 
-[dir="rtl"] .bankai-toast {
+[dir="rtl"] .bankai-toast,
+body.rtl .bankai-toast,
+.rtl .bankai-toast {
   right: auto;
   left: 24px;
 }
@@ -649,7 +679,9 @@ textarea:focus {
   border-left: 4px solid #1F883D;
 }
 
-[dir="rtl"] .bankai-toast-success {
+[dir="rtl"] .bankai-toast-success,
+body.rtl .bankai-toast-success,
+.rtl .bankai-toast-success {
   border-left: 1px solid #ACEBBB;
   border-right: 4px solid #1F883D;
 }
@@ -661,7 +693,9 @@ textarea:focus {
   border-left: 4px solid #CF222E;
 }
 
-[dir="rtl"] .bankai-toast-error {
+[dir="rtl"] .bankai-toast-error,
+body.rtl .bankai-toast-error,
+.rtl .bankai-toast-error {
   border-left: 1px solid #FF8182;
   border-right: 4px solid #CF222E;
 }
@@ -672,10 +706,13 @@ textarea:focus {
   inset: 0;
   background-color: rgba(31, 35, 40, 0.45);
   backdrop-filter: blur(6px);
-  z-index: 99990;
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 999999;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
 }
 
 /* ==========================================================================
@@ -776,7 +813,9 @@ textarea:focus {
     border-radius: 0 14px 14px 0 !important;
   }
 
-  [dir="rtl"] .bankai-sidebar {
+  [dir="rtl"] .bankai-sidebar,
+  body.rtl .bankai-sidebar,
+  .rtl .bankai-sidebar {
     left: auto !important;
     right: 0 !important;
     transform: translateX(100%);
@@ -834,16 +873,28 @@ textarea:focus {
 }
 
 /* Persian Font Refinements */
-[dir="rtl"] {
+[dir="rtl"],
+body.rtl,
+.rtl {
   direction: rtl;
   text-align: right;
 }
 
 [dir="rtl"] body,
+body.rtl,
+.rtl,
 [dir="rtl"] button,
+body.rtl button,
+.rtl button,
 [dir="rtl"] input,
+body.rtl input,
+.rtl input,
 [dir="rtl"] select,
-[dir="rtl"] textarea {
+body.rtl select,
+.rtl select,
+[dir="rtl"] textarea,
+body.rtl textarea,
+.rtl textarea {
   font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif !important;
   letter-spacing: 0 !important;
 }
@@ -895,7 +946,9 @@ textarea:focus {
   border-radius: 0 2px 2px 0;
 }
 
-[dir="rtl"] .bankai-page-progress-bar {
+[dir="rtl"] .bankai-page-progress-bar,
+body.rtl .bankai-page-progress-bar,
+.rtl .bankai-page-progress-bar {
   border-radius: 2px 0 0 2px;
 }
 

@@ -1,5 +1,6 @@
 <?php
 defined('ABSPATH') || exit;
+$state = $state ?? [];
 ?>
 <style>
     [x-cloak] { display: none !important; }
@@ -7,16 +8,22 @@ defined('ABSPATH') || exit;
         background-color: #F6F8FA;
         color: #1F2328;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        margin-inline-start: -20px;
+        margin: 0;
         padding: 0;
         min-height: calc(100vh - 32px);
     }
-    .rtl .bankai-admin-wrap {
+    .rtl .bankai-admin-wrap,
+    [dir="rtl"] .bankai-admin-wrap {
         font-family: 'Vazirmatn', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 </style>
 
-<div id="bankai-admin-app" class="bankai-admin-wrap" x-data="bankaiAdmin()" x-cloak>
+<div id="bankai-admin-app"
+     class="bankai-admin-wrap"
+     x-data="bankaiAdmin()"
+     :dir="isRtl ? 'rtl' : 'ltr'"
+     :class="isRtl ? 'rtl' : 'ltr'"
+     x-cloak>
     <!-- Ambient Decorative Animated Background Elements -->
     <div class="bankai-bg-decorations" aria-hidden="true">
         <div class="bankai-ambient-grid"></div>
@@ -131,10 +138,29 @@ defined('ABSPATH') || exit;
             foreach ($tabs as $tab) {
                 $tab_file = BANKAI_CORE_VIEWS_DIR . "admin/tab-{$tab}.php";
                 if (file_exists($tab_file)) {
-                    require_once $tab_file;
+                    include $tab_file;
                 }
             }
             ?>
         </main>
     </div>
 </div>
+
+<script>
+    // Safeguard: Ensure x-cloak is removed if Alpine takes time or encounters script delays
+    (function() {
+        var uncloak = function() {
+            var el = document.getElementById('bankai-admin-app');
+            if (el && el.hasAttribute('x-cloak')) {
+                el.removeAttribute('x-cloak');
+            }
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(uncloak, 250);
+            });
+        } else {
+            setTimeout(uncloak, 250);
+        }
+    })();
+</script>
