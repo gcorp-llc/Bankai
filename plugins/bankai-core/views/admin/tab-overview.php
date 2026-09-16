@@ -1,5 +1,5 @@
 <!-- Tab 1: System Telemetry Overview - GitHub Light Edition -->
-<div id="tab-overview" x-show="activeTab === 'overview'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+<div id="tab-overview" class="bankai-tab-pane" x-show="activeTab === 'overview'">
     <!-- System Telemetry Metrics Grid -->
     <div class="bankai-grid-4">
         <div class="bankai-card bankai-card-interactive" style="padding: 20px;">

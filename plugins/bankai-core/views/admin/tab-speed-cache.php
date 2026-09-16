@@ -1,5 +1,5 @@
 <!-- Tab 4: Speed & Cache Engine - GitHub Light Edition -->
-<div id="tab-speed-cache" x-show="activeTab === 'speed'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+<div id="tab-speed-cache" class="bankai-tab-pane" x-show="activeTab === 'speed'">
     <!-- View Header & Actions -->
     <div class="bankai-card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; flex-wrap: wrap; gap: 14px;">
         <div>

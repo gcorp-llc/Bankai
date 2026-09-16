@@ -1,5 +1,5 @@
 <!-- Tab 6: Generative AI Studio & Multi-LLM Orchestrator - GitHub Light Edition -->
-<div id="tab-ai-studio" x-show="activeTab === 'ai'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+<div id="tab-ai-studio" class="bankai-tab-pane" x-show="activeTab === 'ai'">
     <!-- View Header & Telemetry -->
     <div class="bankai-card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; flex-wrap: wrap; gap: 14px;">
         <div>

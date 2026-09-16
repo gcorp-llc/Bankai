@@ -1,5 +1,5 @@
 <!-- Tab 2: Theme Kits & Customizer - GitHub Light Edition -->
-<div id="tab-theme-kits" x-show="activeTab === 'theme-kits'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+<div id="tab-theme-kits" class="bankai-tab-pane" x-show="activeTab === 'theme-kits'">
     <!-- View Header & Action Bar -->
     <div class="bankai-card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; flex-wrap: wrap; gap: 14px;">
         <div>

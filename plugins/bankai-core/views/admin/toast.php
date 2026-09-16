@@ -3,12 +3,7 @@ defined('ABSPATH') || exit;
 ?>
 <div x-show="toast.show"
      x-cloak
-     x-transition:enter="transition ease-out duration-300"
-     x-transition:enter-start="opacity-0 transform translate-y-3"
-     x-transition:enter-end="opacity-100 transform translate-y-0"
-     x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="opacity-100 transform translate-y-0"
-     x-transition:leave-end="opacity-0 transform translate-y-3"
+     x-transition.opacity
      class="bankai-toast"
      :class="toast.type === 'error' ? 'bankai-toast-error' : 'bankai-toast-success'">
     <template x-if="toast.type !== 'error'">
