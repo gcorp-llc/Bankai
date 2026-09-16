@@ -1,33 +1,76 @@
 <?php
 defined('ABSPATH') || exit;
 $state = $state ?? [];
+$active_tab = sanitize_text_field($state['activeTab'] ?? 'overview');
+$is_rtl = !empty($state['isRtl']);
 ?>
+
 <style>
-    /* Never cloak the whole admin shell — that produced a blank white WP screen */
-    [x-cloak]:not(#bankai-admin-app) { display: none !important; }
-    .bankai-admin-wrap {
-        background-color: #F6F8FA;
-        color: #1F2328;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        margin: 0;
-        padding: 0;
-        min-height: calc(100vh - 32px);
-        display: block !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-    }
-    .rtl .bankai-admin-wrap,
-    [dir="rtl"] .bankai-admin-wrap {
-        font-family: 'Vazirmatn', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    [x-cloak] { display: none !important; }
+    .bankai-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(31, 35, 40, 0.45);
+        backdrop-filter: blur(6px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
     }
 </style>
 
+<!-- Global Bridge Data for Alpine.js -->
+<script>
+    window.bankaiData = {
+        activeTab: <?php echo json_encode($active_tab); ?>,
+        isRtl: <?php echo json_encode($is_rtl); ?>,
+        restUrl: <?php echo json_encode(esc_url_raw(rest_url('bankai/v1/'))); ?>,
+        nonce: <?php echo json_encode(wp_create_nonce('bankai_admin_nonce')); ?>
+    };
+
+    window.setTab = function(tab) {
+        if (window.bankaiAdminInstance) {
+            window.bankaiAdminInstance.activeTab = tab;
+            return window.bankaiAdminInstance.setTab(tab);
+        }
+        const app = document.getElementById('bankai-admin-app');
+        if (app && window.Alpine) {
+            try {
+                const data = window.Alpine.$data(app);
+                if (data) {
+                    data.activeTab = tab;
+                    if (typeof data.setTab === 'function') {
+                        return data.setTab(tab);
+                    }
+                }
+            } catch(e) {}
+        }
+    };
+
+    window.showToast = function(msg, type) {
+        type = type || 'success';
+        if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.showToast === 'function') {
+            return window.bankaiAdminInstance.showToast(msg, type);
+        }
+    };
+
+    window.toggleLanguage = function() {
+        if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.toggleLanguage === 'function') {
+            return window.bankaiAdminInstance.toggleLanguage();
+        }
+    };
+    window.toggleRtl = window.toggleLanguage;
+</script>
 
 <div id="bankai-admin-app"
      class="bankai-admin-wrap"
      x-data="bankaiAdmin()"
      :dir="isRtl ? 'rtl' : 'ltr'"
      :class="isRtl ? 'rtl' : 'ltr'">
+    
     <!-- Ambient Decorative Animated Background Elements -->
     <div class="bankai-bg-decorations" aria-hidden="true">
         <div class="bankai-ambient-grid"></div>
@@ -134,17 +177,3 @@ $state = $state ?? [];
         </main>
     </div>
 </div>
-
-<script>
-    (function() {
-        var app = document.getElementById('bankai-admin-app');
-        if (!app) {
-            return;
-        }
-        app.removeAttribute('x-cloak');
-        app.style.display = 'block';
-        app.style.opacity = '1';
-        app.style.visibility = 'visible';
-        app.setAttribute('dir', document.documentElement.getAttribute('dir') === 'rtl' ? 'rtl' : 'ltr');
-    })();
-</script>

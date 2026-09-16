@@ -183,8 +183,38 @@ class Bankai_Admin_Menu {
         if (!current_user_can('manage_options')) {
             wp_die(esc_html__('شما اجازه دسترسی به این بخش را ندارید.', 'bankai-core'));
         }
-
+    
+        $page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : 'bankai-core';
+        $active_tab = 'overview';
+    
+        switch ($page) {
+            case 'bankai-theme-kits':
+                $active_tab = 'theme-kits';
+                break;
+            case 'bankai-seo-engine':
+                $active_tab = 'seo-engine';
+                break;
+            case 'bankai-speed-cache':
+                $active_tab = 'speed-cache';
+                break;
+            case 'bankai-media':
+                $active_tab = 'media-watermark';
+                break;
+            case 'bankai-ai-manifests':
+            case 'bankai-ai-studio':
+                $active_tab = 'ai-studio';
+                break;
+            case 'bankai-settings':
+                $active_tab = 'settings-license';
+                break;
+            default:
+                $active_tab = 'overview';
+                break;
+        }
+    
         $state = self::get_admin_state();
+        $state['activeTab'] = $active_tab;
+    
         bankai_render_view('admin/layout.php', ['state' => $state]);
     }
 
