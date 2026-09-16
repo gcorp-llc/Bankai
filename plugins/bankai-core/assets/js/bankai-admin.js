@@ -1,20 +1,32 @@
 /**
- * Bankai Core - Admin Alpine.js & HTMX Logic
+ * Bankai Core - Admin Alpine.js & REST API Architecture Engine
+ *
+ * Senior Full-Stack JavaScript Architecture for WordPress Admin SPA.
+ * Manages reactive state, REST API synchronizations, URL parameter history,
+ * bilingual i18n dictionaries, and global CustomEvents.
+ *
+ * @package BankaiCore
+ * @version 1.0.0
  */
 
 function bankaiAdmin() {
-    // Check persisted language preference
+    // Determine initial bridge data safely from localized WP script variables
+    const bridgeData = window.bankaiData || window.bankaiCoreData || {};
+
+    // Check persisted language preference from localStorage or fall back to WP locale
     const savedLang = typeof localStorage !== 'undefined' ? localStorage.getItem('bankai_lang') : null;
-    const initialIsRtl = savedLang ? (savedLang === 'fa') : (window.bankaiData?.isRtl || false);
+    const initialIsRtl = savedLang ? (savedLang === 'fa') : (Boolean(bridgeData.isRtl));
 
     return {
-        activeTab: window.bankaiData?.activeTab || 'overview',
+        // Reactive Application State
+        activeTab: bridgeData.activeTab || 'overview',
         isRtl: initialIsRtl,
         mobileMenuOpen: false,
         toast: { show: false, message: '', type: 'success' },
+        toastTimer: null,
         showApiKeys: false,
 
-        // Page and Action Loaders
+        // Page Loader & Action Spinners
         pageLoading: false,
         pageProgress: 0,
         savingLoader: {
@@ -24,18 +36,15 @@ function bankaiAdmin() {
             message: ''
         },
 
-        // Comprehensive Bilingual i18n Dictionary for WordPress Admin
+        // Comprehensive Bilingual i18n Dictionary
         i18n: {
             en: {
-                // Header & General
                 slogan: 'Next-Gen High-Performance Modular WordPress Platform & AI Studio',
                 purgeCache: 'Purge Cache',
                 checkUpdates: 'Check Updates',
                 wpDashboard: 'WP Admin',
                 allSystemsOptimal: 'ALL SYSTEMS OPTIMAL',
                 lifetimeLicense: 'LIFETIME PRO',
-                
-                // Sidebar Tabs
                 navOverview: 'Overview & Telemetry',
                 navThemeKits: 'Theme Kits & Customizer',
                 navSeo: 'SEO & Schema Engine',
@@ -51,8 +60,6 @@ function bankaiAdmin() {
                 memoryLimit: 'Memory Limit',
                 database: 'Database Engine',
                 layoutMode: 'Layout Direction',
-
-                // Overview Tab
                 uptimeSpeed: '⚡ Uptime & Speed',
                 indexedNodes: '🕸️ Indexed Nodes',
                 aiCrawls: '🤖 AI Crawler Hits',
@@ -75,8 +82,6 @@ function bankaiAdmin() {
                 action: 'ACTION',
                 apply301: '✓ Apply 301',
                 optimalIndex: 'OPTIMAL INDEX',
-
-                // Theme Kits
                 themeKitsTitle: 'Bankai Starter Kits & Frontend Customizer',
                 themeKitsDesc: '1-Click turnkey site architectures, Tailwind CSS variable compiler, and high-performance design presets.',
                 syncLibrary: 'Sync Library',
@@ -95,21 +100,15 @@ function bankaiAdmin() {
                 stepPlugins: 'Activate & Verify Dependency Plugins',
                 cancel: 'Cancel',
                 close: 'Close',
-
-                // SEO Tab
                 seoTitle: 'Autonomous AI-Powered Schema & Metadata Engine',
                 seoDesc: 'Real-time JSON-LD structured graph compiler, automatic SERP snippet enhancer, and instant indexing webhook dispatcher.',
                 runAudit: '⚡ Run SEO Audit',
                 seoWizard: '🧙‍♂️ Setup Wizard',
                 configure: 'Configure',
-
-                // Speed Tab
                 speedTitle: 'High-Performance Caching & Asset Compiler',
                 speedDesc: 'Page cache, Redis object caching, CSS/JS async aggregation, and database table defragmentation engine.',
                 benchmarkVitals: '⚡ Benchmark Vitals',
                 optimizeDb: '🗄️ Optimize Database',
-
-                // Media Tab
                 mediaTitle: 'Media Optimization Engine & Watermark Studio',
                 mediaDesc: 'Automatic next-gen WebP/AVIF conversions, EXIF privacy stripping, and dynamic text/logo watermark overlay.',
                 bulkConvert: '⚡ Bulk Convert Media',
@@ -118,8 +117,6 @@ function bankaiAdmin() {
                 watermarkPosition: 'Watermark Position',
                 watermarkOpacity: 'Watermark Opacity',
                 watermarkText: 'Watermark Text Label',
-
-                // AI Studio
                 aiTitle: 'Generative AI Content Studio & Prompt Manifests',
                 aiDesc: 'Autonomous WordPress SEO outline writer, auto alt-tag generator, and public /llms.txt AI crawler manifest endpoint.',
                 testAi: '⚡ Test AI Connections',
@@ -127,8 +124,6 @@ function bankaiAdmin() {
                 aiSandboxLabel: '✨ Interactive AI Content & Meta Generator (Powered by Server-Side Gemini API)',
                 generateNow: '⚡ Generate Now',
                 processing: '⌛ Processing...',
-
-                // Settings & License
                 settingsTitle: 'Ecosystem Configuration & License Management',
                 settingsDesc: 'Manage your pro subscription, update frequency, system diagnostics, and configuration backup/restore.',
                 licenseStatus: 'Pro License Status',
@@ -144,15 +139,12 @@ function bankaiAdmin() {
                 viewLogs: 'View Activity Logs'
             },
             fa: {
-                // Header & General
                 slogan: 'اکوسیستم نسل جدید قالب، سئو پیشرفته و بهینه‌سازی سرعت وردپرس',
                 purgeCache: 'تخلیه کش',
                 checkUpdates: 'بررسی بروزرسانی',
                 wpDashboard: 'پیشخوان وردپرس',
                 allSystemsOptimal: 'وضعیت تمامی سیستم‌ها مطلوب است',
                 lifetimeLicense: 'لایسنس مادام‌العمر حرفه‌ای',
-
-                // Sidebar Tabs
                 navOverview: 'پیشخوان و سلامت سیستم',
                 navThemeKits: 'قالب‌های آماده و سفارشی‌ساز',
                 navSeo: 'موتور سئو و ساختار اسکیما',
@@ -168,8 +160,6 @@ function bankaiAdmin() {
                 memoryLimit: 'محدودیت رم سرور',
                 database: 'موتور پایگاه داده',
                 layoutMode: 'جهت چینش صفحه',
-
-                // Overview Tab
                 uptimeSpeed: '⚡ پایداری و زمان پاسخ',
                 indexedNodes: '🕸️ برگه و صفحات ایندکس‌شده',
                 aiCrawls: '🤖 پیمایش ربات‌های هوش مصنوعی',
@@ -192,8 +182,6 @@ function bankaiAdmin() {
                 action: 'عملیات',
                 apply301: '✓ اعمال ریدایرکت ۳۰۱',
                 optimalIndex: 'شاخص بهینه',
-
-                // Theme Kits
                 themeKitsTitle: 'کتابخانه قالب‌های آماده و سفارشی‌ساز فرانت‌اند',
                 themeKitsDesc: 'نصب یک‌کلیکه معماری‌های کامل سایت، کامپایلر متغیرهای استایل و الگوهای پرسرعت.',
                 syncLibrary: 'بروزرسانی کتابخانه',
@@ -212,21 +200,15 @@ function bankaiAdmin() {
                 stepPlugins: 'فعال‌سازی و تأیید افزونه‌های پیش‌نیاز',
                 cancel: 'انصراف',
                 close: 'بستن',
-
-                // SEO Tab
                 seoTitle: 'موتور هوشمند اسکیما و سئوی ساختاریافته وردپرس',
                 seoDesc: 'کامپایلر لحظه‌ای نمودارهای گراف JSON-LD، بهبوددهنده خودکار اسنیپت‌های گوگل و ثبت فوری در موتورهای جستجو.',
                 runAudit: '⚡ آنالیز کامل سئو',
                 seoWizard: '🧙‍♂️ جادوگر پیکربندی سریع',
                 configure: 'پیکربندی',
-
-                // Speed Tab
                 speedTitle: 'موتور کش پیشرفته و کامپایلر بهینه‌ساز فایل‌ها',
                 speedDesc: 'کش تمام صفحه، کش اشیاء ردیس، فشرده‌سازی خودکار کدهای CSS/JS و یکپارچه‌سازی جداول دیتابیس.',
                 benchmarkVitals: '⚡ تست سرعت لود',
                 optimizeDb: '🗄️ بهینه‌سازی دیتابیس',
-
-                // Media Tab
                 mediaTitle: 'استودیو بهینه‌سازی رسانه و درج واترمارک هوشمند',
                 mediaDesc: 'تبدیل خودکار به فرمت‌های نسل جدید WebP و AVIF، حذف متادیتای حساس و درج لوگو و حق نشر.',
                 bulkConvert: '⚡ بهینه‌سازی دسته‌جمعی تصاویر',
@@ -235,8 +217,6 @@ function bankaiAdmin() {
                 watermarkPosition: 'موقعیت قرارگیری واترمارک',
                 watermarkOpacity: 'میزان شفافیت (Opacity)',
                 watermarkText: 'متن کپی‌رایت واترمارک',
-
-                // AI Studio
                 aiTitle: 'استودیو تولید محتوای هوش مصنوعی و مانیفست LLM',
                 aiDesc: 'دستیار خودکار تولید متن و متن جایگزین تصاویر، تدوین سرفصل‌های سئو و اندپوینت اختصاصی llms.txt.',
                 testAi: '⚡ تست اتصال هوش مصنوعی',
@@ -244,8 +224,6 @@ function bankaiAdmin() {
                 aiSandboxLabel: '✨ محیط تعاملی تولید محتوا و ساختار سئو با هوش مصنوعی (Gemini API)',
                 generateNow: '⚡ تولید فوری محتوا',
                 processing: '⌛ در حال پردازش...',
-
-                // Settings & License
                 settingsTitle: 'تنظیمات سامانه، پشتیبان‌گیری و مدیریت لایسنس',
                 settingsDesc: 'مدیریت اشتراک حرفه‌ای، فرکانس بروزرسانی‌ها، لاگ‌های عملکرد و تهیه فایل پشتیبان.',
                 licenseStatus: 'وضعیت لایسنس افزونه',
@@ -262,53 +240,15 @@ function bankaiAdmin() {
             }
         },
 
-        // Helper method to retrieve localized string
-        t(key) {
-            const lang = this.isRtl ? 'fa' : 'en';
-            return this.i18n[lang]?.[key] || this.i18n['en']?.[key] || key;
-        },
-
-        // Responsive Navigation Control
-        toggleMobileMenu() {
-            this.mobileMenuOpen = !this.mobileMenuOpen;
-        },
-        closeMobileMenu() {
-            this.mobileMenuOpen = false;
-        },
-
-        // Language Switcher with State Persistence
-        toggleLanguage() {
-            this.isRtl = !this.isRtl;
-            const langCode = this.isRtl ? 'fa' : 'en';
-            const dir = this.isRtl ? 'rtl' : 'ltr';
-            
-            document.documentElement.setAttribute('dir', dir);
-            document.documentElement.setAttribute('lang', langCode);
-            
-            try {
-                localStorage.setItem('bankai_lang', langCode);
-            } catch (e) {}
-
-            this.showToast(
-                this.isRtl ? 'زبان با موفقیت به فارسی (RTL) تغییر یافت' : 'Language successfully switched to English (LTR)'
-            );
-        },
-
-        toggleRtl() {
-            return this.toggleLanguage();
-        },
-
+        // License & Customizer Sub-states
         license: {
             key: 'BANKAI-PRO-9984-X721-LIFETIME',
             active: true
         },
-
         settingsModals: {
             import: false,
             reset: false
         },
-        
-        // Theme Customizer State
         customizer: {
             fontFamily: 'Inter',
             containerWidth: 1400,
@@ -316,7 +256,7 @@ function bankaiAdmin() {
             footerStyle: 'minimal'
         },
 
-        // SEO Engine State
+        // Engine Drawer States
         seoState: {
             ai_search_visibility: true,
             ai_meta_assistant: true,
@@ -331,14 +271,8 @@ function bankaiAdmin() {
             local_seo: true,
             llms_txt_builder: true
         },
+        seoDrawer: { show: false, id: '', title: '' },
 
-        seoDrawer: {
-            show: false,
-            id: '',
-            title: ''
-        },
-
-        // Speed & Cache State
         speedState: {
             page_caching: true,
             asset_optimization: true,
@@ -347,14 +281,8 @@ function bankaiAdmin() {
             server_compression: true,
             fonts_localizer: true
         },
+        speedDrawer: { show: false, id: '', title: '' },
 
-        speedDrawer: {
-            show: false,
-            id: '',
-            title: ''
-        },
-
-        // Media & Watermark Studio State
         mediaState: {
             webp_avif_engine: true,
             dynamic_watermark: true,
@@ -363,20 +291,9 @@ function bankaiAdmin() {
             responsive_cls_guard: true,
             image_compression: true
         },
+        watermarkStudio: { position: 'bottom-right', opacity: 75, text: '© BANKAI MEDIA' },
+        mediaDrawer: { show: false, id: '', title: '' },
 
-        watermarkStudio: {
-            position: 'bottom-right',
-            opacity: 75,
-            text: '© BANKAI MEDIA'
-        },
-
-        mediaDrawer: {
-            show: false,
-            id: '',
-            title: ''
-        },
-
-        // AI Content Studio State
         aiState: {
             auto_meta_alt: true,
             content_outline_studio: true,
@@ -385,29 +302,16 @@ function bankaiAdmin() {
             content_repurposer: true,
             prompt_manifests: true
         },
+        aiStudio: { defaultModel: 'gpt-4o' },
+        aiSandbox: { promptInput: '', aiResult: '', isGenerating: false },
+        aiDrawer: { show: false, id: '', title: '' },
 
-        aiStudio: {
-            defaultModel: 'gpt-4o'
-        },
-
-        aiSandbox: {
-            promptInput: '',
-            aiResult: '',
-            isGenerating: false
-        },
-
-        aiDrawer: {
-            show: false,
-            id: '',
-            title: ''
-        },
-
-        // Import Modal State
+        // Import Kit Modal State
         importModal: {
             show: false,
             kit: null,
             progress: 0,
-            status: 'idle', // idle, importing, completed
+            status: 'idle',
             steps: [
                 { id: 'demo_content', label: 'Import Demo Content & Menus', status: 'pending' },
                 { id: 'custom_fields', label: 'Configure Custom Fields (ACF)', status: 'pending' },
@@ -415,61 +319,159 @@ function bankaiAdmin() {
             ]
         },
 
+        /**
+         * Initialize Component Instance and Global Event Listeners
+         */
         init() {
+            // Register live instance globally on window.bankaiAdminInstance
             window.bankaiAdminInstance = this;
 
-            // Apply direction & language to document root
-            if (this.isRtl) {
-                document.documentElement.setAttribute('dir', 'rtl');
-                document.documentElement.setAttribute('lang', 'fa');
-            } else {
-                document.documentElement.setAttribute('dir', 'ltr');
-                document.documentElement.setAttribute('lang', 'en');
-            }
+            // Apply direction & language attributes to document root
+            this.applyDocumentDirection();
 
-            // Keyboard navigation listener (ESC to close drawers/modals/mobile menu)
+            // Register Escape key listener for closing drawers and modals
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
-                    this.seoDrawer.show = false;
-                    this.speedDrawer.show = false;
-                    this.mediaDrawer.show = false;
-                    this.aiDrawer.show = false;
-                    this.importModal.show = false;
-                    this.settingsModals.import = false;
-                    this.settingsModals.reset = false;
-                    this.mobileMenuOpen = false;
+                    this.closeAllDrawersAndModals();
                 }
             });
 
-            // Read initial route from URL params if available
+            // Parse initial active tab from URL query params
+            this.initRouteFromUrl();
+        },
+
+        /**
+         * Retrieve localized text for given key
+         */
+        t(key) {
+            const lang = this.isRtl ? 'fa' : 'en';
+            return this.i18n[lang]?.[key] || this.i18n['en']?.[key] || key;
+        },
+
+        /**
+         * Helper to apply document direction and language code
+         */
+        applyDocumentDirection() {
+            const langCode = this.isRtl ? 'fa' : 'en';
+            const dir = this.isRtl ? 'rtl' : 'ltr';
+            document.documentElement.setAttribute('dir', dir);
+            document.documentElement.setAttribute('lang', langCode);
+
+            const appEl = document.getElementById('bankai-admin-app');
+            if (appEl) {
+                appEl.setAttribute('dir', dir);
+                if (this.isRtl) {
+                    appEl.classList.add('rtl');
+                    appEl.classList.remove('ltr');
+                } else {
+                    appEl.classList.add('ltr');
+                    appEl.classList.remove('rtl');
+                }
+            }
+        },
+
+        /**
+         * Parse initial route from URL search params
+         */
+        initRouteFromUrl() {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
                 const page = urlParams.get('page');
                 if (page === 'bankai-theme-kits') {
                     this.activeTab = 'theme-kits';
                 } else if (page === 'bankai-seo-engine') {
-                    this.activeTab = 'seo';
+                    this.activeTab = 'seo-engine';
                 } else if (page === 'bankai-speed-cache') {
-                    this.activeTab = 'speed';
+                    this.activeTab = 'speed-cache';
                 } else if (page === 'bankai-media') {
-                    this.activeTab = 'media';
+                    this.activeTab = 'media-watermark';
                 } else if (page === 'bankai-ai-manifests' || page === 'bankai-ai-studio') {
-                    this.activeTab = 'ai';
+                    this.activeTab = 'ai-studio';
                 } else if (page === 'bankai-settings') {
-                    this.activeTab = 'settings';
+                    this.activeTab = 'settings-license';
+                } else if (page === 'bankai-core') {
+                    this.activeTab = 'overview';
                 }
             } catch (err) {
-                // Ignore URL search param parsing errors
+                // Ignore URL parsing errors when sandboxed
             }
         },
 
+        /**
+         * Responsive Mobile Navigation Controls
+         */
+        toggleMobileMenu() {
+            this.mobileMenuOpen = !this.mobileMenuOpen;
+        },
+        closeMobileMenu() {
+            this.mobileMenuOpen = false;
+        },
+
+        closeAllDrawersAndModals() {
+            this.seoDrawer.show = false;
+            this.speedDrawer.show = false;
+            this.mediaDrawer.show = false;
+            this.aiDrawer.show = false;
+            this.importModal.show = false;
+            this.settingsModals.import = false;
+            this.settingsModals.reset = false;
+            this.mobileMenuOpen = false;
+        },
+
+        /**
+         * Language Switcher with Persistence and CustomEvent Dispatch
+         */
+        toggleLanguage() {
+            this.isRtl = !this.isRtl;
+            const langCode = this.isRtl ? 'fa' : 'en';
+
+            this.applyDocumentDirection();
+
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('bankai_lang', langCode);
+                }
+            } catch (e) {}
+
+            this.showToast(
+                this.isRtl ? 'زبان با موفقیت به فارسی (RTL) تغییر یافت' : 'Language successfully switched to English (LTR)',
+                'success'
+            );
+        },
+
+        toggleRtl() {
+            return this.toggleLanguage();
+        },
+
+        /**
+         * Tab Switcher & URL History Sync with Linear Progress Bar Simulation
+         *
+         * Page mapping table:
+         * - overview ➔ ?page=bankai-core
+         * - theme-kits ➔ ?page=bankai-theme-kits
+         * - seo-engine / seo ➔ ?page=bankai-seo-engine
+         * - speed-cache / speed ➔ ?page=bankai-speed-cache
+         * - media-watermark / media ➔ ?page=bankai-media
+         * - ai-studio / ai ➔ ?page=bankai-ai-studio
+         * - settings-license / settings ➔ ?page=bankai-settings
+         */
         setTab(tab) {
-            if (this.activeTab === tab) {
+            const normalizeTabMap = {
+                'seo': 'seo-engine',
+                'speed': 'speed-cache',
+                'media': 'media-watermark',
+                'ai': 'ai-studio',
+                'settings': 'settings-license'
+            };
+
+            const normalizedTab = normalizeTabMap[tab] || tab;
+
+            if (this.activeTab === normalizedTab && !this.pageLoading) {
                 this.closeMobileMenu();
                 return;
             }
 
-            // Trigger Page Transition Loader
+            // Start Linear Progress Loader
             this.pageLoading = true;
             this.pageProgress = 25;
 
@@ -478,7 +480,7 @@ function bankaiAdmin() {
             }, 60);
 
             setTimeout(() => {
-                this.activeTab = tab;
+                this.activeTab = normalizedTab;
                 this.pageProgress = 100;
                 this.closeMobileMenu();
 
@@ -488,27 +490,86 @@ function bankaiAdmin() {
                 }, 180);
             }, 200);
 
-            // Update browser history state without full page reload if supported
+            // Synchronize URL using history.replaceState
             try {
                 const pageMap = {
                     'overview': 'bankai-core',
                     'theme-kits': 'bankai-theme-kits',
-                    'seo': 'bankai-seo-engine',
-                    'speed': 'bankai-speed-cache',
-                    'media': 'bankai-media',
-                    'ai': 'bankai-ai-manifests',
-                    'settings': 'bankai-settings'
+                    'seo-engine': 'bankai-seo-engine',
+                    'speed-cache': 'bankai-speed-cache',
+                    'media-watermark': 'bankai-media',
+                    'ai-studio': 'bankai-ai-studio',
+                    'settings-license': 'bankai-settings'
                 };
-                const page = pageMap[tab] || 'bankai-core';
-                const newUrl = window.location.pathname + '?page=' + page;
-                if (window.history && window.history.pushState) {
-                    window.history.pushState({ tab: tab }, '', newUrl);
-                }
+                const pageParam = pageMap[normalizedTab] || 'bankai-core';
+                const url = new URL(window.location.href);
+                url.searchParams.set('page', pageParam);
+                window.history.replaceState({ tab: normalizedTab, page: pageParam }, '', url.toString());
             } catch (err) {
-                // Safe ignore if sandboxed inside iframe
+                // Ignore URL replace errors if sandboxed inside iframe
             }
         },
 
+        /**
+         * Generic REST API Save Settings Method
+         * Prepends restUrl if relative, sends X-WP-Nonce, manages savingLoader, and dispatches toast
+         *
+         * @param {string} endpoint API endpoint relative or absolute
+         * @param {object} payload Request payload
+         */
+        async saveSettings(endpoint, payload = {}) {
+            const bridgeData = window.bankaiData || window.bankaiCoreData || {};
+            const baseUrl = bridgeData.restUrl || '/wp-json/bankai/v1/';
+            const nonce = bridgeData.nonce || '';
+
+            let fullUrl = endpoint;
+            if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+                const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+                fullUrl = baseUrl + cleanEndpoint;
+            }
+
+            this.savingLoader.show = true;
+            this.savingLoader.state = 'saving';
+            this.savingLoader.title = this.isRtl ? 'در حال ذخیره‌سازی تغییرات...' : 'Saving Changes...';
+            this.savingLoader.message = this.isRtl ? 'در حال اعمال تنظیمات و همگام‌سازی با سرور...' : 'Applying configuration & synchronizing database...';
+
+            try {
+                const response = await fetch(fullUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': nonce
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success !== false) {
+                    this.savingLoader.state = 'saved';
+                    this.savingLoader.title = this.isRtl ? 'تغییرات با موفقیت ذخیره شد' : 'Changes Saved Successfully';
+                    this.savingLoader.message = data.message || (this.isRtl ? 'پیکربندی با موفقیت به‌روزرسانی گردید.' : 'Configuration updated and synchronized.');
+
+                    this.showToast(data.message || (this.isRtl ? 'تنظیمات با موفقیت ذخیره شد' : 'Settings saved successfully!'), 'success');
+                } else {
+                    throw new Error(data.message || data.code || 'API Error');
+                }
+            } catch (error) {
+                this.savingLoader.state = 'saved';
+                this.savingLoader.title = this.isRtl ? 'خطا در ذخیره‌سازی' : 'Error Saving Settings';
+                this.savingLoader.message = error.message;
+
+                this.showToast(error.message || (this.isRtl ? 'خطا در برقراری ارتباط با سرور' : 'Failed to save settings'), 'error');
+            } finally {
+                setTimeout(() => {
+                    this.savingLoader.show = false;
+                }, 1200);
+            }
+        },
+
+        /**
+         * Floating Loader Overlay Helper for Local Simulated Operations
+         */
         triggerSaveLoader(options = {}) {
             let config = {
                 title: this.isRtl ? 'در حال ذخیره‌سازی تغییرات...' : 'Saving Changes...',
@@ -545,33 +606,38 @@ function bankaiAdmin() {
             }, config.duration);
         },
 
+        /**
+         * Global Toast Notification System
+         * Updates Alpine state and dispatches global bankai:toast CustomEvent
+         *
+         * @param {string} msg Toast message
+         * @param {string} type Notification type ('success' | 'error' | 'warning' | 'info')
+         */
         showToast(msg, type = 'success') {
             this.toast.message = msg;
             this.toast.type = type;
             this.toast.show = true;
-            setTimeout(() => {
+
+            // Dispatch CustomEvent on window for non-Alpine external scripts
+            window.dispatchEvent(new CustomEvent('bankai:toast', {
+                detail: { message: msg, type: type }
+            }));
+
+            if (this.toastTimer) {
+                clearTimeout(this.toastTimer);
+            }
+            this.toastTimer = setTimeout(() => {
                 this.toast.show = false;
             }, 3500);
         },
 
-        // Settings & License Methods
+        // Settings & License Handlers
         async checkLicenseUpdates() {
             this.showToast(
                 this.isRtl ? 'اعتبارسنجی لایسنس انجام شد: لایسنس مادام‌العمر فعال و به‌روز است!' : 'License verified: Pro Lifetime Key is active & up-to-date!',
                 'success'
             );
-
-            try {
-                await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/license/check', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-WP-Nonce': window.bankaiData?.nonce || ''
-                    }
-                });
-            } catch (err) {
-                // Silently fallback if REST API endpoint is pending
-            }
+            await this.saveSettings('license/check', {});
         },
 
         toggleLicenseActivation() {
@@ -644,48 +710,18 @@ function bankaiAdmin() {
             );
         },
 
-        // AI Content Studio Methods
+        // AI Content Studio Handlers
         async testAiConnections() {
             this.showToast(
                 this.isRtl ? 'در حال بررسی اتصالات API مدل‌های هوش مصنوعی (OpenAI, Claude, DeepSeek, Gemini)... تمامی سرویس‌ها فعالند!' : 'Testing AI API connections (OpenAI, Claude, DeepSeek, Gemini)... All LLMs active & responsive!',
                 'success'
             );
-
-            try {
-                await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/ai/test-connections', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-WP-Nonce': window.bankaiData?.nonce || ''
-                    }
-                });
-            } catch (err) {
-                // Silently fallback if REST API endpoint is pending
-            }
+            await this.saveSettings('ai/test-connections', {});
         },
 
         async toggleAiModule(modId) {
             const newState = this.aiState[modId];
-            this.triggerSaveLoader({
-                title: this.isRtl ? `در حال تنظیم ماژول هوش مصنوعی...` : `Updating AI Module...`,
-                savedTitle: this.isRtl
-                    ? `ماژول ${modId} ${newState ? 'فعال' : 'غیرفعال'} گردید`
-                    : `AI Module '${modId}' ${newState ? 'enabled' : 'disabled'}`,
-                duration: 500
-            });
-
-            try {
-                await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/ai/toggle', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-WP-Nonce': window.bankaiData?.nonce || ''
-                    },
-                    body: JSON.stringify({ module: modId, enabled: newState ? 1 : 0 })
-                });
-            } catch (err) {
-                // Silently fallback
-            }
+            await this.saveSettings('ai/toggle', { module: modId, enabled: newState ? 1 : 0 });
         },
 
         openAiDrawer(id, title) {
@@ -694,14 +730,9 @@ function bankaiAdmin() {
             this.aiDrawer.show = true;
         },
 
-        saveAiDrawerSettings() {
+        async saveAiDrawerSettings() {
             this.aiDrawer.show = false;
-            this.triggerSaveLoader({
-                title: this.isRtl ? `در حال ذخیره‌سازی پرامپت ${this.aiDrawer.title}...` : `Saving ${this.aiDrawer.title}...`,
-                message: this.isRtl ? 'در حال ثبت دستورالعمل‌ها و پارامترهای LLM در مانیفست سرور...' : 'Saving system instructions & LLM parameters to server manifest...',
-                savedTitle: this.isRtl ? `قالب پرامپت ${this.aiDrawer.title} با موفقیت ذخیره گردید` : `Prompt rules for '${this.aiDrawer.title}' saved successfully!`,
-                duration: 650
-            });
+            await this.saveSettings('ai/save-drawer', { id: this.aiDrawer.id, title: this.aiDrawer.title });
         },
 
         async generateAiPrompt() {
@@ -714,10 +745,14 @@ function bankaiAdmin() {
             }
             this.aiSandbox.isGenerating = true;
             this.aiSandbox.aiResult = '';
+
+            const bridgeData = window.bankaiData || window.bankaiCoreData || {};
+            const baseUrl = bridgeData.restUrl || '/wp-json/bankai/v1/';
+
             try {
-                const res = await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/ai/generate', {
+                const res = await fetch(baseUrl + 'ai/generate', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': bridgeData.nonce || '' },
                     body: JSON.stringify({ prompt: this.aiSandbox.promptInput, model: this.aiStudio.defaultModel })
                 });
                 const data = await res.json();
@@ -731,7 +766,7 @@ function bankaiAdmin() {
             }
         },
 
-        // Media & Watermark Studio Methods
+        // Media & Watermark Studio Handlers
         getWatermarkPositionStyle() {
             const pos = this.watermarkStudio.position;
             let style = '';
@@ -750,22 +785,7 @@ function bankaiAdmin() {
         },
 
         async bulkConvertMedia() {
-            this.showToast(
-                this.isRtl ? 'فرایند تبدیل همزمان فایل‌ها به WebP/AVIF آغاز گردید...' : 'Bulk converting media library to WebP & AVIF...',
-                'success'
-            );
-
-            try {
-                await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/media/bulk-convert', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-WP-Nonce': window.bankaiData?.nonce || ''
-                    }
-                });
-            } catch (err) {
-                // Silently fallback if REST API endpoint is pending
-            }
+            await this.saveSettings('media/bulk-convert', {});
         },
 
         regenerateThumbnails() {
@@ -777,26 +797,7 @@ function bankaiAdmin() {
 
         async toggleMediaModule(modId) {
             const newState = this.mediaState[modId];
-            this.triggerSaveLoader({
-                title: this.isRtl ? `در حال به‌روزرسانی ماژول رسانه...` : `Updating Media Module...`,
-                savedTitle: this.isRtl
-                    ? `ماژول ${modId} ${newState ? 'فعال' : 'غیرفعال'} گردید`
-                    : `Media Module '${modId}' ${newState ? 'enabled' : 'disabled'}`,
-                duration: 500
-            });
-
-            try {
-                await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/media/toggle', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-WP-Nonce': window.bankaiData?.nonce || ''
-                    },
-                    body: JSON.stringify({ module: modId, enabled: newState ? 1 : 0 })
-                });
-            } catch (err) {
-                // Silently fallback
-            }
+            await this.saveSettings('media/toggle', { module: modId, enabled: newState ? 1 : 0 });
         },
 
         openMediaDrawer(id, title) {
@@ -805,36 +806,14 @@ function bankaiAdmin() {
             this.mediaDrawer.show = true;
         },
 
-        saveMediaDrawerSettings() {
+        async saveMediaDrawerSettings() {
             this.mediaDrawer.show = false;
-            this.triggerSaveLoader({
-                title: this.isRtl ? `در حال ذخیره‌سازی تنظیمات ${this.mediaDrawer.title}...` : `Saving ${this.mediaDrawer.title}...`,
-                message: this.isRtl ? 'در حال اعمال الگوهای گرافیکی و قوانین فشرده‌سازی در سرور...' : 'Applying image rules, watermark coordinates & formats to options...',
-                savedTitle: this.isRtl ? `تنظیمات ${this.mediaDrawer.title} با موفقیت ذخیره گردید` : `Settings for '${this.mediaDrawer.title}' saved!`,
-                duration: 650
-            });
+            await this.saveSettings('media/save-drawer', { id: this.mediaDrawer.id, watermark: this.watermarkStudio });
         },
 
-        // Speed & Cache Methods
+        // Speed & Cache Handlers
         async purgeAllCaches() {
-            this.triggerSaveLoader({
-                title: this.isRtl ? 'در حال پاکسازی کامل کش‌های سرور...' : 'Purging All Server & Edge Caches...',
-                message: this.isRtl ? 'در حال تخلیه حافظه HTML، بافرهای Redis، Varnish و فایل‌های استاتیک...' : 'Clearing page cache, Redis objects, Varnish, and minified bundles...',
-                savedTitle: this.isRtl ? 'تمامی کش‌ها با موفقیت پاکسازی شدند!' : 'All caches purged successfully!',
-                duration: 750
-            });
-
-            try {
-                await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/speed/purge', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-WP-Nonce': window.bankaiData?.nonce || ''
-                    }
-                });
-            } catch (err) {
-                // Silently fallback if REST API endpoint is pending
-            }
+            await this.saveSettings('speed/purge', {});
         },
 
         benchmarkVitals() {
@@ -857,26 +836,7 @@ function bankaiAdmin() {
 
         async toggleSpeedModule(modId) {
             const newState = this.speedState[modId];
-            this.triggerSaveLoader({
-                title: this.isRtl ? `در حال به‌روزرسانی ماژول سرعت...` : `Updating Speed Module...`,
-                savedTitle: this.isRtl
-                    ? `ماژول ${modId} ${newState ? 'فعال' : 'غیرفعال'} گردید`
-                    : `Speed Module '${modId}' ${newState ? 'enabled' : 'disabled'}`,
-                duration: 500
-            });
-
-            try {
-                await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/speed/toggle', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-WP-Nonce': window.bankaiData?.nonce || ''
-                    },
-                    body: JSON.stringify({ module: modId, enabled: newState ? 1 : 0 })
-                });
-            } catch (err) {
-                // Silently fallback
-            }
+            await this.saveSettings('speed/toggle', { module: modId, enabled: newState ? 1 : 0 });
         },
 
         openSpeedDrawer(id, title) {
@@ -885,39 +845,15 @@ function bankaiAdmin() {
             this.speedDrawer.show = true;
         },
 
-        saveSpeedDrawerSettings() {
+        async saveSpeedDrawerSettings() {
             this.speedDrawer.show = false;
-            this.triggerSaveLoader({
-                title: this.isRtl ? `در حال اعمال تنظیمات ${this.speedDrawer.title}...` : `Saving ${this.speedDrawer.title}...`,
-                message: this.isRtl ? 'در حال بازسازی قوانین وب‌سرور، فایل .htaccess و بافرها...' : 'Writing web server rules, .htaccess directives & cache levels...',
-                savedTitle: this.isRtl ? `تنظیمات ${this.speedDrawer.title} با موفقیت ذخیره گردید` : `Settings for '${this.speedDrawer.title}' saved!`,
-                duration: 650
-            });
+            await this.saveSettings('speed/save-drawer', { id: this.speedDrawer.id });
         },
 
-        // SEO Engine Methods
+        // SEO Engine Handlers
         async toggleSeoModule(modId) {
             const newState = this.seoState[modId];
-            this.triggerSaveLoader({
-                title: this.isRtl ? `در حال به‌روزرسانی ماژول سئو...` : `Updating SEO Module...`,
-                savedTitle: this.isRtl
-                    ? `ماژول ${modId} ${newState ? 'فعال' : 'غیرفعال'} گردید`
-                    : `SEO Module '${modId}' ${newState ? 'enabled' : 'disabled'}`,
-                duration: 500
-            });
-
-            try {
-                await fetch((window.bankaiData?.restUrl || '/wp-json/bankai/v1') + '/seo/toggle', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-WP-Nonce': window.bankaiData?.nonce || ''
-                    },
-                    body: JSON.stringify({ module: modId, enabled: newState ? 1 : 0 })
-                });
-            } catch (err) {
-                // Silently fallback if rest API endpoint is pending
-            }
+            await this.saveSettings('seo/toggle', { module: modId, enabled: newState ? 1 : 0 });
         },
 
         runSeoAudit() {
@@ -942,14 +878,9 @@ function bankaiAdmin() {
             this.seoDrawer.show = true;
         },
 
-        saveSeoDrawerSettings() {
+        async saveSeoDrawerSettings() {
             this.seoDrawer.show = false;
-            this.triggerSaveLoader({
-                title: this.isRtl ? `در حال ذخیره‌سازی تنظیمات ${this.seoDrawer.title}...` : `Saving ${this.seoDrawer.title}...`,
-                message: this.isRtl ? 'در حال کامپایل گراف‌های معنایی و ذخیره اسکیمای JSON-LD...' : 'Compiling semantic entities and saving JSON-LD schema...',
-                savedTitle: this.isRtl ? `تنظیمات ${this.seoDrawer.title} با موفقیت ذخیره گردید` : `Settings for '${this.seoDrawer.title}' saved!`,
-                duration: 650
-            });
+            await this.saveSettings('seo/save-drawer', { id: this.seoDrawer.id });
         },
 
         syncLibrary() {
@@ -1003,10 +934,10 @@ function bankaiAdmin() {
     };
 }
 
-// Assign to window for direct evaluation
+// Assign constructor function to window
 window.bankaiAdmin = bankaiAdmin;
 
-// Global helper bindings so any test or script can call them directly
+// Global helper bindings for PHP tags or inline script calls
 window.setTab = function(tab) {
     if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.setTab === 'function') {
         return window.bankaiAdminInstance.setTab(tab);
@@ -1047,7 +978,7 @@ window.toggleLanguage = function() {
 };
 window.toggleRtl = window.toggleLanguage;
 
-// Register with Alpine data repository if Alpine is already present or upon alpine:init
+// Register Alpine component immediately or on alpine:init
 if (window.Alpine) {
     window.Alpine.data('bankaiAdmin', bankaiAdmin);
 }

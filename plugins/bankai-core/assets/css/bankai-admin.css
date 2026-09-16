@@ -1,13 +1,22 @@
 /* ==========================================================================
-   Bankai Core - GitHub Light Ecosystem Theme (Primer Design System)
+   Bankai Core - High-Performance Admin Dashboard Stylesheet
+   ==========================================================================
+   Fully Scoped Architecture for WordPress Admin SPA.
+   Prevents Flash of Unstyled Content (FOUC), ensures zero leakage into
+   WordPress core UI (#wpadminbar, #adminmenu), provides native RTL/LTR
+   support, and delivers executive-level UI components.
    ========================================================================== */
 
-/* Global x-cloak to prevent layout flicker */
+/* --------------------------------------------------------------------------
+   0. FOUC Prevention & Global Hidden Utilities
+   -------------------------------------------------------------------------- */
 [x-cloak] {
   display: none !important;
 }
 
-/* WP Admin body & container light background normalization */
+/* --------------------------------------------------------------------------
+   1. WordPress Admin Canvas & Top-Level Page Normalization
+   -------------------------------------------------------------------------- */
 .toplevel_page_bankai-core,
 .toplevel_page_bankai-core #wpwrap,
 .toplevel_page_bankai-core #wpcontent,
@@ -49,10 +58,13 @@
   padding-bottom: 0 !important;
 }
 
+/* --------------------------------------------------------------------------
+   2. Scoped Design Tokens & Base Container (#bankai-admin-app / .bankai-app-wrapper)
+   -------------------------------------------------------------------------- */
 #bankai-admin-app,
 .bankai-app-wrapper,
 .bankai-admin-wrap {
-  /* GitHub Light (Primer) Design Tokens */
+  /* GitHub Primer Light Design Tokens */
   --gh-canvas-default: #FFFFFF;
   --gh-canvas-subtle: #F6F8FA;
   --gh-canvas-inset: #F6F8FA;
@@ -92,7 +104,7 @@
   --gh-done-muted: rgba(130, 80, 223, 0.15);
   --gh-done-subtle: #FBEFFF;
 
-  /* Backward Compatible / Framework Aliases */
+  /* Legacy / Backward Compatible Token Aliases */
   --bankai-bg-main: #F6F8FA;
   --bankai-bg-surface: #FFFFFF;
   --bankai-bg-subtle: #F6F8FA;
@@ -127,28 +139,42 @@
   z-index: 1;
 }
 
-/* RTL Support for main container */
-[dir="rtl"] #bankai-admin-app,
-[dir="rtl"] .bankai-app-wrapper,
-[dir="rtl"] .bankai-admin-wrap,
-body.rtl #bankai-admin-app,
-body.rtl .bankai-app-wrapper,
-body.rtl .bankai-admin-wrap {
-  margin: 0;
-  font-family: 'Vazirmatn', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
-}
-
 #bankai-admin-app *,
 .bankai-app-wrapper *,
 .bankai-admin-wrap * {
   box-sizing: border-box;
 }
 
-/* ==========================================================================
-   Background Ambient Elements & Floating Animations
-   ========================================================================== */
+/* --------------------------------------------------------------------------
+   3. RTL / LTR Class & Direction Support
+   -------------------------------------------------------------------------- */
+#bankai-admin-app.rtl,
+.bankai-app-wrapper.rtl,
+.bankai-admin-wrap.rtl,
+[dir="rtl"] #bankai-admin-app,
+[dir="rtl"] .bankai-app-wrapper,
+[dir="rtl"] .bankai-admin-wrap {
+  direction: rtl;
+  text-align: right;
+  font-family: 'Vazirmatn', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
 
-.bankai-bg-decorations {
+#bankai-admin-app.ltr,
+.bankai-app-wrapper.ltr,
+.bankai-admin-wrap.ltr,
+[dir="ltr"] #bankai-admin-app,
+[dir="ltr"] .bankai-app-wrapper,
+[dir="ltr"] .bankai-admin-wrap {
+  direction: ltr;
+  text-align: left;
+  font-family: 'Inter', 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* --------------------------------------------------------------------------
+   4. Background Ambient Decorations & Floating Animations
+   -------------------------------------------------------------------------- */
+#bankai-admin-app .bankai-bg-decorations,
+.bankai-app-wrapper .bankai-bg-decorations {
   position: fixed;
   top: 0;
   left: 0;
@@ -159,8 +185,8 @@ body.rtl .bankai-admin-wrap {
   overflow: hidden;
 }
 
-/* GitHub Subtle Dot Grid Matrix */
-.bankai-ambient-grid {
+#bankai-admin-app .bankai-ambient-grid,
+.bankai-app-wrapper .bankai-ambient-grid {
   position: absolute;
   inset: 0;
   background-image: radial-gradient(rgba(31, 35, 40, 0.08) 1px, transparent 1px);
@@ -170,8 +196,8 @@ body.rtl .bankai-admin-wrap {
   opacity: 0.85;
 }
 
-/* Ambient Floating Glowing Orbs (Soft, non-intrusive blurs) */
-.bankai-ambient-orb {
+#bankai-admin-app .bankai-ambient-orb,
+.bankai-app-wrapper .bankai-ambient-orb {
   position: absolute;
   border-radius: 50%;
   filter: blur(85px);
@@ -179,8 +205,8 @@ body.rtl .bankai-admin-wrap {
   will-change: transform;
 }
 
-/* Blue Aurora Orb (Top-Right) */
-.bankai-orb-1 {
+#bankai-admin-app .bankai-orb-1,
+.bankai-app-wrapper .bankai-orb-1 {
   top: -80px;
   right: 12%;
   width: 520px;
@@ -189,8 +215,8 @@ body.rtl .bankai-admin-wrap {
   animation: floatOrb1 20s ease-in-out infinite alternate;
 }
 
-/* Purple Aurora Orb (Center-Left) */
-.bankai-orb-2 {
+#bankai-admin-app .bankai-orb-2,
+.bankai-app-wrapper .bankai-orb-2 {
   top: 32%;
   left: 4%;
   width: 460px;
@@ -199,8 +225,8 @@ body.rtl .bankai-admin-wrap {
   animation: floatOrb2 24s ease-in-out infinite alternate;
 }
 
-/* Green Aurora Orb (Bottom-Right) */
-.bankai-orb-3 {
+#bankai-admin-app .bankai-orb-3,
+.bankai-app-wrapper .bankai-orb-3 {
   bottom: 4%;
   right: 28%;
   width: 440px;
@@ -227,35 +253,36 @@ body.rtl .bankai-admin-wrap {
   100% { transform: translate(35px, 25px) scale(0.95); }
 }
 
-/* Sparkle Floating Micro-Particles */
-.bankai-ambient-particles {
+#bankai-admin-app .bankai-ambient-particles,
+.bankai-app-wrapper .bankai-ambient-particles {
   position: absolute;
   inset: 0;
 }
 
-.bankai-particle {
+#bankai-admin-app .bankai-particle,
+.bankai-app-wrapper .bankai-particle {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
   animation: particleFloatPulse 5s ease-in-out infinite alternate;
 }
 
-.p-1 { top: 18%; left: 22%; width: 4px; height: 4px; background: #0969DA; opacity: 0.35; animation-delay: 0s; }
-.p-2 { top: 32%; right: 18%; width: 5px; height: 5px; background: #8250DF; opacity: 0.3; animation-delay: 1.5s; }
-.p-3 { top: 68%; left: 14%; width: 4px; height: 4px; background: #1F883D; opacity: 0.32; animation-delay: 2.8s; }
-.p-4 { top: 82%; right: 26%; width: 5px; height: 5px; background: #0969DA; opacity: 0.28; animation-delay: 1s; }
-.p-5 { top: 48%; right: 42%; width: 4px; height: 4px; background: #9A6700; opacity: 0.35; animation-delay: 2s; }
+#bankai-admin-app .p-1 { top: 18%; left: 22%; width: 4px; height: 4px; background: #0969DA; opacity: 0.35; animation-delay: 0s; }
+#bankai-admin-app .p-2 { top: 32%; right: 18%; width: 5px; height: 5px; background: #8250DF; opacity: 0.3; animation-delay: 1.5s; }
+#bankai-admin-app .p-3 { top: 68%; left: 14%; width: 4px; height: 4px; background: #1F883D; opacity: 0.32; animation-delay: 2.8s; }
+#bankai-admin-app .p-4 { top: 82%; right: 26%; width: 5px; height: 5px; background: #0969DA; opacity: 0.28; animation-delay: 1s; }
+#bankai-admin-app .p-5 { top: 48%; right: 42%; width: 4px; height: 4px; background: #9A6700; opacity: 0.35; animation-delay: 2s; }
 
 @keyframes particleFloatPulse {
   0% { transform: scale(1) translateY(0); opacity: 0.2; }
   100% { transform: scale(1.5) translateY(-14px); opacity: 0.55; }
 }
 
-/* ==========================================================================
-   Floating Layout Architecture (GitHub Light Island Concept)
-   ========================================================================== */
-
-.bankai-body-layout {
+/* --------------------------------------------------------------------------
+   5. Layout Architecture & Sidebar Styling
+   -------------------------------------------------------------------------- */
+#bankai-admin-app .bankai-body-layout,
+.bankai-app-wrapper .bankai-body-layout {
   display: flex;
   gap: 24px;
   padding: 24px 28px 36px 28px;
@@ -265,7 +292,8 @@ body.rtl .bankai-admin-wrap {
   position: relative;
 }
 
-#bankai-main-content {
+#bankai-admin-app #bankai-main-content,
+.bankai-app-wrapper #bankai-main-content {
   flex: 1;
   min-width: 0;
   box-sizing: border-box;
@@ -273,12 +301,13 @@ body.rtl .bankai-admin-wrap {
   z-index: 1;
 }
 
-/* Tab Entrance Animations */
-[id^="tab-"] {
-  animation: tabEntrance 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* Tab Entrance Animation */
+#bankai-admin-app [id^="tab-"],
+.bankai-app-wrapper [id^="tab-"] {
+  animation: bankaiTabEntrance 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes tabEntrance {
+@keyframes bankaiTabEntrance {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -290,8 +319,7 @@ body.rtl .bankai-admin-wrap {
 }
 
 #bankai-admin-app .bankai-sidebar,
-.bankai-app-wrapper .bankai-sidebar,
-.bankai-admin-wrap .bankai-sidebar {
+.bankai-app-wrapper .bankai-sidebar {
   width: 100%;
   background-color: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(14px);
@@ -311,8 +339,7 @@ body.rtl .bankai-admin-wrap {
 
 @media (min-width: 1025px) {
   #bankai-admin-app .bankai-sidebar,
-  .bankai-app-wrapper .bankai-sidebar,
-  .bankai-admin-wrap .bankai-sidebar {
+  .bankai-app-wrapper .bankai-sidebar {
     width: 275px;
     min-width: 275px;
     position: sticky;
@@ -322,19 +349,14 @@ body.rtl .bankai-admin-wrap {
   }
 }
 
-@media (max-width: 1024px) {
-  .bankai-body-layout {
-    padding: 14px 16px 24px 16px;
-    gap: 0;
-  }
-}
-
-/* Sidebar Navigation Items - GitHub Primer style */
-.bankai-nav-group {
+/* Sidebar Navigation Items */
+#bankai-admin-app .bankai-nav-group,
+.bankai-app-wrapper .bankai-nav-group {
   margin-bottom: 16px;
 }
 
-.bankai-nav-group-title {
+#bankai-admin-app .bankai-nav-group-title,
+.bankai-app-wrapper .bankai-nav-group-title {
   font-size: 11px;
   font-weight: 700;
   color: #656D76;
@@ -343,7 +365,8 @@ body.rtl .bankai-admin-wrap {
   padding: 4px 12px 6px 12px;
 }
 
-.bankai-nav-btn {
+#bankai-admin-app .bankai-nav-btn,
+.bankai-app-wrapper .bankai-nav-btn {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -361,24 +384,29 @@ body.rtl .bankai-admin-wrap {
   position: relative;
 }
 
-.bankai-nav-btn:hover {
+#bankai-admin-app .bankai-nav-btn:hover,
+.bankai-app-wrapper .bankai-nav-btn:hover {
   background-color: #F6F8FA;
   color: #0969DA;
 }
 
-.bankai-nav-btn.active {
+#bankai-admin-app .bankai-nav-btn.active,
+.bankai-app-wrapper .bankai-nav-btn.active {
   background-color: rgba(9, 105, 218, 0.08);
   color: #0969DA;
   font-weight: 700;
   border-left: 3px solid #0969DA;
 }
 
-[dir="rtl"] .bankai-nav-btn.active {
+#bankai-admin-app.rtl .bankai-nav-btn.active,
+.bankai-app-wrapper.rtl .bankai-nav-btn.active,
+[dir="rtl"] #bankai-admin-app .bankai-nav-btn.active {
   border-left: none;
   border-right: 3px solid #0969DA;
 }
 
-.bankai-nav-icon {
+#bankai-admin-app .bankai-nav-icon,
+.bankai-app-wrapper .bankai-nav-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -392,21 +420,24 @@ body.rtl .bankai-admin-wrap {
   border: 1px solid #EAEFF2;
 }
 
-.bankai-nav-btn:hover .bankai-nav-icon {
+#bankai-admin-app .bankai-nav-btn:hover .bankai-nav-icon,
+.bankai-app-wrapper .bankai-nav-btn:hover .bankai-nav-icon {
   background-color: #FFFFFF;
   color: #0969DA;
   border-color: #D0D7DE;
   box-shadow: 0 1px 2px rgba(31, 35, 40, 0.06);
 }
 
-.bankai-nav-btn.active .bankai-nav-icon {
+#bankai-admin-app .bankai-nav-btn.active .bankai-nav-icon,
+.bankai-app-wrapper .bankai-nav-btn.active .bankai-nav-icon {
   background-color: #FFFFFF;
   color: #0969DA;
   border-color: rgba(9, 105, 218, 0.3);
   box-shadow: 0 1px 3px rgba(9, 105, 218, 0.15);
 }
 
-.bankai-nav-badge {
+#bankai-admin-app .bankai-nav-badge,
+.bankai-app-wrapper .bankai-nav-badge {
   font-size: 10px;
   font-weight: 700;
   padding: 2px 7px;
@@ -416,11 +447,11 @@ body.rtl .bankai-admin-wrap {
   border: 1px solid transparent;
 }
 
-/* ==========================================================================
-   Solar Broken Icon Styles
-   ========================================================================== */
-
-.solar-icon {
+/* --------------------------------------------------------------------------
+   6. Icons (Solar SVG System)
+   -------------------------------------------------------------------------- */
+#bankai-admin-app .solar-icon,
+.bankai-app-wrapper .solar-icon {
   display: inline-block;
   vertical-align: middle;
   width: 20px;
@@ -433,26 +464,20 @@ body.rtl .bankai-admin-wrap {
   flex-shrink: 0;
 }
 
-.solar-icon-sm {
-  width: 16px;
-  height: 16px;
-}
+#bankai-admin-app .solar-icon-sm,
+.bankai-app-wrapper .solar-icon-sm { width: 16px; height: 16px; }
 
-.solar-icon-lg {
-  width: 24px;
-  height: 24px;
-}
+#bankai-admin-app .solar-icon-lg,
+.bankai-app-wrapper .solar-icon-lg { width: 24px; height: 24px; }
 
-.solar-icon-xl {
-  width: 28px;
-  height: 28px;
-}
+#bankai-admin-app .solar-icon-xl,
+.bankai-app-wrapper .solar-icon-xl { width: 28px; height: 28px; }
 
-/* ==========================================================================
-   Modern GitHub Light Cards & Components
-   ========================================================================== */
-
-.bankai-card {
+/* --------------------------------------------------------------------------
+   7. Scoped Cards, Buttons & Interactive UI Components
+   -------------------------------------------------------------------------- */
+#bankai-admin-app .bankai-card,
+.bankai-app-wrapper .bankai-card {
   background-color: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -465,25 +490,28 @@ body.rtl .bankai-admin-wrap {
   position: relative;
 }
 
-.bankai-card:hover {
+#bankai-admin-app .bankai-card:hover,
+.bankai-app-wrapper .bankai-card:hover {
   border-color: #8C959F;
   box-shadow: 0 3px 12px rgba(31, 35, 40, 0.07);
 }
 
-.bankai-card-interactive:hover {
+#bankai-admin-app .bankai-card-interactive:hover,
+.bankai-app-wrapper .bankai-card-interactive:hover {
   border-color: #0969DA;
   transform: translateY(-2px);
   box-shadow: 0 10px 24px -4px rgba(9, 105, 218, 0.12), 0 3px 8px rgba(31, 35, 40, 0.06);
 }
 
-.bankai-card-subtle {
+#bankai-admin-app .bankai-card-subtle,
+.bankai-app-wrapper .bankai-card-subtle {
   background-color: #F6F8FA;
   border: 1px solid #D0D7DE;
   border-radius: 8px;
 }
 
-/* GitHub Primer Buttons */
-.bankai-btn {
+#bankai-admin-app .bankai-btn,
+.bankai-app-wrapper .bankai-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -496,39 +524,50 @@ body.rtl .bankai-admin-wrap {
   box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
 }
 
-.bankai-btn:active {
+#bankai-admin-app .bankai-btn:active,
+.bankai-app-wrapper .bankai-btn:active {
   transform: scale(0.98);
 }
 
-.bankai-btn-primary {
+#bankai-admin-app .bankai-btn-primary,
+.bankai-app-wrapper .bankai-btn-primary {
   background-color: #1F883D;
   border: 1px solid rgba(31, 35, 40, 0.15);
   color: #FFFFFF;
   box-shadow: 0 1px 0 rgba(31, 35, 40, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-.bankai-btn-primary:hover {
+#bankai-admin-app .bankai-btn-primary:hover,
+.bankai-app-wrapper .bankai-btn-primary:hover {
   background-color: #1A7F37;
 }
 
-.bankai-btn-default {
+#bankai-admin-app .bankai-btn-default,
+.bankai-app-wrapper .bankai-btn-default {
   background-color: #F6F8FA;
   border: 1px solid #D0D7DE;
   color: #24292F;
 }
 
-.bankai-btn-default:hover {
+#bankai-admin-app .bankai-btn-default:hover,
+.bankai-app-wrapper .bankai-btn-default:hover {
   background-color: #F3F4F6;
   border-color: #8C959F;
 }
 
-/* GitHub Primer Inputs & Controls */
-input[type="text"],
-input[type="password"],
-input[type="number"],
-input[type="search"],
-select,
-textarea {
+/* Scoped Form Inputs & Select Controls */
+#bankai-admin-app input[type="text"],
+#bankai-admin-app input[type="password"],
+#bankai-admin-app input[type="number"],
+#bankai-admin-app input[type="search"],
+#bankai-admin-app select,
+#bankai-admin-app textarea,
+.bankai-app-wrapper input[type="text"],
+.bankai-app-wrapper input[type="password"],
+.bankai-app-wrapper input[type="number"],
+.bankai-app-wrapper input[type="search"],
+.bankai-app-wrapper select,
+.bankai-app-wrapper textarea {
   background-color: #FFFFFF;
   border: 1px solid #D0D7DE;
   color: #1F2328;
@@ -539,29 +578,35 @@ textarea {
   box-shadow: inset 0 1px 2px rgba(31, 35, 40, 0.06);
 }
 
-input:focus,
-select:focus,
-textarea:focus {
+#bankai-admin-app input:focus,
+#bankai-admin-app select:focus,
+#bankai-admin-app textarea:focus,
+.bankai-app-wrapper input:focus,
+.bankai-app-wrapper select:focus,
+.bankai-app-wrapper textarea:focus {
   outline: none;
   border-color: #0969DA !important;
   box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.28) !important;
 }
 
-/* Toggle Switch styling - GitHub Primer Green/Blue */
-.bankai-switch {
+/* Scoped Toggle Switch Components */
+#bankai-admin-app .bankai-switch,
+.bankai-app-wrapper .bankai-switch {
   position: relative;
   display: inline-block;
   width: 38px;
   height: 22px;
 }
 
-.bankai-switch input {
+#bankai-admin-app .bankai-switch input,
+.bankai-app-wrapper .bankai-switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
 
-.bankai-slider {
+#bankai-admin-app .bankai-slider,
+.bankai-app-wrapper .bankai-slider {
   position: absolute;
   cursor: pointer;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -570,7 +615,8 @@ textarea:focus {
   transition: .22s;
 }
 
-.bankai-slider:before {
+#bankai-admin-app .bankai-slider:before,
+.bankai-app-wrapper .bankai-slider:before {
   position: absolute;
   content: "";
   height: 16px;
@@ -583,299 +629,56 @@ textarea:focus {
   transition: .22s;
 }
 
-[dir="rtl"] .bankai-slider:before {
+#bankai-admin-app.rtl .bankai-slider:before,
+.bankai-app-wrapper.rtl .bankai-slider:before,
+[dir="rtl"] #bankai-admin-app .bankai-slider:before {
   left: auto;
   right: 3px;
 }
 
-.bankai-switch input:checked + .bankai-slider {
+#bankai-admin-app .bankai-switch input:checked + .bankai-slider,
+.bankai-app-wrapper .bankai-switch input:checked + .bankai-slider {
   background-color: #1F883D;
 }
 
-.bankai-switch input:checked + .bankai-slider:before {
+#bankai-admin-app .bankai-switch input:checked + .bankai-slider:before,
+.bankai-app-wrapper .bankai-switch input:checked + .bankai-slider:before {
   transform: translateX(16px);
 }
 
-[dir="rtl"] .bankai-switch input:checked + .bankai-slider:before {
+#bankai-admin-app.rtl .bankai-switch input:checked + .bankai-slider:before,
+.bankai-app-wrapper.rtl .bankai-switch input:checked + .bankai-slider:before,
+[dir="rtl"] #bankai-admin-app .bankai-switch input:checked + .bankai-slider:before {
   transform: translateX(-16px);
 }
 
-/* Custom Scrollbars in GitHub Primer tones */
-::-webkit-scrollbar {
+/* Scoped Scrollbars */
+#bankai-admin-app ::-webkit-scrollbar,
+.bankai-app-wrapper ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-::-webkit-scrollbar-track {
+#bankai-admin-app ::-webkit-scrollbar-track,
+.bankai-app-wrapper ::-webkit-scrollbar-track {
   background: #F6F8FA;
 }
 
-::-webkit-scrollbar-thumb {
+#bankai-admin-app ::-webkit-scrollbar-thumb,
+.bankai-app-wrapper ::-webkit-scrollbar-thumb {
   background: #D0D7DE;
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
+#bankai-admin-app ::-webkit-scrollbar-thumb:hover,
+.bankai-app-wrapper ::-webkit-scrollbar-thumb:hover {
   background: #8C959F;
 }
 
-/* Toast Notice - GitHub Primer Style */
-.bankai-toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 99999;
-  max-width: 440px;
-  padding: 12px 18px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 13px;
-  box-shadow: 0 10px 30px -5px rgba(31, 35, 40, 0.18);
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-[dir="rtl"] .bankai-toast {
-  right: auto;
-  left: 24px;
-}
-
-.bankai-toast-success {
-  background-color: #FFFFFF;
-  color: #1A7F37;
-  border: 1px solid #ACEBBB;
-  border-left: 4px solid #1F883D;
-}
-
-[dir="rtl"] .bankai-toast-success {
-  border-left: 1px solid #ACEBBB;
-  border-right: 4px solid #1F883D;
-}
-
-.bankai-toast-error {
-  background-color: #FFFFFF;
-  color: #CF222E;
-  border: 1px solid #FF8182;
-  border-left: 4px solid #CF222E;
-}
-
-[dir="rtl"] .bankai-toast-error {
-  border-left: 1px solid #FF8182;
-  border-right: 4px solid #CF222E;
-}
-
-/* Modal Drawer Overlay */
-.bankai-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(31, 35, 40, 0.45);
-  backdrop-filter: blur(6px);
-  z-index: 99990;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ==========================================================================
-   Responsive Grid & Architecture System
-   ========================================================================== */
-
-.bankai-grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.bankai-grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.bankai-grid-2 {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.bankai-grid-split {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 20px;
-}
-
-/* Responsive Breakpoints */
-@media (max-width: 1200px) {
-  .bankai-grid-4 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 1024px) {
-  .bankai-grid-split {
-    grid-template-columns: 1fr;
-  }
-  .bankai-grid-3 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .bankai-grid-4,
-  .bankai-grid-3,
-  .bankai-grid-2,
-  .bankai-grid-split {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Mobile Sidebar Drawer System */
-.bankai-mobile-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background-color: rgba(31, 35, 40, 0.5);
-  backdrop-filter: blur(5px);
-  z-index: 9990;
-  transition: opacity 0.3s ease;
-}
-
-@media (max-width: 1024px) {
-  .bankai-body-layout {
-    z-index: auto !important;
-  }
-
-  .bankai-mobile-overlay {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background-color: rgba(31, 35, 40, 0.48);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 9998 !important;
-    transition: opacity 0.25s ease;
-  }
-
-  .bankai-sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    z-index: 9999 !important;
-    width: 300px !important;
-    max-width: 86vw !important;
-    height: 100vh !important;
-    transform: translateX(-100%);
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    box-shadow: 6px 0 32px rgba(31, 35, 40, 0.28) !important;
-    overflow-y: auto;
-    background-color: #FFFFFF !important;
-    border-radius: 0 14px 14px 0 !important;
-  }
-
-  [dir="rtl"] .bankai-sidebar {
-    left: auto !important;
-    right: 0 !important;
-    transform: translateX(100%);
-    border-radius: 14px 0 0 14px !important;
-    box-shadow: -6px 0 32px rgba(31, 35, 40, 0.28) !important;
-  }
-
-  .bankai-sidebar.mobile-open {
-    transform: translateX(0) !important;
-  }
-
-  #bankai-main-content {
-    padding: 16px 14px !important;
-  }
-}
-
-/* Mobile Menu Hamburger Button */
-.bankai-mobile-btn {
-  display: none;
-  background-color: #FFFFFF;
-  border: 1px solid #D0D7DE;
-  color: #1F2328;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(31, 35, 40, 0.05);
-}
-
-.bankai-mobile-btn:hover {
-  background-color: #F6F8FA;
-  border-color: #0969DA;
-  color: #0969DA;
-}
-
-@media (max-width: 1024px) {
-  .bankai-mobile-btn {
-    display: flex;
-  }
-}
-
-/* Slide-over Drawer Responsiveness */
-.bankai-drawer-container {
-  width: 500px;
-  max-width: 100vw;
-}
-
-@media (max-width: 640px) {
-  .bankai-drawer-container {
-    width: 100vw !important;
-  }
-}
-
-/* Persian Font Refinements */
-[dir="rtl"] {
-  direction: rtl;
-  text-align: right;
-}
-
-[dir="rtl"] body,
-[dir="rtl"] button,
-[dir="rtl"] input,
-[dir="rtl"] select,
-[dir="rtl"] textarea {
-  font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  letter-spacing: 0 !important;
-}
-
-/* Responsive Header Toolbar */
-@media (max-width: 768px) {
-  #bankai-admin-header {
-    flex-direction: column;
-    align-items: flex-start !important;
-    gap: 14px;
-    padding: 12px 16px !important;
-  }
-
-  .bankai-header-actions {
-    width: 100%;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px !important;
-  }
-
-  .bankai-header-actions button,
-  .bankai-header-actions a {
-    flex: 1 1 auto;
-    justify-content: center;
-  }
-}
-
-/* ==========================================================================
-   Page Switch & Settings Save Loaders (GitHub Primer Edition)
-   ========================================================================== */
-
-/* 1. Global Page Switch Progress Bar */
+/* --------------------------------------------------------------------------
+   8. Page Progress Track & Saving Loader Floating Card
+   -------------------------------------------------------------------------- */
+/* Linear Page Switch Loader Bar */
 .bankai-page-progress-track {
   position: fixed;
   top: 0;
@@ -899,8 +702,9 @@ textarea:focus {
   border-radius: 2px 0 0 2px;
 }
 
-/* 2. Tab Loading Overlay */
-.bankai-tab-loading-overlay {
+/* Section Tab Loading Overlay */
+#bankai-admin-app .bankai-tab-loading-overlay,
+.bankai-app-wrapper .bankai-tab-loading-overlay {
   position: absolute;
   inset: 0;
   background-color: rgba(246, 248, 250, 0.55);
@@ -915,7 +719,8 @@ textarea:focus {
   pointer-events: none;
 }
 
-.bankai-loading-pill {
+#bankai-admin-app .bankai-loading-pill,
+.bankai-app-wrapper .bankai-loading-pill {
   background: #FFFFFF;
   border: 1px solid #D0D7DE;
   padding: 8px 18px;
@@ -929,7 +734,7 @@ textarea:focus {
   box-shadow: 0 4px 14px rgba(31, 35, 40, 0.08), 0 1px 3px rgba(31, 35, 40, 0.04);
 }
 
-/* 3. Settings & Changes Saving Loader */
+/* Floating Save Loader Overlay Card & Spinner */
 .bankai-save-loader-overlay {
   position: fixed;
   top: 24px;
@@ -1015,3 +820,243 @@ textarea:focus {
   animation: bankaiPulseDot 1.2s ease-in-out infinite;
 }
 
+/* --------------------------------------------------------------------------
+   9. Toasts, Modals & Drawer Overlays
+   -------------------------------------------------------------------------- */
+#bankai-admin-app .bankai-toast,
+.bankai-app-wrapper .bankai-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 99999;
+  max-width: 440px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  box-shadow: 0 10px 30px -5px rgba(31, 35, 40, 0.18);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#bankai-admin-app.rtl .bankai-toast,
+.bankai-app-wrapper.rtl .bankai-toast,
+[dir="rtl"] #bankai-admin-app .bankai-toast {
+  right: auto;
+  left: 24px;
+}
+
+#bankai-admin-app .bankai-toast-success,
+.bankai-app-wrapper .bankai-toast-success {
+  background-color: #FFFFFF;
+  color: #1A7F37;
+  border: 1px solid #ACEBBB;
+  border-left: 4px solid #1F883D;
+}
+
+#bankai-admin-app.rtl .bankai-toast-success,
+.bankai-app-wrapper.rtl .bankai-toast-success,
+[dir="rtl"] #bankai-admin-app .bankai-toast-success {
+  border-left: 1px solid #ACEBBB;
+  border-right: 4px solid #1F883D;
+}
+
+#bankai-admin-app .bankai-toast-error,
+.bankai-app-wrapper .bankai-toast-error {
+  background-color: #FFFFFF;
+  color: #CF222E;
+  border: 1px solid #FF8182;
+  border-left: 4px solid #CF222E;
+}
+
+#bankai-admin-app.rtl .bankai-toast-error,
+.bankai-app-wrapper.rtl .bankai-toast-error,
+[dir="rtl"] #bankai-admin-app .bankai-toast-error {
+  border-left: 1px solid #FF8182;
+  border-right: 4px solid #CF222E;
+}
+
+/* Modal Drawer Backdrop Overlay */
+.bankai-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(31, 35, 40, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 99990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --------------------------------------------------------------------------
+   10. Responsive Grid Layouts & Mobile Drawer System
+   -------------------------------------------------------------------------- */
+#bankai-admin-app .bankai-grid-4,
+.bankai-app-wrapper .bankai-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+#bankai-admin-app .bankai-grid-3,
+.bankai-app-wrapper .bankai-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+#bankai-admin-app .bankai-grid-2,
+.bankai-app-wrapper .bankai-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+#bankai-admin-app .bankai-grid-split,
+.bankai-app-wrapper .bankai-grid-split {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 20px;
+}
+
+@media (max-width: 1200px) {
+  #bankai-admin-app .bankai-grid-4,
+  .bankai-app-wrapper .bankai-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  #bankai-admin-app .bankai-grid-split,
+  .bankai-app-wrapper .bankai-grid-split {
+    grid-template-columns: 1fr;
+  }
+  #bankai-admin-app .bankai-grid-3,
+  .bankai-app-wrapper .bankai-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  #bankai-admin-app .bankai-body-layout,
+  .bankai-app-wrapper .bankai-body-layout {
+    padding: 14px 16px 24px 16px;
+    gap: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  #bankai-admin-app .bankai-grid-4,
+  #bankai-admin-app .bankai-grid-3,
+  #bankai-admin-app .bankai-grid-2,
+  #bankai-admin-app .bankai-grid-split,
+  .bankai-app-wrapper .bankai-grid-4,
+  .bankai-app-wrapper .bankai-grid-3,
+  .bankai-app-wrapper .bankai-grid-2,
+  .bankai-app-wrapper .bankai-grid-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile Sidebar Drawer System */
+.bankai-mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(31, 35, 40, 0.48);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9998;
+  transition: opacity 0.25s ease;
+}
+
+@media (max-width: 1024px) {
+  .bankai-mobile-overlay {
+    display: block;
+  }
+
+  #bankai-admin-app .bankai-sidebar,
+  .bankai-app-wrapper .bankai-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    z-index: 9999 !important;
+    width: 300px !important;
+    max-width: 86vw !important;
+    height: 100vh !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 6px 0 32px rgba(31, 35, 40, 0.28) !important;
+    overflow-y: auto;
+    background-color: #FFFFFF !important;
+    border-radius: 0 14px 14px 0 !important;
+  }
+
+  #bankai-admin-app.rtl .bankai-sidebar,
+  .bankai-app-wrapper.rtl .bankai-sidebar,
+  [dir="rtl"] #bankai-admin-app .bankai-sidebar {
+    left: auto !important;
+    right: 0 !important;
+    transform: translateX(100%);
+    border-radius: 14px 0 0 14px !important;
+    box-shadow: -6px 0 32px rgba(31, 35, 40, 0.28) !important;
+  }
+
+  #bankai-admin-app .bankai-sidebar.mobile-open,
+  .bankai-app-wrapper .bankai-sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+
+  #bankai-admin-app #bankai-main-content,
+  .bankai-app-wrapper #bankai-main-content {
+    padding: 16px 14px !important;
+  }
+}
+
+/* Mobile Hamburger Trigger Button */
+#bankai-admin-app .bankai-mobile-btn,
+.bankai-app-wrapper .bankai-mobile-btn {
+  display: none;
+  background-color: #FFFFFF;
+  border: 1px solid #D0D7DE;
+  color: #1F2328;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(31, 35, 40, 0.05);
+}
+
+#bankai-admin-app .bankai-mobile-btn:hover,
+.bankai-app-wrapper .bankai-mobile-btn:hover {
+  background-color: #F6F8FA;
+  border-color: #0969DA;
+  color: #0969DA;
+}
+
+@media (max-width: 1024px) {
+  #bankai-admin-app .bankai-mobile-btn,
+  .bankai-app-wrapper .bankai-mobile-btn {
+    display: flex;
+  }
+}
+
+/* Slide-over Drawer Responsiveness */
+#bankai-admin-app .bankai-drawer-container,
+.bankai-app-wrapper .bankai-drawer-container {
+  width: 500px;
+  max-width: 100vw;
+}
+
+@media (max-width: 640px) {
+  #bankai-admin-app .bankai-drawer-container,
+  .bankai-app-wrapper .bankai-drawer-container {
+    width: 100vw !important;
+  }
+}
