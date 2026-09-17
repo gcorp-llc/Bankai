@@ -36,7 +36,7 @@ defined('ABSPATH') || exit;
            onmouseover="this.style.borderColor='#8250DF'; this.style.color='#8250DF';"
            onmouseout="this.style.borderColor='#D0D7DE'; this.style.color='#1F2328';">
             <span style="width: 8px; height: 8px; border-radius: 50%; background: #8250DF;"></span>
-            <span x-text="isRtl ? '<?php echo esc_js(__('قالب Bankai (آسترا)', 'bankai-core')); ?>' : '<?php echo esc_js(__('Astra Theme Panel', 'bankai-core')); ?>'"><?php esc_html_e('Astra Theme Panel', 'bankai-core'); ?></span>
+            <span x-text="isRtl ? '<?php echo esc_js(__('قالب Bankai (بانکای)', 'bankai-core')); ?>' : '<?php echo esc_js(__('Bankai Theme Panel', 'bankai-core')); ?>'"><?php esc_html_e('Bankai Theme Panel', 'bankai-core'); ?></span>
         </a>
 
         <a href="<?php echo esc_url(home_url('/')); ?>"

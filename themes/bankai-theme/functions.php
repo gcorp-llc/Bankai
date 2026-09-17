@@ -1,6 +1,6 @@
 <?php
 /**
- * Bankai Theme Functions and Definitions (Astra-Inspired Lightweight Architecture)
+ * Bankai Theme Functions and Definitions (Bankai Framework Lightweight Architecture)
  *
  * @package Bankai_Theme
  */
@@ -97,7 +97,7 @@ add_action('wp_enqueue_scripts', 'bankai_theme_scripts');
 require_once BANKAI_THEME_DIR . '/inc/customizer/customizer.php';
 
 /**
- * Load Astra-Style Theme Admin Panel
+ * Load Bankai Framework Theme Admin Panel
  */
 if (is_admin()) {
     require_once BANKAI_THEME_DIR . '/inc/admin/class-theme-admin.php';

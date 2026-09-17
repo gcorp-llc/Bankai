@@ -770,10 +770,10 @@ function bankaiAdmin() {
         getWatermarkPositionStyle() {
             const pos = this.watermarkStudio.position;
             let style = '';
-            if (pos.includes('top')) style += 'top: 12px; ';
-            if (pos.includes('bottom')) style += 'bottom: 12px; ';
-            if (pos.includes('left')) style += 'left: 12px; ';
-            if (pos.includes('right')) style += 'right: 12px; ';
+            if (pos.inc('top')) style += 'top: 12px; ';
+            if (pos.inc('bottom')) style += 'bottom: 12px; ';
+            if (pos.inc('left')) style += 'left: 12px; ';
+            if (pos.inc('right')) style += 'right: 12px; ';
             if (pos === 'top-center' || pos === 'center' || pos === 'bottom-center') {
                 style += 'left: 50%; transform: translateX(-50%); ';
             }

@@ -20,17 +20,8 @@ class Bankai_Theme_Kits {
     }
 
     private function __construct() {
-        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_ajax_bankai_sync_library', [$this, 'handle_sync_library']);
         add_action('wp_ajax_bankai_import_kit', [$this, 'handle_import_kit']);
-    }
-
-    public function enqueue_assets(string $hook): void {
-        if (strpos($hook, 'bankai') === false) {
-            return;
-        }
-        wp_enqueue_style('bankai-admin-css', bankai_asset_url('css/bankai-admin.css'), [], BANKAI_CORE_VERSION);
-        wp_enqueue_script('bankai-admin-js', bankai_asset_url('js/bankai-admin.js'), ['jquery'], BANKAI_CORE_VERSION, true);
     }
 
     public function get_starter_kits(): array {

@@ -1,18 +1,29 @@
-/* Astra-Style Theme Dashboard Stylesheet */
+/* Bankai Framework Theme Dashboard Stylesheet */
+#bankai-admin-app.bankai-theme-dashboard,
 .bankai-theme-dashboard {
     box-sizing: border-box;
+    max-width: 1240px;
+    margin: 24px auto;
+    padding: 0 16px;
+    font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1F2328;
 }
 
+#bankai-admin-app.bankai-theme-dashboard *,
+#bankai-admin-app.bankai-theme-dashboard *::before,
+#bankai-admin-app.bankai-theme-dashboard *::after,
 .bankai-theme-dashboard *,
 .bankai-theme-dashboard *::before,
 .bankai-theme-dashboard *::after {
     box-sizing: inherit;
 }
 
+#bankai-admin-app.bankai-theme-dashboard [x-cloak],
 .bankai-theme-dashboard [x-cloak] {
     display: none !important;
 }
 
+#bankai-admin-app.bankai-theme-dashboard a:hover,
 .bankai-theme-dashboard a:hover {
     color: #0969DA;
 }

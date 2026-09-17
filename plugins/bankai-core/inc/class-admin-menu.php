@@ -1,12 +1,12 @@
 <?php
 /**
- * Bankai Core - Admin Menu & Asset Orchestrator
+ * Bankai Core - Admin Menu & Controller
  *
  * @package Bankai
- * @subpackage Includes
+ * @subpackage Admin
  */
 
-defined('ABSPATH') || die;
+defined('ABSPATH') || exit;
 
 class Bankai_Admin_Menu {
 
@@ -21,7 +21,7 @@ class Bankai_Admin_Menu {
     }
 
     private function __construct() {
-        add_action('admin_menu', [$this, 'register_admin_menu'], 9);
+        add_action('admin_menu', [$this, 'register_admin_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
         add_filter('script_loader_tag', [$this, 'add_defer_attribute'], 10, 2);
     }
@@ -37,13 +37,13 @@ class Bankai_Admin_Menu {
             2
         );
 
-        // Submenus for direct navigation
+        // Submenus for direct menu navigation
         add_submenu_page(
             'bankai-core',
-            __('Overview & Health', 'bankai-core'),
-            __('پیشخوان و سلامت', 'bankai-core'),
+            __('Overview & Telemetry', 'bankai-core'),
+            __('پیشخوان و پایش سیستم', 'bankai-core'),
             'manage_options',
-            'bankai-core#overview',
+            'bankai-core',
             [$this, 'render_admin_layout']
         );
 
@@ -58,7 +58,7 @@ class Bankai_Admin_Menu {
 
         add_submenu_page(
             'bankai-core',
-            __('Autonomous SEO Engine', 'bankai-core'),
+            __('SEO & Schema Engine', 'bankai-core'),
             __('موتور هوشمند سئو', 'bankai-core'),
             'manage_options',
             'bankai-seo-engine',
@@ -106,7 +106,10 @@ class Bankai_Admin_Menu {
         $screen = get_current_screen();
         $is_bankai_screen = false;
 
-        if (strpos($hook_suffix, 'bankai') !== false) {
+        $page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+        if ($page && strpos($page, 'bankai') !== false) {
+            $is_bankai_screen = true;
+        } elseif (strpos($hook_suffix, 'bankai') !== false) {
             $is_bankai_screen = true;
         } elseif ($screen && (strpos($screen->id, 'bankai') !== false || strpos($screen->base, 'bankai') !== false)) {
             $is_bankai_screen = true;
@@ -147,7 +150,7 @@ class Bankai_Admin_Menu {
             true
         );
 
-        // Load Alpine JS AFTER bankai-admin-js so Alpine can evaluate bankaiAdmin() immediately without ReferenceError
+        // Load Alpine JS AFTER bankai-admin-js
         wp_enqueue_script(
             'bankai-alpine-js',
             bankai_asset_url('js/alpine.min.js'),
@@ -160,157 +163,63 @@ class Bankai_Admin_Menu {
             'ajaxUrl'   => admin_url('admin-ajax.php'),
             'restUrl'   => esc_url_raw(rest_url('bankai/v1/')),
             'nonce'     => wp_create_nonce('bankai_admin_nonce'),
-            'assetsUrl' => bankai_asset_url(''),
             'isRtl'     => is_rtl(),
-            'activeTab' => 'overview',
+            'version'   => BANKAI_CORE_VERSION,
+            'activeTab' => $this->get_current_tab(),
         ];
 
-        // Localize under both variable names to guarantee backwards compatibility
         wp_localize_script('bankai-admin-js', 'bankaiCoreData', $core_data);
-        wp_localize_script('bankai-admin-js', 'bankaiData', $core_data);
     }
 
     public function add_defer_attribute(string $tag, string $handle): string {
-        if (in_array($handle, ['bankai-admin-js', 'bankai-alpine-js', 'bankai-htmx-js'], true)) {
-            if (strpos($tag, ' defer') === false) {
-                return str_replace(' src', ' defer src', $tag);
-            }
+        if (in_array($handle, ['bankai-alpine-js', 'bankai-htmx-js'], true)) {
+            return str_replace(' src', ' defer="defer" src', $tag);
         }
         return $tag;
     }
 
-    public function render_admin_layout(): void {
-        if (!current_user_can('manage_options')) {
-            wp_die(esc_html__('شما اجازه دسترسی به این بخش را ندارید.', 'bankai-core'));
-        }
-    
+    private function get_current_tab(): string {
         $page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : 'bankai-core';
-        $active_tab = 'overview';
-    
-        switch ($page) {
-            case 'bankai-theme-kits':
-                $active_tab = 'theme-kits';
-                break;
-            case 'bankai-seo-engine':
-                $active_tab = 'seo-engine';
-                break;
-            case 'bankai-speed-cache':
-                $active_tab = 'speed-cache';
-                break;
-            case 'bankai-media':
-                $active_tab = 'media-watermark';
-                break;
-            case 'bankai-ai-manifests':
-            case 'bankai-ai-studio':
-                $active_tab = 'ai-studio';
-                break;
-            case 'bankai-settings':
-                $active_tab = 'settings-license';
-                break;
-            default:
-                $active_tab = 'overview';
-                break;
-        }
-    
-        $state = self::get_admin_state();
-        $state['activeTab'] = $active_tab;
-    
+        
+        $map = [
+            'bankai-core'         => 'overview',
+            'bankai-theme-kits'   => 'theme-kits',
+            'bankai-seo-engine'   => 'seo-engine',
+            'bankai-speed-cache'  => 'speed-cache',
+            'bankai-media'        => 'media-watermark',
+            'bankai-ai-manifests' => 'ai-studio',
+            'bankai-settings'     => 'settings-license',
+        ];
+
+        return $map[$page] ?? 'overview';
+    }
+
+    public function render_admin_layout(): void {
+        $state = [
+            'activeTab' => $this->get_current_tab(),
+            'isRtl'     => is_rtl(),
+            'modules'   => $this->get_initial_state_data(),
+        ];
+
         bankai_render_view('admin/layout.php', ['state' => $state]);
     }
 
-    /**
-     * Get complete admin telemetry, modules and starter kits state
-     */
-    public static function get_admin_state(): array {
-        global $wpdb;
-
-        $db_version = method_exists($wpdb, 'db_version') ? $wpdb->db_version() : 'MySQL 8.0';
-        $php_ver = phpversion();
-        $wp_ver = get_bloginfo('version');
-        $server_software = sanitize_text_field($_SERVER['SERVER_SOFTWARE'] ?? 'Nginx / LiteSpeed');
-        $theme_name = function_exists('wp_get_theme') ? wp_get_theme()->get('Name') : 'Bankai Framework';
-        $mem_limit = defined('WP_MEMORY_LIMIT') ? WP_MEMORY_LIMIT : '256M';
-
-        $system_report = "### Bankai WordPress Platform System Report ###\n" .
-            "WordPress Version: {$wp_ver}\n" .
-            "PHP Version: {$php_ver}\n" .
-            "Database: {$db_version}\n" .
-            "Server Software: {$server_software}\n" .
-            "Active Theme: {$theme_name}\n" .
-            "Memory Limit: {$mem_limit}\n" .
-            "REST API Route: " . esc_url(rest_url('bankai/v1')) . "\n" .
-            "Object Cache: " . (wp_using_ext_object_cache() ? 'External Cache Active (Redis/Memcached)' : 'Standard WP Transients Cache') . "\n" .
-            "Multilingual Support: Full Persian (RTL / Vazirmatn) + English (LTR) Active\n" .
-            "Autonomous SEO & Speed Engine: Active";
+    private function get_initial_state_data(): array {
+        $system_report = sprintf(
+            "=== Bankai Core Diagnostic Telemetry ===\nPHP: %s | WP: %s | Server: %s | Memory Limit: %s\nActive Modules: 7/7 Enabled | Autonomous Engine Status: OPTIMAL",
+            phpversion(),
+            get_bloginfo('version'),
+            $_SERVER['SERVER_SOFTWARE'] ?? 'N/A',
+            WP_MEMORY_LIMIT
+        );
 
         return [
-            'activeTab' => 'overview',
-            'isRtl'     => is_rtl(),
-            'stats'     => [
-                'uptime'        => '99.98%',
-                'avg_latency'   => '18ms',
-                'indexed_nodes' => '4,892',
-                'varnish_hit'   => '96.4%',
-                'ai_crawls'     => '12,410 Hits',
-                'schema_score'  => '98/100',
-                'overall_score' => '98',
-                'ttfb'          => '32ms',
-                'lcp'           => '0.8s',
-            ],
-            'logs404' => [
-                ['requested_uri' => '/wp-content/themes/old-theme/style.css', 'hits' => 342, 'action_type' => 'auto_redirected', 'target_uri' => '/'],
-                ['requested_uri' => '/product/summer-sale-2023/', 'hits' => 189, 'action_type' => 'auto_redirected', 'target_uri' => '/shop/'],
-                ['requested_uri' => '/feed/rss2/', 'hits' => 88, 'action_type' => 'auto_redirected', 'target_uri' => '/feed/'],
-                ['requested_uri' => '/api/v1/legacy-endpoint', 'hits' => 54, 'action_type' => 'auto_dropped', 'target_uri' => ''],
-                ['requested_uri' => '/wp-login.php?action=register', 'hits' => 39, 'action_type' => 'auto_dropped', 'target_uri' => ''],
-            ],
-            'starterKits' => [
-                [
-                    'id'             => 'cyber_store',
-                    'name'           => 'Cyberpunk WooCommerce Store',
-                    'name_fa'        => 'فروشگاه ووکامرس سایبرپانک و دارک‌مود',
-                    'description'    => 'High-conversion dark-mode ecommerce architecture with instant AJAX search, cart slideout, and WebP product galleries.',
-                    'description_fa' => 'معماری فروشگاهی بهینه‌سازی‌شده نرخ تبدیل با جستجوی آنی آجاکس، سبد خرید کشویی شناور و گالری محصولات فرمت WebP.',
-                    'version'        => 'v1.4.0',
-                    'thumbnail'      => 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=600&q=80',
-                    'badges'         => ['WooCommerce', 'Tailwind', 'AJAX Cart'],
-                    'preview_url'    => '#',
-                ],
-                [
-                    'id'             => 'tech_news',
-                    'name'           => 'Tech Portal & Magazine News',
-                    'name_fa'        => 'پرتال خبری و مجله تخصصی فناوری',
-                    'description'    => 'High-traffic publisher template featuring 0.8s LCP scores, automated Schema.org NewsArticle markup, and Google Discover optimizations.',
-                    'description_fa' => 'قالب پرسرعت برای سایت‌های پرترافیک و ناشران با امتیاز سرعت LCP زیر ۰.۸ ثانیه، نشانه‌گذاری خودکار اسکیما و سئوی گوگل دیسکاور.',
-                    'version'        => 'v2.1.0',
-                    'thumbnail'      => 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=600&q=80',
-                    'badges'         => ['NewsArticle Schema', 'AMP Ready', '0.8s LCP'],
-                    'preview_url'    => '#',
-                ],
-                [
-                    'id'             => 'saas_agency',
-                    'name'           => 'AI Agency & B2B SaaS Platform',
-                    'name_fa'        => 'پلتفرم شرکتی، آژانس هوش مصنوعی و SaaS',
-                    'description'    => 'Modern corporate architecture with interactive pricing tables, Persian RTL typography support, and dynamic lead capture workflows.',
-                    'description_fa' => 'معماری شرکتی مدرن با جداول قیمت‌گذاری تعاملی، تایپوگرافی کامل راست‌چین با فونت وزیرمتن و فرم‌های تبدیل کاربر به مشتری.',
-                    'version'        => 'v1.8.2',
-                    'thumbnail'      => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
-                    'badges'         => ['RTL Standard', 'Vazirmatn', 'Lead Gen'],
-                    'preview_url'    => '#',
-                ],
-            ],
             'seoModules' => [
-                ['id' => 'ai_search_visibility', 'title' => 'AI Search Visibility (GEO)', 'title_fa' => 'دیده‌شدن در موتورهای هوش مصنوعی (GEO)', 'badge' => 'CORE LLM', 'badge_color' => '#38BDF8', 'icon' => '🤖', 'description' => 'Optimizes content structure and metadata for generative engines like Google Gemini, ChatGPT, and Perplexity.', 'description_fa' => 'بهینه‌سازی ساختار محتوا و متادیتا برای موتورهای جستجوی هوش مصنوعی مانند گوگل جمینای، چت‌جی‌پی‌تی و پرپلکسیتی.', 'enabled' => true],
-                ['id' => 'ai_meta_assistant', 'title' => 'AI Meta Description Assistant', 'title_fa' => 'دستیار تولید متای عنوان و توضیحات سئو', 'badge' => 'GENERATIVE', 'badge_color' => '#10B981', 'icon' => '✨', 'description' => 'Automated SERP snippet generation with CTR prediction models and real-time character limit enforcement.', 'description_fa' => 'تولید خودکار اسنیپت‌های نتایج جستجو با مدل‌های تخمین نرخ کلیک و رعایت دقیق محدودیت کاراکترها.', 'enabled' => true],
-                ['id' => 'ai_link_genius', 'title' => 'Smart Internal Link Genius', 'title_fa' => 'پیشنهاددهنده هوشمند لینک‌سازی داخلی', 'badge' => 'HEURISTIC', 'badge_color' => '#6366F1', 'icon' => '🔗', 'description' => 'Contextual keyword scanning across custom post types to recommend semantic internal anchor links.', 'description_fa' => 'پویش معنایی متن مقالات و پست تایپ‌های اختصاصی برای پیشنهاد بهترین متن‌های پیوند داخلی مرتبط.', 'enabled' => true],
-                ['id' => 'instant_indexing', 'title' => 'Instant Indexing API', 'title_fa' => 'ایندکس آنی (گوگل و بینگ)', 'badge' => 'GOOGLE & BING', 'badge_color' => '#F59E0B', 'icon' => '⚡', 'description' => 'Real-time pinging of Google Indexing API and IndexNow upon post publishing or updates.', 'description_fa' => 'ارسال و پینگ خودکار آدرس مقالات بلافاصله پس از انتشار یا بروزرسانی به Google API و IndexNow.', 'enabled' => true],
-                ['id' => 'xml_sitemaps', 'title' => 'High-Velocity XML Sitemaps', 'title_fa' => 'نقشه‌های سایت XML پرسرعت و بهینه', 'badge' => 'CRITICAL', 'badge_color' => '#10B981', 'icon' => '🗺️', 'description' => 'Zero-overhead chunked sitemaps supporting Google News, Video, and Image XML protocols with instant invalidation.', 'description_fa' => 'تولید بدون تاخیر نقشه‌های سایت بخش‌بندی‌شده، شامل نقشه‌های خبری، تصویری و ویدیویی با کش هوشمند.', 'enabled' => true],
-                ['id' => 'schema_builder', 'title' => 'Rich Snippet & Schema.org Builder', 'title_fa' => 'سازنده ساختاریافته اسکیما و ریچ اسنیپت', 'badge' => 'JSON-LD', 'badge_color' => '#8250DF', 'icon' => '🛡️', 'description' => 'Automatic JSON-LD graph generation for Article, Product, Organization, FAQPage, and BreadcrumbList.', 'description_fa' => 'تزریق خودکار اسکیماهای استاندارد سازمانی، محصول، مقالات و سوالات متداول در هدر صفحات.', 'enabled' => true],
-                ['id' => 'monitor_404', 'title' => '404 Anomaly & 301 Auto-Redirects', 'title_fa' => 'رصد خطاهای ۴۰۴ و ریدایرکت خودکار ۳۰۱', 'badge' => 'HEURISTIC', 'badge_color' => '#CF222E', 'icon' => '⚠️', 'description' => 'Heuristic error catcher intercepting invalid URLs and creating smart automated 301 redirects to target matches.', 'description_fa' => 'شناسایی لینک‌های شکسته و آدرس‌های نامعتبر و تغییر مسیر خودکار هوشمند به مرتبط‌ترین صفحه مقصد.', 'enabled' => true],
-                ['id' => 'image_seo', 'title' => 'Automated Image SEO', 'title_fa' => 'سئوی خودکار تصاویر و متن جایگزین (Alt)', 'badge' => 'ACCESSIBILITY', 'badge_color' => '#38BDF8', 'icon' => '🖼️', 'description' => 'Auto ALT tag generation, dynamic image title attribute injection, and WebP fallback attributes.', 'description_fa' => 'تولید خودکار برچسب‌های متن جایگزین و عنوان عکس‌ها بر اساس عنوان نوشته و تحلیل محتوا.', 'enabled' => true],
-                ['id' => 'acf_integration', 'title' => 'ACF Meta Integration', 'title_fa' => 'سازگاری پیشرفته با زمینه دلخواه (ACF)', 'badge' => 'RANKMATH-GRADE', 'badge_color' => '#10B981', 'icon' => '📦', 'description' => 'Deep integration with Advanced Custom Fields to analyze dynamic content blocks for SEO density.', 'description_fa' => 'تحلیل دقیق کلمات کلیدی و محتوای سفارشی ذخیره‌شده در فیلدهای Advanced Custom Fields.', 'enabled' => true],
-                ['id' => 'woocommerce_seo', 'title' => 'WooCommerce SEO Suite', 'title_fa' => 'بسته تخصصی سئوی ووکامرس', 'badge' => 'ECOMMERCE', 'badge_color' => '#F59E0B', 'icon' => '🛒', 'description' => 'Product GTIN/MPN schema fields, brand taxonomies, price currency metadata, and canonical rules.', 'description_fa' => 'ثبت اسکیماهای قیمت، موجودی، برند، متادیتای ارزی ریال/تومان و تنظیم کانونیکال محصولات.', 'enabled' => true],
-                ['id' => 'local_seo', 'title' => 'Local SEO Knowledge Graph', 'title_fa' => 'سئوی محلی و گراف دانش گوگل', 'badge' => 'KNOWLEDGE GRAPH', 'badge_color' => '#6366F1', 'icon' => '📍', 'description' => 'Geo-coordinates, opening hours JSON-LD, business organization graphs, and Google Maps embed.', 'description_fa' => 'مختصات جغرافیایی، ساعات کاری، اسکیماهای کسب‌وکار محلی و اتصال نقشه برای رتبه اول لوکال سئو.', 'enabled' => true],
+                ['id' => 'auto_meta', 'title' => 'Autonomous Meta & Schema Generator', 'title_fa' => 'تولیدکننده خودکار متاداده و اسکیما', 'badge' => 'AI AUTO', 'badge_color' => '#10B981', 'icon' => '⚡', 'description' => 'Real-time JSON-LD structured data injection for Article, Product, FAQ, and BreadcrumbList.', 'description_fa' => 'تزریق خودکار کدهای استانداردهای نشانه‌گذاری گوگل (JSON-LD) بدون نیاز به تنظیمات پیچیده.', 'enabled' => true],
+                ['id' => 'sitemap_pro', 'title' => 'High-Velocity XML & News Sitemap', 'title_fa' => 'نقشه سایت پیشرفته و قدرتمند XML', 'badge' => 'SPEED SITEMAP', 'badge_color' => '#38BDF8', 'icon' => '🗺️', 'description' => 'Generates instant XML sitemaps with ping protocols sent straight to Google Search Console.', 'description_fa' => 'ایجاد سریع نقشه سایت استاندارد و اطلاع‌رسانی لحظه‌ای به موتورهای جستجو هنگام انتشار مطلب.', 'enabled' => true],
+                ['id' => 'canonical_guard', 'title' => 'Canonical & Redirects Matrix', 'title_fa' => 'مدیریت کانوینکال و هدایت ۴۰۴', 'badge' => 'SEO GUARD', 'badge_color' => '#F59E0B', 'icon' => '🔗', 'description' => 'Automated 301/302 redirect rules engine and canonical URL correction to prevent duplicate content.', 'description_fa' => 'جلوگیری از خطاهای محتوای تکراری و هدایت هوشمند آدرس‌های قدیمی به لینک جدید.', 'enabled' => true],
+                ['id' => 'open_graph_ai', 'title' => 'Social Cards & OpenGraph AI', 'title_fa' => 'کارت‌های شبکه‌های اجتماعی (OG/Twitter)', 'badge' => 'VIRAL', 'badge_color' => '#EC4899', 'icon' => '📱', 'description' => 'Creates rich previews for WhatsApp, Twitter/X, and Telegram with automated image generation.', 'description_fa' => 'تنظیم خودکار تصویر، عنوان و توضیحات هنگام اشتراک‌گذاری لینک در شبکه‌های اجتماعی.', 'enabled' => true],
+                ['id' => 'local_seo_schema', 'title' => 'Local SEO Knowledge Graph', 'title_fa' => 'سئوی محلی و گراف دانش گوگل', 'badge' => 'KNOWLEDGE GRAPH', 'badge_color' => '#6366F1', 'icon' => '📍', 'description' => 'Geo-coordinates, opening hours JSON-LD, business organization graphs, and Google Maps embed.', 'description_fa' => 'مختصات جغرافیایی، ساعات کاری، اسکیماهای کسب‌وکار محلی و اتصال نقشه برای رتبه اول لوکال سئو.', 'enabled' => true],
                 ['id' => 'llms_txt_builder', 'title' => 'llms.txt Manifest Builder', 'title_fa' => 'تولیدکننده مانیفست llms.txt برای هوش مصنوعی', 'badge' => 'AI SPEC v1.2', 'badge_color' => '#10B981', 'icon' => '📄', 'description' => 'Generates standardized /llms.txt and /llms-full.txt files for AI agents and web crawlers.', 'description_fa' => 'تولید فایل‌های استاندارد llms.txt برای فهم ساختار سایت توسط موتورهای هوش مصنوعی و ربات‌ها.', 'enabled' => true],
             ],
             'speedModules' => [

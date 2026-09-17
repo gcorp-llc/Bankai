@@ -83,7 +83,7 @@ defined('ABSPATH') || exit;
                     <span class="bankai-nav-badge" style="background: #DDF4FF; color: #0969DA; border: 1px solid #54AEFF;">3 Kits</span>
                 </button>
 
-                <a id="nav-link-astra-theme"
+                <a id="nav-link-bankai-theme"
                    href="<?php echo esc_url(admin_url('admin.php?page=bankai-theme')); ?>"
                    class="bankai-nav-btn"
                    style="text-decoration: none; display: flex; align-items: center; border-inline-start: 2px solid transparent;">
@@ -94,8 +94,8 @@ defined('ABSPATH') || exit;
                             <line x1="12" y1="17" x2="12" y2="21" />
                         </svg>
                     </div>
-                    <span x-text="isRtl ? '<?php echo esc_js(__('قالب Bankai (مشابه آسترا)', 'bankai-core')); ?>' : '<?php echo esc_js(__('Astra Theme Panel', 'bankai-core')); ?>'"><?php esc_html_e('Astra Theme Panel', 'bankai-core'); ?></span>
-                    <span class="bankai-nav-badge" style="background: #F3E8FF; color: #8250DF; border: 1px solid #D8B4FE;">Astra Pro</span>
+                    <span x-text="isRtl ? '<?php echo esc_js(__('قالب Bankai (فریم‌ورک اختصاصی بانکای)', 'bankai-core')); ?>' : '<?php echo esc_js(__('Bankai Theme Panel', 'bankai-core')); ?>'"><?php esc_html_e('Bankai Theme Panel', 'bankai-core'); ?></span>
+                    <span class="bankai-nav-badge" style="background: #F3E8FF; color: #8250DF; border: 1px solid #D8B4FE;">Bankai Pro</span>
                 </a>
             </div>
 
@@ -104,8 +104,8 @@ defined('ABSPATH') || exit;
 
                 <button id="nav-tab-seo"
                         class="bankai-nav-btn"
-                        :class="activeTab === 'seo' ? 'active' : ''"
-                        @click="activeTab = 'seo'; setTab('seo')">
+                        :class="activeTab === 'seo-engine' ? 'active' : ''"
+                        @click="activeTab = 'seo-engine'; setTab('seo-engine')">
                     <div class="bankai-nav-icon">
                         <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M18.5 18.5L22 22" />
@@ -119,8 +119,8 @@ defined('ABSPATH') || exit;
 
                 <button id="nav-tab-speed"
                         class="bankai-nav-btn"
-                        :class="activeTab === 'speed' ? 'active' : ''"
-                        @click="activeTab = 'speed'; setTab('speed')">
+                        :class="activeTab === 'speed-cache' ? 'active' : ''"
+                        @click="activeTab = 'speed-cache'; setTab('speed-cache')">
                     <div class="bankai-nav-icon">
                         <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M14.5 9.5L18 6M15.5 15.5L12 19l-3.5-1.5L7 16l-2.5-2.5L3 10l3.5-3.5L10 3l6 3.5 4.5 1.5c.5.167.9.6.9 1.1a12.5 12.5 0 0 1-5.9 7.4Z" />
@@ -134,8 +134,8 @@ defined('ABSPATH') || exit;
 
                 <button id="nav-tab-media"
                         class="bankai-nav-btn"
-                        :class="activeTab === 'media' ? 'active' : ''"
-                        @click="activeTab = 'media'; setTab('media')">
+                        :class="activeTab === 'media-watermark' ? 'active' : ''"
+                        @click="activeTab = 'media-watermark'; setTab('media-watermark')">
                     <div class="bankai-nav-icon">
                         <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M9 22h6c4.418 0 6-1.582 6-6V8c0-4.418-1.582-6-6-6H9C4.582 2 3 3.582 3 8v8c0 4.418 1.582 6 6 6Z" />
@@ -153,8 +153,8 @@ defined('ABSPATH') || exit;
 
                 <button id="nav-tab-ai"
                         class="bankai-nav-btn"
-                        :class="activeTab === 'ai' ? 'active' : ''"
-                        @click="activeTab = 'ai'; setTab('ai')">
+                        :class="activeTab === 'ai-studio' ? 'active' : ''"
+                        @click="activeTab = 'ai-studio'; setTab('ai-studio')">
                     <div class="bankai-nav-icon">
                         <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.93 4.93l2.12 2.12m9.9 9.9l2.12 2.12M4.93 19.07l2.12-2.12m9.9-9.9l2.12-2.12" />
@@ -167,8 +167,8 @@ defined('ABSPATH') || exit;
 
                 <button id="nav-tab-settings"
                         class="bankai-nav-btn"
-                        :class="activeTab === 'settings' ? 'active' : ''"
-                        @click="activeTab = 'settings'; setTab('settings')">
+                        :class="activeTab === 'settings-license' ? 'active' : ''"
+                        @click="activeTab = 'settings-license'; setTab('settings-license')">
                     <div class="bankai-nav-icon">
                         <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />

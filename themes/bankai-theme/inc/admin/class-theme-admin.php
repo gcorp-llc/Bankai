@@ -1,11 +1,11 @@
 <?php
 /**
- * Astra-Style Theme Options & Dashboard Controller
+ * Bankai Framework Theme Options & Dashboard Controller
  *
  * @package Bankai_Theme
  */
 
-defined('ABSPATH') || exit;
+defined('ABSPATH') || die;
 
 class Bankai_Theme_Admin {
 
@@ -25,7 +25,7 @@ class Bankai_Theme_Admin {
     }
 
     public function register_theme_admin_menu(): void {
-        // Register under "Appearance" (نمایش -> گزینه‌های قالب Bankai) like Astra
+        // Register under "Appearance" (نمایش -> گزینه‌های قالب Bankai)
         add_theme_page(
             __('تنظیمات و پیشخوان قالب Bankai', 'bankai-theme'),
             __('گزینه‌های قالب Bankai', 'bankai-theme'),
@@ -36,7 +36,10 @@ class Bankai_Theme_Admin {
     }
 
     public function enqueue_admin_assets(string $hook): void {
-        if ($hook !== 'appearance_page_bankai-theme') {
+        $screen = get_current_screen();
+        $page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+
+        if ($page !== 'bankai-theme' && $hook !== 'appearance_page_bankai-theme' && (!$screen || strpos($screen->id, 'bankai-theme') === false)) {
             return;
         }
 
@@ -48,7 +51,16 @@ class Bankai_Theme_Admin {
             BANKAI_THEME_VERSION
         );
 
-        // Astra-style theme dashboard CSS
+        // Core admin styling & Theme dashboard CSS
+        if (function_exists('bankai_asset_url')) {
+            wp_enqueue_style(
+                'bankai-admin-css',
+                bankai_asset_url('css/bankai-admin.css'),
+                [],
+                defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : BANKAI_THEME_VERSION
+            );
+        }
+
         wp_enqueue_style(
             'bankai-theme-admin-css',
             BANKAI_THEME_URI . '/assets/css/theme-admin.css',

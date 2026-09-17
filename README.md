@@ -23,7 +23,7 @@ Bankai is a enterprise-grade dual-component ecosystem for WordPress engineered f
 
 ## معماری و قابلیت‌های کلیدی
 
-1. **معماری ماژولار هسته (`includes/modules/`)**
+1. **معماری ماژولار هسته (`inc/modules/`)**
 * **SEO Engine (`class-seo-engine.php`):** موتور آنالیز ۲۸ گانه سئو، تولید هوشمند JSON-LD Schema، نقشه سایت پویا (XML) و پایش استناد برند در مدل‌های هوش مصنوعی (GEO/AI Search).
 * **Speed Cache Engine (`class-speed-cache.php`):** مدیریت کش استاتیک HTML، اتصال سوکت Redis/Memcached، تزریق مستقیم Critical CSS و پاکسازی اتوماتیک دیتابیس.
 * **Theme Kits System (`class-theme-kits.php`):** مدیریت کیت‌های آماده پوسته (از جمله پلتفرم‌های خبری Journa و سامانه‌های Paypey)، تایپوگرافی اختصاصی (Vazirmatn) و تنظیمات کانتینر.
@@ -60,7 +60,7 @@ Bankai is a enterprise-grade dual-component ecosystem for WordPress engineered f
 │       │       ├── alpine.min.js    <- کتابخانه Alpine.js v3
 │       │       ├── bankai-admin.js  <- منطق تعاملی فرانت‌اند و REST API
 │       │       └── htmx.min.js      <- کتابخانه HTMX برای درخواست‌های درخواست‌های AJAX/SSR
-│       ├── includes/            <- کلاس‌های هسته و ماژول‌ها
+│       ├── inc/            <- کلاس‌های هسته و ماژول‌ها
 │       │   ├── class-admin-menu.php <- ثبت منوی منوی مدیریت و enqueue اسکریپت‌ها
 │       │   ├── class-rest-api.php   <- اندپوینت‌های اختصاصی REST API (/bankai/v1)
 │       │   ├── helpers.php          <- توابع کمکی و عمومی (Global Helpers)

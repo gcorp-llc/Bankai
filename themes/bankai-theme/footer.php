@@ -13,7 +13,7 @@ defined('ABSPATH') || exit;
             <div class="bankai-footer-info">
                 <p>
                     &copy; <?php echo esc_html(date_i18n('Y')); ?> <?php bloginfo('name'); ?>.
-                    <?php esc_html_e('طراحی‌شده با قالب فوق‌سریع Bankai Theme (بر پایه معماری Astra)', 'bankai-theme'); ?>
+                    <?php esc_html_e('طراحی‌شده با قالب فوق‌سریع Bankai Theme (بر پایه معماری Bankai Framework)', 'bankai-theme'); ?>
                 </p>
             </div>
         </div>

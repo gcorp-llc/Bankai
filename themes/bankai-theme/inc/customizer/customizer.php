@@ -1,6 +1,6 @@
 <?php
 /**
- * Bankai Theme Customizer Settings (Astra-Style Controls)
+ * Bankai Theme Customizer Settings (Bankai Framework Controls)
  *
  * @package Bankai_Theme
  */

@@ -15,15 +15,15 @@
 
 defined('ABSPATH') || exit;
 
-// Define Constants & Global Compatibility Aliases
-define('BANKAI_CORE_VERSION', '1.0.0');
-define('BANKAI_VERSION', BANKAI_CORE_VERSION);
-define('BANKAI_CORE_FILE', __FILE__);
-define('BANKAI_CORE_DIR', plugin_dir_path(__FILE__));
-define('BANKAI_PLUGIN_DIR', BANKAI_CORE_DIR);
-define('BANKAI_CORE_URL', plugin_dir_url(__FILE__));
-define('BANKAI_PLUGIN_URL', BANKAI_CORE_URL);
-define('BANKAI_CORE_VIEWS_DIR', BANKAI_CORE_DIR . 'views/');
+// Define Constants & Global Compatibility Aliases Safely
+defined('BANKAI_CORE_VERSION')   || define('BANKAI_CORE_VERSION', '1.0.0');
+defined('BANKAI_VERSION')        || define('BANKAI_VERSION', BANKAI_CORE_VERSION);
+defined('BANKAI_CORE_FILE')      || define('BANKAI_CORE_FILE', __FILE__);
+defined('BANKAI_CORE_DIR')       || define('BANKAI_CORE_DIR', plugin_dir_path(__FILE__));
+defined('BANKAI_PLUGIN_DIR')     || define('BANKAI_PLUGIN_DIR', BANKAI_CORE_DIR);
+defined('BANKAI_CORE_URL')       || define('BANKAI_CORE_URL', plugin_dir_url(__FILE__));
+defined('BANKAI_PLUGIN_URL')     || define('BANKAI_PLUGIN_URL', BANKAI_CORE_URL);
+defined('BANKAI_CORE_VIEWS_DIR') || define('BANKAI_CORE_VIEWS_DIR', BANKAI_CORE_DIR . 'views/');
 
 final class Bankai_Core {
 
@@ -43,13 +43,13 @@ final class Bankai_Core {
 
     private function load_dependencies(): void {
         // Load Global Helpers First
-        require_once BANKAI_CORE_DIR . 'includes/helpers.php';
+        require_once plugin_dir_path(__FILE__) . 'functions.php';
         
         // Load Architecture Core
-        require_once BANKAI_CORE_DIR . 'includes/class-admin-menu.php';
-        require_once BANKAI_CORE_DIR . 'includes/class-rest-api.php';
+        require_once BANKAI_CORE_DIR . 'inc/class-admin-menu.php';
+        require_once BANKAI_CORE_DIR . 'inc/class-rest-api.php';
 
-        // Load Modules from includes/modules/
+        // Load Modules from inc/modules/
         $modules = [
             'class-theme-kits.php',
             'class-settings-license.php',
@@ -61,7 +61,7 @@ final class Bankai_Core {
         ];
 
         foreach ($modules as $module_file) {
-            $filepath = BANKAI_CORE_DIR . 'includes/modules/' . $module_file;
+            $filepath = BANKAI_CORE_DIR . 'inc/modules/' . $module_file;
             if (file_exists($filepath)) {
                 require_once $filepath;
             }

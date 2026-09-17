@@ -21,17 +21,8 @@ class Bankai_Settings_License {
     }
 
     private function __construct() {
-        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_ajax_bankai_save_settings', [$this, 'handle_save_settings']);
         add_action('wp_ajax_bankai_revalidate_license', [$this, 'handle_revalidate_license']);
-    }
-
-    public function enqueue_assets(string $hook): void {
-        if (strpos($hook, 'bankai') === false) {
-            return;
-        }
-        wp_enqueue_style('bankai-admin-css', bankai_asset_url('css/bankai-admin.css'), [], BANKAI_CORE_VERSION);
-        wp_enqueue_script('bankai-admin-js', bankai_asset_url('js/bankai-admin.js'), ['jquery'], BANKAI_CORE_VERSION, true);
     }
 
     public function get_system_report(): string {

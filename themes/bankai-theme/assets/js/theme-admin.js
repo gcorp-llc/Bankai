@@ -1,5 +1,5 @@
 /**
- * Bankai Theme Admin Dashboard Alpine.js Component (Astra Style)
+ * Bankai Theme Admin Dashboard Alpine.js Component (Bankai Framework Style)
  */
 function bankaiThemeAdmin() {
     return {
