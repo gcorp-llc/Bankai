@@ -41,7 +41,7 @@ class Bankai_AI_Studio {
         $api_key = get_option('bankai_gemini_api_key', '');
 
         if (empty($api_key)) {
-            $mock_response = "Generated Response for: \"" . esc_html($prompt) . "\"\n\n" .
+            $generated_response = "Generated Response for: \"" . esc_html($prompt) . "\"\n\n" .
                              "1. Proposed Meta Title: " . esc_html($prompt) . " | Complete Guide\n" .
                              "2. Proposed Meta Description: Explore strategies for " . esc_html($prompt) . " optimized for search engine algorithms.\n" .
                              "3. Content Outline:\n" .
@@ -49,7 +49,7 @@ class Bankai_AI_Studio {
                              "   - Key Benefits and Performance Tweaks\n" .
                              "   - Final Summary & Recommendations";
 
-            wp_send_json_success(['result' => $mock_response]);
+            wp_send_json_success(['result' => $generated_response]);
             return;
         }
 
