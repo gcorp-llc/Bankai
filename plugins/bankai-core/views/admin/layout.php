@@ -1,77 +1,59 @@
 <?php
 defined('ABSPATH') || exit;
-$state = $state ?? [];
-$active_tab = sanitize_text_field($state['activeTab'] ?? 'overview');
-$is_rtl = !empty($state['isRtl']);
+
+$state = is_array($state ?? null) ? $state : [];
+
+$active_tab = sanitize_key($state['activeTab'] ?? 'overview');
+$is_rtl     = !empty($state['isRtl']) || is_rtl();
+
+$bankai_data = [
+    'activeTab'  => $active_tab,
+    'isRtl'      => (bool) $is_rtl,
+    'restUrl'    => esc_url_raw(rest_url('bankai/v1/')),
+    'nonce'      => wp_create_nonce('wp_rest'),
+    'adminNonce' => wp_create_nonce('bankai_admin_nonce'),
+    'ajaxUrl'    => admin_url('admin-ajax.php'),
+    'locale'     => get_user_locale(),
+    'version'    => defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0',
+];
 ?>
-
-<style>
-    [x-cloak] { display: none !important; }
-    .bankai-modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(31, 35, 40, 0.45);
-        backdrop-filter: blur(6px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 99999;
-    }
-</style>
-
-<!-- Global Bridge Data for Alpine.js -->
-<script>
-    window.bankaiData = {
-        activeTab: <?php echo json_encode($active_tab); ?>,
-        isRtl: <?php echo json_encode($is_rtl); ?>,
-        restUrl: <?php echo json_encode(esc_url_raw(rest_url('bankai/v1/'))); ?>,
-        nonce: <?php echo json_encode(wp_create_nonce('bankai_admin_nonce')); ?>
-    };
-
-    window.setTab = function(tab) {
-        if (window.bankaiAdminInstance) {
-            window.bankaiAdminInstance.activeTab = tab;
-            return window.bankaiAdminInstance.setTab(tab);
-        }
-        const app = document.getElementById('bankai-admin-app');
-        if (app && window.Alpine) {
-            try {
-                const data = window.Alpine.$data(app);
-                if (data) {
-                    data.activeTab = tab;
-                    if (typeof data.setTab === 'function') {
-                        return data.setTab(tab);
-                    }
-                }
-            } catch(e) {}
-        }
-    };
-
-    window.showToast = function(msg, type) {
-        type = type || 'success';
-        if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.showToast === 'function') {
-            return window.bankaiAdminInstance.showToast(msg, type);
-        }
-    };
-
-    window.toggleLanguage = function() {
-        if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.toggleLanguage === 'function') {
-            return window.bankaiAdminInstance.toggleLanguage();
-        }
-    };
-    window.toggleRtl = window.toggleLanguage;
-</script>
-
 <div id="bankai-admin-app"
      class="bankai-admin-wrap"
      x-data="bankaiAdmin()"
      :dir="isRtl ? 'rtl' : 'ltr'"
-     :class="isRtl ? 'rtl' : 'ltr'">
-    
-    <!-- Ambient Decorative Animated Background Elements -->
+     :class="{ 'rtl': isRtl, 'ltr': !isRtl }">
+
+    <!-- Bridge PHP → Alpine -->
+    <script>
+        window.bankaiData = <?php echo wp_json_encode($bankai_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        window.bankaiCoreData = window.bankaiData;
+
+        window.setTab = function (tab) {
+            if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.setTab === 'function') {
+                return window.bankaiAdminInstance.setTab(tab);
+            }
+            return false;
+        };
+
+        window.showToast = function (message, type) {
+            type = type || 'success';
+            if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.showToast === 'function') {
+                return window.bankaiAdminInstance.showToast(message, type);
+            }
+            return false;
+        };
+
+        window.toggleLanguage = function () {
+            if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.toggleLanguage === 'function') {
+                return window.bankaiAdminInstance.toggleLanguage();
+            }
+            return false;
+        };
+
+        window.toggleRtl = window.toggleLanguage;
+    </script>
+
+    <!-- Ambient Background -->
     <div class="bankai-bg-decorations" aria-hidden="true">
         <div class="bankai-ambient-grid"></div>
         <div class="bankai-ambient-orb bankai-orb-1"></div>
@@ -86,90 +68,126 @@ $is_rtl = !empty($state['isRtl']);
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <?php include BANKAI_CORE_VIEWS_DIR . 'admin/toast.php'; ?>
+    <!-- Toast -->
+    <?php
+    $toast_file = defined('BANKAI_CORE_VIEWS_DIR') ? BANKAI_CORE_VIEWS_DIR . 'admin/toast.php' : '';
+    if ($toast_file && is_file($toast_file)) {
+        include $toast_file;
+    }
+    ?>
 
-    <!-- Global Page Switch Progress Bar -->
+    <!-- Page Progress -->
     <div id="bankai-page-loader"
          class="bankai-page-progress-track"
          x-show="pageLoading"
-         x-cloak>
-        <div class="bankai-page-progress-bar"
-             :style="`width: ${pageProgress}%;`"></div>
+         x-cloak
+         role="progressbar"
+         aria-live="polite">
+        <div class="bankai-page-progress-bar" :style="{ width: pageProgress + '%' }"></div>
     </div>
 
-    <!-- Floating Settings & Actions Saving Loader -->
-    <div x-show="savingLoader.show"
+    <!-- Save Loader -->
+    <div id="bankai-save-loader"
+         class="bankai-save-loader-overlay"
+         x-show="savingLoader.show"
          x-cloak
          x-transition.opacity
-         class="bankai-save-loader-overlay"
-         id="bankai-save-loader">
+         role="status"
+         aria-live="polite"
+         aria-atomic="true">
         <div class="bankai-save-loader-card"
-             :class="savingLoader.state === 'saved' ? 'bankai-save-loader-success' : ''">
+             :class="{ 'bankai-save-loader-success': savingLoader.state === 'saved' }">
             <template x-if="savingLoader.state === 'saving'">
                 <div class="bankai-save-spinner-wrap">
-                    <svg class="bankai-spinner" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="9" stroke="rgba(9, 105, 218, 0.2)" stroke-width="2.5" />
-                        <path d="M12 3a9 9 0 0 1 9 9" stroke="#0969DA" stroke-width="2.5" stroke-linecap="round" />
+                    <svg class="bankai-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".2" stroke-width="2.5"/>
+                        <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
                 </div>
             </template>
             <template x-if="savingLoader.state === 'saved'">
                 <div class="bankai-save-success-wrap">
-                    <svg class="solar-icon" style="color: #1A7F37; width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
+                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="20 6 9 17 4 12"/>
                     </svg>
                 </div>
             </template>
-
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-                <div style="font-size: 13px; font-weight: 700; color: #1F2328; display: flex; align-items: center; gap: 6px;">
+            <div class="bankai-save-loader-content">
+                <div class="bankai-save-loader-title" style="display: flex; align-items: center; gap: 6px;">
                     <span x-text="savingLoader.title"><?php esc_html_e('Saving Changes...', 'bankai-core'); ?></span>
-                    <span x-show="savingLoader.state === 'saving'" class="bankai-pulse-dot"></span>
+                    <span x-show="savingLoader.state === 'saving'" class="bankai-pulse-dot" aria-hidden="true"></span>
                 </div>
-                <div style="font-size: 11px; color: #656D76;" x-text="savingLoader.message">
+                <div class="bankai-save-loader-message" x-text="savingLoader.message">
                     <?php esc_html_e('Applying updates to server & synchronizing cache...', 'bankai-core'); ?>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Mobile Drawer Backdrop Overlay -->
+    <!-- Mobile Overlay -->
     <div class="bankai-mobile-overlay"
          x-show="mobileMenuOpen"
-         @click="closeMobileMenu()"
+         x-cloak
          x-transition.opacity
-         x-cloak></div>
+         @click="closeMobileMenu()"
+         aria-hidden="true"></div>
 
-    <!-- Top Header Navigation -->
-    <?php include BANKAI_CORE_VIEWS_DIR . 'admin/header.php'; ?>
+    <!-- Header -->
+    <?php
+    $header_file = defined('BANKAI_CORE_VIEWS_DIR') ? BANKAI_CORE_VIEWS_DIR . 'admin/header.php' : '';
+    if ($header_file && is_file($header_file)) {
+        include $header_file;
+    }
+    ?>
 
-    <!-- Main Body Layout -->
+    <!-- Body Layout -->
     <div class="bankai-body-layout">
-        <!-- Sidebar Navigation -->
-        <?php include BANKAI_CORE_VIEWS_DIR . 'admin/sidebar.php'; ?>
 
-        <!-- Main Tabbed Viewport -->
-        <main id="bankai-main-content">
-            <div x-show="pageLoading"
+        <!-- Sidebar -->
+        <?php
+        $sidebar_file = defined('BANKAI_CORE_VIEWS_DIR') ? BANKAI_CORE_VIEWS_DIR . 'admin/sidebar.php' : '';
+        if ($sidebar_file && is_file($sidebar_file)) {
+            include $sidebar_file;
+        }
+        ?>
+
+        <!-- Main Content -->
+        <main id="bankai-main-content" class="bankai-main-content">
+            <div class="bankai-tab-loading-overlay"
+                 x-show="pageLoading"
                  x-cloak
                  x-transition.opacity
-                 class="bankai-tab-loading-overlay">
+                 role="status"
+                 aria-live="polite">
                 <div class="bankai-loading-pill">
-                    <svg class="bankai-spinner" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="9" stroke="rgba(9, 105, 218, 0.2)" stroke-width="2.5" />
-                        <path d="M12 3a9 9 0 0 1 9 9" stroke="#0969DA" stroke-width="2.5" stroke-linecap="round" />
+                    <svg class="bankai-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".2" stroke-width="2.5"/>
+                        <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
-                    <span x-text="isRtl ? 'در حال بارگذاری بخش...' : 'Loading section...'"><?php esc_html_e('Loading section...', 'bankai-core'); ?></span>
+                    <span x-text="isRtl ? 'در حال بارگذاری بخش...' : 'Loading section...'">
+                        <?php esc_html_e('Loading section...', 'bankai-core'); ?>
+                    </span>
                 </div>
             </div>
 
-            <!-- Views / Tab Partials -->
             <?php
-            $tabs = ['overview', 'theme-kits', 'seo-engine', 'speed-cache', 'media-watermark', 'ai-studio', 'settings-license'];
+            $tabs = [
+                'overview',
+                'theme-kits',
+                'seo-engine',
+                'speed-cache',
+                'media-watermark',
+                'ai-studio',
+                'settings-license',
+            ];
+
             foreach ($tabs as $tab) {
-                $tab_file = BANKAI_CORE_VIEWS_DIR . "admin/tab-{$tab}.php";
-                if (file_exists($tab_file)) {
+                $tab      = sanitize_key($tab);
+                $tab_file = defined('BANKAI_CORE_VIEWS_DIR')
+                    ? BANKAI_CORE_VIEWS_DIR . "admin/tab-{$tab}.php"
+                    : '';
+
+                if ($tab_file && is_file($tab_file)) {
                     include $tab_file;
                 }
             }

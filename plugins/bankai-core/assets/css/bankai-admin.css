@@ -1,137 +1,131 @@
 /* ==========================================================================
-   Bankai Core - High-Performance Admin Dashboard Stylesheet
-   ==========================================================================
-   Fully Scoped Architecture for WordPress Admin SPA.
-   Prevents Flash of Unstyled Content (FOUC), ensures zero leakage into
-   WordPress core UI (#wpadminbar, #adminmenu), provides native RTL/LTR
-   support, and delivers executive-level UI components.
+   Bankai Core – High-Performance Admin Dashboard
+   Fully Scoped · RTL/LTR · Zero WP Core Leakage
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   0. FOUC Prevention & Global Hidden Utilities
+   0. FOUC Prevention
    -------------------------------------------------------------------------- */
 [x-cloak] {
   display: none !important;
 }
 
-
 /* --------------------------------------------------------------------------
-   1. WordPress Admin Canvas & Top-Level Page Normalization
+   1. WordPress Admin Canvas Isolation (CRITICAL)
    -------------------------------------------------------------------------- */
-.toplevel_page_bankai-core,
-.toplevel_page_bankai-core #wpwrap,
-.toplevel_page_bankai-core #wpcontent,
-.toplevel_page_bankai-core #wpbody,
-.toplevel_page_bankai-core #wpbody-content,
-.bankai-core_page_bankai-theme-kits,
-.bankai-core_page_bankai-theme-kits #wpwrap,
-.bankai-core_page_bankai-theme-kits #wpcontent,
-.bankai-core_page_bankai-theme-kits #wpbody,
-.bankai-core_page_bankai-theme-kits #wpbody-content,
-.bankai-core_page_bankai-seo-engine,
-.bankai-core_page_bankai-seo-engine #wpwrap,
-.bankai-core_page_bankai-seo-engine #wpcontent,
-.bankai-core_page_bankai-seo-engine #wpbody,
-.bankai-core_page_bankai-seo-engine #wpbody-content,
-.bankai-core_page_bankai-speed-cache,
-.bankai-core_page_bankai-speed-cache #wpwrap,
-.bankai-core_page_bankai-speed-cache #wpcontent,
-.bankai-core_page_bankai-speed-cache #wpbody,
-.bankai-core_page_bankai-speed-cache #wpbody-content,
-.bankai-core_page_bankai-media,
-.bankai-core_page_bankai-media #wpwrap,
-.bankai-core_page_bankai-media #wpcontent,
-.bankai-core_page_bankai-media #wpbody,
-.bankai-core_page_bankai-media #wpbody-content,
-.bankai-core_page_bankai-ai-manifests,
-.bankai-core_page_bankai-ai-manifests #wpwrap,
-.bankai-core_page_bankai-ai-manifests #wpcontent,
-.bankai-core_page_bankai-ai-manifests #wpbody,
-.bankai-core_page_bankai-ai-manifests #wpbody-content,
-.bankai-core_page_bankai-settings,
-.bankai-core_page_bankai-settings #wpwrap,
-.bankai-core_page_bankai-settings #wpcontent,
-.bankai-core_page_bankai-settings #wpbody,
-.bankai-core_page_bankai-settings #wpbody-content {
-  background-color: #F6F8FA !important;
-  color: #1F2328 !important;
+body.toplevel_page_bankai-core,
+body.toplevel_page_bankai-core #wpwrap,
+body.toplevel_page_bankai-core #wpcontent,
+body.toplevel_page_bankai-core #wpbody,
+body.toplevel_page_bankai-core #wpbody-content {
+  background-color: #f6f8fa !important;
+  color: #1f2328 !important;
   min-height: 100vh !important;
+}
+
+body.toplevel_page_bankai-core #wpcontent {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+}
+
+body.toplevel_page_bankai-core #wpbody-content {
   padding-bottom: 0 !important;
+  float: none !important;
+  overflow: visible !important;
+}
+
+body.toplevel_page_bankai-core .notice,
+body.toplevel_page_bankai-core .update-nag,
+body.toplevel_page_bankai-core #wpbody-content > .notice,
+body.toplevel_page_bankai-core #wpbody-content > .updated,
+body.toplevel_page_bankai-core #wpbody-content > .error {
+  display: none !important;
+}
+
+body.toplevel_page_bankai-core #adminmenumain,
+body.toplevel_page_bankai-core #adminmenuwrap,
+body.toplevel_page_bankai-core #adminmenu {
+  z-index: 9990 !important;
+}
+
+body.toplevel_page_bankai-core #bankai-admin-app,
+body.toplevel_page_bankai-core .bankai-admin-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* --------------------------------------------------------------------------
-   2. Scoped Design Tokens & Base Container (#bankai-admin-app / .bankai-app-wrapper)
+   2. Design Tokens & Base Container
    -------------------------------------------------------------------------- */
 #bankai-admin-app,
 .bankai-app-wrapper,
 .bankai-admin-wrap {
-  /* GitHub Primer Light Design Tokens */
-  --gh-canvas-default: #FFFFFF;
-  --gh-canvas-subtle: #F6F8FA;
-  --gh-canvas-inset: #F6F8FA;
-  --gh-border-default: #D0D7DE;
-  --gh-border-muted: #D8DEE4;
-  --gh-border-subtle: #EAEFF2;
+  --gh-canvas-default: #ffffff;
+  --gh-canvas-subtle: #f6f8fa;
+  --gh-border-default: #d0d7de;
+  --gh-border-muted: #d8dee4;
+  --gh-border-subtle: #eaeff2;
 
-  --gh-fg-default: #1F2328;
-  --gh-fg-muted: #656D76;
-  --gh-fg-subtle: #8C959F;
-  --gh-fg-on-emphasis: #FFFFFF;
+  --gh-fg-default: #1f2328;
+  --gh-fg-muted: #656d76;
+  --gh-fg-subtle: #8c959f;
+  --gh-fg-on-emphasis: #ffffff;
 
-  --gh-accent-fg: #0969DA;
-  --gh-accent-emphasis: #0969DA;
+  --gh-accent-fg: #0969da;
+  --gh-accent-emphasis: #0969da;
   --gh-accent-muted: rgba(9, 105, 218, 0.12);
   --gh-accent-subtle: rgba(9, 105, 218, 0.06);
 
-  --gh-success-fg: #1A7F37;
-  --gh-success-emphasis: #1F883D;
+  --gh-success-fg: #1a7f37;
+  --gh-success-emphasis: #1f883d;
   --gh-success-muted: rgba(31, 136, 61, 0.15);
-  --gh-success-subtle: #DAFBE1;
-  --gh-success-border: #ACEBBB;
+  --gh-success-subtle: #dafbe1;
+  --gh-success-border: #acebbb;
 
-  --gh-danger-fg: #CF222E;
-  --gh-danger-emphasis: #A40E26;
+  --gh-danger-fg: #cf222e;
+  --gh-danger-emphasis: #a40e26;
   --gh-danger-muted: rgba(207, 34, 46, 0.15);
-  --gh-danger-subtle: #FFEBE9;
-  --gh-danger-border: #FF8182;
+  --gh-danger-subtle: #ffebe9;
+  --gh-danger-border: #ff8182;
 
-  --gh-attention-fg: #9A6700;
-  --gh-attention-emphasis: #9A6700;
+  --gh-attention-fg: #9a6700;
+  --gh-attention-emphasis: #9a6700;
   --gh-attention-muted: rgba(154, 103, 0, 0.15);
-  --gh-attention-subtle: #FFF8C5;
+  --gh-attention-subtle: #fff8c5;
 
-  --gh-done-fg: #8250DF;
-  --gh-done-emphasis: #8250DF;
+  --gh-done-fg: #8250df;
+  --gh-done-emphasis: #8250df;
   --gh-done-muted: rgba(130, 80, 223, 0.15);
-  --gh-done-subtle: #FBEFFF;
+  --gh-done-subtle: #fbefff;
 
-  /* Legacy / Backward Compatible Token Aliases */
-  --bankai-bg-main: #F6F8FA;
-  --bankai-bg-surface: #FFFFFF;
-  --bankai-bg-subtle: #F6F8FA;
-  --bankai-card-bg: #FFFFFF;
-  --bankai-card-border: #D0D7DE;
-  --bankai-card-border-hover: #0969DA;
-  --bankai-sidebar-bg: #FFFFFF;
-  --bankai-header-bg: #FFFFFF;
-
-  --bankai-text-main: #1F2328;
-  --bankai-text-body: #24292F;
-  --bankai-text-muted: #656D76;
-  --bankai-text-subtle: #8C959F;
-
-  --bankai-frost-deep: #0969DA;
-  --bankai-frost-blue: #218BFF;
-  --bankai-frost-ice: #54AEFF;
-  --bankai-aurora-green: #1F883D;
-  --bankai-aurora-red: #CF222E;
-  --bankai-aurora-orange: #BC4C00;
-  --bankai-aurora-yellow: #9A6700;
-  --bankai-aurora-purple: #8250DF;
+  --bankai-bg-main: #f6f8fa;
+  --bankai-bg-surface: #ffffff;
+  --bankai-card-bg: #ffffff;
+  --bankai-card-border: #d0d7de;
+  --bankai-text-main: #1f2328;
+  --bankai-text-muted: #656d76;
+  --bankai-text-subtle: #8c959f;
+  --bankai-frost-deep: #0969da;
+  --bankai-frost-blue: #218bff;
+  --bankai-aurora-green: #1f883d;
+  --bankai-aurora-red: #cf222e;
+  --bankai-aurora-purple: #8250df;
 
   background-color: var(--bankai-bg-main) !important;
   color: var(--bankai-text-main) !important;
-  font-family: 'Inter', 'Vazirmatn', -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  font-family:
+    "Inter",
+    "Vazirmatn",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Noto Sans",
+    Helvetica,
+    Arial,
+    sans-serif;
   min-height: calc(100vh - 32px);
   margin: 0;
   padding: 0;
@@ -147,7 +141,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   3. RTL / LTR Class & Direction Support
+   3. RTL / LTR
    -------------------------------------------------------------------------- */
 #bankai-admin-app.rtl,
 .bankai-app-wrapper.rtl,
@@ -157,7 +151,13 @@
 [dir="rtl"] .bankai-admin-wrap {
   direction: rtl;
   text-align: right;
-  font-family: 'Vazirmatn', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family:
+    "Vazirmatn",
+    "Inter",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif !important;
 }
 
 #bankai-admin-app.ltr,
@@ -168,11 +168,16 @@
 [dir="ltr"] .bankai-admin-wrap {
   direction: ltr;
   text-align: left;
-  font-family: 'Inter', 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family:
+    "Inter",
+    "Vazirmatn",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif !important;
 }
 
 /* --------------------------------------------------------------------------
-   4. Background Ambient Decorations & Floating Animations
+   4. Ambient Background Decorations
    -------------------------------------------------------------------------- */
 #bankai-admin-app .bankai-bg-decorations,
 .bankai-app-wrapper .bankai-bg-decorations {
@@ -190,10 +195,21 @@
 .bankai-app-wrapper .bankai-ambient-grid {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(31, 35, 40, 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(
+    rgba(31, 35, 40, 0.08) 1px,
+    transparent 1px
+  );
   background-size: 26px 26px;
-  mask-image: radial-gradient(ellipse 95% 75% at 50% 30%, #000 35%, transparent 95%);
-  -webkit-mask-image: radial-gradient(ellipse 95% 75% at 50% 30%, #000 35%, transparent 95%);
+  mask-image: radial-gradient(
+    ellipse 95% 75% at 50% 30%,
+    #000 35%,
+    transparent 95%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 95% 75% at 50% 30%,
+    #000 35%,
+    transparent 95%
+  );
   opacity: 0.85;
 }
 
@@ -212,7 +228,12 @@
   right: 12%;
   width: 520px;
   height: 520px;
-  background: radial-gradient(circle, rgba(9, 105, 218, 0.13) 0%, rgba(84, 174, 255, 0.04) 55%, transparent 75%);
+  background: radial-gradient(
+    circle,
+    rgba(9, 105, 218, 0.13) 0%,
+    rgba(84, 174, 255, 0.04) 55%,
+    transparent 75%
+  );
   animation: floatOrb1 20s ease-in-out infinite alternate;
 }
 
@@ -222,7 +243,12 @@
   left: 4%;
   width: 460px;
   height: 460px;
-  background: radial-gradient(circle, rgba(130, 80, 223, 0.10) 0%, rgba(210, 168, 255, 0.03) 55%, transparent 75%);
+  background: radial-gradient(
+    circle,
+    rgba(130, 80, 223, 0.1) 0%,
+    rgba(210, 168, 255, 0.03) 55%,
+    transparent 75%
+  );
   animation: floatOrb2 24s ease-in-out infinite alternate;
 }
 
@@ -232,32 +258,47 @@
   right: 28%;
   width: 440px;
   height: 440px;
-  background: radial-gradient(circle, rgba(31, 136, 61, 0.08) 0%, rgba(86, 211, 100, 0.03) 55%, transparent 75%);
+  background: radial-gradient(
+    circle,
+    rgba(31, 136, 61, 0.08) 0%,
+    rgba(86, 211, 100, 0.03) 55%,
+    transparent 75%
+  );
   animation: floatOrb3 22s ease-in-out infinite alternate;
 }
 
 @keyframes floatOrb1 {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-45px, 35px) scale(1.08); }
-  100% { transform: translate(30px, -25px) scale(0.94); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-45px, 35px) scale(1.08);
+  }
+  100% {
+    transform: translate(30px, -25px) scale(0.94);
+  }
 }
-
 @keyframes floatOrb2 {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(40px, -30px) scale(0.92); }
-  100% { transform: translate(-25px, 40px) scale(1.07); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, -30px) scale(0.92);
+  }
+  100% {
+    transform: translate(-25px, 40px) scale(1.07);
+  }
 }
-
 @keyframes floatOrb3 {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-35px, -40px) scale(1.1); }
-  100% { transform: translate(35px, 25px) scale(0.95); }
-}
-
-#bankai-admin-app .bankai-ambient-particles,
-.bankai-app-wrapper .bankai-ambient-particles {
-  position: absolute;
-  inset: 0;
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-35px, -40px) scale(1.1);
+  }
+  100% {
+    transform: translate(35px, 25px) scale(0.95);
+  }
 }
 
 #bankai-admin-app .bankai-particle,
@@ -268,46 +309,93 @@
   animation: particleFloatPulse 5s ease-in-out infinite alternate;
 }
 
-#bankai-admin-app .p-1 { top: 18%; left: 22%; width: 4px; height: 4px; background: #0969DA; opacity: 0.35; animation-delay: 0s; }
-#bankai-admin-app .p-2 { top: 32%; right: 18%; width: 5px; height: 5px; background: #8250DF; opacity: 0.3; animation-delay: 1.5s; }
-#bankai-admin-app .p-3 { top: 68%; left: 14%; width: 4px; height: 4px; background: #1F883D; opacity: 0.32; animation-delay: 2.8s; }
-#bankai-admin-app .p-4 { top: 82%; right: 26%; width: 5px; height: 5px; background: #0969DA; opacity: 0.28; animation-delay: 1s; }
-#bankai-admin-app .p-5 { top: 48%; right: 42%; width: 4px; height: 4px; background: #9A6700; opacity: 0.35; animation-delay: 2s; }
+#bankai-admin-app .p-1 {
+  top: 18%;
+  left: 22%;
+  width: 4px;
+  height: 4px;
+  background: #0969da;
+  opacity: 0.35;
+  animation-delay: 0s;
+}
+#bankai-admin-app .p-2 {
+  top: 32%;
+  right: 18%;
+  width: 5px;
+  height: 5px;
+  background: #8250df;
+  opacity: 0.3;
+  animation-delay: 1.5s;
+}
+#bankai-admin-app .p-3 {
+  top: 68%;
+  left: 14%;
+  width: 4px;
+  height: 4px;
+  background: #1f883d;
+  opacity: 0.32;
+  animation-delay: 2.8s;
+}
+#bankai-admin-app .p-4 {
+  top: 82%;
+  right: 26%;
+  width: 5px;
+  height: 5px;
+  background: #0969da;
+  opacity: 0.28;
+  animation-delay: 1s;
+}
+#bankai-admin-app .p-5 {
+  top: 48%;
+  right: 42%;
+  width: 4px;
+  height: 4px;
+  background: #9a6700;
+  opacity: 0.35;
+  animation-delay: 2s;
+}
 
 @keyframes particleFloatPulse {
-  0% { transform: scale(1) translateY(0); opacity: 0.2; }
-  100% { transform: scale(1.5) translateY(-14px); opacity: 0.55; }
+  0% {
+    transform: scale(1) translateY(0);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(1.5) translateY(-14px);
+    opacity: 0.55;
+  }
 }
 
 /* --------------------------------------------------------------------------
-   5. Layout Architecture & Sidebar Styling
+   5. Layout · Header · Sidebar (Single Source of Truth)
    -------------------------------------------------------------------------- */
+
+/* Body layout – فاصله بیشتر از هدر */
 #bankai-admin-app .bankai-body-layout,
 .bankai-app-wrapper .bankai-body-layout {
   display: flex;
-  gap: 24px;
-  padding: 24px 28px 36px 28px;
+  gap: 28px;
+  padding: 32px 28px 40px 28px;
   box-sizing: border-box;
   align-items: flex-start;
   min-height: calc(100vh - 65px);
   position: relative;
+  z-index: 1;
 }
 
 #bankai-admin-app #bankai-main-content,
 .bankai-app-wrapper #bankai-main-content {
   flex: 1;
   min-width: 0;
-  box-sizing: border-box;
   position: relative;
   z-index: 1;
 }
 
-/* Tab Entrance Animation */
+/* Tab entrance */
 #bankai-admin-app [id^="tab-"],
 .bankai-app-wrapper [id^="tab-"] {
   animation: bankaiTabEntrance 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-
 @keyframes bankaiTabEntrance {
   from {
     opacity: 0;
@@ -319,38 +407,49 @@
   }
 }
 
+/* Sidebar base */
 #bankai-admin-app .bankai-sidebar,
 .bankai-app-wrapper .bankai-sidebar {
   width: 100%;
   background-color: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid #D0D7DE;
+  border: 1px solid #d0d7de;
   border-radius: 12px;
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(31, 35, 40, 0.04), 0 8px 24px -4px rgba(31, 35, 40, 0.04);
+  box-shadow:
+    0 1px 3px rgba(31, 35, 40, 0.04),
+    0 8px 24px -4px rgba(31, 35, 40, 0.04);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   z-index: 2;
 }
 
+/* Sidebar sticky on desktop */
 @media (min-width: 1025px) {
   #bankai-admin-app .bankai-sidebar,
   .bankai-app-wrapper .bankai-sidebar {
-    width: 275px;
-    min-width: 275px;
+    width: 260px;
+    min-width: 260px;
     position: sticky;
-    top: 74px;
-    max-height: calc(100vh - 96px);
+    top: 78px;
+    max-height: calc(100vh - 100px);
     overflow-y: auto;
+    align-self: flex-start;
   }
 }
 
-/* Sidebar Navigation Items */
+/* Hide all nav badges */
+#bankai-admin-app .bankai-nav-badge,
+.bankai-app-wrapper .bankai-nav-badge {
+  display: none !important;
+}
+
+/* Nav groups */
 #bankai-admin-app .bankai-nav-group,
 .bankai-app-wrapper .bankai-nav-group {
   margin-bottom: 16px;
@@ -360,7 +459,7 @@
 .bankai-app-wrapper .bankai-nav-group-title {
   font-size: 11px;
   font-weight: 700;
-  color: #656D76;
+  color: #656d76;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 4px 12px 6px 12px;
@@ -381,29 +480,29 @@
   cursor: pointer;
   transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
   background: transparent;
-  color: #24292F;
+  color: #24292f;
   position: relative;
 }
 
 #bankai-admin-app .bankai-nav-btn:hover,
 .bankai-app-wrapper .bankai-nav-btn:hover {
-  background-color: #F6F8FA;
-  color: #0969DA;
+  background-color: #f6f8fa;
+  color: #0969da;
 }
 
 #bankai-admin-app .bankai-nav-btn.active,
 .bankai-app-wrapper .bankai-nav-btn.active {
   background-color: rgba(9, 105, 218, 0.08);
-  color: #0969DA;
+  color: #0969da;
   font-weight: 700;
-  border-left: 3px solid #0969DA;
+  border-left: 3px solid #0969da;
 }
 
 #bankai-admin-app.rtl .bankai-nav-btn.active,
 .bankai-app-wrapper.rtl .bankai-nav-btn.active,
 [dir="rtl"] #bankai-admin-app .bankai-nav-btn.active {
   border-left: none;
-  border-right: 3px solid #0969DA;
+  border-right: 3px solid #0969da;
 }
 
 #bankai-admin-app .bankai-nav-icon,
@@ -414,42 +513,31 @@
   width: 30px;
   height: 30px;
   border-radius: 6px;
-  background-color: #F6F8FA;
-  color: #656D76;
+  background-color: #f6f8fa;
+  color: #656d76;
   transition: all 0.16s ease;
   flex-shrink: 0;
-  border: 1px solid #EAEFF2;
+  border: 1px solid #eaeff2;
 }
 
 #bankai-admin-app .bankai-nav-btn:hover .bankai-nav-icon,
 .bankai-app-wrapper .bankai-nav-btn:hover .bankai-nav-icon {
-  background-color: #FFFFFF;
-  color: #0969DA;
-  border-color: #D0D7DE;
+  background-color: #ffffff;
+  color: #0969da;
+  border-color: #d0d7de;
   box-shadow: 0 1px 2px rgba(31, 35, 40, 0.06);
 }
 
 #bankai-admin-app .bankai-nav-btn.active .bankai-nav-icon,
 .bankai-app-wrapper .bankai-nav-btn.active .bankai-nav-icon {
-  background-color: #FFFFFF;
-  color: #0969DA;
+  background-color: #ffffff;
+  color: #0969da;
   border-color: rgba(9, 105, 218, 0.3);
   box-shadow: 0 1px 3px rgba(9, 105, 218, 0.15);
 }
 
-#bankai-admin-app .bankai-nav-badge,
-.bankai-app-wrapper .bankai-nav-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 12px;
-  margin-inline-start: auto;
-  letter-spacing: 0.3px;
-  border: 1px solid transparent;
-}
-
 /* --------------------------------------------------------------------------
-   6. Icons (Solar SVG System)
+   6. Icons
    -------------------------------------------------------------------------- */
 #bankai-admin-app .solar-icon,
 .bankai-app-wrapper .solar-icon {
@@ -464,50 +552,61 @@
   stroke-linejoin: round;
   flex-shrink: 0;
 }
-
 #bankai-admin-app .solar-icon-sm,
-.bankai-app-wrapper .solar-icon-sm { width: 16px; height: 16px; }
-
+.bankai-app-wrapper .solar-icon-sm {
+  width: 16px;
+  height: 16px;
+}
 #bankai-admin-app .solar-icon-lg,
-.bankai-app-wrapper .solar-icon-lg { width: 24px; height: 24px; }
-
+.bankai-app-wrapper .solar-icon-lg {
+  width: 24px;
+  height: 24px;
+}
 #bankai-admin-app .solar-icon-xl,
-.bankai-app-wrapper .solar-icon-xl { width: 28px; height: 28px; }
+.bankai-app-wrapper .solar-icon-xl {
+  width: 28px;
+  height: 28px;
+}
 
 /* --------------------------------------------------------------------------
-   7. Scoped Cards, Buttons & Interactive UI Components
+   7. Cards · Buttons · Forms · Switch
    -------------------------------------------------------------------------- */
 #bankai-admin-app .bankai-card,
 .bankai-app-wrapper .bankai-card {
   background-color: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid #D0D7DE;
+  border: 1px solid #d0d7de;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(31, 35, 40, 0.04), 0 6px 16px -4px rgba(31, 35, 40, 0.03);
-  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
-              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
-              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow:
+    0 1px 3px rgba(31, 35, 40, 0.04),
+    0 6px 16px -4px rgba(31, 35, 40, 0.03);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.2s;
   position: relative;
 }
 
 #bankai-admin-app .bankai-card:hover,
 .bankai-app-wrapper .bankai-card:hover {
-  border-color: #8C959F;
+  border-color: #8c959f;
   box-shadow: 0 3px 12px rgba(31, 35, 40, 0.07);
 }
 
 #bankai-admin-app .bankai-card-interactive:hover,
 .bankai-app-wrapper .bankai-card-interactive:hover {
-  border-color: #0969DA;
+  border-color: #0969da;
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px -4px rgba(9, 105, 218, 0.12), 0 3px 8px rgba(31, 35, 40, 0.06);
+  box-shadow:
+    0 10px 24px -4px rgba(9, 105, 218, 0.12),
+    0 3px 8px rgba(31, 35, 40, 0.06);
 }
 
 #bankai-admin-app .bankai-card-subtle,
 .bankai-app-wrapper .bankai-card-subtle {
-  background-color: #F6F8FA;
-  border: 1px solid #D0D7DE;
+  background-color: #f6f8fa;
+  border: 1px solid #d0d7de;
   border-radius: 8px;
 }
 
@@ -521,10 +620,9 @@
   padding: 6px 14px;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s;
   box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
 }
-
 #bankai-admin-app .bankai-btn:active,
 .bankai-app-wrapper .bankai-btn:active {
   transform: scale(0.98);
@@ -532,31 +630,43 @@
 
 #bankai-admin-app .bankai-btn-primary,
 .bankai-app-wrapper .bankai-btn-primary {
-  background-color: #1F883D;
+  background-color: #1f883d;
   border: 1px solid rgba(31, 35, 40, 0.15);
-  color: #FFFFFF;
-  box-shadow: 0 1px 0 rgba(31, 35, 40, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  color: #ffffff;
 }
-
 #bankai-admin-app .bankai-btn-primary:hover,
 .bankai-app-wrapper .bankai-btn-primary:hover {
-  background-color: #1A7F37;
+  background-color: #1a7f37;
 }
 
 #bankai-admin-app .bankai-btn-default,
 .bankai-app-wrapper .bankai-btn-default {
-  background-color: #F6F8FA;
-  border: 1px solid #D0D7DE;
-  color: #24292F;
+  background-color: #f6f8fa;
+  border: 1px solid #d0d7de;
+  color: #24292f;
 }
-
 #bankai-admin-app .bankai-btn-default:hover,
 .bankai-app-wrapper .bankai-btn-default:hover {
-  background-color: #F3F4F6;
-  border-color: #8C959F;
+  background-color: #f3f4f6;
+  border-color: #8c959f;
 }
 
-/* Scoped Form Inputs & Select Controls */
+/* Ghost / transparent header buttons */
+#bankai-admin-app .bankai-btn-ghost,
+.bankai-app-wrapper .bankai-btn-ghost {
+  background: transparent !important;
+  border: none !important;
+  color: #656d76;
+  box-shadow: none !important;
+  padding: 6px 10px;
+}
+#bankai-admin-app .bankai-btn-ghost:hover,
+.bankai-app-wrapper .bankai-btn-ghost:hover {
+  color: #0969da;
+  background: transparent !important;
+}
+
+/* Form controls */
 #bankai-admin-app input[type="text"],
 #bankai-admin-app input[type="password"],
 #bankai-admin-app input[type="number"],
@@ -569,13 +679,15 @@
 .bankai-app-wrapper input[type="search"],
 .bankai-app-wrapper select,
 .bankai-app-wrapper textarea {
-  background-color: #FFFFFF;
-  border: 1px solid #D0D7DE;
-  color: #1F2328;
+  background-color: #ffffff;
+  border: 1px solid #d0d7de;
+  color: #1f2328;
   border-radius: 6px;
   padding: 7px 12px;
   font-size: 13px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
   box-shadow: inset 0 1px 2px rgba(31, 35, 40, 0.06);
 }
 
@@ -586,11 +698,11 @@
 .bankai-app-wrapper select:focus,
 .bankai-app-wrapper textarea:focus {
   outline: none;
-  border-color: #0969DA !important;
+  border-color: #0969da !important;
   box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.28) !important;
 }
 
-/* Scoped Toggle Switch Components */
+/* Toggle switch */
 #bankai-admin-app .bankai-switch,
 .bankai-app-wrapper .bankai-switch {
   position: relative;
@@ -598,24 +710,21 @@
   width: 38px;
   height: 22px;
 }
-
 #bankai-admin-app .bankai-switch input,
 .bankai-app-wrapper .bankai-switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
-
 #bankai-admin-app .bankai-slider,
 .bankai-app-wrapper .bankai-slider {
   position: absolute;
   cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #D0D7DE;
+  inset: 0;
+  background-color: #d0d7de;
   border-radius: 20px;
-  transition: .22s;
+  transition: 0.22s;
 }
-
 #bankai-admin-app .bankai-slider:before,
 .bankai-app-wrapper .bankai-slider:before {
   position: absolute;
@@ -624,62 +733,58 @@
   width: 16px;
   left: 3px;
   bottom: 3px;
-  background-color: #FFFFFF;
+  background-color: #ffffff;
   border-radius: 50%;
   box-shadow: 0 1px 3px rgba(31, 35, 40, 0.25);
-  transition: .22s;
+  transition: 0.22s;
 }
-
 #bankai-admin-app.rtl .bankai-slider:before,
 .bankai-app-wrapper.rtl .bankai-slider:before,
 [dir="rtl"] #bankai-admin-app .bankai-slider:before {
   left: auto;
   right: 3px;
 }
-
 #bankai-admin-app .bankai-switch input:checked + .bankai-slider,
 .bankai-app-wrapper .bankai-switch input:checked + .bankai-slider {
-  background-color: #1F883D;
+  background-color: #1f883d;
 }
-
 #bankai-admin-app .bankai-switch input:checked + .bankai-slider:before,
 .bankai-app-wrapper .bankai-switch input:checked + .bankai-slider:before {
   transform: translateX(16px);
 }
-
 #bankai-admin-app.rtl .bankai-switch input:checked + .bankai-slider:before,
 .bankai-app-wrapper.rtl .bankai-switch input:checked + .bankai-slider:before,
-[dir="rtl"] #bankai-admin-app .bankai-switch input:checked + .bankai-slider:before {
+[dir="rtl"]
+  #bankai-admin-app
+  .bankai-switch
+  input:checked
+  + .bankai-slider:before {
   transform: translateX(-16px);
 }
 
-/* Scoped Scrollbars */
+/* Scrollbars */
 #bankai-admin-app ::-webkit-scrollbar,
 .bankai-app-wrapper ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-
 #bankai-admin-app ::-webkit-scrollbar-track,
 .bankai-app-wrapper ::-webkit-scrollbar-track {
-  background: #F6F8FA;
+  background: #f6f8fa;
 }
-
 #bankai-admin-app ::-webkit-scrollbar-thumb,
 .bankai-app-wrapper ::-webkit-scrollbar-thumb {
-  background: #D0D7DE;
+  background: #d0d7de;
   border-radius: 4px;
 }
-
 #bankai-admin-app ::-webkit-scrollbar-thumb:hover,
 .bankai-app-wrapper ::-webkit-scrollbar-thumb:hover {
-  background: #8C959F;
+  background: #8c959f;
 }
 
 /* --------------------------------------------------------------------------
-   8. Page Progress Track & Saving Loader Floating Card
+   8. Progress · Loader · Toast · Modal
    -------------------------------------------------------------------------- */
-/* Linear Page Switch Loader Bar */
 .bankai-page-progress-track {
   position: fixed;
   top: 0;
@@ -690,27 +795,23 @@
   z-index: 999999;
   pointer-events: none;
 }
-
 .bankai-page-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #54AEFF 0%, #0969DA 50%, #218BFF 100%);
-  box-shadow: 0 0 10px rgba(9, 105, 218, 0.7), 0 0 4px rgba(84, 174, 255, 0.9);
+  background: linear-gradient(90deg, #54aeff 0%, #0969da 50%, #218bff 100%);
+  box-shadow: 0 0 10px rgba(9, 105, 218, 0.7);
   transition: width 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   border-radius: 0 2px 2px 0;
 }
-
 [dir="rtl"] .bankai-page-progress-bar {
   border-radius: 2px 0 0 2px;
 }
 
-/* Section Tab Loading Overlay */
 #bankai-admin-app .bankai-tab-loading-overlay,
 .bankai-app-wrapper .bankai-tab-loading-overlay {
   position: absolute;
   inset: 0;
   background-color: rgba(246, 248, 250, 0.55);
   backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
   z-index: 40;
   display: flex;
   align-items: flex-start;
@@ -722,8 +823,8 @@
 
 #bankai-admin-app .bankai-loading-pill,
 .bankai-app-wrapper .bankai-loading-pill {
-  background: #FFFFFF;
-  border: 1px solid #D0D7DE;
+  background: #ffffff;
+  border: 1px solid #d0d7de;
   padding: 8px 18px;
   border-radius: 24px;
   display: flex;
@@ -731,11 +832,10 @@
   gap: 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #1F2328;
-  box-shadow: 0 4px 14px rgba(31, 35, 40, 0.08), 0 1px 3px rgba(31, 35, 40, 0.04);
+  color: #1f2328;
+  box-shadow: 0 4px 14px rgba(31, 35, 40, 0.08);
 }
 
-/* Floating Save Loader Overlay Card & Spinner */
 .bankai-save-loader-overlay {
   position: fixed;
   top: 24px;
@@ -746,27 +846,23 @@
   display: flex;
   justify-content: center;
 }
-
 .bankai-save-loader-card {
   pointer-events: auto;
-  background-color: #FFFFFF;
-  border: 1px solid #D0D7DE;
+  background-color: #ffffff;
+  border: 1px solid #d0d7de;
   border-radius: 10px;
   padding: 10px 18px;
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 8px 24px -4px rgba(31, 35, 40, 0.16), 0 2px 6px rgba(31, 35, 40, 0.04);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 8px 24px -4px rgba(31, 35, 40, 0.16);
   min-width: 280px;
   max-width: 90vw;
 }
-
 .bankai-save-loader-success {
-  border-color: #ACEBBB;
-  box-shadow: 0 8px 24px -4px rgba(26, 127, 55, 0.2), 0 2px 6px rgba(26, 127, 55, 0.06);
+  border-color: #acebbb;
+  box-shadow: 0 8px 24px -4px rgba(26, 127, 55, 0.2);
 }
-
 .bankai-save-spinner-wrap {
   width: 32px;
   height: 32px;
@@ -777,53 +873,62 @@
   justify-content: center;
   flex-shrink: 0;
 }
-
 .bankai-save-success-wrap {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: #DAFBE1;
-  border: 1px solid #ACEBBB;
+  background-color: #dafbe1;
+  border: 1px solid #acebbb;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   animation: bankaiScaleCheck 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-
 @keyframes bankaiScaleCheck {
-  0% { transform: scale(0.6); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
-
 @keyframes bankaiSpin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
-
 .bankai-spinner {
   width: 18px;
   height: 18px;
   animation: bankaiSpin 0.75s linear infinite;
 }
-
 @keyframes bankaiPulseDot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.35; transform: scale(0.75); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
 }
-
 .bankai-pulse-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: #0969DA;
+  background-color: #0969da;
   animation: bankaiPulseDot 1.2s ease-in-out infinite;
 }
 
-/* --------------------------------------------------------------------------
-   9. Toasts, Modals & Drawer Overlays
-   -------------------------------------------------------------------------- */
+/* Toast */
 #bankai-admin-app .bankai-toast,
 .bankai-app-wrapper .bankai-toast {
   position: fixed;
@@ -836,50 +941,42 @@
   font-weight: 600;
   font-size: 13px;
   box-shadow: 0 10px 30px -5px rgba(31, 35, 40, 0.18);
-  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   gap: 10px;
 }
-
 #bankai-admin-app.rtl .bankai-toast,
 .bankai-app-wrapper.rtl .bankai-toast,
 [dir="rtl"] #bankai-admin-app .bankai-toast {
   right: auto;
   left: 24px;
 }
-
 #bankai-admin-app .bankai-toast-success,
 .bankai-app-wrapper .bankai-toast-success {
-  background-color: #FFFFFF;
-  color: #1A7F37;
-  border: 1px solid #ACEBBB;
-  border-left: 4px solid #1F883D;
+  background-color: #ffffff;
+  color: #1a7f37;
+  border: 1px solid #acebbb;
+  border-left: 4px solid #1f883d;
 }
-
 #bankai-admin-app.rtl .bankai-toast-success,
-.bankai-app-wrapper.rtl .bankai-toast-success,
 [dir="rtl"] #bankai-admin-app .bankai-toast-success {
-  border-left: 1px solid #ACEBBB;
-  border-right: 4px solid #1F883D;
+  border-left: 1px solid #acebbb;
+  border-right: 4px solid #1f883d;
 }
-
 #bankai-admin-app .bankai-toast-error,
 .bankai-app-wrapper .bankai-toast-error {
-  background-color: #FFFFFF;
-  color: #CF222E;
-  border: 1px solid #FF8182;
-  border-left: 4px solid #CF222E;
+  background-color: #ffffff;
+  color: #cf222e;
+  border: 1px solid #ff8182;
+  border-left: 4px solid #cf222e;
 }
-
 #bankai-admin-app.rtl .bankai-toast-error,
-.bankai-app-wrapper.rtl .bankai-toast-error,
 [dir="rtl"] #bankai-admin-app .bankai-toast-error {
-  border-left: 1px solid #FF8182;
-  border-right: 4px solid #CF222E;
+  border-left: 1px solid #ff8182;
+  border-right: 4px solid #cf222e;
 }
 
-/* Modal Drawer Backdrop Overlay */
+/* Modal overlay */
 .bankai-modal-overlay {
   position: fixed;
   inset: 0;
@@ -893,7 +990,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   10. Responsive Grid Layouts & Mobile Drawer System
+   9. Grids
    -------------------------------------------------------------------------- */
 #bankai-admin-app .bankai-grid-4,
 .bankai-app-wrapper .bankai-grid-4 {
@@ -902,21 +999,18 @@
   gap: 16px;
   margin-bottom: 24px;
 }
-
 #bankai-admin-app .bankai-grid-3,
 .bankai-app-wrapper .bankai-grid-3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
-
 #bankai-admin-app .bankai-grid-2,
 .bankai-app-wrapper .bankai-grid-2 {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
-
 #bankai-admin-app .bankai-grid-split,
 .bankai-app-wrapper .bankai-grid-split {
   display: grid;
@@ -930,7 +1024,6 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
-
 @media (max-width: 1024px) {
   #bankai-admin-app .bankai-grid-split,
   .bankai-app-wrapper .bankai-grid-split {
@@ -940,14 +1033,12 @@
   .bankai-app-wrapper .bankai-grid-3 {
     grid-template-columns: repeat(2, 1fr);
   }
-
   #bankai-admin-app .bankai-body-layout,
   .bankai-app-wrapper .bankai-body-layout {
     padding: 14px 16px 24px 16px;
     gap: 0;
   }
 }
-
 @media (max-width: 768px) {
   #bankai-admin-app .bankai-grid-4,
   #bankai-admin-app .bankai-grid-3,
@@ -961,14 +1052,15 @@
   }
 }
 
-/* Mobile Sidebar Drawer System */
+/* --------------------------------------------------------------------------
+   10. Mobile Sidebar Drawer
+   -------------------------------------------------------------------------- */
 .bankai-mobile-overlay {
   display: none;
   position: fixed;
   inset: 0;
   background-color: rgba(31, 35, 40, 0.48);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   z-index: 9998;
   transition: opacity 0.25s ease;
 }
@@ -992,7 +1084,7 @@
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
     box-shadow: 6px 0 32px rgba(31, 35, 40, 0.28) !important;
     overflow-y: auto;
-    background-color: #FFFFFF !important;
+    background-color: #ffffff !important;
     border-radius: 0 14px 14px 0 !important;
   }
 
@@ -1017,13 +1109,12 @@
   }
 }
 
-/* Mobile Hamburger Trigger Button */
 #bankai-admin-app .bankai-mobile-btn,
 .bankai-app-wrapper .bankai-mobile-btn {
   display: none;
-  background-color: #FFFFFF;
-  border: 1px solid #D0D7DE;
-  color: #1F2328;
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: #1f2328;
   width: 36px;
   height: 36px;
   border-radius: 8px;
@@ -1031,16 +1122,13 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(31, 35, 40, 0.05);
 }
-
 #bankai-admin-app .bankai-mobile-btn:hover,
 .bankai-app-wrapper .bankai-mobile-btn:hover {
-  background-color: #F6F8FA;
-  border-color: #0969DA;
-  color: #0969DA;
+  background-color: #f6f8fa;
+  border-color: #d0d7de;
+  color: #0969da;
 }
-
 @media (max-width: 1024px) {
   #bankai-admin-app .bankai-mobile-btn,
   .bankai-app-wrapper .bankai-mobile-btn {
@@ -1048,16 +1136,133 @@
   }
 }
 
-/* Slide-over Drawer Responsiveness */
 #bankai-admin-app .bankai-drawer-container,
 .bankai-app-wrapper .bankai-drawer-container {
   width: 500px;
   max-width: 100vw;
 }
-
 @media (max-width: 640px) {
   #bankai-admin-app .bankai-drawer-container,
   .bankai-app-wrapper .bankai-drawer-container {
     width: 100vw !important;
   }
+}
+
+/* ==========================================================================
+   FIX 1 & 2 — Header: فاصله از بالا + پس‌زمینه شناور شیشه‌ای
+   ========================================================================== */
+
+#bankai-admin-header {
+  position: sticky !important; /* زیر admin bar وردپرس */
+  z-index: 100 !important;
+  backdrop-filter: blur(16px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.2) !important;
+  box-shadow: none !important;
+  padding: 10px !important;
+  margin: 5 !important;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  box-shadow: none;
+}
+
+/* فاصله منطقی بین هدر و محتوای زیر */
+#bankai-admin-app .bankai-body-layout,
+.bankai-app-wrapper .bankai-body-layout {
+  display: flex;
+  gap: 28px;
+  padding: 20px 28px 40px 28px !important; /* فاصله متعادل از هدر */
+  box-sizing: border-box;
+  align-items: flex-start;
+  min-height: calc(100vh - 65px);
+  position: relative;
+  z-index: 1;
+}
+
+/* ==========================================================================
+   FIX 3 — Switch: طراحی تمیز در حالت فعال/غیرفعال
+   ========================================================================== */
+
+#bankai-admin-app .bankai-switch,
+.bankai-app-wrapper .bankai-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+#bankai-admin-app .bankai-switch input,
+.bankai-app-wrapper .bankai-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+#bankai-admin-app .bankai-slider,
+.bankai-app-wrapper .bankai-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #d0d7de;
+  border-radius: 22px;
+  transition: background-color 0.2s ease;
+  border: none;
+  box-shadow: inset 0 1px 2px rgba(31, 35, 40, 0.08);
+}
+
+#bankai-admin-app .bankai-slider:before,
+.bankai-app-wrapper .bankai-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  top: 3px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(31, 35, 40, 0.2);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* حالت فعال */
+#bankai-admin-app .bankai-switch input:checked + .bankai-slider,
+.bankai-app-wrapper .bankai-switch input:checked + .bankai-slider {
+  background-color: #1f883d;
+  box-shadow: none;
+}
+
+#bankai-admin-app .bankai-switch input:checked + .bankai-slider:before,
+.bankai-app-wrapper .bankai-switch input:checked + .bankai-slider:before {
+  transform: translateX(18px);
+}
+
+/* RTL */
+#bankai-admin-app.rtl .bankai-slider:before,
+.bankai-app-wrapper.rtl .bankai-slider:before,
+[dir="rtl"] #bankai-admin-app .bankai-slider:before {
+  left: auto;
+  right: 3px;
+}
+
+#bankai-admin-app.rtl .bankai-switch input:checked + .bankai-slider:before,
+.bankai-app-wrapper.rtl .bankai-switch input:checked + .bankai-slider:before,
+[dir="rtl"]
+  #bankai-admin-app
+  .bankai-switch
+  input:checked
+  + .bankai-slider:before {
+  transform: translateX(-18px);
+}
+
+/* فوکوس دسترسی‌پذیری */
+#bankai-admin-app .bankai-switch input:focus-visible + .bankai-slider,
+.bankai-app-wrapper .bankai-switch input:focus-visible + .bankai-slider {
+  outline: 2px solid #0969da;
+  outline-offset: 2px;
 }

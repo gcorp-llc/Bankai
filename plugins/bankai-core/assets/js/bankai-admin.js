@@ -6,7 +6,7 @@
  * bilingual i18n dictionaries, and global CustomEvents.
  *
  * @package BankaiCore
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 function bankaiAdmin() {
@@ -323,7 +323,7 @@ function bankaiAdmin() {
          * Initialize Component Instance and Global Event Listeners
          */
         init() {
-            // Register live instance globally on window.bankaiAdminInstance
+            // Register live instance globally
             window.bankaiAdminInstance = this;
 
             // Apply direction & language attributes to document root
@@ -372,28 +372,31 @@ function bankaiAdmin() {
 
         /**
          * Parse initial route from URL search params
+         * از آنجایی که فقط یک صفحه (bankai-core) داریم، از پارامتر tab استفاده می‌کنیم
          */
         initRouteFromUrl() {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
-                const page = urlParams.get('page');
-                if (page === 'bankai-theme-kits') {
-                    this.activeTab = 'theme-kits';
-                } else if (page === 'bankai-seo-engine') {
-                    this.activeTab = 'seo-engine';
-                } else if (page === 'bankai-speed-cache') {
-                    this.activeTab = 'speed-cache';
-                } else if (page === 'bankai-media') {
-                    this.activeTab = 'media-watermark';
-                } else if (page === 'bankai-ai-manifests' || page === 'bankai-ai-studio') {
-                    this.activeTab = 'ai-studio';
-                } else if (page === 'bankai-settings') {
-                    this.activeTab = 'settings-license';
-                } else if (page === 'bankai-core') {
-                    this.activeTab = 'overview';
+                const tabParam = urlParams.get('tab');
+
+                const validTabs = [
+                    'overview',
+                    'theme-kits',
+                    'seo-engine',
+                    'speed-cache',
+                    'media-watermark',
+                    'ai-studio',
+                    'settings-license'
+                ];
+
+                if (tabParam && validTabs.includes(tabParam)) {
+                    this.activeTab = tabParam;
+                } else {
+                    // fallback به activeTab از bridgeData
+                    this.activeTab = bridgeData.activeTab || 'overview';
                 }
             } catch (err) {
-                // Ignore URL parsing errors when sandboxed
+                this.activeTab = bridgeData.activeTab || 'overview';
             }
         },
 
@@ -445,15 +448,7 @@ function bankaiAdmin() {
 
         /**
          * Tab Switcher & URL History Sync with Linear Progress Bar Simulation
-         *
-         * Page mapping table:
-         * - overview ➔ ?page=bankai-core
-         * - theme-kits ➔ ?page=bankai-theme-kits
-         * - seo-engine / seo ➔ ?page=bankai-seo-engine
-         * - speed-cache / speed ➔ ?page=bankai-speed-cache
-         * - media-watermark / media ➔ ?page=bankai-media
-         * - ai-studio / ai ➔ ?page=bankai-ai-studio
-         * - settings-license / settings ➔ ?page=bankai-settings
+         * صفحه همیشه bankai-core می‌ماند و فقط پارامتر tab تغییر می‌کند
          */
         setTab(tab) {
             const normalizeTabMap = {
@@ -490,21 +485,12 @@ function bankaiAdmin() {
                 }, 180);
             }, 200);
 
-            // Synchronize URL using history.replaceState
+            // Synchronize URL – صفحه همیشه bankai-core می‌ماند
             try {
-                const pageMap = {
-                    'overview': 'bankai-core',
-                    'theme-kits': 'bankai-theme-kits',
-                    'seo-engine': 'bankai-seo-engine',
-                    'speed-cache': 'bankai-speed-cache',
-                    'media-watermark': 'bankai-media',
-                    'ai-studio': 'bankai-ai-studio',
-                    'settings-license': 'bankai-settings'
-                };
-                const pageParam = pageMap[normalizedTab] || 'bankai-core';
                 const url = new URL(window.location.href);
-                url.searchParams.set('page', pageParam);
-                window.history.replaceState({ tab: normalizedTab, page: pageParam }, '', url.toString());
+                url.searchParams.set('page', 'bankai-core');
+                url.searchParams.set('tab', normalizedTab);
+                window.history.replaceState({ tab: normalizedTab }, '', url.toString());
             } catch (err) {
                 // Ignore URL replace errors if sandboxed inside iframe
             }
@@ -512,15 +498,11 @@ function bankaiAdmin() {
 
         /**
          * Generic REST API Save Settings Method
-         * Prepends restUrl if relative, sends X-WP-Nonce, manages savingLoader, and dispatches toast
-         *
-         * @param {string} endpoint API endpoint relative or absolute
-         * @param {object} payload Request payload
          */
         async saveSettings(endpoint, payload = {}) {
-            const bridgeData = window.bankaiData || window.bankaiCoreData || {};
-            const baseUrl = bridgeData.restUrl || '/wp-json/bankai/v1/';
-            const nonce = bridgeData.nonce || '';
+            const bridge = window.bankaiData || window.bankaiCoreData || {};
+            const baseUrl = bridge.restUrl || '/wp-json/bankai/v1/';
+            const nonce = bridge.nonce || '';
 
             let fullUrl = endpoint;
             if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
@@ -608,17 +590,12 @@ function bankaiAdmin() {
 
         /**
          * Global Toast Notification System
-         * Updates Alpine state and dispatches global bankai:toast CustomEvent
-         *
-         * @param {string} msg Toast message
-         * @param {string} type Notification type ('success' | 'error' | 'warning' | 'info')
          */
         showToast(msg, type = 'success') {
             this.toast.message = msg;
             this.toast.type = type;
             this.toast.show = true;
 
-            // Dispatch CustomEvent on window for non-Alpine external scripts
             window.dispatchEvent(new CustomEvent('bankai:toast', {
                 detail: { message: msg, type: type }
             }));
@@ -746,13 +723,13 @@ function bankaiAdmin() {
             this.aiSandbox.isGenerating = true;
             this.aiSandbox.aiResult = '';
 
-            const bridgeData = window.bankaiData || window.bankaiCoreData || {};
-            const baseUrl = bridgeData.restUrl || '/wp-json/bankai/v1/';
+            const bridge = window.bankaiData || window.bankaiCoreData || {};
+            const baseUrl = bridge.restUrl || '/wp-json/bankai/v1/';
 
             try {
                 const res = await fetch(baseUrl + 'ai/generate', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': bridgeData.nonce || '' },
+                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': bridge.nonce || '' },
                     body: JSON.stringify({ prompt: this.aiSandbox.promptInput, model: this.aiStudio.defaultModel })
                 });
                 const data = await res.json();
@@ -768,19 +745,37 @@ function bankaiAdmin() {
 
         // Media & Watermark Studio Handlers
         getWatermarkPositionStyle() {
-            const pos = this.watermarkStudio.position;
-            let style = '';
-            if (pos.inc('top')) style += 'top: 12px; ';
-            if (pos.inc('bottom')) style += 'bottom: 12px; ';
-            if (pos.inc('left')) style += 'left: 12px; ';
-            if (pos.inc('right')) style += 'right: 12px; ';
+            const pos = this.watermarkStudio.position || 'bottom-right';
+            let style = 'position: absolute; ';
+
+            if (pos.includes('top')) {
+                style += 'top: 12px; ';
+            }
+            if (pos.includes('bottom')) {
+                style += 'bottom: 12px; ';
+            }
+            if (pos.includes('left')) {
+                style += 'left: 12px; ';
+            }
+            if (pos.includes('right')) {
+                style += 'right: 12px; ';
+            }
+
+            // مرکز افقی
             if (pos === 'top-center' || pos === 'center' || pos === 'bottom-center') {
                 style += 'left: 50%; transform: translateX(-50%); ';
             }
-            if (pos === 'center-left' || pos === 'center' || pos === 'center-right') {
+
+            // مرکز عمودی
+            if (pos === 'center-left' || pos === 'center-right') {
                 style += 'top: 50%; transform: translateY(-50%); ';
-                if (pos === 'center') style = 'top: 50%; left: 50%; transform: translate(-50%, -50%); ';
             }
+
+            // مرکز کامل
+            if (pos === 'center') {
+                style = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); ';
+            }
+
             return style;
         },
 
@@ -883,6 +878,7 @@ function bankaiAdmin() {
             await this.saveSettings('seo/save-drawer', { id: this.seoDrawer.id });
         },
 
+        // Theme Kits Handlers
         syncLibrary() {
             this.showToast(this.isRtl ? 'کتابخانه قالب‌ها با موفقیت همگام‌سازی شد' : 'Starter Kit library synchronized successfully!', 'success');
         },
@@ -950,9 +946,6 @@ window.setTab = function(tab) {
                 return data.setTab(tab);
             }
         } catch (e) {}
-    }
-    if (window.bankaiData) {
-        window.bankaiData.activeTab = tab;
     }
 };
 
