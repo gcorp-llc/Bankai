@@ -1357,3 +1357,421 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
+
+/* ==========================================================================
+   Bankai Ultra-Modern Floating Toast System
+   ========================================================================== */
+
+.bankai-toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 999999;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rtl .bankai-toast-container {
+  left: auto;
+  right: 24px;
+}
+
+.bankai-toast-card {
+  pointer-events: auto;
+  min-width: 280px;
+  max-width: 420px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 14px;
+  border: 1px solid rgba(229, 231, 235, 0.8);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12),
+              0 2px 6px rgba(15, 23, 42, 0.04),
+              inset 0 1px 0 rgba(255, 255, 255, 1);
+  direction: inherit;
+}
+
+/* انیمیشن ترانزیشن */
+.bankai-toast-transition-enter { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.bankai-toast-transition-leave { transition: all 0.2s cubic-bezier(0.7, 0, 0.84, 0); }
+.bankai-toast-transition-start { opacity: 0; transform: translateY(16px) scale(0.95); }
+.bankai-toast-transition-end { opacity: 1; transform: translateY(0) scale(1); }
+
+/* بج‌های آیکن */
+.bankai-toast-icon-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* حالت موفقیت */
+.bankai-toast-success .bankai-toast-icon-success {
+  background: rgba(26, 127, 55, 0.12);
+  color: #1a7f37;
+}
+
+/* حالت خطا */
+.bankai-toast-error .bankai-toast-icon-error {
+  background: rgba(207, 34, 46, 0.12);
+  color: #cf222e;
+}
+
+/* حالت هشدار */
+.bankai-toast-warning .bankai-toast-icon-warning {
+  background: rgba(154, 103, 0, 0.12);
+  color: #9a6700;
+}
+
+/* حالت اطلاعات */
+.bankai-toast-info .bankai-toast-icon-info {
+  background: rgba(9, 105, 218, 0.12);
+  color: #0969da;
+}
+
+/* محتوا و متن */
+.bankai-toast-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.bankai-toast-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2328;
+  line-height: 1.4;
+}
+
+/* دکمه بستن */
+.bankai-toast-dismiss {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  margin: 0;
+  border-radius: 6px;
+  color: #8c959f;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.bankai-toast-dismiss:hover {
+  background: rgba(140, 149, 159, 0.15);
+  color: #1f2328;
+}
+
+/* ==========================================================================
+   Ambient Background (Grid + Orbs + Particles)
+   ========================================================================== */
+
+#bankai-admin-app .bankai-bg-decorations,
+.bankai-app-wrapper .bankai-bg-decorations {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* نقطه‌ای شبکه‌ای */
+#bankai-admin-app .bankai-ambient-grid,
+.bankai-app-wrapper .bankai-ambient-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(31, 35, 40, 0.07) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(ellipse 95% 75% at 50% 30%, #000 35%, transparent 95%);
+  -webkit-mask-image: radial-gradient(ellipse 95% 75% at 50% 30%, #000 35%, transparent 95%);
+  opacity: 0.85;
+}
+
+/* حباب‌های رنگی محو */
+#bankai-admin-app .bankai-ambient-orb,
+.bankai-app-wrapper .bankai-ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(85px);
+  pointer-events: none;
+  will-change: transform;
+}
+
+#bankai-admin-app .bankai-orb-1,
+.bankai-app-wrapper .bankai-orb-1 {
+  top: -80px;
+  right: 12%;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(9, 105, 218, 0.13) 0%, rgba(84, 174, 255, 0.04) 55%, transparent 75%);
+  animation: bankaiFloatOrb1 20s ease-in-out infinite alternate;
+}
+
+#bankai-admin-app .bankai-orb-2,
+.bankai-app-wrapper .bankai-orb-2 {
+  top: 32%;
+  left: 4%;
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(circle, rgba(130, 80, 223, 0.10) 0%, rgba(210, 168, 255, 0.03) 55%, transparent 75%);
+  animation: bankaiFloatOrb2 24s ease-in-out infinite alternate;
+}
+
+#bankai-admin-app .bankai-orb-3,
+.bankai-app-wrapper .bankai-orb-3 {
+  bottom: 4%;
+  right: 28%;
+  width: 440px;
+  height: 440px;
+  background: radial-gradient(circle, rgba(31, 136, 61, 0.08) 0%, rgba(86, 211, 100, 0.03) 55%, transparent 75%);
+  animation: bankaiFloatOrb3 22s ease-in-out infinite alternate;
+}
+
+@keyframes bankaiFloatOrb1 {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-45px, 35px) scale(1.08); }
+  100% { transform: translate(30px, -25px) scale(0.94); }
+}
+
+@keyframes bankaiFloatOrb2 {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(40px, -30px) scale(0.92); }
+  100% { transform: translate(-25px, 40px) scale(1.07); }
+}
+
+@keyframes bankaiFloatOrb3 {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-35px, -40px) scale(1.1); }
+  100% { transform: translate(35px, 25px) scale(0.95); }
+}
+
+/* ذرات شناور */
+#bankai-admin-app .bankai-ambient-particles,
+.bankai-app-wrapper .bankai-ambient-particles {
+  position: absolute;
+  inset: 0;
+}
+
+#bankai-admin-app .bankai-particle,
+.bankai-app-wrapper .bankai-particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: bankaiParticlePulse 5s ease-in-out infinite alternate;
+}
+
+#bankai-admin-app .p-1 { top: 18%; left: 22%;  width: 4px; height: 4px; background: #0969DA; opacity: 0.35; animation-delay: 0s; }
+#bankai-admin-app .p-2 { top: 32%; right: 18%; width: 5px; height: 5px; background: #8250DF; opacity: 0.30; animation-delay: 1.5s; }
+#bankai-admin-app .p-3 { top: 68%; left: 14%;  width: 4px; height: 4px; background: #1F883D; opacity: 0.32; animation-delay: 2.8s; }
+#bankai-admin-app .p-4 { top: 82%; right: 26%; width: 5px; height: 5px; background: #0969DA; opacity: 0.28; animation-delay: 1s; }
+#bankai-admin-app .p-5 { top: 48%; right: 42%; width: 4px; height: 4px; background: #9A6700; opacity: 0.35; animation-delay: 2s; }
+
+@keyframes bankaiParticlePulse {
+  0%   { transform: scale(1) translateY(0); opacity: 0.2; }
+  100% { transform: scale(1.5) translateY(-14px); opacity: 0.55; }
+}
+
+
+/* ==========================================================================
+   Page Progress Bar (نوار باریک بالای صفحه)
+   ========================================================================== */
+
+.bankai-page-progress-track {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  z-index: 999999;
+  pointer-events: none;
+}
+
+.bankai-page-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #54AEFF 0%, #0969DA 50%, #218BFF 100%);
+  box-shadow: 0 0 10px rgba(9, 105, 218, 0.65), 0 0 4px rgba(84, 174, 255, 0.8);
+  transition: width 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 0 2px 2px 0;
+}
+
+[dir="rtl"] .bankai-page-progress-bar,
+.rtl .bankai-page-progress-bar {
+  border-radius: 2px 0 0 2px;
+}
+
+
+/* ==========================================================================
+   Save Loader (کارت شناور ذخیره)
+   ========================================================================== */
+
+.bankai-save-loader-overlay {
+  position: fixed;
+  top: 48px;                          /* زیر Admin Bar + کمی فاصله */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99998;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  width: max-content;
+  max-width: 92vw;
+}
+
+.bankai-save-loader-card {
+  pointer-events: auto;
+  background-color: #FFFFFF;
+  border: 1px solid #D0D7DE;
+  border-radius: 12px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow:
+    0 8px 28px -4px rgba(31, 35, 40, 0.16),
+    0 2px 8px rgba(31, 35, 40, 0.05);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  min-width: 260px;
+  max-width: 90vw;
+}
+
+/* حالت موفقیت */
+.bankai-save-loader-success {
+  border-color: #ACEBBB;
+  box-shadow:
+    0 8px 28px -4px rgba(26, 127, 55, 0.18),
+    0 2px 8px rgba(26, 127, 55, 0.06);
+}
+
+/* دایره اسپینر */
+.bankai-save-spinner-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: rgba(9, 105, 218, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* دایره تیک موفقیت */
+.bankai-save-success-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: #DAFBE1;
+  border: 1px solid #ACEBBB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #1A7F37;
+  animation: bankaiScaleCheck 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes bankaiScaleCheck {
+  0%   { transform: scale(0.55); opacity: 0; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+/* اسپینر چرخان */
+.bankai-spinner {
+  width: 18px;
+  height: 18px;
+  color: #0969DA;
+  animation: bankaiSpin 0.75s linear infinite;
+}
+
+@keyframes bankaiSpin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* متن داخل کارت */
+.bankai-save-loader-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bankai-save-loader-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1F2328;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bankai-save-loader-message {
+  font-size: 11px;
+  font-weight: 500;
+  color: #656D76;
+  line-height: 1.35;
+}
+
+/* نقطه چشمک‌زن کنار عنوان در حالت saving */
+.bankai-pulse-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #0969DA;
+  flex-shrink: 0;
+  animation: bankaiPulseDot 1.2s ease-in-out infinite;
+}
+
+@keyframes bankaiPulseDot {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%      { opacity: 0.35; transform: scale(0.7); }
+}
+
+/* Overlay لودینگ داخل تب */
+#bankai-admin-app .bankai-tab-loading-overlay,
+.bankai-app-wrapper .bankai-tab-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(246, 248, 250, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 100px;
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+#bankai-admin-app .bankai-loading-pill,
+.bankai-app-wrapper .bankai-loading-pill {
+  background: #FFFFFF;
+  border: 1px solid #D0D7DE;
+  padding: 8px 18px;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1F2328;
+  box-shadow: 0 4px 14px rgba(31, 35, 40, 0.08);
+}
