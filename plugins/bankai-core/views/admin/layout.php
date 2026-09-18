@@ -16,6 +16,17 @@ $bankai_data = [
     'locale'     => get_user_locale(),
     'version'    => defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0',
 ];
+
+// هلپر اختصاصی جهت فراخوانی ایمن فایل‌های نمایشی
+$views_dir = defined('BANKAI_CORE_VIEWS_DIR') ? BANKAI_CORE_VIEWS_DIR : '';
+$load_view = function (string $rel_path) use ($views_dir) {
+    if ($views_dir !== '') {
+        $file = $views_dir . ltrim($rel_path, '/');
+        if (is_file($file)) {
+            include $file;
+        }
+    }
+};
 ?>
 <div id="bankai-admin-app"
      class="bankai-admin-wrap"
@@ -29,31 +40,76 @@ $bankai_data = [
         window.bankaiCoreData = window.bankaiData;
 
         window.setTab = function (tab) {
-            if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.setTab === 'function') {
-                return window.bankaiAdminInstance.setTab(tab);
-            }
-            return false;
+            return (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.setTab === 'function')
+                ? window.bankaiAdminInstance.setTab(tab)
+                : false;
         };
 
         window.showToast = function (message, type) {
             type = type || 'success';
-            if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.showToast === 'function') {
-                return window.bankaiAdminInstance.showToast(message, type);
-            }
-            return false;
+            return (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.showToast === 'function')
+                ? window.bankaiAdminInstance.showToast(message, type)
+                : false;
         };
 
         window.toggleLanguage = function () {
-            if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.toggleLanguage === 'function') {
-                return window.bankaiAdminInstance.toggleLanguage();
-            }
-            return false;
+            return (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.toggleLanguage === 'function')
+                ? window.bankaiAdminInstance.toggleLanguage()
+                : false;
         };
 
         window.toggleRtl = window.toggleLanguage;
     </script>
 
-    <!-- Ambient Background -->
+    <!-- Ultra-Modern Glassmorphism Page Loader -->
+    <div id="bankai-page-loader"
+         class="bankai-loader-overlay"
+         x-show="pageLoading"
+         x-cloak
+         x-transition:enter="bankai-transition-enter"
+         x-transition:enter-start="bankai-transition-start"
+         x-transition:enter-end="bankai-transition-end"
+         x-transition:leave="bankai-transition-leave"
+         x-transition:leave-start="bankai-transition-end"
+         x-transition:leave-end="bankai-transition-start"
+         role="dialog"
+         aria-modal="true">
+
+        <div class="bankai-loader-card">
+            <!-- لوگو و حلقه‌های چرخان اروبیتال -->
+            <div class="bankai-loader-brand">
+                <div class="bankai-spinner-ring"></div>
+                <div class="bankai-spinner-ring-inner"></div>
+                <div class="bankai-loader-logo">
+                    <img src="<?php echo esc_url(bankai_asset_url('images/logo.jpg')); ?>" 
+                         alt="Bankai Core" 
+                         width="44"
+                         height="44"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <span class="bankai-logo-fallback" style="display: none;">B</span>
+                </div>
+            </div>
+
+            <!-- اطلاعات و وضعیت لودینگ -->
+            <div class="bankai-loader-info">
+                <h3 class="bankai-loader-title">
+                    BANKAI <span class="bankai-loader-badge">CORE</span>
+                </h3>
+                <p class="bankai-loader-status" 
+                   x-text="isRtl ? 'در حال بارگذاری و همگام‌سازی هسته...' : 'Loading core components...'"></p>
+            </div>
+
+            <!-- نوار پیشرفت و درصد -->
+            <div class="bankai-loader-progress-wrap">
+                <div class="bankai-loader-track">
+                    <div class="bankai-loader-fill" :style="{ width: (pageProgress || 5) + '%' }"></div>
+                </div>
+                <span class="bankai-loader-percentage" x-text="Math.round(pageProgress || 0) + '%'">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ambient Background Decorations -->
     <div class="bankai-bg-decorations" aria-hidden="true">
         <div class="bankai-ambient-grid"></div>
         <div class="bankai-ambient-orb bankai-orb-1"></div>
@@ -68,28 +124,13 @@ $bankai_data = [
         </div>
     </div>
 
-    <!-- Toast -->
-    <?php
-    $toast_file = defined('BANKAI_CORE_VIEWS_DIR') ? BANKAI_CORE_VIEWS_DIR . 'admin/toast.php' : '';
-    if ($toast_file && is_file($toast_file)) {
-        include $toast_file;
-    }
-    ?>
+    <!-- Toast Component -->
+    <?php $load_view('admin/toast.php'); ?>
 
-    <!-- Page Progress -->
-    <div id="bankai-page-loader"
-         class="bankai-page-progress-track"
-         x-show="pageLoading"
-         x-cloak
-         role="progressbar"
-         aria-live="polite">
-        <div class="bankai-page-progress-bar" :style="{ width: pageProgress + '%' }"></div>
-    </div>
-
-    <!-- Save Loader -->
+    <!-- Save Loader Overlay -->
     <div id="bankai-save-loader"
          class="bankai-save-loader-overlay"
-         x-show="savingLoader.show"
+         x-show="savingLoader && savingLoader.show"
          x-cloak
          x-transition.opacity
          role="status"
@@ -99,7 +140,7 @@ $bankai_data = [
              :class="{ 'bankai-save-loader-success': savingLoader.state === 'saved' }">
             <template x-if="savingLoader.state === 'saving'">
                 <div class="bankai-save-spinner-wrap">
-                    <svg class="bankai-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <svg class="bankai-spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" style="width:20px; height:20px; flex-shrink:0;" aria-hidden="true">
                         <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".2" stroke-width="2.5"/>
                         <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
@@ -107,7 +148,7 @@ $bankai_data = [
             </template>
             <template x-if="savingLoader.state === 'saved'">
                 <div class="bankai-save-success-wrap">
-                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <svg class="solar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px; flex-shrink:0;" aria-hidden="true">
                         <polyline points="20 6 9 17 4 12"/>
                     </svg>
                 </div>
@@ -124,7 +165,7 @@ $bankai_data = [
         </div>
     </div>
 
-    <!-- Mobile Overlay -->
+    <!-- Mobile Navigation Overlay -->
     <div class="bankai-mobile-overlay"
          x-show="mobileMenuOpen"
          x-cloak
@@ -132,27 +173,18 @@ $bankai_data = [
          @click="closeMobileMenu()"
          aria-hidden="true"></div>
 
-    <!-- Header -->
-    <?php
-    $header_file = defined('BANKAI_CORE_VIEWS_DIR') ? BANKAI_CORE_VIEWS_DIR . 'admin/header.php' : '';
-    if ($header_file && is_file($header_file)) {
-        include $header_file;
-    }
-    ?>
+    <!-- Header View -->
+    <?php $load_view('admin/header.php'); ?>
 
     <!-- Body Layout -->
     <div class="bankai-body-layout">
 
-        <!-- Sidebar -->
-        <?php
-        $sidebar_file = defined('BANKAI_CORE_VIEWS_DIR') ? BANKAI_CORE_VIEWS_DIR . 'admin/sidebar.php' : '';
-        if ($sidebar_file && is_file($sidebar_file)) {
-            include $sidebar_file;
-        }
-        ?>
+        <!-- Sidebar View -->
+        <?php $load_view('admin/sidebar.php'); ?>
 
-        <!-- Main Content -->
+        <!-- Main Content Area -->
         <main id="bankai-main-content" class="bankai-main-content">
+            <!-- Overlay لودینگ تب‌های داخلی -->
             <div class="bankai-tab-loading-overlay"
                  x-show="pageLoading"
                  x-cloak
@@ -160,7 +192,7 @@ $bankai_data = [
                  role="status"
                  aria-live="polite">
                 <div class="bankai-loading-pill">
-                    <svg class="bankai-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <svg class="bankai-spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" style="width:18px; height:18px; flex-shrink:0;" aria-hidden="true">
                         <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".2" stroke-width="2.5"/>
                         <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
@@ -182,14 +214,7 @@ $bankai_data = [
             ];
 
             foreach ($tabs as $tab) {
-                $tab      = sanitize_key($tab);
-                $tab_file = defined('BANKAI_CORE_VIEWS_DIR')
-                    ? BANKAI_CORE_VIEWS_DIR . "admin/tab-{$tab}.php"
-                    : '';
-
-                if ($tab_file && is_file($tab_file)) {
-                    include $tab_file;
-                }
+                $load_view('admin/tab-' . sanitize_key($tab) . '.php');
             }
             ?>
         </main>

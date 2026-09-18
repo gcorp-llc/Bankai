@@ -5,43 +5,42 @@ defined('ABSPATH') || exit;
        class="bankai-sidebar"
        :class="{ 'mobile-open': mobileMenuOpen }">
 
-    <div>
-        <!-- Mobile Header -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 2px 4px;"
+    <div class="bankai-sidebar-content">
+        <!-- Header موبایل (هنگام باز شدن منو در موبایل) -->
+        <div class="bankai-sidebar-mobile-header"
              x-show="mobileMenuOpen"
              x-cloak>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <div style="width: 28px; height: 28px; border-radius: 7px; background: rgba(9, 105, 218, 0.1); display: flex; align-items: center; justify-content: center; color: #0969DA;">
+            <div class="bankai-mobile-title">
+                <div class="bankai-mobile-icon-box">
                     <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                         <path d="M4 6h16M4 12h10M4 18h16" />
                     </svg>
                 </div>
-                <span style="font-weight: 700; font-size: 13px; color: #1F2328;"
-                      x-text="isRtl ? '<?php echo esc_js(__('منوی مدیریت', 'bankai-core')); ?>' : '<?php echo esc_js(__('Navigation', 'bankai-core')); ?>'">
+                <span x-text="isRtl ? '<?php echo esc_js(__('منوی مدیریت', 'bankai-core')); ?>' : '<?php echo esc_js(__('Navigation', 'bankai-core')); ?>'">
                     <?php esc_html_e('Navigation', 'bankai-core'); ?>
                 </span>
             </div>
             <button type="button"
+                    class="bankai-mobile-close-btn"
                     @click="closeMobileMenu()"
-                    aria-label="<?php esc_attr_e('Close navigation', 'bankai-core'); ?>"
-                    style="background: transparent; border: none; color: #656D76; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    aria-label="<?php esc_attr_e('Close navigation', 'bankai-core'); ?>">
                 <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                     <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
             </button>
         </div>
 
-        <!-- Brand (بدون بج PRO) -->
-        <div style="padding: 2px 6px 14px 6px; margin-bottom: 8px; border-bottom: 1px solid #EAEFF2; display: flex; align-items: center; gap: 10px;">
-            <div style="width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, #0969DA 0%, #218BFF 100%); display: flex; align-items: center; justify-content: center; color: #FFFFFF; flex-shrink: 0; box-shadow: 0 2px 8px rgba(9, 105, 218, 0.22);">
-                <svg class="solar-icon" style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <!-- Brand Box -->
+        <div class="bankai-brand-card">
+            <div class="bankai-brand-logo">
+                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                     <path d="M13.5 2L4 13.5h7L9.5 22 20 10.5h-7.5L13.5 2Z" />
                 </svg>
             </div>
-            <div style="min-width: 0;">
-                <div style="font-size: 13px; font-weight: 700; color: #1F2328; letter-spacing: 0.2px; line-height: 1.25;">BANKAI CORE</div>
-                <div style="font-size: 11px; color: #656D76; display: flex; align-items: center; gap: 5px; margin-top: 2px;">
-                    <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #1A7F37; flex-shrink: 0;"></span>
+            <div class="bankai-brand-info">
+                <div class="bankai-brand-title">BANKAI CORE</div>
+                <div class="bankai-brand-status">
+                    <span class="status-dot"></span>
                     <span x-text="isRtl ? '<?php echo esc_js(__('نسخه تجاری فعال', 'bankai-core')); ?>' : '<?php echo esc_js(__('Active Enterprise', 'bankai-core')); ?>'">
                         <?php esc_html_e('Active Enterprise', 'bankai-core'); ?>
                     </span>
@@ -49,9 +48,10 @@ defined('ABSPATH') || exit;
             </div>
         </div>
 
-        <!-- Navigation – فقط آیکون + نام -->
-        <nav style="display: flex; flex-direction: column; gap: 1px;" aria-label="<?php esc_attr_e('Bankai Admin Navigation', 'bankai-core'); ?>">
+        <!-- Navigation Menu -->
+        <nav class="bankai-nav-menu" aria-label="<?php esc_attr_e('Bankai Admin Navigation', 'bankai-core'); ?>">
 
+            <!-- گروه ۱: معماری اصلی -->
             <div class="bankai-nav-group">
                 <div class="bankai-nav-group-title" x-text="t('navArch')">Core Architecture</div>
 
@@ -87,23 +87,10 @@ defined('ABSPATH') || exit;
                     <span x-text="t('navThemeKits')"><?php esc_html_e('Theme Kits & Customizer', 'bankai-core'); ?></span>
                 </button>
 
-                <a id="nav-link-bankai-theme"
-                   href="<?php echo esc_url(admin_url('admin.php?page=bankai-theme')); ?>"
-                   class="bankai-nav-btn"
-                   style="text-decoration: none;">
-                    <div class="bankai-nav-icon">
-                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                            <rect x="2" y="3" width="20" height="14" rx="2" />
-                            <line x1="8" y1="21" x2="16" y2="21" />
-                            <line x1="12" y1="17" x2="12" y2="21" />
-                        </svg>
-                    </div>
-                    <span x-text="isRtl ? '<?php echo esc_js(__('قالب Bankai', 'bankai-core')); ?>' : '<?php echo esc_js(__('Bankai Theme Panel', 'bankai-core')); ?>'">
-                        <?php esc_html_e('Bankai Theme Panel', 'bankai-core'); ?>
-                    </span>
-                </a>
+              
             </div>
 
+            <!-- گروه ۲: بهینه‌سازی و سرعت -->
             <div class="bankai-nav-group">
                 <div class="bankai-nav-group-title" x-text="t('navPerformance')">Optimization & Speed</div>
 
@@ -151,6 +138,7 @@ defined('ABSPATH') || exit;
                 </button>
             </div>
 
+            <!-- گروه ۳: هوش مصنوعی و تنظیمات -->
             <div class="bankai-nav-group" style="margin-bottom: 0;">
                 <div class="bankai-nav-group-title" x-text="t('navIntelligence')">Intelligence & Admin</div>
 
@@ -185,27 +173,27 @@ defined('ABSPATH') || exit;
         </nav>
     </div>
 
-    <!-- Telemetry Footer (حفظ شده) -->
-    <div style="background-color: #F6F8FA; border: 1px solid #EAEFF2; border-radius: 10px; padding: 12px; margin-top: 18px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="position: relative; display: flex; height: 8px; width: 8px;">
-                    <span style="position: absolute; display: inline-flex; height: 100%; width: 100%; border-radius: 50%; background-color: #1A7F37; opacity: 0.7; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>
-                    <span style="position: relative; display: inline-flex; border-radius: 50%; height: 8px; width: 8px; background-color: #1A7F37;"></span>
+    <!-- Telemetry Footer -->
+    <div class="bankai-telemetry-card">
+        <div class="telemetry-header">
+            <div class="telemetry-status">
+                <span class="ping-container">
+                    <span class="ping-pulse"></span>
+                    <span class="ping-dot"></span>
                 </span>
-                <span style="font-size: 11px; font-weight: 700; color: #1F2328;" x-text="t('allSystemsNormal')">
+                <span class="status-title" x-text="t('allSystemsNormal')">
                     <?php esc_html_e('All Systems Normal', 'bankai-core'); ?>
                 </span>
             </div>
-            <span style="font-size: 10px; font-weight: 700; color: #0969DA; background: rgba(9, 105, 218, 0.08); padding: 2px 7px; border-radius: 6px;">
+            <span class="php-badge">
                 PHP <?php echo esc_html(PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION); ?>
             </span>
         </div>
 
-        <div style="margin-bottom: 8px;">
-            <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; color: #656D76; margin-bottom: 4px;">
+        <div class="telemetry-progress-wrapper">
+            <div class="telemetry-progress-label">
                 <span x-text="t('memoryLimit')"><?php esc_html_e('Memory Limit', 'bankai-core'); ?></span>
-                <span style="font-family: monospace; color: #0969DA; font-weight: 700;">
+                <span class="memory-value">
                     <?php
                     $memory_used  = function_exists('memory_get_usage') ? size_format((int) memory_get_usage(true)) : '—';
                     $memory_limit = (string) ini_get('memory_limit');
@@ -213,26 +201,26 @@ defined('ABSPATH') || exit;
                     ?>
                 </span>
             </div>
-            <div style="width: 100%; height: 4px; background-color: #EAEFF2; border-radius: 3px; overflow: hidden;">
-                <div style="width: 48%; height: 100%; background: linear-gradient(90deg, #218BFF, #0969DA); border-radius: 3px;"></div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill"></div>
             </div>
         </div>
 
-        <div style="padding-top: 8px; border-top: 1px solid #EAEFF2; display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
-            <div style="display: flex; justify-content: space-between; color: #656D76;">
-                <span style="display: flex; align-items: center; gap: 4px;">
-                    <svg class="solar-icon solar-icon-sm" style="width: 13px; height: 13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <div class="telemetry-details">
+            <div class="detail-row">
+                <span class="detail-label">
+                    <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                         <ellipse cx="12" cy="5" rx="9" ry="3" />
                         <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
                         <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
                     </svg>
                     <span x-text="t('database')"><?php esc_html_e('Database:', 'bankai-core'); ?></span>
                 </span>
-                <span style="font-weight: 700; color: #1F2328; font-family: monospace;">MySQL 8.0+</span>
+                <span class="detail-val">MySQL 8.0+</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; color: #656D76;">
-                <span style="display: flex; align-items: center; gap: 4px;">
-                    <svg class="solar-icon solar-icon-sm" style="width: 13px; height: 13px; color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <div class="detail-row">
+                <span class="detail-label">
+                    <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                         <circle cx="12" cy="12" r="9.5" />
                         <path d="M2.5 12h19M12 2.5a15.3 15.3 0 0 1 4 9.5 15.3 15.3 0 0 1-4 9.5 15.3 15.3 0 0 1-4-9.5 15.3 15.3 0 0 1 4-9.5Z" />
                     </svg>
@@ -241,9 +229,9 @@ defined('ABSPATH') || exit;
                     </span>
                 </span>
                 <button type="button"
+                        class="lang-switch-btn"
                         @click="toggleLanguage()"
                         :title="isRtl ? '<?php echo esc_js(__('تغییر به انگلیسی', 'bankai-core')); ?>' : '<?php echo esc_js(__('Switch to Persian', 'bankai-core')); ?>'"
-                        style="background: #FFFFFF; border: 1px solid #D0D7DE; color: #0969DA; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px; cursor: pointer;"
                         x-text="isRtl ? 'FA → EN' : 'EN → FA'">
                     EN → FA
                 </button>
