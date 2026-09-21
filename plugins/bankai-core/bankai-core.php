@@ -151,17 +151,11 @@ final class Bankai_Core
         $this->init_hooks();
     }
 
-    /**
+       /**
      * Load plugin dependencies.
      */
     private function load_dependencies(): void
     {
-        /*
-         * Global helpers.
-         *
-         * functions.php MUST use BANKAI_CORE_DIR / BANKAI_CORE_URL
-         * instead of trying to resolve the plugin location again.
-         */
         require_once BANKAI_CORE_DIR . 'functions.php';
 
         /*
@@ -169,6 +163,22 @@ final class Bankai_Core
          */
         require_once BANKAI_CORE_DIR . 'inc/class-admin-menu.php';
         require_once BANKAI_CORE_DIR . 'inc/class-rest-api.php';
+
+        /*
+         * Post SEO meta + Gutenberg editor sidebar
+         * (فقط وقتی فایل‌ها وجود دارند لود می‌شوند)
+         */
+        $editor_files = [
+            'inc/meta/class-post-seo-meta.php',
+            'inc/class-editor-seo.php',
+        ];
+
+        foreach ($editor_files as $relative) {
+            $filepath = BANKAI_CORE_DIR . $relative;
+            if (file_exists($filepath)) {
+                require_once $filepath;
+            }
+        }
 
         /*
          * Modules.
@@ -197,22 +207,24 @@ final class Bankai_Core
      */
     private function init_hooks(): void
     {
-        add_action(
-            'init',
-            [$this, 'load_textdomain']
-        );
+        add_action('init', [$this, 'load_textdomain']);
 
-        /*
-         * Admin.
-         */
         if (is_admin()) {
             Bankai_Admin_Menu::instance();
         }
 
-        /*
-         * REST API.
-         */
         Bankai_Rest_API::instance();
+
+        /*
+         * SEO Meta + Editor Sidebar
+         */
+        if (class_exists('Bankai_Post_SEO_Meta') && method_exists('Bankai_Post_SEO_Meta', 'instance')) {
+            Bankai_Post_SEO_Meta::instance();
+        }
+
+        if (class_exists('Bankai_Editor_SEO') && method_exists('Bankai_Editor_SEO', 'instance')) {
+            Bankai_Editor_SEO::instance();
+        }
 
         /*
          * Active modules.

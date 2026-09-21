@@ -1,0 +1,142 @@
+/* =========================================================
+   BANKAI SEO – UI chrome (meta box + Gutenberg button)
+   ========================================================= */
+
+/* ---- Meta box title bar ---- */
+#bankai_seo_engine .postbox-header h2,
+#bankai_seo_engine .hndle {
+    font-family: Vazirmatn, Inter, system-ui, sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+}
+
+#bankai_seo_engine {
+    border: 1px solid #d0d7de !important;
+    border-radius: 10px !important;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(31, 35, 40, 0.06);
+}
+
+#bankai_seo_engine .postbox-header {
+    background: linear-gradient(135deg, #0969da 0%, #0550ae 55%, #8250df 100%);
+    border-bottom: 0 !important;
+    color: #fff !important;
+}
+
+#bankai_seo_engine .postbox-header h2,
+#bankai_seo_engine .hndle,
+#bankai_seo_engine .postbox-header .handle-actions button {
+    color: #fff !important;
+}
+
+#bankai_seo_engine .postbox-header .handle-order-higher,
+#bankai_seo_engine .postbox-header .handle-order-lower,
+#bankai_seo_engine .postbox-header .handlediv {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+#bankai_seo_engine .inside {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #f6f8fa;
+}
+
+/* Fit Alpine sidebar inside meta box */
+#bankai_seo_engine #bankai-seo-sidebar {
+    min-height: 380px;
+    max-height: min(78vh, 920px);
+    border-radius: 0;
+}
+
+/* ---- Gutenberg toolbar / sidebar icon ---- */
+.bankai-gutenberg-icon {
+    color: #0969da;
+}
+
+.interface-complementary-area .bankai-plugin-sidebar,
+.bankai-plugin-sidebar {
+    font-family: Vazirmatn, Inter, system-ui, sans-serif;
+}
+
+.bankai-plugin-panel-body .components-panel__body-title {
+    font-family: Vazirmatn, Inter, system-ui, sans-serif !important;
+}
+
+.bankai-gutenberg-panel-wrap {
+    margin: -8px -16px 0;
+    min-height: 200px;
+}
+
+.bankai-seo-sidebar--gutenberg {
+    border: 0;
+    min-height: 420px;
+    max-height: calc(100vh - 160px);
+}
+
+/* Fallback card inside Gutenberg when meta box not cloned */
+.bankai-gutenberg-fallback {
+    text-align: center;
+    padding: 28px 18px;
+    direction: rtl;
+}
+
+.bankai-gutenberg-fallback-icon {
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 12px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, #ddf4ff, #f0e7ff);
+    color: #0969da;
+}
+
+.bankai-gutenberg-fallback-icon .material-symbols-outlined {
+    font-size: 28px;
+}
+
+.bankai-gutenberg-fallback strong {
+    display: block;
+    font-size: 14px;
+    color: #1f2328;
+}
+
+.bankai-gutenberg-fallback p {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #656d76;
+    line-height: 1.6;
+}
+
+.bankai-gutenberg-hint {
+    margin-top: 14px !important;
+    padding: 10px 12px;
+    background: #ddf4ff;
+    border-radius: 8px;
+    color: #0550ae !important;
+    font-size: 11px !important;
+}
+
+/* ---- More menu item polish ---- */
+.components-menu-item__button .bankai-gutenberg-icon {
+    margin-inline-end: 8px;
+}
+
+/* Plugin sidebar header accent */
+.edit-post-sidebar .bankai-plugin-sidebar .components-panel__header,
+.interface-complementary-area.bankai-plugin-sidebar .components-panel__header {
+    border-bottom-color: #d0d7de;
+}
+
+/* Make meta box handle look like a premium product chip */
+#bankai_seo_engine .postbox-header h2::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3fb950;
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.35);
+    margin-left: 8px;
+    vertical-align: middle;
+}

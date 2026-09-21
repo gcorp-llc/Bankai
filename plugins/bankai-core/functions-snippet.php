@@ -1,38 +1,10 @@
 <?php
 /**
- * Bankai Core Functions and Definitions
- *
- * @package Bankai_core
+ * Recommended helpers (merge into functions.php if not already present).
+ * The existing functions.php is mostly fine; only small hardening notes below.
  */
 
 defined('ABSPATH') || exit;
-
-defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.0.0');
-
-/**
- * Physical filesystem path.
- * ONLY for filesystem operations, never for URLs.
- */
-defined('BANKAI_CORE_DIR') || define(
-    'BANKAI_CORE_DIR',
-    plugin_dir_path(__FILE__)
-);
-
-/**
- * Public URL of the plugin.
- * Do not use plugin_dir_url(__FILE__) — may resolve wrong under symlink.
- */
-if (!defined('BANKAI_CORE_URL')) {
-    define(
-        'BANKAI_CORE_URL',
-        trailingslashit(content_url('plugins/bankai-core'))
-    );
-}
-
-defined('BANKAI_CORE_VIEWS_DIR') || define(
-    'BANKAI_CORE_VIEWS_DIR',
-    BANKAI_CORE_DIR . 'views/'
-);
 
 /**
  * Get Bankai Asset URL Helper
@@ -116,30 +88,5 @@ if (!function_exists('bankai_is_module_active')) {
         return array_key_exists($module_key, $active)
             ? (bool) $active[$module_key]
             : true;
-    }
-}
-
-/**
- * SEO score color by range (shared helper).
- */
-if (!function_exists('bankai_seo_score_color')) {
-    function bankai_seo_score_color(int $score): string
-    {
-        if ($score < 10) {
-            return '#B8BCC2';
-        }
-        if ($score < 20) {
-            return '#E8D3A2';
-        }
-        if ($score < 40) {
-            return '#A6122D';
-        }
-        if ($score < 60) {
-            return '#E0A030';
-        }
-        if ($score < 80) {
-            return '#93C572';
-        }
-        return '#1E7F5C';
     }
 }
