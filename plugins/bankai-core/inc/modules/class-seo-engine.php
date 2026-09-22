@@ -34,6 +34,11 @@ final class Bankai_SEO_Engine
 
     private function __construct()
     {
+        // Respect core module switch — when seo_engine is off, no meta/schema/title.
+        if (function_exists('bankai_is_module_active') && !bankai_is_module_active('seo_engine')) {
+            return;
+        }
+
         add_action('init', [$this, 'register_meta']);
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action('wp_head', [$this, 'render_meta'], 1);

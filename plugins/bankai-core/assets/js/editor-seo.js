@@ -63,6 +63,7 @@ document.addEventListener('alpine:init', () => {
         schemaType: 'Article',
 
         aiOpen: false,
+            aiProvider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || '',
         aiTab: 'title',
         aiLoading: false,
         aiDraft: { title: '', description: '', keywords: '', rewrite: '' },
@@ -680,27 +681,117 @@ document.addEventListener('alpine:init', () => {
             this.activeTab = 'seo';
         },
 
+        getEditorContext() {
+            let title = this.seo.title || this.seo.seo_title || '';
+            let content = '';
+            try {
+                if (window.wp && wp.data && wp.data.select) {
+                    const ed = wp.data.select('core/editor');
+                    if (ed) {
+                        if (!title && ed.getEditedPostAttribute) {
+                            title = ed.getEditedPostAttribute('title') || title;
+                        }
+                        if (ed.getEditedPostContent) {
+                            content = ed.getEditedPostContent() || '';
+                        }
+                    }
+                }
+            } catch (e) {}
+            if (!content) {
+                const ta = document.getElementById('content');
+                if (ta) content = ta.value || '';
+            }
+            // strip tags lightly for size
+            content = String(content).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 6000);
+            return {
+                title: title,
+                content: content,
+                focus_keyword: this.seo.focus_keyword || (this.keywordList && this.keywordList[0]) || '',
+                locale: (window.bankaiEditorSeo && bankaiEditorSeo.locale) || document.documentElement.lang || 'fa_IR',
+                provider: this.aiProvider || (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || ''
+            };
+        },
+
+        async callSeoAi(task, ctx) {
+            const cfg = window.bankaiEditorSeo || {};
+            const body = new FormData();
+            body.append('action', 'bankai_ai_seo_task');
+            body.append('nonce', cfg.adminNonce || cfg.nonce || '');
+            body.append('task', task);
+            body.append('title', ctx.title || '');
+            body.append('content', ctx.content || '');
+            body.append('focus_keyword', ctx.focus_keyword || '');
+            body.append('locale', ctx.locale || 'fa_IR');
+            body.append('provider', ctx.provider || '');
+
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timer = controller ? setTimeout(() => { try { controller.abort(); } catch (e) {} }, 60000) : null;
+
+            try {
+                const r = await fetch(cfg.ajaxUrl || window.ajaxurl || '/wp-admin/admin-ajax.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: body,
+                    signal: controller ? controller.signal : undefined
+                });
+                const json = await r.json();
+                if (timer) clearTimeout(timer);
+                if (!json || !json.success) {
+                    const msg = (json && json.data && json.data.message) || (json && json.message) || 'AI error';
+                    throw new Error(msg);
+                }
+                return json.data || json;
+            } catch (e) {
+                if (timer) clearTimeout(timer);
+                throw e;
+            }
+        },
+
         async generateAI(kind) {
             this.aiLoading = true;
             try {
-                // Placeholder until AI Studio is wired.
-                // Expected endpoint: POST /bankai/v1/ai/seo-generate
-                await new Promise((r) => setTimeout(r, 600));
+                const ctx = this.getEditorContext();
+                this.showToast(this.isRtl ? 'در حال ارسال به هوش مصنوعی…' : 'Sending to AI…', 'info');
 
                 if (kind === 'title') {
-                    const kw = this.seo.focus_keyword || 'موضوع';
-                    this.aiDraft.title = `${kw} | راهنمای کامل و کاربردی`;
-                    this.aiDraft.description = `در این مطلب درباره ${kw} به‌صورت جامع صحبت می‌کنیم و نکات عملی برای بهبود نتیجه ارائه می‌دهیم.`;
+                    const [titleRes, descRes] = await Promise.all([
+                        this.callSeoAi('meta_title', ctx),
+                        this.callSeoAi('meta_description', ctx)
+                    ]);
+                    this.aiDraft.title = titleRes.seo_title || titleRes.text || '';
+                    this.aiDraft.description = descRes.description || descRes.text || '';
                 } else if (kind === 'keywords') {
-                    const base = this.seo.focus_keyword || this.seo.title || 'موضوع';
-                    this.aiDraft.keywords = [base, base + ' چیست', 'بهترین ' + base, base + ' ۲۰۲۵'].join('، ');
+                    let focus = ctx.focus_keyword;
+                    if (!focus) {
+                        const fk = await this.callSeoAi('focus_keyword', ctx);
+                        focus = fk.focus_keyword || fk.text || '';
+                        if (focus) this.seo.focus_keyword = focus;
+                    }
+                    const kw = await this.callSeoAi('keywords', Object.assign({}, ctx, { focus_keyword: focus }));
+                    if (kw.keywords && kw.keywords.length) {
+                        this.aiDraft.keywords = kw.keywords.join('، ');
+                    } else {
+                        this.aiDraft.keywords = kw.text || '';
+                    }
                 } else if (kind === 'rewrite') {
-                    this.aiDraft.rewrite = 'بازنویسی هوشمند به‌زودی از طریق Bankai AI Studio فعال می‌شود. محتوای فعلی حفظ شده است.';
+                    const rw = await this.callSeoAi('rewrite', ctx);
+                    this.aiDraft.rewrite = rw.rewrite || rw.text || '';
+                } else if (kind === 'outline') {
+                    const ol = await this.callSeoAi('outline', ctx);
+                    this.aiDraft.rewrite = ol.outline || ol.text || '';
+                } else if (kind === 'alt') {
+                    const alt = await this.callSeoAi('alt_text', ctx);
+                    this.aiDraft.description = alt.alt_text || alt.text || '';
+                } else {
+                    // generic
+                    const res = await this.callSeoAi(kind, ctx);
+                    this.aiDraft.rewrite = res.text || '';
                 }
 
-                this.showToast('پیشنهاد AI آماده شد (دمو)', 'info');
+                this.showToast(this.isRtl ? 'پاسخ هوش مصنوعی آماده شد' : 'AI response ready', 'success');
             } catch (e) {
-                this.showToast('خطا در تولید AI', 'error');
+                const msg = (e && e.message) ? e.message : 'AI error';
+                this.showToast(msg, 'error');
             } finally {
                 this.aiLoading = false;
             }

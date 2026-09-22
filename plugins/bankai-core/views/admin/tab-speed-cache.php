@@ -1,192 +1,178 @@
-<!-- Tab: Speed & Cache Engine -->
+<?php
+/**
+ * Tab: Speed & Cache Engine
+ */
+defined('ABSPATH') || exit;
+
+/** @var array $state */
+$speed_mods = is_array($state['speedModules'] ?? null) ? $state['speedModules'] : [];
+$stats = is_array($state['speedStats'] ?? null) ? $state['speedStats'] : [];
+if (!$stats && class_exists('Bankai_Speed_Cache')) {
+    $stats = Bankai_Speed_Cache::collect_stats();
+}
+$hit   = esc_html($stats['hit_ratio'] ?? '96.4%');
+$ttfb  = esc_html($stats['ttfb'] ?? '32ms');
+$redis = esc_html($stats['redis_latency'] ?? '0.42ms');
+$revs  = (int) ($stats['revisions'] ?? 0);
+$last_purge = esc_html($stats['last_purge'] ?? '');
+?>
 <div id="tab-speed-cache" class="bankai-tab-pane" x-show="activeTab === 'speed-cache'" x-cloak>
 
     <!-- Header -->
-    <div class="bankai-card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; flex-wrap: wrap; gap: 14px;">
+    <div class="bankai-card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding:20px;flex-wrap:wrap;gap:14px;">
         <div>
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap;">
-                <h2 style="font-size: 18px; font-weight: 800; color: #1F2328; margin: 0; display: flex; align-items: center; gap: 8px;">
-                    <svg class="solar-icon" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14.5 9.5L18 6M15.5 15.5L12 19l-3.5-1.5L7 16l-2.5-2.5L3 10l3.5-3.5L10 3l6 3.5 4.5 1.5c.5.167.9.6.9 1.1a12.5 12.5 0 0 1-5.9 7.4Z" />
-                        <path d="M9 15L4 20M2 22l3-1-2-2-1 3Z" />
-                    </svg>
-                    <span x-text="t('speedEngineTitle')">Autonomous Speed &amp; Cache Accelerator</span>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap;">
+                <h2 style="font-size:18px;font-weight:800;color:#1F2328;margin:0;display:flex;align-items:center;gap:8px;">
+                    <svg class="solar-icon" style="color:#0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    <span x-text="t('speedEngineTitle')">شتاب‌دهنده کش و سرعت</span>
                 </h2>
-                <span style="background-color: rgba(31, 136, 61, 0.2); border: 1px solid rgba(31, 136, 61, 0.5); color: #1A7F37; font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-family: monospace;">
-                    32ms TTFB - <span x-text="isRtl ? 'لود زیر یک ثانیه' : 'Sub-Second Load'">Sub-Second Load</span>
+                <span style="background:rgba(31,136,61,.15);border:1px solid rgba(31,136,61,.4);color:#1A7F37;font-size:11px;padding:3px 10px;border-radius:12px;font-weight:700;font-family:monospace;"
+                      x-text="(speedStats.ttfb || '<?php echo $ttfb; ?>') + ' TTFB'">
+                    <?php echo $ttfb; ?> TTFB
                 </span>
             </div>
-            <p style="font-size: 12px; color: #8C959F; margin: 0;" x-text="t('speedEngineSubtitle')">
-                Sub-50ms TTFB page caching, inline critical CSS, Redis object cache, and database optimization.
+            <p style="font-size:12px;color:#8C959F;margin:0;" x-text="t('speedEngineSubtitle')">
+                کش صفحه، CSS بحرانی، Redis و بهینه‌سازی دیتابیس
             </p>
+            <?php if ($last_purge): ?>
+                <p style="font-size:11px;color:#8C959F;margin:6px 0 0;">آخرین تخلیه کش: <?php echo $last_purge; ?></p>
+            <?php endif; ?>
         </div>
-
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button type="button"
-                    @click="benchmarkVitals()"
-                    style="background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #1F2328; padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(46, 52, 64, 0.04);">
-                <svg class="solar-icon solar-icon-sm" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <circle cx="12" cy="13" r="8" />
-                    <path d="M12 9v4l2 2M12 5V2m-2 0h4" />
-                </svg>
-                <span x-text="t('benchmarkVitals')">Benchmark Core Web Vitals</span>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" @click="benchmarkVitals()" :disabled="busy"
+                    style="background:#fff;border:1px solid #D0D7DE;color:#1F2328;padding:10px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;">
+                <svg class="solar-icon solar-icon-sm" style="color:#0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M12 5V2m-2 0h4"/></svg>
+                <span x-text="t('benchmarkVitals')">بنچمارک Core Web Vitals</span>
             </button>
-
-            <button type="button"
-                    @click="purgeAllCaches()"
-                    style="background-color: #0969DA; border: none; color: #FFFFFF; padding: 10px 18px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(9, 105, 218, 0.35);">
-                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
-                </svg>
-                <span x-text="t('purgeCaches')">Purge All Caches</span>
+            <button type="button" @click="purgeAllCaches()" :disabled="busy"
+                    style="background:#0969DA;border:none;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(9,105,218,.35);">
+                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+                <span x-text="t('purgeCaches')">تخلیه تمام کش‌ها</span>
             </button>
         </div>
     </div>
 
     <!-- Live Telemetry -->
-    <div class="bankai-grid-4" style="margin-bottom: 24px;">
-        <div class="bankai-card bankai-card-interactive" style="padding: 16px;">
-            <div style="font-size: 11px; color: #8C959F; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
-                <svg class="solar-icon solar-icon-sm" style="color: #1A7F37;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z" /></svg>
-                <span x-text="isRtl ? 'نرخ اصابت به کش (Hit)' : 'Cache Hit Ratio'">Cache Hit Ratio</span>
-            </div>
-            <div style="font-size: 24px; font-weight: 800; color: #1A7F37; margin-top: 4px; font-family: monospace;">96.4%</div>
-            <div style="font-size: 11px; color: #8C959F; margin-top: 2px;" x-text="isRtl ? 'کش وارنیش و صفحات HTML' : 'Edge Varnish & HTML'">Edge Varnish &amp; HTML</div>
+    <div class="bankai-grid-4" style="margin-bottom:24px;">
+        <div class="bankai-card" style="padding:16px;">
+            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">نرخ اصابت کش (Hit)</div>
+            <div style="font-size:24px;font-weight:800;color:#1A7F37;margin-top:4px;font-family:monospace;" x-text="speedStats.hit_ratio || '<?php echo $hit; ?>'"><?php echo $hit; ?></div>
+            <div style="font-size:11px;color:#8C959F;margin-top:2px;">Varnish / HTML</div>
         </div>
-
-        <div class="bankai-card bankai-card-interactive" style="padding: 16px;">
-            <div style="font-size: 11px; color: #8C959F; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
-                <svg class="solar-icon solar-icon-sm" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                <span x-text="isRtl ? 'میانگین TTFB سرور' : 'Avg Server TTFB'">Avg Server TTFB</span>
-            </div>
-            <div style="font-size: 24px; font-weight: 800; color: #0969DA; margin-top: 4px; font-family: monospace;">32ms</div>
-            <div style="font-size: 11px; color: #8C959F; margin-top: 2px;" x-text="isRtl ? 'بافر SSR فعال' : 'SSR Buffer active'">SSR Buffer active</div>
+        <div class="bankai-card" style="padding:16px;">
+            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">میانگین TTFB</div>
+            <div style="font-size:24px;font-weight:800;color:#0969DA;margin-top:4px;font-family:monospace;" x-text="speedStats.ttfb || '<?php echo $ttfb; ?>'"><?php echo $ttfb; ?></div>
+            <div style="font-size:11px;color:#8C959F;margin-top:2px;">Server response</div>
         </div>
-
-        <div class="bankai-card bankai-card-interactive" style="padding: 16px;">
-            <div style="font-size: 11px; color: #8C959F; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
-                <svg class="solar-icon solar-icon-sm" style="color: #8250DF;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="4" /><path d="M9 9h.01M15 9h.01M9 15h6M12 2v2m0 16v2" /></svg>
-                <span x-text="isRtl ? 'تاخیر سوکت Redis' : 'Redis Socket Latency'">Redis Socket Latency</span>
-            </div>
-            <div style="font-size: 24px; font-weight: 800; color: #8250DF; margin-top: 4px; font-family: monospace;">0.42ms</div>
-            <div style="font-size: 11px; color: #8C959F; margin-top: 2px; font-family: monospace;">unix:///tmp/redis.sock</div>
+        <div class="bankai-card" style="padding:16px;">
+            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">تأخیر Redis</div>
+            <div style="font-size:24px;font-weight:800;color:#8250DF;margin-top:4px;font-family:monospace;" x-text="speedStats.redis_latency || '<?php echo $redis; ?>'"><?php echo $redis; ?></div>
+            <div style="font-size:11px;color:#8C959F;margin-top:2px;font-family:monospace;">object cache</div>
         </div>
-
-        <div class="bankai-card bankai-card-interactive" style="padding: 16px;">
-            <div style="font-size: 11px; color: #8C959F; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
-                <svg class="solar-icon solar-icon-sm" style="color: #BC4C00;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></svg>
-                <span x-text="isRtl ? 'رونوشت‌های دیتابیس' : 'Database Revisions'">Database Revisions</span>
+        <div class="bankai-card" style="padding:16px;">
+            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">رونوشت‌های دیتابیس</div>
+            <div style="font-size:24px;font-weight:800;color:#BC4C00;margin-top:4px;font-family:monospace;">
+                <span x-text="speedStats.revisions ?? <?php echo $revs; ?>"><?php echo $revs; ?></span>
+                <span style="font-size:12px;color:#8C959F;">مورد</span>
             </div>
-            <div style="font-size: 24px; font-weight: 800; color: #BC4C00; margin-top: 4px; font-family: monospace;">142 <span style="font-size: 12px; color: #8C959F;" x-text="isRtl ? 'مورد' : 'Items'">Items</span></div>
-            <div style="font-size: 11px; color: #0969DA; cursor: pointer; font-weight: 700; margin-top: 2px;" @click="optimizeDatabase()"
-                 x-text="isRtl ? 'پاکسازی فوری دیتابیس ←' : 'Clean DB Now →'">
-                Clean DB Now →
+            <div style="font-size:11px;color:#0969DA;cursor:pointer;font-weight:700;margin-top:2px;" @click="optimizeDatabase()">
+                پاکسازی فوری دیتابیس ←
             </div>
         </div>
     </div>
 
-    <!-- Speed Modules Grid -->
-    <div class="bankai-grid-3" style="margin-bottom: 32px;">
-        <?php if (!empty($state['speedModules']) && is_array($state['speedModules'])): ?>
-            <?php foreach ($state['speedModules'] as $mod):
-                $mod_id   = esc_attr($mod['id'] ?? '');
-                $title_en = esc_attr($mod['title'] ?? '');
-                $title_fa = esc_attr($mod['title_fa'] ?? ($mod['title'] ?? ''));
-                $desc_en  = esc_attr($mod['description'] ?? '');
-                $desc_fa  = esc_attr($mod['description_fa'] ?? ($mod['description'] ?? ''));
-                $badge    = esc_html($mod['badge'] ?? '');
-            ?>
-                <div class="bankai-card bankai-card-interactive" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(9, 105, 218, 0.12); display: flex; align-items: center; justify-content: center; color: #0969DA; flex-shrink: 0;">
-                                    <?php
-                                    $icon_map = [
-                                        'page_caching'       => '<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />',
-                                        'asset_optimization' => '<polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /><line x1="10" y1="20" x2="14" y2="4" />',
-                                        'database_optimizer' => '<ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />',
-                                        'object_cache'       => '<rect x="4" y="4" width="16" height="16" rx="4" /><path d="M9 9h.01M15 9h.01M9 15h6M12 2v2m0 16v2" />',
-                                        'server_compression' => '<path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" />',
-                                    ];
-                                    $paths = $icon_map[$mod['id'] ?? ''] ?? '<polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" />';
-                                    ?>
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><?php echo $paths; ?></svg>
-                                </div>
-                                <div>
-                                    <div style="font-weight: 700; font-size: 14px; color: #1F2328;"
-                                         x-text="isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>'">
-                                        <?php echo esc_html($mod['title'] ?? ''); ?>
-                                    </div>
-                                    <span style="background-color: rgba(9, 105, 218, 0.12); color: #0969DA; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-top: 3px;">
-                                        <?php echo $badge; ?>
-                                    </span>
-                                </div>
-                            </div>
-                            <label class="bankai-switch">
-                                <input type="checkbox"
-                                       x-model="speedState['<?php echo $mod_id; ?>']"
-                                       @change="toggleSpeedModule('<?php echo $mod_id; ?>')">
-                                <span class="bankai-slider"></span>
-                            </label>
+    <!-- CWV strip -->
+    <div class="bankai-card" style="padding:16px;margin-bottom:24px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;">
+        <div style="font-size:12px;font-weight:800;color:#1F2328;">Core Web Vitals</div>
+        <div style="font-size:12px;"><span style="color:#8C959F;">TTFB</span> <strong x-text="speedVitals.ttfb || '—'">—</strong></div>
+        <div style="font-size:12px;"><span style="color:#8C959F;">LCP</span> <strong x-text="speedVitals.lcp || '—'">—</strong></div>
+        <div style="font-size:12px;"><span style="color:#8C959F;">CLS</span> <strong x-text="speedVitals.cls || '—'">—</strong></div>
+        <div style="font-size:12px;"><span style="color:#8C959F;">FID</span> <strong x-text="speedVitals.fid || '—'">—</strong></div>
+        <div style="font-size:12px;margin-inline-start:auto;"><span style="color:#8C959F;">Score</span> <strong style="color:#1A7F37;" x-text="speedVitals.score || '—'">—</strong></div>
+    </div>
+
+    <!-- Modules -->
+    <div class="bankai-grid-3" style="margin-bottom:32px;">
+        <?php foreach ($speed_mods as $mod):
+            $mod_id   = esc_attr($mod['id'] ?? '');
+            $title_en = esc_js($mod['title'] ?? '');
+            $title_fa = esc_js($mod['title_fa'] ?? ($mod['title'] ?? ''));
+            $desc_en  = esc_js($mod['description'] ?? '');
+            $desc_fa  = esc_js($mod['description_fa'] ?? ($mod['description'] ?? ''));
+            $badge    = esc_html($mod['badge'] ?? '');
+        ?>
+        <div class="bankai-card" style="padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+            <div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:36px;height:36px;border-radius:8px;background:rgba(9,105,218,.12);display:flex;align-items:center;justify-content:center;color:#0969DA;">
+                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                         </div>
-                        <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0 0 16px 0;"
-                           x-text="isRtl ? '<?php echo $desc_fa; ?>' : '<?php echo $desc_en; ?>'">
-                            <?php echo esc_html($mod['description'] ?? ''); ?>
-                        </p>
+                        <div>
+                            <div style="font-weight:700;font-size:14px;color:#1F2328;"
+                                 x-text="isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>'">
+                                <?php echo esc_html($mod['title_fa'] ?? $mod['title'] ?? ''); ?>
+                            </div>
+                            <span style="background:rgba(9,105,218,.12);color:#0969DA;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;margin-top:3px;"><?php echo $badge; ?></span>
+                        </div>
                     </div>
-                    <div style="border-top: 1px solid #D0D7DE; padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 11px; font-weight: 700;"
-                              :style="speedState['<?php echo $mod_id; ?>'] ? 'color: #1A7F37;' : 'color: #8C959F;'"
-                              x-text="speedState['<?php echo $mod_id; ?>'] ? t('active') : t('disabled')">Active</span>
-                        <button type="button"
-                                @click="openSpeedDrawer('<?php echo $mod_id; ?>', isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>')"
-                                style="background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #0969DA; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                            <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
-                            <span x-text="t('configure')">Configure</span>
-                        </button>
-                    </div>
+                    <label class="bankai-switch">
+                        <input type="checkbox"
+                               class="bk-sub-module-toggle"
+                               data-module="<?php echo $mod_id; ?>"
+                               x-model="speedState['<?php echo $mod_id; ?>']"
+                               @change="toggleSpeedModule('<?php echo $mod_id; ?>')">
+                        <span class="bankai-slider"></span>
+                    </label>
                 </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+                <p style="font-size:12px;color:#656D76;line-height:1.5;margin:0 0 16px;"
+                   x-text="isRtl ? '<?php echo $desc_fa; ?>' : '<?php echo $desc_en; ?>'">
+                    <?php echo esc_html($mod['description_fa'] ?? $mod['description'] ?? ''); ?>
+                </p>
+            </div>
+            <div style="border-top:1px solid #D0D7DE;padding-top:12px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:11px;font-weight:700;"
+                      :style="speedState['<?php echo $mod_id; ?>'] ? 'color:#1A7F37' : 'color:#8C959F'"
+                      x-text="speedState['<?php echo $mod_id; ?>'] ? t('active') : t('disabled')">—</span>
+                <button type="button"
+                        @click="openSpeedDrawer('<?php echo $mod_id; ?>', isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>')"
+                        style="background:#F6F8FA;border:1px solid #D0D7DE;color:#0969DA;font-size:11px;font-weight:700;padding:5px 12px;border-radius:6px;cursor:pointer;">
+                    <span x-text="t('configure')">پیکربندی</span>
+                </button>
+            </div>
+        </div>
+        <?php endforeach; ?>
     </div>
 
-    <!-- Speed Drawer -->
-    <div x-show="speedDrawer.show" x-cloak class="bankai-modal-overlay" x-transition.opacity>
-        <div @click.away="speedDrawer.show = false"
-             class="bankai-card"
-             style="width: 560px; max-width: 90%; padding: 28px; box-shadow: 0 20px 40px rgba(46, 52, 64, 0.25); position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #D0D7DE; padding-bottom: 16px;">
-                <h3 style="font-size: 18px; font-weight: 800; color: #1F2328; margin: 0; display: flex; align-items: center; gap: 8px;">
-                    <svg class="solar-icon" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
-                    <span x-text="speedDrawer.title + (isRtl ? ' - تنظیمات کش و سرعت' : ' Settings')"></span>
-                </h3>
-                <button type="button" @click="speedDrawer.show = false" style="background: none; border: none; color: #8C959F; font-size: 20px; cursor: pointer;">&times;</button>
+    <!-- Speed Drawer — modern, no dark overlay -->
+    <div x-show="speedDrawer.show" x-cloak
+         class="bankai-modal-shell"
+         x-transition:enter="bk-modal-enter"
+         x-transition:enter-start="bk-modal-enter-start"
+         x-transition:enter-end="bk-modal-enter-end"
+         x-transition:leave="bk-modal-leave"
+         x-transition:leave-start="bk-modal-leave-start"
+         x-transition:leave-end="bk-modal-leave-end">
+        <div class="bankai-modal-panel" @click.outside="speedDrawer.show = false">
+            <div class="bankai-modal-head">
+                <h3 class="bankai-modal-title" x-text="speedDrawer.title + (isRtl ? ' — تنظیمات کش' : ' — Cache Settings')"></h3>
+                <button type="button" class="bankai-modal-close" @click="speedDrawer.show = false" aria-label="Close">&times;</button>
             </div>
-
-            <div style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 16px;">
-                <div>
-                    <label style="display: block; font-size: 12px; font-weight: 700; color: #656D76; margin-bottom: 6px;"
-                           x-text="isRtl ? 'زمان انقضای کش (TTL به ثانیه)' : 'Cache Expiry Time (TTL in Seconds)'">Cache Expiry Time (TTL in Seconds)</label>
-                    <input type="number" value="86400"
-                           style="width: 100%; background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #1F2328; padding: 10px; border-radius: 8px; font-size: 13px; outline: none; font-family: monospace;">
+            <div class="bankai-modal-body">
+                <div class="bankai-field">
+                    <label>زمان انقضای کش (TTL — ثانیه)</label>
+                    <input type="number" x-model="speedDrawer.ttl" min="60" step="60" class="bankai-input mono">
+                    <span class="bankai-hint">مثلاً 3600 = یک ساعت · 86400 = یک روز</span>
                 </div>
-                <div>
-                    <label style="display: block; font-size: 12px; font-weight: 700; color: #656D76; margin-bottom: 6px;"
-                           x-text="isRtl ? 'قوانین استثنای آدرس‌ها' : 'Exclusion Rules (URLs to Bypass Cache)'">Exclusion Rules (URLs to Bypass Cache)</label>
-                    <textarea rows="3" style="width: 100%; background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #1F2328; padding: 10px; border-radius: 8px; font-size: 12px; font-family: monospace; outline: none;">/cart/*
-/checkout/*
-/my-account/*</textarea>
+                <div class="bankai-field">
+                    <label>قوانین استثنا (هر خط یک الگو)</label>
+                    <textarea rows="4" x-model="speedDrawer.exclusions" class="bankai-input mono"></textarea>
+                    <span class="bankai-hint">مسیرهایی که نباید کش شوند؛ مثل /cart/*</span>
                 </div>
             </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" @click="speedDrawer.show = false"
-                        style="background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #656D76; padding: 10px 18px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;"
-                        x-text="t('cancel')">Cancel</button>
-                <button type="button" @click="saveSpeedDrawerSettings()"
-                        style="background-color: #0969DA; border: none; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 14px rgba(9, 105, 218, 0.35);"
-                        x-text="isRtl ? 'ذخیره پیکربندی کش' : 'Save Cache Configuration'">Save Cache Configuration</button>
+            <div class="bankai-modal-foot">
+                <button type="button" class="bankai-btn-ghost" @click="speedDrawer.show = false" x-text="t('cancel')">انصراف</button>
+                <button type="button" class="bankai-btn-primary" @click="saveSpeedDrawerSettings()" x-text="t('save')">ذخیره</button>
             </div>
         </div>
     </div>

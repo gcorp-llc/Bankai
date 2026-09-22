@@ -24,6 +24,10 @@ class Bankai_Theme_Kits {
     }
 
     private function __construct() {
+        if (function_exists('bankai_is_module_active') && !bankai_is_module_active('theme_kits')) {
+            return;
+        }
+
         add_action('wp_ajax_bankai_sync_library', [$this, 'handle_sync_library']);
         add_action('wp_ajax_bankai_import_kit', [$this, 'handle_import_kit']);
     }

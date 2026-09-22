@@ -1,256 +1,284 @@
-<!-- Tab: Media & Watermark Studio -->
-<div id="tab-media-watermark" class="bankai-tab-pane" x-show="activeTab === 'media-watermark'" x-cloak>
+<?php
+/**
+ * Tab: Media & Watermark Studio
+ */
+defined('ABSPATH') || exit;
+
+/** @var array $state */
+$media_mods = is_array($state['mediaModules'] ?? null) ? $state['mediaModules'] : [];
+$wm = is_array($state['watermarkSettings'] ?? null) ? $state['watermarkSettings'] : [];
+if (!$wm && class_exists('Bankai_Media_Watermark')) {
+    $wm = Bankai_Media_Watermark::instance()->get_settings();
+}
+$env = class_exists('Bankai_Media_Watermark') ? Bankai_Media_Watermark::environment() : [];
+$gd_ok = !empty($env['gd']);
+$imagick_ok = !empty($env['imagick']);
+$webp_ok = !empty($env['webp']);
+?>
+<div id="tab-media-watermark" class="bankai-tab-pane" x-show="activeTab === 'media-watermark'" x-cloak
+     x-init="initMediaStudio()">
 
     <!-- Header -->
-    <div class="bankai-card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; flex-wrap: wrap; gap: 14px;">
+    <div class="bankai-card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding:20px;flex-wrap:wrap;gap:14px;">
         <div>
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap;">
-                <h2 style="font-size: 18px; font-weight: 800; color: #1F2328; margin: 0; display: flex; align-items: center; gap: 8px;">
-                    <svg class="solar-icon" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 22h6c4.418 0 6-1.582 6-6V8c0-4.418-1.582-6-6-6H9C4.582 2 3 3.582 3 8v8c0 4.418 1.582 6 6 6Z" />
-                        <circle cx="8.5" cy="7.5" r="1.5" fill="currentColor" stroke="none" />
-                        <path d="M3 16l6.5-6.5c.78-.78 2.05-.78 2.83 0L21 18M14 13l2.5-2.5c.78-.78 2.05-.78 2.83 0L21 12" />
-                    </svg>
-                    <span x-text="t('mediaEngineTitle')">Next-Gen Media Engine &amp; Dynamic Watermark Studio</span>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap;">
+                <h2 style="font-size:18px;font-weight:800;color:#1F2328;margin:0;display:flex;align-items:center;gap:8px;">
+                    <svg class="solar-icon" style="color:#0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                    <span x-text="t('mediaEngineTitle')">موتور رسانه و استودیو واترمارک</span>
                 </h2>
-                <span style="background-color: rgba(31, 136, 61, 0.2); border: 1px solid rgba(31, 136, 61, 0.5); color: #1A7F37; font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-family: monospace;">
-                    1.4 GB <span x-text="isRtl ? 'صرفه‌جویی (کاهش ۸۲٪ حجم)' : 'Saved (82% Avg Compression)'">Saved (82% Avg Compression)</span>
+                <span style="background:rgba(9,105,218,.12);border:1px solid rgba(9,105,218,.3);color:#0969DA;font-size:11px;padding:3px 10px;border-radius:12px;font-weight:700;">
+                    WebP · AVIF · Lazy · Watermark
                 </span>
             </div>
-            <p style="font-size: 12px; color: #8C959F; margin: 0;" x-text="t('mediaEngineSubtitle')">
-                WebP &amp; AVIF auto-conversion, dynamic watermark overlay, EXIF metadata stripping &amp; CDN offloading.
+            <p style="font-size:12px;color:#8C959F;margin:0;" x-text="t('mediaEngineSubtitle')">
+                تبدیل خودکار، واترمارک متن/تصویر، حذف EXIF و لود تنبل
             </p>
         </div>
-
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button type="button"
-                    @click="regenerateThumbnails()"
-                    style="background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #1F2328; padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(46, 52, 64, 0.04);">
-                <svg class="solar-icon solar-icon-sm" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M19.95 11a8 8 0 1 0-.5 4m.5-4h-5m5 0V6" />
-                </svg>
-                <span x-text="t('regenThumbs')">Regenerate Thumbnails</span>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" @click="regenerateThumbnails()" :disabled="busy"
+                    style="background:#fff;border:1px solid #D0D7DE;color:#1F2328;padding:10px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;">
+                <svg class="solar-icon solar-icon-sm" style="color:#0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19.95 11a8 8 0 1 0-.5 4m.5-4h-5m5 0V6"/></svg>
+                <span x-text="t('regenThumbs')">بازتولید بندانگشتی</span>
             </button>
-            <button type="button"
-                    @click="bulkConvertMedia()"
-                    style="background-color: #0969DA; border: none; color: #FFFFFF; padding: 10px 18px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(9, 105, 218, 0.35);">
-                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                </svg>
-                <span x-text="t('bulkConvert')">Bulk Convert Media Library</span>
+            <button type="button" @click="bulkConvertMedia()" :disabled="busy"
+                    style="background:#0969DA;border:none;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(9,105,218,.35);">
+                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                <span x-text="t('bulkConvert')">تبدیل گروهی کتابخانه</span>
             </button>
         </div>
     </div>
 
-    <!-- Environment Badges -->
-    <div class="bankai-grid-4" style="margin-bottom: 24px;">
-        <div class="bankai-card bankai-card-interactive" style="padding: 16px;">
-            <div style="font-size: 11px; color: #8C959F; font-weight: 700; text-transform: uppercase;">Image GD Engine</div>
-            <div style="font-size: 16px; font-weight: 800; color: #1A7F37; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
-                <span x-text="isRtl ? 'فعال (نسخه ۲.۳)' : 'Active (v2.3)'">Active (v2.3)</span>
+    <!-- Environment -->
+    <div class="bankai-grid-4" style="margin-bottom:24px;">
+        <div class="bankai-card" style="padding:16px;">
+            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">GD Engine</div>
+            <div style="font-size:15px;font-weight:800;margin-top:4px;color:<?php echo $gd_ok ? '#1A7F37' : '#A6122D'; ?>">
+                <?php echo $gd_ok ? '✓ فعال' : '✗ غیرفعال'; ?>
             </div>
-            <div style="font-size: 11px; color: #8C959F; margin-top: 2px;">PNG, JPEG, WebP</div>
         </div>
-        <div class="bankai-card bankai-card-interactive" style="padding: 16px;">
-            <div style="font-size: 11px; color: #8C959F; font-weight: 700; text-transform: uppercase;">Imagick Processor</div>
-            <div style="font-size: 16px; font-weight: 800; color: #1A7F37; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
-                <span x-text="isRtl ? 'فعال (ImageMagick 7)' : 'Active (ImageMagick 7)'">Active (ImageMagick 7)</span>
+        <div class="bankai-card" style="padding:16px;">
+            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">Imagick</div>
+            <div style="font-size:15px;font-weight:800;margin-top:4px;color:<?php echo $imagick_ok ? '#1A7F37' : '#8C959F'; ?>">
+                <?php echo $imagick_ok ? '✓ فعال' : '— در دسترس نیست'; ?>
             </div>
-            <div style="font-size: 11px; color: #8C959F; margin-top: 2px;">AVIF &amp; WebP</div>
         </div>
-        <div class="bankai-card bankai-card-interactive" style="padding: 16px;">
-            <div style="font-size: 11px; color: #8C959F; font-weight: 700; text-transform: uppercase;">AVIF Compression</div>
-            <div style="font-size: 16px; font-weight: 800; color: #0969DA; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
-                <span x-text="isRtl ? 'پشتیبانی کامل' : 'Enabled'">Enabled</span>
+        <div class="bankai-card" style="padding:16px;">
+            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">WebP</div>
+            <div style="font-size:15px;font-weight:800;margin-top:4px;color:<?php echo $webp_ok ? '#1A7F37' : '#A6122D'; ?>">
+                <?php echo $webp_ok ? '✓ پشتیبانی' : '✗ بدون پشتیبانی'; ?>
             </div>
-            <div style="font-size: 11px; color: #8C959F; margin-top: 2px;" x-text="isRtl ? '۵۰٪ سبک‌تر از WebP' : '50% smaller than WebP'">50% smaller than WebP</div>
         </div>
-        <div class="bankai-card bankai-card-interactive" style="padding: 16px;">
-            <div style="font-size: 11px; color: #8C959F; font-weight: 700; text-transform: uppercase;" x-text="isRtl ? 'پشتیبان فایل اصلی' : 'Original Backup'">Original Backup</div>
-            <div style="font-size: 16px; font-weight: 800; color: #BC4C00; margin-top: 4px;" x-text="isRtl ? 'حالت امن فعال' : 'Safe Mode Active'">Safe Mode Active</div>
-            <div style="font-size: 11px; color: #8C959F; margin-top: 2px;">JPG/PNG Retained</div>
+        <div class="bankai-card" style="padding:16px;">
+            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">Lazy Load</div>
+            <div style="font-size:15px;font-weight:800;margin-top:4px;color:#0969DA;"
+                 x-text="watermarkStudio.lazy_load ? '✓ فعال' : 'خاموش'">—</div>
         </div>
     </div>
 
     <!-- Watermark Studio -->
-    <div class="bankai-card" style="padding: 24px; margin-bottom: 24px;">
-        <h3 style="font-size: 15px; font-weight: 700; color: #1F2328; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
-            <svg class="solar-icon" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M12 22C6.477 22 2 17.523 2 12c0-4.478 2.946-8.267 7-9.535M16.5 3.12C19.832 4.675 22 8.09 22 12c0 3.5-1.5 5.5-4 5.5h-1.5c-1.105 0-2 .895-2 2 0 1.38 1.12 2.5 2.5 2.5" />
-                <circle cx="8" cy="10" r="1.5" fill="currentColor" stroke="none" />
-                <circle cx="12" cy="7" r="1.5" fill="currentColor" stroke="none" />
-            </svg>
-            <span x-text="t('watermarkStudio')">Interactive Watermark Position Studio</span>
-        </h3>
+    <div class="bankai-card" style="padding:24px;margin-bottom:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+            <h3 style="font-size:15px;font-weight:800;margin:0;display:flex;align-items:center;gap:8px;">
+                <svg class="solar-icon" style="color:#0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2"/></svg>
+                استودیو واترمارک تعاملی
+            </h3>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;cursor:pointer;">
+                <input type="checkbox" x-model="watermarkStudio.enabled" style="accent-color:#0969DA;">
+                فعال‌سازی واترمارک
+            </label>
+        </div>
 
-        <div class="bankai-grid-split">
-            <div>
-                <label style="display: block; font-size: 12px; font-weight: 700; color: #656D76; margin-bottom: 12px;" x-text="t('selectAnchor')">Select Watermark Overlay Anchor Position</label>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 280px; margin-bottom: 16px;">
-                    <?php
-                    $positions = [
-                        'top-left'      => ['en' => 'Top Left',     'fa' => 'بالا راست'],
-                        'top-center'    => ['en' => 'Top Center',   'fa' => 'بالا وسط'],
-                        'top-right'     => ['en' => 'Top Right',    'fa' => 'بالا چپ'],
-                        'center-left'   => ['en' => 'Left',         'fa' => 'راست'],
-                        'center'        => ['en' => 'Center',       'fa' => 'مرکز'],
-                        'center-right'  => ['en' => 'Right',        'fa' => 'چپ'],
-                        'bottom-left'   => ['en' => 'Bottom Left',  'fa' => 'پایین راست'],
-                        'bottom-center' => ['en' => 'Bottom Center','fa' => 'پایین وسط'],
-                        'bottom-right'  => ['en' => 'Bottom Right', 'fa' => 'پایین چپ'],
-                    ];
-                    foreach ($positions as $pos => $labels):
-                    ?>
-                        <button type="button"
-                                @click="watermarkStudio.position = '<?php echo esc_js($pos); ?>'"
-                                :style="watermarkStudio.position === '<?php echo esc_js($pos); ?>' ? 'background-color: #0969DA; color: #FFFFFF; border-color: #0969DA;' : 'background-color: #F6F8FA; color: #656D76; border-color: #D0D7DE;'"
-                                style="padding: 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid; text-align: center;">
-                            <span x-text="isRtl ? '<?php echo esc_js($labels['fa']); ?>' : '<?php echo esc_js($labels['en']); ?>'"><?php echo esc_html($labels['en']); ?></span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+                <!-- Type -->
+                <div>
+                    <label style="font-size:12px;font-weight:700;color:#656D76;display:block;margin-bottom:8px;">نوع واترمارک</label>
+                    <div style="display:flex;gap:8px;">
+                        <button type="button" @click="watermarkStudio.type='text'"
+                                :style="watermarkStudio.type==='text' ? 'background:#0969DA;color:#fff;border-color:#0969DA' : 'background:#F6F8FA;color:#656D76;border-color:#D0D7DE'"
+                                style="flex:1;padding:10px;border-radius:8px;border:1px solid;font-size:12px;font-weight:700;cursor:pointer;">متن</button>
+                        <button type="button" @click="watermarkStudio.type='image'"
+                                :style="watermarkStudio.type==='image' ? 'background:#0969DA;color:#fff;border-color:#0969DA' : 'background:#F6F8FA;color:#656D76;border-color:#D0D7DE'"
+                                style="flex:1;padding:10px;border-radius:8px;border:1px solid;font-size:12px;font-weight:700;cursor:pointer;">تصویر / لوگو</button>
+                    </div>
+                </div>
+
+                <!-- Text or Image -->
+                <div x-show="watermarkStudio.type==='text'">
+                    <label style="font-size:12px;font-weight:700;color:#656D76;display:block;margin-bottom:6px;">متن واترمارک</label>
+                    <input type="text" x-model="watermarkStudio.text" maxlength="80"
+                           style="width:100%;padding:10px 12px;border:1px solid #D0D7DE;border-radius:8px;font-size:13px;">
+                </div>
+                <div x-show="watermarkStudio.type==='image'" x-cloak>
+                    <label style="font-size:12px;font-weight:700;color:#656D76;display:block;margin-bottom:6px;">لوگوی واترمارک</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button type="button" @click="pickWatermarkImage()"
+                                style="padding:10px 14px;border-radius:8px;border:1px solid #D0D7DE;background:#F6F8FA;font-size:12px;font-weight:700;color:#0969DA;cursor:pointer;">
+                            انتخاب از رسانه
                         </button>
-                    <?php endforeach; ?>
+                        <span style="font-size:11px;color:#8C959F;" x-text="watermarkStudio.image_id ? ('ID: ' + watermarkStudio.image_id) : 'انتخاب نشده'"></span>
+                    </div>
+                    <img x-show="watermarkStudio.image_url" :src="watermarkStudio.image_url" alt=""
+                         style="margin-top:10px;max-height:64px;border-radius:6px;border:1px solid #D0D7DE;">
                 </div>
 
-                <div style="display: flex; flex-direction: column; gap: 12px; max-width: 280px;">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #656D76; margin-bottom: 4px;">
-                            <span x-text="t('watermarkOpacity')">Watermark Opacity</span>
-                            <span style="color: #0969DA; font-weight: 800; font-family: monospace;" x-text="watermarkStudio.opacity + '%'">75%</span>
-                        </div>
-                        <input type="range" min="10" max="100" x-model="watermarkStudio.opacity" style="width: 100%; accent-color: #0969DA; cursor: pointer;">
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 12px; color: #656D76; margin-bottom: 4px;" x-text="t('watermarkText')">Watermark Custom Text</label>
-                        <input type="text" x-model="watermarkStudio.text"
-                               style="width: 100%; background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #1F2328; padding: 8px 12px; border-radius: 6px; font-size: 12px; outline: none;">
+                <!-- Position grid -->
+                <div>
+                    <label style="font-size:12px;font-weight:700;color:#656D76;display:block;margin-bottom:8px;">موقعیت</label>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:280px;">
+                        <?php
+                        $positions = [
+                            'top-left' => '↖', 'top-center' => '↑', 'top-right' => '↗',
+                            'center-left' => '←', 'center' => '●', 'center-right' => '→',
+                            'bottom-left' => '↙', 'bottom-center' => '↓', 'bottom-right' => '↘',
+                        ];
+                        foreach ($positions as $pos => $icon):
+                        ?>
+                        <button type="button"
+                                @click="watermarkStudio.position='<?php echo esc_js($pos); ?>'"
+                                :style="watermarkStudio.position==='<?php echo esc_js($pos); ?>' ? 'background:#0969DA;color:#fff;border-color:#0969DA' : 'background:#F6F8FA;color:#656D76;border-color:#D0D7DE'"
+                                style="padding:12px;border-radius:8px;border:1px solid;font-size:14px;font-weight:700;cursor:pointer;">
+                            <?php echo $icon; ?>
+                        </button>
+                        <?php endforeach; ?>
                     </div>
                 </div>
+
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#656D76;margin-bottom:4px;">
+                        <span>شفافیت</span>
+                        <span style="color:#0969DA;font-weight:800;font-family:monospace;" x-text="watermarkStudio.opacity + '%'">75%</span>
+                    </div>
+                    <input type="range" min="10" max="100" x-model="watermarkStudio.opacity" style="width:100%;accent-color:#0969DA;">
+                </div>
+
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#656D76;margin-bottom:4px;">
+                        <span>کیفیت فشرده‌سازی</span>
+                        <span style="color:#0969DA;font-weight:800;font-family:monospace;" x-text="watermarkStudio.quality">82</span>
+                    </div>
+                    <input type="range" min="40" max="100" x-model="watermarkStudio.quality" style="width:100%;accent-color:#0969DA;">
+                </div>
+
+                <!-- Scope -->
+                <div style="display:flex;flex-direction:column;gap:8px;padding:12px;background:#F6F8FA;border-radius:10px;border:1px solid #EAEEF2;">
+                    <label style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" x-model="watermarkStudio.apply_upload" style="accent-color:#0969DA;">
+                        اعمال روی آپلودهای جدید
+                    </label>
+                    <label style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" x-model="watermarkStudio.apply_content" style="accent-color:#0969DA;">
+                        اعمال روی تصاویر موجود (با تبدیل گروهی)
+                    </label>
+                    <label style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" x-model="watermarkStudio.lazy_load" style="accent-color:#0969DA;">
+                        Lazy Load تصاویر محتوا و بندانگشتی
+                    </label>
+                    <label style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" x-model="watermarkStudio.strip_exif" style="accent-color:#0969DA;">
+                        حذف خودکار EXIF / GPS
+                    </label>
+                    <label style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" x-model="watermarkStudio.convert_webp" style="accent-color:#0969DA;">
+                        ساخت نسخه WebP در کنار اصل
+                    </label>
+                </div>
+
+                <button type="button" @click="saveWatermarkStudio()" :disabled="busy"
+                        style="padding:12px;border:none;border-radius:10px;background:#0969DA;color:#fff;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(9,105,218,.3);">
+                    ذخیره تنظیمات رسانه
+                </button>
             </div>
 
-            <!-- Live Preview -->
-            <div style="position: relative; min-height: 240px; background-color: #F6F8FA; border: 1px solid #D0D7DE; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80"
-                     alt="Preview"
-                     style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;">
-                <div style="position: absolute; padding: 12px; pointer-events: none; transition: all 0.3s ease;"
+            <!-- Preview -->
+            <div style="position:relative;min-height:320px;background:#F6F8FA;border:1px solid #D0D7DE;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=700&q=80"
+                     alt="Preview" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">
+                <div style="position:absolute;padding:12px;pointer-events:none;transition:all .25s ease;"
                      :style="getWatermarkPositionStyle()">
-                    <span style="background-color: rgba(46, 52, 64, 0.75); color: #FFFFFF; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 800; border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(6px); letter-spacing: 0.5px;"
-                          :style="'opacity: ' + (watermarkStudio.opacity / 100)"
-                          x-text="watermarkStudio.text || '© BANKAI WP ENGINE'"></span>
+                    <template x-if="watermarkStudio.type==='text'">
+                        <span style="background:rgba(31,35,40,.72);color:#fff;padding:6px 14px;border-radius:4px;font-size:12px;font-weight:800;border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(6px);"
+                              :style="'opacity:' + (watermarkStudio.opacity/100)"
+                              x-text="watermarkStudio.text || '© BANKAI'"></span>
+                    </template>
+                    <template x-if="watermarkStudio.type==='image' && watermarkStudio.image_url">
+                        <img :src="watermarkStudio.image_url" alt=""
+                             :style="'max-width:120px;opacity:' + (watermarkStudio.opacity/100) + ';filter:drop-shadow(0 2px 6px rgba(0,0,0,.25))'">
+                    </template>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Media Modules Grid -->
-    <div class="bankai-grid-3" style="margin-bottom: 32px;">
-        <?php if (!empty($state['mediaModules']) && is_array($state['mediaModules'])): ?>
-            <?php foreach ($state['mediaModules'] as $mod):
-                $mod_id   = esc_attr($mod['id'] ?? '');
-                $title_en = esc_attr($mod['title'] ?? '');
-                $title_fa = esc_attr($mod['title_fa'] ?? ($mod['title'] ?? ''));
-                $desc_en  = esc_attr($mod['description'] ?? '');
-                $desc_fa  = esc_attr($mod['description_fa'] ?? ($mod['description'] ?? ''));
-                $badge    = esc_html($mod['badge'] ?? '');
-            ?>
-                <div class="bankai-card bankai-card-interactive" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+    <!-- Modules -->
+    <div class="bankai-grid-3" style="margin-bottom:32px;">
+        <?php foreach ($media_mods as $mod):
+            $mod_id = esc_attr($mod['id'] ?? '');
+            $title_fa = esc_js($mod['title_fa'] ?? $mod['title'] ?? '');
+            $title_en = esc_js($mod['title'] ?? '');
+            $desc_fa = esc_js($mod['description_fa'] ?? $mod['description'] ?? '');
+            $desc_en = esc_js($mod['description'] ?? '');
+            $badge = esc_html($mod['badge'] ?? '');
+        ?>
+        <div class="bankai-card" style="padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+            <div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
                     <div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(9, 105, 218, 0.12); display: flex; align-items: center; justify-content: center; color: #0969DA; flex-shrink: 0;">
-                                    <?php if (($mod['id'] ?? '') === 'webp_avif_converter'): ?>
-                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 22h6c4.418 0 6-1.582 6-6V8c0-4.418-1.582-6-6-6H9C4.582 2 3 3.582 3 8v8c0 4.418 1.582 6 6 6Z" /><circle cx="8.5" cy="7.5" r="1.5" fill="currentColor" stroke="none" /></svg>
-                                    <?php elseif (($mod['id'] ?? '') === 'dynamic_watermarking'): ?>
-                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22C6.477 22 2 17.523 2 12c0-4.478 2.946-8.267 7-9.535M16.5 3.12C19.832 4.675 22 8.09 22 12" /><circle cx="12" cy="12" r="3" /></svg>
-                                    <?php elseif (($mod['id'] ?? '') === 'retina_generator'): ?>
-                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
-                                    <?php elseif (($mod['id'] ?? '') === 'svg_sanitizer'): ?>
-                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>
-                                    <?php elseif (($mod['id'] ?? '') === 'exif_metadata_scrubber'): ?>
-                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
-                                    <?php else: ?>
-                                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" /><polyline points="16 16 12 12 8 16" /><line x1="12" y1="12" x2="12" y2="21" /></svg>
-                                    <?php endif; ?>
-                                </div>
-                                <div>
-                                    <div style="font-weight: 700; font-size: 14px; color: #1F2328;"
-                                         x-text="isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>'">
-                                        <?php echo esc_html($mod['title'] ?? ''); ?>
-                                    </div>
-                                    <span style="background-color: rgba(9, 105, 218, 0.12); color: #0969DA; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-top: 3px;">
-                                        <?php echo $badge; ?>
-                                    </span>
-                                </div>
-                            </div>
-                            <label class="bankai-switch">
-                                <input type="checkbox"
-                                       x-model="mediaState['<?php echo $mod_id; ?>']"
-                                       @change="toggleMediaModule('<?php echo $mod_id; ?>')">
-                                <span class="bankai-slider"></span>
-                            </label>
+                        <div style="font-weight:700;font-size:14px;color:#1F2328;"
+                             x-text="isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>'">
+                            <?php echo esc_html($mod['title_fa'] ?? $mod['title'] ?? ''); ?>
                         </div>
-                        <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0 0 16px 0;"
-                           x-text="isRtl ? '<?php echo $desc_fa; ?>' : '<?php echo $desc_en; ?>'">
-                            <?php echo esc_html($mod['description'] ?? ''); ?>
-                        </p>
+                        <span style="background:rgba(9,105,218,.12);color:#0969DA;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;margin-top:3px;"><?php echo $badge; ?></span>
                     </div>
-                    <div style="border-top: 1px solid #D0D7DE; padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 11px; font-weight: 700;"
-                              :style="mediaState['<?php echo $mod_id; ?>'] ? 'color: #1A7F37;' : 'color: #8C959F;'"
-                              x-text="mediaState['<?php echo $mod_id; ?>'] ? t('active') : t('disabled')">Active</span>
-                        <button type="button"
-                                @click="openMediaDrawer('<?php echo $mod_id; ?>', isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>')"
-                                style="background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #0969DA; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                            <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
-                            <span x-text="t('configure')">Configure</span>
-                        </button>
-                    </div>
+                    <label class="bankai-switch">
+                        <input type="checkbox"
+                               class="bk-sub-module-toggle"
+                               data-module="<?php echo $mod_id; ?>"
+                               x-model="mediaState['<?php echo $mod_id; ?>']"
+                               @change="toggleMediaModule('<?php echo $mod_id; ?>')">
+                        <span class="bankai-slider"></span>
+                    </label>
                 </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+                <p style="font-size:12px;color:#656D76;line-height:1.5;margin:0 0 16px;"
+                   x-text="isRtl ? '<?php echo $desc_fa; ?>' : '<?php echo $desc_en; ?>'"></p>
+            </div>
+            <div style="border-top:1px solid #D0D7DE;padding-top:12px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:11px;font-weight:700;"
+                      :style="mediaState['<?php echo $mod_id; ?>'] ? 'color:#1A7F37' : 'color:#8C959F'"
+                      x-text="mediaState['<?php echo $mod_id; ?>'] ? t('active') : t('disabled')">—</span>
+                <button type="button"
+                        @click="openMediaDrawer('<?php echo $mod_id; ?>', isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>')"
+                        style="background:#F6F8FA;border:1px solid #D0D7DE;color:#0969DA;font-size:11px;font-weight:700;padding:5px 12px;border-radius:6px;cursor:pointer;">
+                    پیکربندی
+                </button>
+            </div>
+        </div>
+        <?php endforeach; ?>
     </div>
 
-    <!-- Media Drawer Modal -->
-    <div x-show="mediaDrawer.show" x-cloak class="bankai-modal-overlay" x-transition.opacity>
-        <div @click.away="mediaDrawer.show = false"
-             class="bankai-card"
-             style="width: 560px; max-width: 90%; padding: 28px; box-shadow: 0 20px 40px rgba(46, 52, 64, 0.25); position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #D0D7DE; padding-bottom: 16px;">
-                <h3 style="font-size: 18px; font-weight: 800; color: #1F2328; margin: 0; display: flex; align-items: center; gap: 8px;">
-                    <svg class="solar-icon" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
-                    <span x-text="mediaDrawer.title + (isRtl ? ' - تنظیمات رسانه' : ' Settings')"></span>
-                </h3>
-                <button type="button" @click="mediaDrawer.show = false" style="background: none; border: none; color: #8C959F; font-size: 20px; cursor: pointer;">&times;</button>
+    <!-- Media drawer modern -->
+    <div x-show="mediaDrawer.show" x-cloak class="bankai-modal-shell" x-transition>
+        <div class="bankai-modal-panel" @click.outside="mediaDrawer.show=false">
+            <div class="bankai-modal-head">
+                <h3 class="bankai-modal-title" x-text="mediaDrawer.title + (isRtl ? ' — تنظیمات' : ' — Settings')"></h3>
+                <button type="button" class="bankai-modal-close" @click="mediaDrawer.show=false">&times;</button>
             </div>
-
-            <div style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 16px;">
-                <div>
-                    <label style="display: block; font-size: 12px; font-weight: 700; color: #656D76; margin-bottom: 6px;"
-                           x-text="isRtl ? 'کیفیت فشرده‌سازی WebP و AVIF (۰–۱۰۰)' : 'WebP / AVIF Compression Quality (0–100)'">WebP / AVIF Compression Quality (0–100)</label>
-                    <input type="number" value="82" min="10" max="100"
-                           style="width: 100%; background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #1F2328; padding: 10px; border-radius: 8px; font-size: 13px; outline: none; font-family: monospace;">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 12px; font-weight: 700; color: #656D76; margin-bottom: 6px;"
-                           x-text="isRtl ? 'حداقل ابعاد برای واترمارک' : 'Minimum Dimension for Watermarking'">Minimum Dimension for Watermarking</label>
-                    <select style="width: 100%; background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #1F2328; padding: 10px; border-radius: 8px; font-size: 13px; outline: none;">
-                        <option value="300">تصاویر زیر ۳۰۰ پیکسل نادیده گرفته شوند</option>
-                        <option value="500">تصاویر زیر ۵۰۰ پیکسل نادیده گرفته شوند</option>
-                        <option value="0">اعمال روی تمام تصاویر</option>
-                    </select>
-                </div>
+            <div class="bankai-modal-body">
+                <p style="font-size:13px;color:#656D76;margin:0;line-height:1.6;">
+                    تنظیمات عمومی این ماژول از استودیو واترمارک بالا کنترل می‌شود. سوئیچ کارت، فعال/غیرفعال بودن قابلیت را ذخیره می‌کند.
+                </p>
             </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" @click="mediaDrawer.show = false"
-                        style="background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #656D76; padding: 10px 18px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;"
-                        x-text="t('cancel')">Cancel</button>
-                <button type="button" @click="saveMediaDrawerSettings()"
-                        style="background-color: #0969DA; border: none; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 14px rgba(9, 105, 218, 0.35);"
-                        x-text="isRtl ? 'ذخیره تنظیمات رسانه' : 'Save Media Configuration'">Save Media Configuration</button>
+            <div class="bankai-modal-foot">
+                <button type="button" class="bankai-btn-ghost" @click="mediaDrawer.show=false">بستن</button>
+                <button type="button" class="bankai-btn-primary" @click="mediaDrawer.show=false; saveWatermarkStudio()">ذخیره</button>
             </div>
         </div>
     </div>
 </div>
+<style>
+@media (max-width: 900px) {
+    #tab-media-watermark [style*="grid-template-columns:1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+</style>

@@ -77,7 +77,7 @@
         </div>
     </div>
 
-    <!-- Active Engine Modules -->
+    <!-- Active Engine Modules (real active_modules) -->
     <div class="bankai-card" style="padding: 22px; margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 8px;">
             <h3 style="font-size: 16px; font-weight: 700; color: #1F2328; margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -87,78 +87,45 @@
                 </svg>
                 <span x-text="t('coreModulesTitle')">Core Engine Modules &amp; Features</span>
             </h3>
-            <span style="font-size: 11px; color: #1A7F37; background: rgba(31, 136, 61, 0.2); padding: 3px 10px; border-radius: 12px; font-weight: 700; border: 1px solid rgba(31, 136, 61, 0.4);"
-                  x-text="isRtl ? '۶ ماژول فعال' : '6 Modules Active'">
-                6 Modules Active
+            <?php
+            $core_mods = is_array($state['coreModules'] ?? null) ? $state['coreModules'] : [];
+            $active_n  = count(array_filter($core_mods, static fn($m) => !empty($m['active'])));
+            ?>
+            <span id="bk-core-mod-count" style="font-size: 11px; color: #1A7F37; background: rgba(31, 136, 61, 0.2); padding: 3px 10px; border-radius: 12px; font-weight: 700; border: 1px solid rgba(31, 136, 61, 0.4);">
+                <?php echo (int) $active_n; ?> / <?php echo count($core_mods); ?>
+                <span x-text="isRtl ? 'فعال' : 'Active'">Active</span>
             </span>
         </div>
 
         <div class="bankai-grid-3">
-            <div class="bankai-card-subtle" style="padding: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <svg class="solar-icon solar-icon-sm" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18.5 18.5L22 22" /><path d="M6.75 3.27A9 9 0 0 1 18.23 6.75M20 11.5a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0Z" /></svg>
-                        <span style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'موتور سئو و اسکیما' : 'SEO & Schema Engine'">SEO Engine</span>
+            <?php if (!$core_mods): ?>
+                <p style="font-size: 12px; color: #656D76;">ماژول‌ها در دسترس نیستند. فایل class-dashboard-stats.php را بارگذاری کنید.</p>
+            <?php else: ?>
+                <?php foreach ($core_mods as $mod): ?>
+                    <div class="bankai-card-subtle" style="padding: 16px;" data-module="<?php echo esc_attr($mod['key']); ?>">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-weight: 700; font-size: 13px; color: #1F2328;"
+                                      x-text="isRtl ? <?php echo wp_json_encode($mod['label_fa'], JSON_UNESCAPED_UNICODE); ?> : <?php echo wp_json_encode($mod['label'], JSON_UNESCAPED_UNICODE); ?>">
+                                    <?php echo esc_html($mod['label_fa']); ?>
+                                </span>
+                            </div>
+                            <label class="bankai-switch">
+                                <input type="checkbox"
+                                       class="bk-core-module-toggle"
+                                       @change="toggleCoreModule($el.getAttribute('data-module'), $el.checked)"
+                                       data-module="<?php echo esc_attr($mod['key']); ?>"
+                                       <?php checked(!empty($mod['active'])); ?>>
+                                <span class="bankai-slider"></span>
+                            </label>
+                        </div>
+                        <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0;"
+                           x-text="isRtl ? <?php echo wp_json_encode($mod['desc_fa'], JSON_UNESCAPED_UNICODE); ?> : <?php echo wp_json_encode($mod['desc'], JSON_UNESCAPED_UNICODE); ?>">
+                            <?php echo esc_html($mod['desc_fa']); ?>
+                        </p>
                     </div>
-                    <label class="bankai-switch"><input type="checkbox" checked @change="showToast(isRtl ? 'ماژول سئو تغییر کرد' : 'SEO module toggled')"><span class="bankai-slider"></span></label>
-                </div>
-                <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0;" x-text="t('seoEngineDesc')">Automated meta generation, Schema.org builder &amp; XML Sitemaps.</p>
-            </div>
-
-            <div class="bankai-card-subtle" style="padding: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <svg class="solar-icon solar-icon-sm" style="color: #218BFF;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 22h6c4.418 0 6-1.582 6-6V8c0-4.418-1.582-6-6-6H9C4.582 2 3 3.582 3 8v8c0 4.418 1.582 6 6 6Z" /><circle cx="8.5" cy="7.5" r="1.5" fill="currentColor" stroke="none" /></svg>
-                        <span style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'بهینه‌ساز رسانه' : 'Media Optimizer'">Media Optimizer</span>
-                    </div>
-                    <label class="bankai-switch"><input type="checkbox" checked @change="showToast(isRtl ? 'ماژول رسانه تغییر کرد' : 'Media module toggled')"><span class="bankai-slider"></span></label>
-                </div>
-                <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0;" x-text="t('mediaOptimizerDesc')">WebP/AVIF auto-conversion, async processor &amp; lazyloading.</p>
-            </div>
-
-            <div class="bankai-card-subtle" style="padding: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <svg class="solar-icon solar-icon-sm" style="color: #1A7F37;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 9.5L18 6M15.5 15.5L12 19l-3.5-1.5L7 16l-2.5-2.5L3 10l3.5-3.5L10 3l6 3.5 4.5 1.5c.5.167.9.6.9 1.1a12.5 12.5 0 0 1-5.9 7.4Z" /></svg>
-                        <span style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'موتور کش و شتاب‌دهنده' : 'Speed & Cache Engine'">Speed &amp; Cache</span>
-                    </div>
-                    <label class="bankai-switch"><input type="checkbox" checked @change="showToast(isRtl ? 'ماژول کش تغییر کرد' : 'Speed module toggled')"><span class="bankai-slider"></span></label>
-                </div>
-                <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0;" x-text="t('speedCacheDesc')">Zero-latency dynamic HTML page caching &amp; Redis object store.</p>
-            </div>
-
-            <div class="bankai-card-subtle" style="padding: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <svg class="solar-icon solar-icon-sm" style="color: #8250DF;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 10V8c0-2.828 0-4.243.879-5.121C4.757 2 6.172 2 9 2h6c2.828 0 4.243 0 5.121.879C21 3.757 21 5.172 21 8v8c0 2.828 0 4.243-.879 5.121C19.243 22 17.828 22 15 22H9c-2.828 0-4.243 0-5.121-.879C3 20.243 3 18.828 3 16" /><path d="M7 8h10M7 12h6M7 16h4" /></svg>
-                        <span style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'مانیفست هوش مصنوعی' : 'LLM Manifest'">LLM Manifest</span>
-                    </div>
-                    <label class="bankai-switch"><input type="checkbox" checked @change="showToast(isRtl ? 'مانیفست LLM تغییر کرد' : 'LLM module toggled')"><span class="bankai-slider"></span></label>
-                </div>
-                <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0;" x-text="t('llmManifestDesc')">Structured markdown index endpoints for AI agents.</p>
-            </div>
-
-            <div class="bankai-card-subtle" style="padding: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <svg class="solar-icon solar-icon-sm" style="color: #54AEFF;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.93 4.93l2.12 2.12m9.9 9.9l2.12 2.12M4.93 19.07l2.12-2.12m9.9-9.9l2.12-2.12" /><path d="M15.5 12a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" /></svg>
-                        <span style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'استودیو هوش مصنوعی' : 'AI Content Studio'">AI Studio</span>
-                    </div>
-                    <label class="bankai-switch"><input type="checkbox" checked @change="showToast(isRtl ? 'استودیو AI تغییر کرد' : 'AI Studio toggled')"><span class="bankai-slider"></span></label>
-                </div>
-                <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0;" x-text="t('aiStudioDesc')">Server-side Gemini AI content generation &amp; prompt engineering.</p>
-            </div>
-
-            <div class="bankai-card-subtle" style="padding: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <svg class="solar-icon solar-icon-sm" style="color: #BC4C00;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
-                        <span style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'سئو ووکامرس' : 'WooCommerce SEO'">WooCommerce SEO</span>
-                    </div>
-                    <label class="bankai-switch"><input type="checkbox" checked @change="showToast(isRtl ? 'سئو ووکامرس تغییر کرد' : 'WooCommerce SEO toggled')"><span class="bankai-slider"></span></label>
-                </div>
-                <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0;" x-text="isRtl ? 'اسکیمای کامل محصولات، قیمت و موجودی.' : 'Complete Product schema, price, stock status and reviews.'">Complete Product schema, price, stock status and buyer review ratings.</p>
-            </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -170,7 +137,7 @@
                     <svg class="solar-icon solar-icon-sm" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
                     <span x-text="t('vitalsTitle')">SEO &amp; Core Web Vitals</span>
                 </span>
-                <span style="background-color: rgba(31, 136, 61, 0.2); border: 1px solid rgba(31, 136, 61, 0.4); color: #1A7F37; font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 700;">Grade A+</span>
+                <span style="background-color: rgba(31, 136, 61, 0.2); border: 1px solid rgba(31, 136, 61, 0.4); color: #1A7F37; font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 700;">Grade <?php echo esc_html($state['stats']['grade'] ?? '—'); ?></span>
             </div>
 
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 16px 0 24px 0;">
@@ -204,7 +171,7 @@
                 <div>
                     <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
                         <span style="color: #656D76;">CLS</span>
-                        <span style="color: #1A7F37; font-weight: 700; font-family: monospace;">0.002</span>
+                        <span style="color: #1A7F37; font-weight: 700; font-family: monospace;"><?php echo esc_html($state['stats']['cls'] ?? '—'); ?></span>
                     </div>
                     <div style="height: 6px; background-color: #D0D7DE; border-radius: 3px; overflow: hidden;"><div style="width: 98%; height: 100%; background-color: #1A7F37;"></div></div>
                 </div>
@@ -234,16 +201,23 @@
                             <?php foreach ($state['logs404'] as $log): ?>
                                 <tr style="border-bottom: 1px solid #D0D7DE;">
                                     <td style="padding: 12px 8px;"><div style="color: #1F2328; font-weight: 600; font-family: monospace;"><?php echo esc_html($log['requested_uri'] ?? ''); ?></div></td>
-                                    <td style="padding: 12px 8px; text-align: center;"><span style="background-color: rgba(9, 105, 218, 0.12); padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #0969DA; font-family: monospace;"><?php echo esc_html($log['hits'] ?? 0); ?></span></td>
+                                    <td style="padding: 12px 8px; text-align: center;"><span style="background-color: rgba(9, 105, 218, 0.12); padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #0969DA; font-family: monospace;"><?php echo esc_html((string) ($log['hits'] ?? 0)); ?></span></td>
                                     <td style="padding: 12px 8px;" :style="isRtl ? 'text-align: left;' : 'text-align: right;'">
-                                        <button type="button" @click="showToast(isRtl ? 'ریدایرکت ۳۰۱ ثبت شد' : '301 redirect applied')"
+                                        <button type="button" class="bk-404-redirect" data-uri="<?php echo esc_attr($log['requested_uri'] ?? ''); ?>"
                                                 style="background-color: #0969DA; border: none; color: #FFFFFF; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                                            <svg class="solar-icon solar-icon-sm" style="width: 12px; height: 12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
                                             <span x-text="t('apply301')">Apply 301</span>
                                         </button>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="3" style="padding: 16px 8px; color: #8C959F; font-size: 12px;">
+                                    <span x-text="isRtl ? 'هنوز خطای ۴۰۴ ثبت نشده. پس از بازدید مسیرهای نامعتبر اینجا ظاهر می‌شود.' : 'No 404 hits logged yet. Invalid front-end requests will appear here.'">
+                                        No 404 hits logged yet.
+                                    </span>
+                                </td>
+                            </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

@@ -16,6 +16,22 @@ $bankai_data = [
     'locale'     => get_user_locale(),
     'version'    => defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0',
 ];
+
+$bankai_state = [
+    'seoModules'      => $state['seoModules'] ?? [],
+    'speedModules'    => $state['speedModules'] ?? [],
+    'speedStats'      => $state['speedStats'] ?? [],
+    'speedSettings'   => $state['speedSettings'] ?? [],
+    'mediaModules'    => $state['mediaModules'] ?? [],
+    'watermarkSettings' => $state['watermarkSettings'] ?? [],
+    'coreModules'     => $state['coreModules'] ?? [],
+    'seoIntegrations' => $state['seoIntegrations'] ?? [],
+    'homeUrl'         => $state['homeUrl'] ?? home_url('/'),
+    'stats'           => $state['stats'] ?? [],
+    'aiModules'       => $state['aiModules'] ?? [],
+    'providers'       => $state['providers'] ?? [],
+    'aiDefaultProvider' => $state['aiDefaultProvider'] ?? 'gemini',
+];
 ?>
 <div id="bankai-admin-app"
      class="bankai-admin-wrap"
@@ -27,6 +43,7 @@ $bankai_data = [
     <script>
         window.bankaiData = <?php echo wp_json_encode($bankai_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
         window.bankaiCoreData = window.bankaiData;
+        window.bankaiState = <?php echo wp_json_encode($bankai_state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 
         window.setTab = function (tab) {
             if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.setTab === 'function') {
@@ -84,44 +101,6 @@ $bankai_data = [
          role="progressbar"
          aria-live="polite">
         <div class="bankai-page-progress-bar" :style="{ width: pageProgress + '%' }"></div>
-    </div>
-
-    <!-- Save Loader -->
-    <div id="bankai-save-loader"
-         class="bankai-save-loader-overlay"
-         x-show="savingLoader.show"
-         x-cloak
-         x-transition.opacity
-         role="status"
-         aria-live="polite"
-         aria-atomic="true">
-        <div class="bankai-save-loader-card"
-             :class="{ 'bankai-save-loader-success': savingLoader.state === 'saved' }">
-            <template x-if="savingLoader.state === 'saving'">
-                <div class="bankai-save-spinner-wrap">
-                    <svg class="bankai-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".2" stroke-width="2.5"/>
-                        <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-                    </svg>
-                </div>
-            </template>
-            <template x-if="savingLoader.state === 'saved'">
-                <div class="bankai-save-success-wrap">
-                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                </div>
-            </template>
-            <div class="bankai-save-loader-content">
-                <div class="bankai-save-loader-title" style="display: flex; align-items: center; gap: 6px;">
-                    <span x-text="savingLoader.title"><?php esc_html_e('Saving Changes...', 'bankai-core'); ?></span>
-                    <span x-show="savingLoader.state === 'saving'" class="bankai-pulse-dot" aria-hidden="true"></span>
-                </div>
-                <div class="bankai-save-loader-message" x-text="savingLoader.message">
-                    <?php esc_html_e('Applying updates to server & synchronizing cache...', 'bankai-core'); ?>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Header -->
@@ -205,5 +184,14 @@ $bankai_data = [
             }
             ?>
         </main>
+
     </div>
+
+    <div class="bankai-toast-host" x-show="toast.show" x-cloak x-transition.opacity style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:100000;">
+        <div class="bankai-toast" :class="toast.type"
+             style="background:#fff;color:#1F2328;border:1px solid #D0D7DE;padding:12px 18px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 12px 32px rgba(15,23,42,.12);min-width:220px;text-align:center;"
+             :style="toast.type==='error' ? 'border-color:#FECACA;color:#B91C1C' : 'border-color:#D0D7DE;color:#1F2328'"
+             x-text="toast.message"></div>
+    </div>
+
 </div>

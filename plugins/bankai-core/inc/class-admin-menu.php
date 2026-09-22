@@ -130,6 +130,24 @@ class Bankai_Admin_Menu {
             BANKAI_CORE_VERSION
         );
 
+        if (file_exists(BANKAI_CORE_DIR . 'assets/css/bankai-sidebar-sticky.css')) {
+            wp_enqueue_style(
+                'bankai-sidebar-sticky',
+                bankai_asset_url('css/bankai-sidebar-sticky.css'),
+                ['bankai-admin-css'],
+                BANKAI_CORE_VERSION
+            );
+        }
+
+        if (file_exists(BANKAI_CORE_DIR . 'assets/css/bankai-modals.css')) {
+            wp_enqueue_style(
+                'bankai-modals',
+                bankai_asset_url('css/bankai-modals.css'),
+                ['bankai-admin-css'],
+                BANKAI_CORE_VERSION
+            );
+        }
+
         wp_enqueue_script(
             'bankai-htmx-js',
             bankai_asset_url('js/htmx.min.js'),
@@ -137,6 +155,8 @@ class Bankai_Admin_Menu {
             '1.9.10',
             true
         );
+
+        wp_enqueue_media();
 
         wp_enqueue_script(
             'bankai-admin-js',
@@ -172,6 +192,18 @@ class Bankai_Admin_Menu {
         ];
 
         wp_localize_script('bankai-admin-js', 'bankaiCoreData', $core_data);
+
+        // Settings persistence + module toggles
+        $hooks = BANKAI_CORE_DIR . 'assets/js/bankai-admin-hooks.js';
+        if (file_exists($hooks)) {
+            wp_enqueue_script(
+                'bankai-admin-hooks',
+                bankai_asset_url('js/bankai-admin-hooks.js'),
+                ['bankai-admin-js'],
+                BANKAI_CORE_VERSION,
+                true
+            );
+        }
     }
 
     private function is_bankai_screen(string $hook_suffix): bool {
@@ -236,6 +268,18 @@ class Bankai_Admin_Menu {
             WP_MEMORY_LIMIT
         );
 
+        $core_modules = class_exists('Bankai_Dashboard_Stats')
+            ? Bankai_Dashboard_Stats::core_modules()
+            : $this->get_core_modules_fallback();
+
+        $stats = class_exists('Bankai_Dashboard_Stats')
+            ? Bankai_Dashboard_Stats::telemetry_stats()
+            : $this->get_telemetry_stats();
+
+        $logs = class_exists('Bankai_Dashboard_Stats')
+            ? Bankai_Dashboard_Stats::logs_404()
+            : $this->get_sample_404_logs();
+
         return [
             'seoModules'   => $this->get_seo_modules(),
             'speedModules' => $this->get_speed_modules(),
@@ -243,9 +287,25 @@ class Bankai_Admin_Menu {
             'aiModules'    => $this->get_ai_modules(),
             'providers'    => $this->get_ai_providers(),
             'systemReport' => $system_report,
-            'stats'        => $this->get_telemetry_stats(),
-            'logs404'      => $this->get_sample_404_logs(),
+            'stats'        => $stats,
+            'logs404'      => $logs,
             'starterKits'  => $this->get_starter_kits(),
+            'coreModules'  => $core_modules,
+            'seoIntegrations' => class_exists('Bankai_SEO_Integrations')
+                ? Bankai_SEO_Integrations::instance()->get_settings()
+                : [],
+            'homeUrl' => home_url('/'),
+            'speedStats' => class_exists('Bankai_Speed_Cache') ? Bankai_Speed_Cache::collect_stats() : [],
+            'aiDefaultProvider' => class_exists('Bankai_AI_Studio')
+                ? Bankai_AI_Studio::instance()->get_default_provider()
+                : 'gemini',
+            'watermarkSettings' => class_exists('Bankai_Media_Watermark')
+                ? Bankai_Media_Watermark::instance()->get_settings()
+                : (get_option('bankai_watermark_settings', []) ?: []),
+            'speedSettings' => [
+                'cache_ttl' => function_exists('bankai_get_option') ? bankai_get_option('cache_ttl', 86400) : 86400,
+                'cache_exclusions' => function_exists('bankai_get_option') ? bankai_get_option('cache_exclusions', '') : '',
+            ],
         ];
     }
 
@@ -299,7 +359,9 @@ class Bankai_Admin_Menu {
     }
 
     private function get_seo_modules(): array {
-        return [
+        $saved = function_exists('bankai_get_option') ? bankai_get_option('seo_modules', []) : [];
+        if (!is_array($saved)) { $saved = []; }
+        $mods = [
             ['id' => 'auto_meta', 'title' => 'Autonomous Meta & Schema Generator', 'title_fa' => 'تولیدکننده خودکار متاداده و اسکیما', 'badge' => 'AI AUTO', 'badge_color' => '#10B981', 'icon' => '⚡', 'description' => 'Real-time JSON-LD structured data injection for Article, Product, FAQ, and BreadcrumbList.', 'description_fa' => 'تزریق خودکار کدهای استانداردهای نشانه‌گذاری گوگل (JSON-LD) بدون نیاز به تنظیمات پیچیده.', 'enabled' => true],
             ['id' => 'sitemap_pro', 'title' => 'High-Velocity XML & News Sitemap', 'title_fa' => 'نقشه سایت پیشرفته و قدرتمند XML', 'badge' => 'SPEED SITEMAP', 'badge_color' => '#38BDF8', 'icon' => '🗺️', 'description' => 'Generates instant XML sitemaps with ping protocols sent straight to Google Search Console.', 'description_fa' => 'ایجاد سریع نقشه سایت استاندارد و اطلاع‌رسانی لحظه‌ای به موتورهای جستجو هنگام انتشار مطلب.', 'enabled' => true],
             ['id' => 'canonical_guard', 'title' => 'Canonical & Redirects Matrix', 'title_fa' => 'مدیریت کانوینکال و هدایت ۴۰۴', 'badge' => 'SEO GUARD', 'badge_color' => '#F59E0B', 'icon' => '🔗', 'description' => 'Automated 301/302 redirect rules engine and canonical URL correction to prevent duplicate content.', 'description_fa' => 'جلوگیری از خطاهای محتوای تکراری و هدایت هوشمند آدرس‌های قدیمی به لینک جدید.', 'enabled' => true],
@@ -307,10 +369,20 @@ class Bankai_Admin_Menu {
             ['id' => 'local_seo_schema', 'title' => 'Local SEO Knowledge Graph', 'title_fa' => 'سئوی محلی و گراف دانش گوگل', 'badge' => 'KNOWLEDGE GRAPH', 'badge_color' => '#6366F1', 'icon' => '📍', 'description' => 'Geo-coordinates, opening hours JSON-LD, business organization graphs, and Google Maps embed.', 'description_fa' => 'مختصات جغرافیایی، ساعات کاری، اسکیماهای کسب‌وکار محلی و اتصال نقشه برای رتبه اول لوکال سئو.', 'enabled' => true],
             ['id' => 'llms_txt_builder', 'title' => 'llms.txt Manifest Builder', 'title_fa' => 'تولیدکننده مانیفست llms.txt برای هوش مصنوعی', 'badge' => 'AI SPEC v1.2', 'badge_color' => '#10B981', 'icon' => '📄', 'description' => 'Generates standardized /llms.txt and /llms-full.txt files for AI agents and web crawlers.', 'description_fa' => 'تولید فایل‌های استاندارد llms.txt برای فهم ساختار سایت توسط موتورهای هوش مصنوعی و ربات‌ها.', 'enabled' => true],
         ];
+        foreach ($mods as &$m) {
+            $id = $m['id'] ?? '';
+            if ($id !== '' && array_key_exists($id, $saved)) {
+                $m['enabled'] = (bool) $saved[$id];
+            }
+        }
+        unset($m);
+        return $mods;
     }
 
     private function get_speed_modules(): array {
-        return [
+        $saved = function_exists('bankai_get_option') ? bankai_get_option('speed_modules', []) : [];
+        if (!is_array($saved)) { $saved = []; }
+        $mods = [
             ['id' => 'page_caching', 'title' => 'Page Cache & Varnish Purge', 'title_fa' => 'کش پیشرفته صفحات و تخلیه خودکار وارنیش', 'badge' => 'HIGH SPEED', 'badge_color' => '#10B981', 'icon' => '⚡', 'description' => 'Sub-50ms static HTML generation with automated edge cache purging upon post revision.', 'description_fa' => 'تولید فایل‌های استاتیک HTML فوق‌سریع و پاکسازی خودکار کش لبه سرور هنگام ویرایش نوشته‌ها.', 'enabled' => true],
             ['id' => 'asset_optimization', 'title' => 'CSS & JS Minification / Defer', 'title_fa' => 'فشرده‌سازی و بارگذاری تاخیری CSS و JS', 'badge' => 'CRITICAL CSS', 'badge_color' => '#38BDF8', 'icon' => '📦', 'description' => 'Eliminates render-blocking resources by generating critical inline CSS and delaying non-essential scripts.', 'description_fa' => 'حذف منابع مسدودکننده رندر با استخراج خودکار CSS بحرانی و به تعویق انداختن اسکریپت‌های سنگین.', 'enabled' => true],
             ['id' => 'database_optimizer', 'title' => 'Database Heuristic Sweeper', 'title_fa' => 'پاکسازی هوشمند پایگاه‌داده وردپرس', 'badge' => 'MAINTENANCE', 'badge_color' => '#F59E0B', 'icon' => '🧹', 'description' => 'Scheduled cleanup of post revisions, orphaned postmeta, spam comments, and transient transients.', 'description_fa' => 'حذف رونوشت‌های قدیمی، متادیتای یتیم، نظرات اسپم و بهینه‌سازی جداول MySQL طبق زمان‌بندی.', 'enabled' => true],
@@ -318,10 +390,20 @@ class Bankai_Admin_Menu {
             ['id' => 'server_compression', 'title' => 'Gzip & Brotli Compression', 'title_fa' => 'فشرده‌سازی لایه‌ای بروتلی و Gzip', 'badge' => 'TRANSFER', 'badge_color' => '#6366F1', 'icon' => '🗜️', 'description' => 'Dynamic HTTP header configuration to compress static text, SVG, JSON, and Web fonts.', 'description_fa' => 'ارسال هدرهای فشرده‌سازی با بالاترین نرخ تراکم جهت کاهش چشمگیر حجم تبادل اطلاعات.', 'enabled' => true],
             ['id' => 'fonts_localizer', 'title' => 'Google & Persian Fonts Localizer', 'title_fa' => 'میزبانی محلی فونت‌های فارسی و گوگل', 'badge' => 'PRIVACY / SPEED', 'badge_color' => '#10B981', 'icon' => '🔤', 'description' => 'Self-hosts Google and Persian Vazirmatn fonts locally with preconnect links and display:swap.', 'description_fa' => 'میزبانی فونت‌های فارسی نظیر وزیرمتن مستقیماً روی سرور بدون نیاز به درخواست خارجی و تحمیل تاخیر.', 'enabled' => true],
         ];
+        foreach ($mods as &$m) {
+            $id = $m['id'] ?? '';
+            if ($id !== '' && array_key_exists($id, $saved)) {
+                $m['enabled'] = (bool) $saved[$id];
+            }
+        }
+        unset($m);
+        return $mods;
     }
 
     private function get_media_modules(): array {
-        return [
+        $saved = function_exists('bankai_get_option') ? bankai_get_option('media_modules', []) : [];
+        if (!is_array($saved)) { $saved = []; }
+        $mods = [
             ['id' => 'webp_avif_converter', 'title' => 'WebP & AVIF Conversion', 'title_fa' => 'تبدیل خودکار به فرمت‌های وب‌پی و AVIF', 'badge' => 'NEXT-GEN FORMATS', 'badge_color' => '#10B981', 'icon' => '⚡', 'description' => 'Automated lossless conversion of JPEG and PNG uploads with transparent fallback rewrite rules.', 'description_fa' => 'تبدیل خودکار تصاویر بارگذاری‌شده به فرمت‌های سبک نسل جدید با قابلیت حفظ پس‌زمینه شفاف.', 'enabled' => true],
             ['id' => 'dynamic_watermarking', 'title' => 'Dynamic Watermark Studio', 'title_fa' => 'استودیو واترمارک متحرک و پویا', 'badge' => 'BRAND PROTECTION', 'badge_color' => '#38BDF8', 'icon' => '🎨', 'description' => 'Non-destructive watermark overlay supporting 9 visual anchors, custom PNG logos, and opacity slider.', 'description_fa' => 'درج لوگو و واترمارک روی عکس‌ها بدون دستکاری فایل اصلی در ۹ موقعیت مختلف همراه با تنظیم شفافیت.', 'enabled' => true],
             ['id' => 'exif_metadata_scrubber', 'title' => 'EXIF Metadata Stripper', 'title_fa' => 'حذف اطلاعات حریم خصوصی EXIF عکس‌ها', 'badge' => 'PRIVACY', 'badge_color' => '#6366F1', 'icon' => '🛡️', 'description' => 'Removes GPS coordinates, camera serials, and timestamp metadata from uploaded user media.', 'description_fa' => 'پاکسازی خودکار مختصات مکانی GPS، مدل دوربین و متادیتای شخصی از فایل‌های مدیا هنگام آپلود.', 'enabled' => true],
@@ -329,6 +411,14 @@ class Bankai_Admin_Menu {
             ['id' => 'retina_generator', 'title' => 'CLS Dimension Guard', 'title_fa' => 'محافظ ابعاد تصویر جهت جلوگیری از CLS', 'badge' => 'CORE WEB VITALS', 'badge_color' => '#10B981', 'icon' => '📐', 'description' => 'Automatically detects and embeds explicit width and height attributes to prevent layout shifts.', 'description_fa' => 'تزریق خودکار طول و عرض دقیق برای تگ‌های تصویر به منظور حذف کامل پرش ناگهانی صفحه.', 'enabled' => true],
             ['id' => 'svg_sanitizer', 'title' => 'Lossy & Lossless Compression', 'title_fa' => 'موتور فشرده‌سازی باکیفیت Imagick/GD', 'badge' => 'IMAGICK / GD', 'badge_color' => '#38BDF8', 'icon' => '⚙️', 'description' => 'Advanced image compression engine utilizing local Imagick, GD, or cURL binaries.', 'description_fa' => 'کاهش حداکثری حجم فایل‌ها با الگوریتم‌های هوشمند متناسب با پهنای باند و استانداردهای وب.', 'enabled' => true],
         ];
+        foreach ($mods as &$m) {
+            $id = $m['id'] ?? '';
+            if ($id !== '' && array_key_exists($id, $saved)) {
+                $m['enabled'] = (bool) $saved[$id];
+            }
+        }
+        unset($m);
+        return $mods;
     }
 
     private function get_ai_modules(): array {
@@ -343,12 +433,20 @@ class Bankai_Admin_Menu {
     }
 
     private function get_ai_providers(): array {
-        return [
-            ['id' => 'openai',     'name' => 'OpenAI',           'badge' => 'Connected', 'color' => '#10B981', 'models' => 'GPT-4o / o3-mini'],
-            ['id' => 'anthropic',  'name' => 'Anthropic Claude', 'badge' => 'Connected', 'color' => '#10B981', 'models' => 'Claude 3.5 / 3.7 Sonnet'],
-            ['id' => 'deepseek',   'name' => 'DeepSeek',         'badge' => 'Active',    'color' => '#38BDF8', 'models' => 'DeepSeek V3 / R1'],
-            ['id' => 'gemini',     'name' => 'Google Gemini',    'badge' => 'Active',    'color' => '#38BDF8', 'models' => 'Gemini 2.0 Flash'],
-            ['id' => 'openrouter', 'name' => 'OpenRouter',       'badge' => 'Fallback',  'color' => '#6366F1', 'models' => '200+ Open Models'],
-        ];
+        if (class_exists('Bankai_AI_Studio')) {
+            $list = Bankai_AI_Studio::instance()->provider_status_list();
+            $out = [];
+            foreach ($list as $p) {
+                $out[] = [
+                    'id'     => $p['id'],
+                    'name'   => $p['name'],
+                    'badge'  => $p['label'],
+                    'color'  => !empty($p['has_key']) ? '#10B981' : '#8C959F',
+                    'models' => is_array($p['models'] ?? null) ? implode(' / ', array_slice($p['models'], 0, 3)) : '',
+                ];
+            }
+            return $out;
+        }
+        return [];
     }
 }

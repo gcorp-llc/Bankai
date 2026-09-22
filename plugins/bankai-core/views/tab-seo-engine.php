@@ -441,6 +441,19 @@ if ($post_id && !$post) {
                         <small>تولید و بهینه‌سازی متا، کلیدواژه و لینک</small>
                     </div>
                 </div>
+
+                <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                    <label style="font-size:11px;font-weight:700;color:#656D76;">موتور AI:</label>
+                    <select x-model="aiProvider" style="padding:6px 10px;border-radius:8px;border:1px solid #D0D7DE;font-size:12px;font-weight:700;">
+                        <template x-if="!(window.bankaiEditorSeo && bankaiEditorSeo.aiProviders && bankaiEditorSeo.aiProviders.length)">
+                            <option value="">پیش‌فرض استودیو</option>
+                        </template>
+                        <template x-for="p in (window.bankaiEditorSeo && bankaiEditorSeo.aiProviders) || []" :key="p.id">
+                            <option :value="p.id" x-text="p.name"></option>
+                        </template>
+                    </select>
+                    <span style="font-size:10px;color:#8C959F;">در صورت خطا، خودکار به موتور بعدی می‌رود</span>
+                </div>
                 <button type="button" class="bk-icon-btn" @click="aiOpen = false">
                     <span class="material-symbols-outlined">close</span>
                 </button>

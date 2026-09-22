@@ -49,25 +49,27 @@ if (!function_exists('bankai_asset_url')) {
 }
 
 /**
- * Get Bankai Core Plugin Option
+ * Get Bankai Core Plugin Option (from bankai_core_settings array).
  */
 if (!function_exists('bankai_get_option')) {
     function bankai_get_option(string $key = '', $default = false)
     {
         $settings = get_option('bankai_core_settings', []);
 
-        if ($key === '') {
-            return is_array($settings) ? $settings : [];
+        if (!is_array($settings)) {
+            $settings = [];
         }
 
-        return is_array($settings) && array_key_exists($key, $settings)
-            ? $settings[$key]
-            : $default;
+        if ($key === '') {
+            return $settings;
+        }
+
+        return array_key_exists($key, $settings) ? $settings[$key] : $default;
     }
 }
 
 /**
- * Update Bankai Core Option Key
+ * Update a single key inside bankai_core_settings.
  */
 if (!function_exists('bankai_update_option')) {
     function bankai_update_option(string $key, $value): bool
@@ -77,7 +79,26 @@ if (!function_exists('bankai_update_option')) {
             $settings = [];
         }
         $settings[$key] = $value;
-        return update_option('bankai_core_settings', $settings);
+        return update_option('bankai_core_settings', $settings, false);
+    }
+}
+
+/**
+ * Merge multiple keys into bankai_core_settings and save once.
+ *
+ * @param array<string,mixed> $pairs
+ */
+if (!function_exists('bankai_save_settings')) {
+    function bankai_save_settings(array $pairs): bool
+    {
+        $settings = get_option('bankai_core_settings', []);
+        if (!is_array($settings)) {
+            $settings = [];
+        }
+        foreach ($pairs as $key => $value) {
+            $settings[sanitize_key((string) $key)] = $value;
+        }
+        return update_option('bankai_core_settings', $settings, false);
     }
 }
 
@@ -102,20 +123,81 @@ if (!function_exists('bankai_render_view')) {
 }
 
 /**
- * Check if a Bankai module is active.
+ * Known core module keys.
+ *
+ * @return list<string>
+ */
+if (!function_exists('bankai_core_module_keys')) {
+    function bankai_core_module_keys(): array
+    {
+        return [
+            'seo_engine',
+            'speed_cache',
+            'media_watermark',
+            'ai_studio',
+            'llms_txt',
+            'theme_kits',
+            'settings_license',
+        ];
+    }
+}
+
+/**
+ * Check if a Bankai core module is active.
+ * Default: true when key is missing (first install / migration).
  */
 if (!function_exists('bankai_is_module_active')) {
     function bankai_is_module_active(string $module_key): bool
     {
         $active = bankai_get_option('active_modules', []);
 
-        if (!is_array($active)) {
+        if (!is_array($active) || $active === []) {
             return true;
         }
 
-        return array_key_exists($module_key, $active)
-            ? (bool) $active[$module_key]
-            : true;
+        if (!array_key_exists($module_key, $active)) {
+            return true;
+        }
+
+        return (bool) $active[$module_key];
+    }
+}
+
+/**
+ * Enable / disable a core module and persist.
+ */
+if (!function_exists('bankai_set_module_active')) {
+    function bankai_set_module_active(string $module_key, bool $enabled): bool
+    {
+        $module_key = sanitize_key($module_key);
+        if (!in_array($module_key, bankai_core_module_keys(), true)) {
+            return false;
+        }
+
+        $active = bankai_get_option('active_modules', []);
+        if (!is_array($active)) {
+            $active = [];
+        }
+        $active[$module_key] = $enabled;
+
+        return bankai_update_option('active_modules', $active);
+    }
+}
+
+/**
+ * Count active core modules (excluding settings_license).
+ */
+if (!function_exists('bankai_count_active_modules')) {
+    function bankai_count_active_modules(): int
+    {
+        $keys = ['seo_engine', 'speed_cache', 'media_watermark', 'ai_studio', 'llms_txt', 'theme_kits'];
+        $n    = 0;
+        foreach ($keys as $k) {
+            if (bankai_is_module_active($k)) {
+                $n++;
+            }
+        }
+        return $n;
     }
 }
 

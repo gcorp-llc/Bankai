@@ -24,6 +24,10 @@ class Bankai_LLMS_Txt {
     }
 
     private function __construct() {
+        if (function_exists('bankai_is_module_active') && !bankai_is_module_active('llms_txt')) {
+            return;
+        }
+
         add_action('init', [$this, 'add_rewrite_rules']);
         add_filter('query_vars', [$this, 'add_query_vars']);
         add_action('template_redirect', [$this, 'render_llms_txt']);
