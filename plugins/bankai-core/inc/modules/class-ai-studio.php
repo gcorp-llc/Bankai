@@ -240,6 +240,71 @@ final class Bankai_AI_Studio
         ];
     }
 
+    public static function encrypt_secret(string $plain): string
+    {
+        if ($plain === '') {
+            return '';
+        }
+
+        if (!function_exists('sodium_crypto_secretbox')) {
+            add_action('admin_notices', function() {
+                echo '<div class="notice notice-warning"><p>' . esc_html__('افزونه Sodium PHP روی سرور نصب نیست. کلیدهای AI با سیستم Fallback نگهداری می‌شوند.', 'bankai-core') . '</p></div>';
+            });
+            return $plain;
+        }
+
+        $auth_key = defined('AUTH_KEY') ? AUTH_KEY : 'bankai_default_auth_key';
+        $secure_key = defined('SECURE_AUTH_KEY') ? SECURE_AUTH_KEY : 'bankai_default_secure_key';
+        $secret_key = sodium_crypto_generichash($auth_key . $secure_key, '', SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
+
+        $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $ciphertext = sodium_crypto_secretbox($plain, $nonce, $secret_key);
+
+        return 'bkenc:v1:' . base64_encode($nonce . $ciphertext);
+    }
+
+    public static function decrypt_secret(string $cipher): string
+    {
+        if ($cipher === '' || !str_starts_with($cipher, 'bkenc:v1:')) {
+            return $cipher;
+        }
+
+        if (!function_exists('sodium_crypto_secretbox_open')) {
+            return $cipher;
+        }
+
+        $auth_key = defined('AUTH_KEY') ? AUTH_KEY : 'bankai_default_auth_key';
+        $secure_key = defined('SECURE_AUTH_KEY') ? SECURE_AUTH_KEY : 'bankai_default_secure_key';
+        $secret_key = sodium_crypto_generichash($auth_key . $secure_key, '', SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
+
+        $decoded = base64_decode(substr($cipher, 9), true);
+        if ($decoded === false || strlen($decoded) < SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
+            return '';
+        }
+
+        $nonce = substr($decoded, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $ciphertext = substr($decoded, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+
+        $decrypted = sodium_crypto_secretbox_open($ciphertext, $nonce, $secret_key);
+        if ($decrypted === false) {
+            add_action('admin_notices', function() {
+                echo '<div class="notice notice-error"><p>' . esc_html__('رمزگشایی کلید API شکست خورد. لطفاً کلید را دوباره در بخش AI Studio وارد کنید.', 'bankai-core') . '</p></div>';
+            });
+            return '';
+        }
+
+        return $decrypted;
+    }
+
+    public static function get_config_key(string $provider): ?string
+    {
+        $const_name = 'BANKAI_' . strtoupper($provider) . '_KEY';
+        if (defined($const_name) && is_string(constant($const_name)) && constant($const_name) !== '') {
+            return constant($const_name);
+        }
+        return null;
+    }
+
     public function get_keys(): array
     {
         $from_opt = get_option(self::OPT_KEYS, []);
@@ -247,7 +312,6 @@ final class Bankai_AI_Studio
             $from_opt = [];
         }
 
-        // Also read from bankai_core_settings for compatibility.
         $core = function_exists('bankai_get_option') ? bankai_get_option() : [];
         if (!is_array($core)) {
             $core = [];
@@ -265,13 +329,43 @@ final class Bankai_AI_Studio
         ];
 
         $out = [];
+        $needs_save = false;
+
         foreach ($map as $pid => $core_key) {
+            $config_val = self::get_config_key($pid);
+            if ($config_val !== null) {
+                $out[$pid] = $config_val;
+                continue;
+            }
+
             $val = $from_opt[$pid] ?? ($core[$core_key] ?? '');
             if ($val === '' && !empty($core['ai_keys'][$pid])) {
                 $val = $core['ai_keys'][$pid];
             }
-            $out[$pid] = is_string($val) ? $val : '';
+
+            if (is_string($val) && $val !== '') {
+                if (str_starts_with($val, 'bkenc:v1:')) {
+                    $decrypted = self::decrypt_secret($val);
+                    $out[$pid] = $decrypted;
+                } else {
+                    $encrypted = self::encrypt_secret($val);
+                    if ($encrypted !== $val) {
+                        if (self::decrypt_secret($encrypted) === $val) {
+                            $from_opt[$pid] = $encrypted;
+                            $needs_save = true;
+                        }
+                    }
+                    $out[$pid] = $val;
+                }
+            } else {
+                $out[$pid] = '';
+            }
         }
+
+        if ($needs_save) {
+            update_option(self::OPT_KEYS, $from_opt, false);
+        }
+
         return $out;
     }
 
@@ -761,28 +855,53 @@ final class Bankai_AI_Studio
     private function http_json(string $url, array $body, array $headers): array
     {
         $args = [
-            'timeout' => 55,
+            'timeout' => 30,
             'headers' => array_merge([
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
             ], $headers),
             'body'    => wp_json_encode($body, JSON_UNESCAPED_UNICODE),
         ];
-        $response = wp_remote_post($url, $args);
-        if (is_wp_error($response)) {
-            throw new Exception($response->get_error_message());
+
+        $max_retries = 2;
+        $attempt     = 0;
+        $last_error  = null;
+
+        while ($attempt < $max_retries) {
+            $attempt++;
+            $response = wp_remote_post($url, $args);
+
+            if (is_wp_error($response)) {
+                $last_error = $response->get_error_message();
+                if ($attempt < $max_retries) {
+                    usleep(500000 * $attempt);
+                    continue;
+                }
+                throw new Exception('خطا در ارتباط با سرویس هوش مصنوعی: ' . $last_error);
+            }
+
+            $code = (int) wp_remote_retrieve_response_code($response);
+            $raw  = wp_remote_retrieve_body($response);
+            $data = json_decode($raw, true);
+
+            if (in_array($code, [429, 500, 502, 503, 504], true) && $attempt < $max_retries) {
+                usleep(500000 * $attempt);
+                continue;
+            }
+
+            if (!is_array($data)) {
+                throw new Exception('پاسخ نامعتبر از سرویس هوش مصنوعی (کد ' . $code . ')');
+            }
+
+            if ($code >= 400) {
+                $msg = $data['error']['message'] ?? ($data['message'] ?? ('خطای ' . $code));
+                throw new Exception(is_string($msg) ? $msg : 'خطای سرویس هوش مصنوعی');
+            }
+
+            return $data;
         }
-        $code = wp_remote_retrieve_response_code($response);
-        $raw  = wp_remote_retrieve_body($response);
-        $data = json_decode($raw, true);
-        if (!is_array($data)) {
-            throw new Exception('Invalid JSON from AI provider (HTTP ' . $code . ')');
-        }
-        if ($code >= 400) {
-            $msg = $data['error']['message'] ?? ($data['message'] ?? ('HTTP ' . $code));
-            throw new Exception(is_string($msg) ? $msg : 'AI provider error');
-        }
-        return $data;
+
+        throw new Exception('پاسخی از سرویس هوش مصنوعی دریافت نشد.');
     }
 
     /* ------------------------------------------------------------------
