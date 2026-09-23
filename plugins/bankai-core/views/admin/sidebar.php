@@ -111,7 +111,11 @@ $is_on = static function (string $key) use ($active_map): bool {
                         :title="!isModuleNavEnabled('ai-studio') ? t('moduleDisabled') : ''"
                         @click="setTab('ai-studio')">
                     <div class="bankai-nav-icon">
-                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M6 10v1a6 6 0 0 0 12 0v-1"/><path d="M12 17v5M8 22h8"/></svg>
+                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+                            <circle cx="12" cy="12" r="3.5"/>
+                            <path d="M9.5 9.5c.8-1.2 2.2-1.2 3 0M9.5 14.5c.8 1.2 2.2 1.2 3 0"/>
+                        </svg>
                     </div>
                     <span x-text="t('navAi')">AI Studio</span>
                     <span class="bankai-nav-off-badge" x-show="!isModuleNavEnabled('ai-studio')" x-cloak>OFF</span>

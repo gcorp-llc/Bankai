@@ -381,10 +381,13 @@ input:checked + .bankai-slider:before { transform: translateX(16px); }
                     <div>
                         <div class="ai-provider-name" style="display:flex;align-items:center;gap:8px;">
                             <span style="width:10px;height:10px;border-radius:50%;background:<?php echo esc_attr($accent); ?>;box-shadow:0 0 0 4px <?php echo esc_attr($glow); ?>;"></span>
-                            <?php echo esc_html($meta['name']); ?>
+                            <?php echo esc_html($meta['name'] ?? $meta['label'] ?? $id); ?>
+                            <?php if (!empty($meta['free_tier'])): ?>
+                                <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;">رایگان</span>
+                            <?php endif; ?>
                         </div>
                         <div class="ai-provider-tagline"><?php echo esc_html($meta['tagline'] ?? ''); ?></div>
-                        <a class="ai-docs" href="<?php echo esc_url($meta['docs']); ?>" target="_blank" rel="noopener">دریافت API Key ↗</a>
+                        <a class="ai-docs" href="<?php echo esc_url($meta['docs'] ?? '#'); ?>" target="_blank" rel="noopener">دریافت API Key ↗</a>
                     </div>
                     <span class="ai-status-pill" :class="status" x-text="label"><?php echo esc_html($label); ?></span>
                 </div>
@@ -392,8 +395,15 @@ input:checked + .bankai-slider:before { transform: translateX(16px); }
                 <div class="ai-field">
                     <label>مدل فعال</label>
                     <select x-model="model">
-                        <?php foreach (($meta['models'] ?? []) as $m): ?>
-                            <option value="<?php echo esc_attr($m); ?>" <?php selected($sel_model, $m); ?>><?php echo esc_html($m); ?></option>
+                        <?php foreach (($meta['models'] ?? []) as $m):
+                            $m_label = $m;
+                            if ($m === 'openrouter/auto') {
+                                $m_label = '⚡ خودکار (هوشمند)';
+                            } elseif ($m === 'openrouter/free') {
+                                $m_label = '⚡ خودکار رایگان ($0)';
+                            }
+                        ?>
+                            <option value="<?php echo esc_attr($m); ?>" <?php selected($sel_model, $m); ?>><?php echo esc_html($m_label); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -447,7 +457,7 @@ input:checked + .bankai-slider:before { transform: translateX(16px); }
                 <select x-model="defaultProvider" @change="updateDefaultProvider()"
                         style="padding:8px 12px;border-radius:10px;border:1px solid #E2E8F0;font-size:12px;font-weight:700;background:#fff;">
                     <?php foreach ($catalog as $id => $meta): ?>
-                        <option value="<?php echo esc_attr($id); ?>" <?php selected($default_p, $id); ?>><?php echo esc_html($meta['name']); ?></option>
+                        <option value="<?php echo esc_attr($id); ?>" <?php selected($default_p, $id); ?>><?php echo esc_html($meta['name'] ?? $meta['label'] ?? $id); ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -504,12 +514,23 @@ input:checked + .bankai-slider:before { transform: translateX(16px); }
 </div>
 
 <script>
+(function () {
+    if (!window.bankaiAdminNonce) {
+        window.bankaiAdminNonce = (window.bankaiCoreData && window.bankaiCoreData.adminNonce)
+            || '<?php echo esc_js(wp_create_nonce('bankai_admin_nonce')); ?>';
+    }
+    if (typeof ajaxurl === 'undefined') {
+        window.ajaxurl = (window.bankaiCoreData && window.bankaiCoreData.ajaxUrl)
+            || '<?php echo esc_js(admin_url('admin-ajax.php')); ?>';
+    }
+})();
 document.addEventListener('alpine:init', () => {
     // Root Controller
     Alpine.data('bankaiAiStudioRoot', () => ({
         busy: false,
         defaultProvider: '<?php echo esc_js($default_p); ?>',
-        defaultProviderName: '<?php echo esc_js($catalog[$default_p]['name'] ?? $default_p); ?>',
+        defaultProviderName: '<?php echo esc_js($catalog[$default_p]['name'] ?? $catalog[$default_p]['label'] ?? $default_p); ?>',
+        providerNames: <?php echo wp_json_encode(array_map(static fn($m) => $m['name'] ?? $m['label'] ?? '', $catalog), JSON_UNESCAPED_UNICODE); ?>,
         sandboxPrompt: '',
         sandboxResult: '',
         generating: false,
@@ -546,7 +567,22 @@ document.addEventListener('alpine:init', () => {
         },
 
         updateDefaultProvider() {
-            // Updated dynamically when card saves
+            const names = this.providerNames || {};
+            this.defaultProviderName = names[this.defaultProvider] || this.defaultProvider;
+            const data = new FormData();
+            data.append('action', 'bankai_set_default_provider');
+            data.append('nonce', window.bankaiAdminNonce || '<?php echo wp_create_nonce('bankai_admin_nonce'); ?>');
+            data.append('provider', this.defaultProvider);
+            fetch(ajaxurl, { method: 'POST', body: data })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        this.showToast('موتور پیش‌فرض به «' + this.defaultProviderName + '» تغییر کرد.');
+                    } else {
+                        this.showToast('خطا: ' + (res.data?.message || 'ذخیره نشد'));
+                    }
+                })
+                .catch(() => this.showToast('خطا در ذخیره پیش‌فرض'));
         },
 
         generateResult() {
@@ -564,9 +600,9 @@ document.addEventListener('alpine:init', () => {
                 .then(r => r.json())
                 .then(res => {
                     if (res.success) {
-                        this.sandboxResult = res.data.result;
+                        this.sandboxResult = (res.data && res.data.result) ? res.data.result : '';
                     } else {
-                        this.sandboxResult = 'خطا: ' + (res.data?.message || 'مشکلی پیش آمد.');
+                        this.sandboxResult = 'خطا: ' + ((res.data && res.data.message) || res.message || 'مشکلی پیش آمد.');
                     }
                 })
                 .catch(() => { this.sandboxResult = 'خطای غیرمنتظره در پاسخ‌دهی سرور.'; })
@@ -627,11 +663,12 @@ document.addEventListener('alpine:init', () => {
                             this.key = res.data.masked_key;
                         }
                         this.keyDirty = false;
-                        this.$root.closest('[x-data]').__x.$data.showToast('تنظیمات ' + this.id + ' ذخیره شد.');
+                        this.notify('تنظیمات «' + this.id + '» ذخیره شد.');
                     } else {
-                        alert(res.data?.message || 'خطا در ذخیره‌سازی');
+                        this.notify((res.data && res.data.message) || 'خطا در ذخیره‌سازی');
                     }
                 })
+                .catch(() => this.notify('خطا در ارتباط با سرور'))
                 .finally(() => { this.saving = false; });
         },
 
@@ -664,13 +701,35 @@ document.addEventListener('alpine:init', () => {
             fetch(ajaxurl, { method: 'POST', body: data })
                 .then(r => r.json())
                 .then(res => {
-                    if (res.success && res.data.providers.length) {
-                        const item = res.data.providers[0];
-                        this.status = item.status;
-                        this.label = item.label;
+                    const list = (res.success && res.data && res.data.providers) ? res.data.providers : [];
+                    if (list.length) {
+                        const item = list[0];
+                        this.status = item.status || (item.ok ? 'ready' : 'error');
+                        this.label = item.label || (item.ok ? 'متصل ✓' : 'خطا');
+                        this.notify(item.ok ? ('اتصال موفق: ' + (item.preview || item.message || '')) : ('خطا: ' + (item.message || 'ناموفق')));
+                    } else {
+                        this.status = 'error';
+                        this.label = 'خطا';
+                        this.notify((res.data && res.data.message) || res.message || 'تست ناموفق');
                     }
                 })
+                .catch(() => {
+                    this.status = 'error';
+                    this.label = 'خطای شبکه';
+                    this.notify('خطا در ارتباط با سرور');
+                })
                 .finally(() => { this.testing = false; });
+        },
+
+        notify(msg) {
+            try {
+                const root = this.$el && this.$el.closest('[x-data]');
+                if (root && root._x_dataStack && root._x_dataStack[0] && typeof root._x_dataStack[0].showToast === 'function') {
+                    root._x_dataStack[0].showToast(msg);
+                    return;
+                }
+            } catch (e) {}
+            if (typeof window.showToast === 'function') window.showToast(msg);
         }
     }));
 });

@@ -48,6 +48,7 @@ class Bankai_Rest_API
         'google_site_verification',
         'robots_txt',
         'sitemap_enabled',
+        'seo_fixed_keywords',
         // License / theme
         'license_key',
         'theme_container_width',

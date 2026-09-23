@@ -536,13 +536,82 @@ document.addEventListener('alpine:init', () => {
             return this.runInternalSearch();
         },
 
+        /**
+         * Smart internal linker: finds related posts by keywords
+         * and proposes anchors that exist in the current content.
+         */
+        async smartSuggestInternalLinks() {
+            this.linkBusy = true;
+            this.internalMatches = [];
+            this.postResults = [];
+            try {
+                const cfg = window.bankaiEditorSeo || {};
+                const content = this.getEditorHtml ? this.getEditorHtml() : (this.getEditorContext ? this.getEditorContext().content : '');
+                const keywords = [];
+                if (this.seo && this.seo.focus_keyword) keywords.push(this.seo.focus_keyword);
+                if (this.keywordList && this.keywordList.length) {
+                    this.keywordList.forEach((k) => { if (k) keywords.push(k); });
+                }
+                const fixed = cfg.fixedKeywords || cfg.seoFixedKeywords || [];
+                (Array.isArray(fixed) ? fixed : []).forEach((k) => { if (k) keywords.push(k); });
+
+                const res = await fetch((cfg.restUrl || '/wp-json/bankai/v1') + '/seo/suggest-links', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': cfg.nonce || ''
+                    },
+                    body: JSON.stringify({
+                        post_id: this.postId,
+                        keywords: keywords,
+                        content: content
+                    })
+                });
+                const json = await res.json();
+                const list = (json && json.success && json.data && json.data.suggestions) ? json.data.suggestions : [];
+                this.postResults = list.map((s) => ({
+                    id: s.id,
+                    title: s.title,
+                    permalink: s.permalink,
+                    focus_keyword: s.focus_keyword,
+                    suggested_anchor: s.suggested_anchor,
+                    in_content: s.in_content
+                }));
+                this.internalReport = {
+                    show: true,
+                    type: list.length ? 'success' : 'warn',
+                    message: list.length
+                        ? `${list.length} مقاله مرتبط بر اساس کلمات کلیدی پیدا شد. مقاله را انتخاب کنید تا لینک در متن ایجاد شود.`
+                        : 'مقاله مرتبطی بر اساس کلمات کلیدی یافت نشد.'
+                };
+            } catch (e) {
+                this.internalReport = {
+                    show: true,
+                    type: 'error',
+                    message: (e && e.message) || 'خطا در پیشنهاد لینک داخلی'
+                };
+            } finally {
+                this.linkBusy = false;
+            }
+        },
+
         scanInternalMatches(post) {
-            const phrase = (this.linkAnchor || this.seo.focus_keyword || post.title || '').trim();
+            // Prefer suggested anchor from smart linker, then manual anchor, focus kw, title
+            const phrase = (
+                this.linkAnchor ||
+                (post && post.suggested_anchor) ||
+                this.seo.focus_keyword ||
+                (post && post.focus_keyword) ||
+                (post && post.title) ||
+                ''
+            ).trim();
             if (!phrase) {
                 this.internalReport = { show: true, type: 'warn', message: 'انکر تکست خالی است.' };
                 return;
             }
             this.selectedInternalPost = post;
+            this.linkAnchor = phrase;
             const html = this.getEditorHtml();
             const matches = this.findUnlinkedMatches(html, phrase);
             this.internalMatches = matches;
@@ -768,11 +837,26 @@ document.addEventListener('alpine:init', () => {
                         if (focus) this.seo.focus_keyword = focus;
                     }
                     const kw = await this.callSeoAi('keywords', Object.assign({}, ctx, { focus_keyword: focus }));
-                    if (kw.keywords && kw.keywords.length) {
-                        this.aiDraft.keywords = kw.keywords.join('، ');
-                    } else {
-                        this.aiDraft.keywords = kw.text || '';
+                    let list = (kw.keywords && kw.keywords.length) ? kw.keywords.slice() : [];
+                    if (!list.length && kw.text) {
+                        list = String(kw.text).split(/[,،]+/).map((s) => s.trim()).filter(Boolean);
                     }
+                    // Merge site-wide fixed keywords
+                    const fixed = (window.bankaiEditorSeo && (bankaiEditorSeo.fixedKeywords || bankaiEditorSeo.seoFixedKeywords)) || [];
+                    const seen = {};
+                    list.forEach((k) => { seen[String(k).toLowerCase()] = true; });
+                    (Array.isArray(fixed) ? fixed : []).forEach((f) => {
+                        if (f && !seen[String(f).toLowerCase()]) {
+                            list.push(f);
+                            seen[String(f).toLowerCase()] = true;
+                        }
+                    });
+                    this.aiDraft.keywords = list.join('، ');
+                    // auto-apply to keyword chips
+                    list.forEach((p) => {
+                        if (this.keywordList && !this.keywordList.includes(p)) this.keywordList.push(p);
+                    });
+                    if (typeof this.pushKeywordsToSeo === 'function') this.pushKeywordsToSeo();
                 } else if (kind === 'rewrite') {
                     const rw = await this.callSeoAi('rewrite', ctx);
                     this.aiDraft.rewrite = rw.rewrite || rw.text || '';

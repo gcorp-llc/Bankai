@@ -227,6 +227,27 @@
             seoAudit: { show: false, running: false, score: 0, items: [] },
             seoWizard: { show: false, step: 1 },
 
+            /* Articles list (SEO tab) */
+            articles: [],
+            page: 1,
+            totalPages: 1,
+            total: 0,
+            searchQ: '',
+            perPage: 25,
+            orderby: 'modified',
+            order: 'DESC',
+            seoPanel: 'tools',
+            wizardBusy: false,
+            loading: false,
+            fixedList: [],
+            fixedKeywordsRaw: '',
+            fixedKeywordInput: '',
+            savingFixed: false,
+            aiBusyId: 0,
+            edit: { open: false, row: null, seo_title: '', description: '', focus_keyword: '', keywords_str: '', saving: false, ai: false },
+            gaPropertyId: '',
+            gaConnected: false,
+
             speedDrawer: { show: false, id: '', title: '', ttl: 86400, exclusions: '/cart/*\n/checkout/*\n/my-account/*' },
             speedVitals: st.speedVitals || { ttfb: '—', lcp: '—', cls: '—', fid: '—', score: 0 },
             speedStats: st.speedStats || { hit_ratio: '—', ttfb: '—', redis_latency: '—', revisions: 0 },
@@ -272,6 +293,10 @@
                     self.pageProgress = 100;
                     self.pageLoading = false;
                     self.closeMobileMenu();
+                    if (tab === 'seo-engine') {
+                        if (typeof self.runSeoAuditInline === 'function') self.runSeoAuditInline();
+                        if (self.seoPanel === 'articles' && typeof self.loadArticles === 'function') self.loadArticles();
+                    }
                 }, 160);
             },
 
@@ -364,25 +389,7 @@
             },
 
             runSeoAudit: function () {
-                var self = this;
-                this.seoAudit.show = true;
-                this.seoAudit.running = true;
-                this.seoAudit.items = [];
-                rest('/seo/site-audit', { method: 'GET' })
-                    .then(function (data) {
-                        if (data && data.success && data.data) {
-                            self.seoAudit.items = data.data.items || [];
-                            self.seoAudit.score = data.data.score || 0;
-                        } else {
-                            self.seoAudit.items = self.buildClientAudit();
-                            self.seoAudit.score = self.scoreFromItems(self.seoAudit.items);
-                        }
-                    })
-                    .catch(function () {
-                        self.seoAudit.items = self.buildClientAudit();
-                        self.seoAudit.score = self.scoreFromItems(self.seoAudit.items);
-                    })
-                    .finally(function () { self.seoAudit.running = false; });
+                this.runSeoAuditInline();
             },
 
             buildClientAudit: function () {
@@ -402,17 +409,55 @@
                 return Math.round((items.filter(function (i) { return i.pass; }).length / items.length) * 100);
             },
 
-            openSeoWizard: function () { this.seoWizard = { show: true, step: 1 }; },
+            openSeoWizard: function () { this.runAutoWizard(); },
             wizardNext: function () { if (this.seoWizard.step < 4) this.seoWizard.step++; },
             wizardPrev: function () { if (this.seoWizard.step > 1) this.seoWizard.step--; },
-            wizardFinish: function () {
+            wizardFinish: function () { this.runAutoWizard(); },
+            runAutoWizard: function () {
                 var self = this;
-                ['auto_meta', 'sitemap_pro', 'canonical_guard', 'open_graph_ai'].forEach(function (id) {
+                if (this.wizardBusy) return;
+                this.wizardBusy = true;
+                this.seoPanel = 'tools';
+                var ids = ['auto_meta', 'sitemap_pro', 'canonical_guard', 'open_graph_ai', 'local_seo_schema', 'llms_txt_builder'];
+                var i = 0;
+                function next() {
+                    if (i >= ids.length) {
+                        self.wizardBusy = false;
+                        self.seoWizard = { show: false, step: 1 };
+                        self.showToast(self.isRtl
+                            ? '✓ راه‌اندازی کامل شد — همه ماژول‌های ضروری سئو فعال شدند'
+                            : '✓ Setup complete — essential SEO modules enabled', 'success');
+                        if (typeof self.runSeoAuditInline === 'function') self.runSeoAuditInline();
+                        return;
+                    }
+                    var id = ids[i++];
                     self.seoState[id] = true;
-                    rest('/module/' + encodeURIComponent(id), { method: 'POST', body: JSON.stringify({ enabled: true }) });
-                });
-                this.seoWizard.show = false;
-                this.showToast(this.isRtl ? 'پیکربندی پایه اعمال شد' : 'Base config applied', 'success');
+                    rest('/module/' + encodeURIComponent(id), {
+                        method: 'POST',
+                        body: JSON.stringify({ enabled: true })
+                    }).finally(function () {
+                        setTimeout(next, 180);
+                    });
+                }
+                next();
+            },
+            runSeoAuditInline: function () {
+                var self = this;
+                if (!this.seoAudit) this.seoAudit = { show: false, running: false, score: 0, items: [] };
+                this.seoAudit.running = true;
+                this.seoAudit.items = [];
+                // Prefer client checklist (always available)
+                this.seoAudit.items = this.buildClientAudit();
+                this.seoAudit.score = this.scoreFromItems(this.seoAudit.items);
+                rest('/seo/site-audit', { method: 'GET' })
+                    .then(function (data) {
+                        if (data && data.success && data.data) {
+                            self.seoAudit.items = data.data.items || self.seoAudit.items;
+                            self.seoAudit.score = data.data.score || self.scoreFromItems(self.seoAudit.items);
+                        }
+                    })
+                    .catch(function () { /* keep client audit */ })
+                    .finally(function () { self.seoAudit.running = false; });
             },
 
             saveIntegration: function (fields) {
@@ -423,11 +468,12 @@
                 Object.keys(fields).forEach(function (k) {
                     if (k !== '_key') payload[k] = fields[k];
                 });
-                return rest('/seo/integrations', {
+                // Prefer settings endpoint when integrations route may be missing
+                return rest('/settings', {
                     method: 'POST',
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ settings: payload })
                 }).then(function (data) {
-                    if (data && data.success) {
+                    if (data && data.success !== false) {
                         self.showToast(self.t('saved'), 'success');
                         if (window.bankaiState) {
                             window.bankaiState.seoIntegrations = Object.assign(
@@ -441,6 +487,222 @@
                     self.showToast(self.t('error'), 'error');
                 }).finally(function () {
                     self.integSaving[key] = false;
+                });
+            },
+
+            /* ---- SEO Articles list ---- */
+            initSeoArticles: function () {
+                this.fixedList = this.parseKw(this.fixedKeywordsRaw || '');
+                this.loadArticles();
+            },
+            parseKw: function (raw) {
+                return String(raw || '').split(/[,،\n]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+            },
+            scoreColor: function (s) {
+                s = parseInt(s, 10) || 0;
+                if (s >= 80) return '#1A7F37';
+                if (s >= 50) return '#D97706';
+                return '#CF222E';
+            },
+            loadArticles: function () {
+                var self = this;
+                this.loading = true;
+                var c = cfg();
+                var base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
+                var url = base + 'seo/articles?page=' + this.page
+                    + '&per_page=' + (this.perPage || 25)
+                    + '&search=' + encodeURIComponent(this.searchQ || '')
+                    + '&orderby=' + encodeURIComponent(this.orderby || 'modified')
+                    + '&order=' + encodeURIComponent(this.order || 'DESC');
+                fetch(url, { credentials: 'same-origin', headers: { 'X-WP-Nonce': c.nonce || '' } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        var d = (j && j.data) ? j.data : {};
+                        self.articles = d.items || [];
+                        self.total = d.total || 0;
+                        self.totalPages = d.total_pages || 1;
+                    })
+                    .catch(function (e) {
+                        self.showToast((e && e.message) || self.t('error'), 'error');
+                    })
+                    .finally(function () { self.loading = false; });
+            },
+            openArticlesPanel: function () {
+                this.seoPanel = 'articles';
+                this.page = 1;
+                this.loadArticles();
+                setTimeout(function () {
+                    var el = document.getElementById('bk-seo-articles-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+            },
+            openAnalyticsPanel: function () {
+                this.seoPanel = 'analytics';
+            },
+            openToolsPanel: function () {
+                this.seoPanel = 'tools';
+            },
+            saveFixedKeywords: function () {
+                var self = this;
+                this.savingFixed = true;
+                var c = cfg();
+                var base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
+                fetch(base + 'seo/fixed-keywords', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': c.nonce || '' },
+                    body: JSON.stringify({ raw: this.fixedKeywordsRaw })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        if (j.success) {
+                            self.fixedList = (j.data && j.data.keywords) || self.parseKw(self.fixedKeywordsRaw);
+                            self.showToast(self.isRtl ? 'کلمات ثابت ذخیره شد' : 'Saved', 'success');
+                        } else {
+                            throw new Error((j && j.message) || 'error');
+                        }
+                    })
+                    .catch(function (e) {
+                        self.showToast((e && e.message) || self.t('error'), 'error');
+                    })
+                    .finally(function () { self.savingFixed = false; });
+            },
+            addFixedKeyword: function () {
+                var kw = String(this.fixedKeywordInput || '').trim();
+                if (!kw) return;
+                var list = this.fixedList ? this.fixedList.slice() : [];
+                var lower = kw.toLowerCase();
+                if (list.some(function (x) { return String(x).toLowerCase() === lower; })) {
+                    this.fixedKeywordInput = '';
+                    return;
+                }
+                list.push(kw);
+                this.fixedList = list;
+                this.fixedKeywordsRaw = list.join('، ');
+                this.fixedKeywordInput = '';
+                this.saveFixedKeywords();
+            },
+            removeFixedKeyword: function (idx) {
+                var list = (this.fixedList || []).slice();
+                if (idx < 0 || idx >= list.length) return;
+                list.splice(idx, 1);
+                this.fixedList = list;
+                this.fixedKeywordsRaw = list.join('، ');
+                this.saveFixedKeywords();
+            },
+            openEdit: function (row) {
+                this.edit = {
+                    open: true,
+                    row: row,
+                    seo_title: row.seo_title || '',
+                    description: row.description || '',
+                    focus_keyword: row.focus_keyword || '',
+                    keywords_str: (row.keywords || []).join('، '),
+                    saving: false,
+                    ai: false
+                };
+            },
+            saveEdit: function () {
+                var self = this;
+                if (!this.edit.row) return;
+                this.edit.saving = true;
+                var c = cfg();
+                var base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
+                var kws = this.parseKw(this.edit.keywords_str);
+                fetch(base + 'seo/' + this.edit.row.id, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': c.nonce || '' },
+                    body: JSON.stringify({
+                        seo_title: this.edit.seo_title,
+                        description: this.edit.description,
+                        focus_keyword: this.edit.focus_keyword,
+                        keywords: kws
+                    })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        if (!j.success) throw new Error((j && j.message) || 'error');
+                        self.showToast(self.t('saved'), 'success');
+                        self.edit.open = false;
+                        self.loadArticles();
+                    })
+                    .catch(function (e) {
+                        self.showToast((e && e.message) || self.t('error'), 'error');
+                    })
+                    .finally(function () { self.edit.saving = false; });
+            },
+            ajaxAiSeo: function (task, ctx) {
+                var c = cfg();
+                var body = new FormData();
+                body.append('action', 'bankai_ai_seo_task');
+                body.append('nonce', c.adminNonce || c.nonce || '');
+                body.append('task', task);
+                body.append('title', (ctx && ctx.title) || '');
+                body.append('content', (ctx && ctx.content) || '');
+                body.append('focus_keyword', (ctx && ctx.focus_keyword) || '');
+                body.append('locale', c.locale || 'fa_IR');
+                body.append('provider', c.aiDefaultProvider || '');
+                return fetch(c.ajaxUrl || '/wp-admin/admin-ajax.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: body
+                }).then(function (r) { return r.json(); }).then(function (j) {
+                    if (!j.success) throw new Error((j.data && j.data.message) || j.message || 'AI error');
+                    return j.data || j;
+                });
+            },
+            runAiMeta: function (row) {
+                var self = this;
+                this.aiBusyId = row.id;
+                var ctx = { title: row.title, content: '', focus_keyword: row.focus_keyword || '' };
+                Promise.all([
+                    this.ajaxAiSeo('meta_title', ctx),
+                    this.ajaxAiSeo('meta_description', ctx),
+                    this.ajaxAiSeo('keywords', ctx)
+                ]).then(function (results) {
+                    var t = results[0], d = results[1], k = results[2];
+                    var c = cfg();
+                    var base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
+                    var keywords = (k.keywords || []).concat(self.fixedList || []);
+                    return fetch(base + 'seo/' + row.id, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': c.nonce || '' },
+                        body: JSON.stringify({
+                            seo_title: t.seo_title || t.text || '',
+                            description: d.description || d.text || '',
+                            keywords: keywords
+                        })
+                    });
+                }).then(function () {
+                    self.showToast(self.isRtl ? 'متای AI ذخیره شد' : 'AI meta saved', 'success');
+                    self.loadArticles();
+                }).catch(function (e) {
+                    self.showToast((e && e.message) || 'AI error', 'error');
+                }).finally(function () {
+                    self.aiBusyId = 0;
+                });
+            },
+            runAiForEdit: function () {
+                var self = this;
+                if (!this.edit.row) return;
+                this.edit.ai = true;
+                var ctx = { title: this.edit.row.title, focus_keyword: this.edit.focus_keyword };
+                Promise.all([
+                    this.ajaxAiSeo('meta_title', ctx),
+                    this.ajaxAiSeo('meta_description', ctx),
+                    this.ajaxAiSeo('keywords', ctx)
+                ]).then(function (results) {
+                    self.edit.seo_title = results[0].seo_title || results[0].text || self.edit.seo_title;
+                    self.edit.description = results[1].description || results[1].text || self.edit.description;
+                    var kws = (results[2].keywords || []).concat(self.fixedList || []);
+                    self.edit.keywords_str = kws.join('، ');
+                    self.showToast(self.isRtl ? 'پیشنهاد AI آماده است' : 'AI ready', 'success');
+                }).catch(function (e) {
+                    self.showToast((e && e.message) || 'AI error', 'error');
+                }).finally(function () {
+                    self.edit.ai = false;
                 });
             },
 

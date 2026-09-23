@@ -437,12 +437,15 @@ class Bankai_Admin_Menu {
             $list = Bankai_AI_Studio::instance()->provider_status_list();
             $out = [];
             foreach ($list as $p) {
+                $label = $p['label'] ?? $p['name'] ?? ($p['id'] ?? '');
                 $out[] = [
-                    'id'     => $p['id'],
-                    'name'   => $p['name'],
-                    'badge'  => $p['label'],
+                    'id'     => $p['id'] ?? '',
+                    'name'   => $label,
+                    'label'  => $label,
+                    'badge'  => $label,
                     'color'  => !empty($p['has_key']) ? '#10B981' : '#8C959F',
-                    'models' => is_array($p['models'] ?? null) ? implode(' / ', array_slice($p['models'], 0, 3)) : '',
+                    'models' => is_array($p['models'] ?? null) ? implode(' / ', array_slice($p['models'], 0, 3)) : (string) ($p['model'] ?? ''),
+                    'has_key'=> !empty($p['has_key']),
                 ];
             }
             return $out;

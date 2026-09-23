@@ -107,20 +107,44 @@
                 return;
             }
             var text = d.text || d.seo_title || d.description || d.focus_keyword || '';
-            if (task === 'meta_title') {
-                setField('[data-bankai-field="seo_title"], #bankai_seo_title, input[name="_bankai_seo_title"]', d.seo_title || text);
-            } else if (task === 'meta_description') {
-                setField('[data-bankai-field="description"], #bankai_seo_description, textarea[name="_bankai_seo_description"]', d.description || text);
+            if (task === 'meta_title' || task === 'title') {
+                var titleVal = d.seo_title || d.title || text;
+                setField('[data-bankai-field="seo_title"], #bankai_seo_title, input[name="_bankai_seo_title"], input[name="bankai_seo_title"]', titleVal);
+                // Alpine reactive models in sidebar
+                document.dispatchEvent(new CustomEvent('bankai-ai-result', { detail: { task: 'meta_title', data: { seo_title: titleVal } } }));
+            } else if (task === 'meta_description' || task === 'description') {
+                var descVal = d.description || d.meta_description || text;
+                setField('[data-bankai-field="description"], #bankai_seo_description, textarea[name="_bankai_seo_description"], textarea[name="bankai_seo_description"]', descVal);
+                document.dispatchEvent(new CustomEvent('bankai-ai-result', { detail: { task: 'meta_description', data: { description: descVal } } }));
             } else if (task === 'focus_keyword') {
                 setField('[data-bankai-field="focus_keyword"], #bankai_focus_keyword, input[name="_bankai_seo_focus_keyword"]', d.focus_keyword || text);
-            } else if (task === 'keywords' && d.keywords) {
-                var box = document.querySelector('[data-bankai-field="keywords"]');
-                if (box) {
-                    box.value = (d.keywords || []).join(', ');
-                    box.dispatchEvent(new Event('input', { bubbles: true }));
+            } else if (task === 'keywords') {
+                var kws = d.keywords || [];
+                if ((!kws || !kws.length) && text) {
+                    kws = String(text).split(/[,،]+/).map(function (s) { return s.trim(); }).filter(Boolean);
                 }
-                // chip UI
-                document.dispatchEvent(new CustomEvent('bankai-ai-keywords', { detail: d.keywords }));
+                // Merge site-wide fixed keywords from config if present
+                var fixed = (c.fixedKeywords || c.seoFixedKeywords || []);
+                if (typeof fixed === 'string') {
+                    fixed = fixed.split(/[,،]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+                }
+                if (Array.isArray(fixed) && fixed.length) {
+                    var seen = {};
+                    kws.forEach(function (k) { seen[String(k).toLowerCase()] = true; });
+                    fixed.forEach(function (f) {
+                        if (f && !seen[String(f).toLowerCase()]) {
+                            kws.push(f);
+                            seen[String(f).toLowerCase()] = true;
+                        }
+                    });
+                }
+                var box = document.querySelector('[data-bankai-field="keywords"], #bankai_seo_keywords, input[name="_bankai_seo_keywords"], textarea[name="_bankai_seo_keywords"]');
+                if (box) {
+                    box.value = kws.join(c.isRtl ? '، ' : ', ');
+                    box.dispatchEvent(new Event('input', { bubbles: true }));
+                    box.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                document.dispatchEvent(new CustomEvent('bankai-ai-keywords', { detail: kws }));
             } else if (task === 'rewrite' || task === 'outline' || task === 'alt_text') {
                 var out = document.querySelector('[data-bankai-ai-output="' + task + '"]');
                 if (out) out.textContent = text;

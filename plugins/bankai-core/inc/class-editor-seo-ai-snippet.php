@@ -10,11 +10,21 @@
                 BANKAI_CORE_VERSION,
                 true
             );
+            $fixed_kw = [];
+            if (class_exists('Bankai_SEO_Engine') && method_exists(Bankai_SEO_Engine::class, 'instance')) {
+                try {
+                    $fixed_kw = Bankai_SEO_Engine::instance()->get_fixed_keywords_list();
+                } catch (Throwable $e) {
+                    $fixed_kw = [];
+                }
+            }
             wp_localize_script('bankai-seo-ai', 'bankaiEditorSeo', [
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'adminNonce' => wp_create_nonce('bankai_admin_nonce'),
                 'locale' => get_user_locale(),
                 'isRtl' => is_rtl(),
                 'defaultAiProvider' => class_exists('Bankai_AI_Studio') ? Bankai_AI_Studio::instance()->get_default_provider() : 'gemini',
+                'fixedKeywords' => $fixed_kw,
+                'seoFixedKeywords' => $fixed_kw,
             ]);
         }

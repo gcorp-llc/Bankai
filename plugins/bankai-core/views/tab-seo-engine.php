@@ -244,12 +244,15 @@ if ($post_id && !$post) {
                     <span class="material-symbols-outlined bk-blue">hub</span>
                     <span>لینک‌ساز داخلی</span>
                 </div>
-                <p class="bk-hint">کلمه/عبارت را بنویسید → مقالات مرتبط جستجو می‌شوند. سپس محل‌های همان عبارت در متن مقاله پیدا و برای لینک‌شدن پیشنهاد می‌شوند.</p>
+                <p class="bk-hint">کلمه/عبارت را بنویسید یا از «پیشنهاد هوشمند» استفاده کنید تا بر اساس کلمات کلیدی، مقالات مرتبط پیدا و لینک در محتوا ایجاد شود.</p>
                 <div class="bk-row">
                     <input type="text" x-model="linkAnchor" placeholder="کلیدواژه یا انکر تکست" @keydown.enter.prevent="runInternalSearch()">
                     <button type="button" class="bk-btn-primary" @click="runInternalSearch()" :disabled="linkBusy">
                         <span x-show="!linkBusy">جستجو</span>
                         <span x-show="linkBusy">…</span>
+                    </button>
+                    <button type="button" class="bk-btn-ghost" @click="smartSuggestInternalLinks()" :disabled="linkBusy" title="بر اساس کلمات کلیدی مقاله">
+                        پیشنهاد هوشمند
                     </button>
                 </div>
 

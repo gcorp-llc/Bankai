@@ -315,6 +315,18 @@ class Bankai_Editor_SEO
             }
         }
 
+        $fixed_kw = [];
+        if (class_exists('Bankai_SEO_Engine') && method_exists('Bankai_SEO_Engine', 'instance')) {
+            try {
+                $fixed_kw = Bankai_SEO_Engine::instance()->get_fixed_keywords_list();
+            } catch (Throwable $e) {
+                $fixed_kw = [];
+            }
+        } elseif (function_exists('bankai_get_option')) {
+            $raw = (string) bankai_get_option('seo_fixed_keywords', '');
+            $fixed_kw = array_values(array_filter(array_map('trim', preg_split('/[,،\n]+/u', $raw) ?: [])));
+        }
+
         wp_localize_script('bankai-editor-seo', 'bankaiEditorSeo', [
             'postId'            => $post_id,
             'isRtl'             => is_rtl(),
@@ -326,6 +338,8 @@ class Bankai_Editor_SEO
             'locale'            => get_user_locale(),
             'defaultAiProvider' => $ai_default,
             'aiProviders'       => $ai_providers,
+            'fixedKeywords'     => $fixed_kw,
+            'seoFixedKeywords'  => $fixed_kw,
             'i18n'              => [
                 'button'     => __('سئو', 'bankai-core'),
                 'panelTitle' => __('سئوی بنکای', 'bankai-core'),
