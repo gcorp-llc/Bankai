@@ -159,11 +159,19 @@ final class Bankai_SEO_Engine
         ]);
 
         register_rest_route($namespace, '/seo/search-posts', [
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => [$this, 'api_search_posts'],
-            'permission_callback' => static fn(): bool => current_user_can('edit_posts'),
-            'args'                => [
-                'q' => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [$this, 'api_search_posts'],
+                'permission_callback' => static fn(): bool => current_user_can('edit_posts'),
+                'args'                => [
+                    'q' => ['type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field'],
+                    's' => ['type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field'],
+                ],
+            ],
+            [
+                'methods'             => WP_REST_Server::CREATABLE,
+                'callback'            => [$this, 'api_search_posts'],
+                'permission_callback' => static fn(): bool => current_user_can('edit_posts'),
             ],
         ]);
 
@@ -312,15 +320,21 @@ final class Bankai_SEO_Engine
 
     public function api_search_posts(WP_REST_Request $request): WP_REST_Response
     {
-        $q = sanitize_text_field($request->get_param('q') ?? '');
+        $params = $request->get_json_params();
+        if (!is_array($params)) {
+            $params = [];
+        }
+        $q = sanitize_text_field((string) ($request->get_param('q') ?? $request->get_param('s') ?? $params['q'] ?? $params['s'] ?? ''));
         if (mb_strlen($q) < 2) {
             return new WP_REST_Response(['success' => true, 'data' => []]);
         }
 
+        $exclude = absint($request->get_param('post_id') ?? ($params['post_id'] ?? 0));
         $posts = get_posts([
             'post_type'      => ['post', 'page'],
             'post_status'    => 'publish',
             'posts_per_page' => 15,
+            'post__not_in'   => $exclude > 0 ? [$exclude] : [],
             's'              => $q,
             'meta_query'     => [
                 'relation' => 'OR',
@@ -392,7 +406,41 @@ final class Bankai_SEO_Engine
 
         $focus    = (string) get_post_meta($post_id, self::META_KEYWORD, true);
         $robots   = get_post_meta($post_id, self::META_ROBOTS, true);
+        if (is_string($robots) && $robots !== '') {
+            $decoded_robots = json_decode($robots, true);
+            if (is_array($decoded_robots)) {
+                $robots = $decoded_robots;
+            }
+        }
         $canonical= (string) get_post_meta($post_id, self::META_CANONICAL, true);
+
+        // Ensure keywords list includes focus keyword when stored only as focus
+        if ($focus !== '') {
+            $has_focus = false;
+            foreach ($keywords as $kw) {
+                if (mb_strtolower((string) $kw) === mb_strtolower($focus)) {
+                    $has_focus = true;
+                    break;
+                }
+            }
+            if (!$has_focus) {
+                array_unshift($keywords, $focus);
+            }
+        }
+        // Merge site-wide fixed keywords for display
+        $fixed = $this->get_fixed_keywords_list();
+        foreach ($fixed as $fkw) {
+            $exists = false;
+            foreach ($keywords as $kw) {
+                if (mb_strtolower((string) $kw) === mb_strtolower($fkw)) {
+                    $exists = true;
+                    break;
+                }
+            }
+            if (!$exists) {
+                $keywords[] = $fkw;
+            }
+        }
 
         return [
             'id'            => $post_id,
@@ -405,7 +453,7 @@ final class Bankai_SEO_Engine
             'seo_title'     => $seo_title !== '' ? $seo_title : get_the_title($post_id),
             'description'   => $description !== '' ? $description : wp_trim_words(wp_strip_all_tags($post->post_content), 25, '...'),
             'focus_keyword' => $focus,
-            'keywords'      => $keywords,
+            'keywords'      => array_values($keywords),
             'canonical'     => $canonical !== '' ? $canonical : get_permalink($post_id),
             'robots'        => is_array($robots) ? $robots : ['index' => true, 'follow' => true],
             'og_title'      => (string) get_post_meta($post_id, self::META_OG_TITLE, true),
@@ -510,10 +558,11 @@ final class Bankai_SEO_Engine
             $has_kw && $density >= 0.5 && $density <= 2.5,
             sprintf('چگالی کلمه کلیدی %.2f٪ است. هدف حدود ۱٪.', $density), 'advanced');
 
-        $url_len  = mb_strlen($permalink);
+        $url_path = (string) (wp_parse_url($permalink, PHP_URL_PATH) ?: $permalink);
+        $url_len  = mb_strlen(rawurldecode($url_path));
         $checks[] = $this->check('url_length', 'طول URL',
-            $url_len <= 75,
-            sprintf('آدرس %d کاراکتر است.%s', $url_len, $url_len <= 75 ? ' خوب!' : ' کوتاه‌تر پیشنهاد می‌شود.'), 'advanced');
+            $url_len <= 100,
+            sprintf('مسیر آدرس %d کاراکتر است.%s', $url_len, $url_len <= 100 ? ' مناسب است.' : ' کوتاه‌تر پیشنهاد می‌شود (زیر ۱۰۰ کاراکتر مسیر).'), 'advanced');
 
         $extracted_links = $this->extract_links_from_html($raw_content);
         $internal        = count($extracted_links['internal']);
@@ -538,9 +587,10 @@ final class Bankai_SEO_Engine
             $title_len >= 30 && $title_len <= 60,
             sprintf('طول عنوان: %d کاراکتر (هدف ۳۰–۶۰).', $title_len), 'title');
 
+        $has_num = (bool) preg_match('/\d/u', $title_use);
         $checks[] = $this->check('title_has_number', 'عدد در عنوان',
-            (bool) preg_match('/\d/u', $title_use),
-            'عنوان سئو شما عدد ندارد. با هوش مصنوعی رفع کنید.', 'title');
+            true, // توصیه اختیاری — روی امتیاز اجباری اثر نگذارد
+            $has_num ? 'عنوان شامل عدد است؛ جذابیت بیشتری دارد.' : 'پیشنهاد: افزودن عدد به عنوان (مثلاً «۵ روش…») کلیک را افزایش می‌دهد.', 'title');
 
         // --- Content readability ---
         $desc_len = mb_strlen($description);
@@ -1078,26 +1128,54 @@ final class Bankai_SEO_Engine
     }
 
     /**
-     * Helper to extract internal and external links cleanly
+     * Extract internal / external links from HTML (Gutenberg + classic).
      */
     private function extract_links_from_html(string $content): array
     {
-        $home     = home_url();
         $internal = [];
         $external = [];
+        if ($content === '' || $content === null) {
+            return compact('internal', 'external');
+        }
 
-        preg_match_all('/<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)<\/a>/is', $content, $matches, PREG_SET_ORDER);
+        $home_host = wp_parse_url(home_url(), PHP_URL_HOST);
+        $home_host = $home_host ? mb_strtolower((string) $home_host) : '';
+        $home_host = preg_replace('/^www\./i', '', $home_host);
 
+        // Gutenberg sometimes stores href on different quote styles / multiline
+        if (!preg_match_all('/<a\b([^>]*)>([\s\S]*?)<\/a>/iu', $content, $matches, PREG_SET_ORDER)) {
+            return compact('internal', 'external');
+        }
+
+        $seen = [];
         foreach ($matches as $m) {
-            $href = $m[1];
-            $text = wp_strip_all_tags($m[2]);
+            $attrs = $m[1] ?? '';
+            $inner = $m[2] ?? '';
+            if (!preg_match('/\bhref\s*=\s*(["\'])([^"\']+)\1/i', $attrs, $hm)
+                && !preg_match('/\bhref\s*=\s*([^\s>]+)/i', $attrs, $hm2)) {
+                continue;
+            }
+            $href = isset($hm[2]) ? trim($hm[2]) : trim((string) ($hm2[1] ?? ''), "\"'");
+            $href = html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($href === '' || str_starts_with($href, 'javascript:') || str_starts_with($href, 'mailto:') || str_starts_with($href, 'tel:')) {
+                continue;
+            }
+
+            $text = trim(wp_strip_all_tags($inner));
+            $nofollow = (bool) preg_match('/\brel\s*=\s*["\'][^"\']*nofollow/i', $attrs);
             $item = [
                 'href'     => $href,
                 'text'     => $text,
-                'nofollow' => (bool) preg_match('/rel=["\'][^"\']*nofollow/i', $m[0]),
+                'nofollow' => $nofollow,
             ];
 
-            if (str_starts_with($href, $home) || str_starts_with($href, '/') || str_starts_with($href, '#')) {
+            $key = mb_strtolower($href) . '|' . mb_strtolower($text);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+
+            if ($this->is_internal_href($href, $home_host)) {
                 $internal[] = $item;
             } else {
                 $external[] = $item;
@@ -1105,5 +1183,39 @@ final class Bankai_SEO_Engine
         }
 
         return compact('internal', 'external');
+    }
+
+    /**
+     * Decide whether an href points to this site.
+     */
+    private function is_internal_href(string $href, string $home_host = ''): bool
+    {
+        $href = trim($href);
+        if ($href === '' || str_starts_with($href, '#')) {
+            return true; // in-page anchors count as internal navigation
+        }
+        // Relative paths
+        if (str_starts_with($href, '/') && !str_starts_with($href, '//')) {
+            return true;
+        }
+        // Protocol-relative or absolute
+        if (str_starts_with($href, '//')) {
+            $href = 'https:' . $href;
+        }
+        $parts = wp_parse_url($href);
+        if (!is_array($parts) || empty($parts['host'])) {
+            // bare relative like "page.html"
+            if (!preg_match('#^[a-z][a-z0-9+.-]*:#i', $href)) {
+                return true;
+            }
+            return false;
+        }
+        $host = mb_strtolower((string) $parts['host']);
+        $host = preg_replace('/^www\./i', '', $host);
+        if ($home_host === '') {
+            $home_host = wp_parse_url(home_url(), PHP_URL_HOST);
+            $home_host = $home_host ? preg_replace('/^www\./i', '', mb_strtolower((string) $home_host)) : '';
+        }
+        return $home_host !== '' && $host === $home_host;
     }
 }

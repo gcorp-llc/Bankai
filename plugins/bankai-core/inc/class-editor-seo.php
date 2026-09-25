@@ -104,23 +104,25 @@ class Bankai_Editor_SEO
             'bankai-editor-seo',
             bankai_asset_url('css/editor-seo.css'),
             ['bankai-material-symbols', 'bankai-vazirmatn'],
-            $ver
+            $ver . '.' . (string) @filemtime(BANKAI_CORE_DIR . 'assets/css/editor-seo.css')
         );
 
         if (in_array($hook, ['post.php', 'post-new.php'], true)) {
-            wp_enqueue_script(
-                'alpinejs',
-                'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',
-                [],
-                '3.14.1',
-                ['strategy' => 'defer']
-            );
-
+            // Register Alpine.data BEFORE Alpine auto-starts: load component first, Alpine second.
+            $js_ver = $ver . '.' . (string) @filemtime(BANKAI_CORE_DIR . 'assets/js/editor-seo.js');
             wp_enqueue_script(
                 'bankai-editor-seo',
                 bankai_asset_url('js/editor-seo.js'),
                 ['wp-api-fetch'],
-                $ver,
+                $js_ver,
+                true
+            );
+
+            wp_enqueue_script(
+                'alpinejs',
+                bankai_asset_url('js/alpine.min.js'),
+                ['bankai-editor-seo'],
+                '3.14.1',
                 true
             );
 
@@ -331,7 +333,7 @@ class Bankai_Editor_SEO
             'postId'            => $post_id,
             'isRtl'             => is_rtl(),
             'version'           => $ver,
-            'restUrl'           => esc_url_raw(rest_url('bankai/v1')),
+            'restUrl'           => trailingslashit(esc_url_raw(rest_url('bankai/v1/'))),
             'nonce'             => wp_create_nonce('wp_rest'),
             'adminNonce'        => wp_create_nonce('bankai_admin_nonce'),
             'ajaxUrl'           => admin_url('admin-ajax.php'),

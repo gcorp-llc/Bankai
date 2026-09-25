@@ -230,35 +230,30 @@ $robots  = esc_textarea($si['robots_txt'] ?? '');
 
     <!-- Articles Section -->
     <div id="bk-seo-articles-section" x-show="seoPanel === 'articles'" x-cloak>
-        <div class="bk-articles-toolbar">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px;">
             <h3 class="bk-section-title" style="margin:0;">جدول ممیزی سئوی مقالات</h3>
-            <div class="bk-articles-filters">
-                <div class="bk-search-combo">
-                    <svg class="bk-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-                    <input type="search" x-model="searchQ" @keydown.enter.prevent="page=1;loadArticles()"
-                           placeholder="جستجوی عنوان مقاله…" class="bk-search-input">
-                    <button type="button" class="bk-search-go" @click="page=1;loadArticles()" :disabled="loading" title="جستجو">
-                        <span x-show="!loading">⏎</span>
-                        <span x-show="loading" class="bk-wizard-spin" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;"></span>
-                    </button>
-                </div>
-                <div class="bk-select-wrap">
-                    <select x-model="orderby" @change="page=1;order='DESC';loadArticles()" class="bk-modern-select">
-                        <option value="modified">مرتب‌سازی: آخرین ویرایش</option>
-                        <option value="date">مرتب‌سازی: تاریخ انتشار</option>
-                        <option value="seo_score">مرتب‌سازی: امتیاز سئو</option>
-                        <option value="views">مرتب‌سازی: بازدید</option>
-                        <option value="title">مرتب‌سازی: عنوان</option>
-                    </select>
-                </div>
-                <div class="bk-select-wrap">
-                    <select x-model.number="perPage" @change="page=1;loadArticles()" class="bk-modern-select">
-                        <option value="10">۱۰ در صفحه</option>
-                        <option value="25">۲۵ در صفحه</option>
-                        <option value="50">۵۰ در صفحه</option>
-                        <option value="100">۱۰۰ در صفحه</option>
-                    </select>
-                </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <select x-model="perPage" @change="page=1;loadArticles()" class="bk-seo-input" style="width:auto;">
+                    <option value="10">۱۰ عدد</option>
+                    <option value="25">۲۵ عدد</option>
+                    <option value="50">۵۰ عدد</option>
+                </select>
+                <select x-model="orderby" @change="page=1;loadArticles()" class="bk-seo-input" style="width:auto;">
+                    <option value="modified">آخرین ویرایش</option>
+                    <option value="date">تاریخ انتشار</option>
+                    <option value="seo_score">امتیاز سئو</option>
+                    <option value="views">تعداد بازدید</option>
+                    <option value="title">عنوان</option>
+                </select>
+                <select x-model="order" @change="page=1;loadArticles()" class="bk-seo-input" style="width:auto;">
+                    <option value="DESC">نزولی</option>
+                    <option value="ASC">صعودی</option>
+                </select>
+                <input type="search" x-model="searchQ" @keydown.enter.prevent="page=1;loadArticles()"
+                       placeholder="جستجوی مقاله…" class="bk-seo-input" style="width:180px;">
+                <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="page=1;loadArticles()" :disabled="loading">
+                    <span x-text="loading ? '…' : 'جستجو'"></span>
+                </button>
             </div>
         </div>
 
@@ -320,10 +315,7 @@ $robots  = esc_textarea($si['robots_txt'] ?? '');
                                 </td>
                                 <td>
                                     <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
-                                        <button type="button" class="bk-edit-meta-btn" @click="openEdit(row)">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                                            ویرایش متا
-                                        </button>
+                                        <button type="button" class="bk-seo-btn-sm" @click="openEdit(row)">ویرایش متا</button>
                                         <a :href="row.edit_url" target="_blank" rel="noopener" class="bk-seo-link">ویرایش مطلب ↗</a>
                                     </div>
                                 </td>
@@ -341,184 +333,30 @@ $robots  = esc_textarea($si['robots_txt'] ?? '');
         </div>
     </div>
 
-    <!-- Edit Meta + AI Studio Modal -->
-    <div x-show="edit.open" x-cloak class="bk-seo-modal-bg" @click.self="closeEdit()">
-        <div class="bankai-card bk-seo-modal bk-ai-studio-modal" @click.stop>
-            <div class="bk-seo-modal-head bk-ai-head">
-                <div class="bk-ai-head-title">
-                    <span class="bk-ai-spark">✦</span>
-                    <div>
-                        <strong>استودیو هوش مصنوعی بنکای</strong>
-                        <small>تولید و بهینه‌سازی متا، کلیدواژه و لینک</small>
-                    </div>
-                </div>
-                <button type="button" class="bk-seo-modal-x" @click="closeEdit()">&times;</button>
+    <!-- Edit Meta Modal -->
+    <div x-show="edit.open" x-cloak class="bk-seo-modal-bg" @click.self="edit.open = false">
+        <div class="bankai-card bk-seo-modal" @click.stop>
+            <div class="bk-seo-modal-head">
+                <strong x-text="'ویرایش متای: ' + (edit.row?.title || '')"></strong>
+                <button type="button" class="bk-seo-modal-x" @click="edit.open = false">&times;</button>
             </div>
-
-            <div class="bk-ai-provider-bar">
-                <label>موتور AI:</label>
-                <select x-model="aiProvider" class="bk-modern-select" style="min-width:160px;">
-                    <option value="">پیش‌فرض استودیو</option>
-                    <option value="openrouter">OpenRouter</option>
-                    <option value="gemini">Google Gemini</option>
-                    <option value="openai">OpenAI</option>
-                    <option value="anthropic">Anthropic Claude</option>
-                    <option value="deepseek">DeepSeek</option>
-                    <option value="groq">Groq</option>
-                </select>
-                <span class="bk-ai-hint">در صورت خطا، خودکار به موتور بعدی می‌رود</span>
-            </div>
-
-            <nav class="bk-modal-tabs">
-                <button type="button" :class="{ 'is-active': aiTab === 'title' }" @click="aiTab = 'title'">عنوان و متا</button>
-                <button type="button" :class="{ 'is-active': aiTab === 'keywords' }" @click="aiTab = 'keywords'">کلیدواژه</button>
-                <button type="button" :class="{ 'is-active': aiTab === 'links' }" @click="aiTab = 'links'; loadArticleLinks()">لینک داخلی</button>
-                <button type="button" :class="{ 'is-active': aiTab === 'external' }" @click="aiTab = 'external'; loadArticleLinks()">لینک خارجی</button>
-                <button type="button" :class="{ 'is-active': aiTab === 'rewrite' }" @click="aiTab = 'rewrite'">بازنویسی</button>
-            </nav>
-
             <div class="bk-seo-modal-body">
-                <!-- Title / Meta -->
-                <div x-show="aiTab === 'title'" class="bk-modal-pane">
-                    <div class="bk-ai-grid">
-                        <div>
-                            <label class="bk-seo-label">عنوان فعلی</label>
-                            <input type="text" class="bk-seo-input" x-model="edit.seo_title" maxlength="70">
-                            <label class="bk-seo-label" style="margin-top:10px;">توضیحات فعلی</label>
-                            <textarea class="bk-seo-input" x-model="edit.description" rows="4" maxlength="170"></textarea>
-                        </div>
-                        <div>
-                            <label class="bk-seo-label">پیشنهاد AI</label>
-                            <div class="bk-ai-output" x-text="aiDraft.title || 'برای تولید روی دکمه کلیک کنید…'"></div>
-                            <div class="bk-ai-output" style="margin-top:8px;" x-text="aiDraft.description || ''"></div>
-                        </div>
-                    </div>
-                    <div class="bk-modal-actions">
-                        <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="generateAI('title')" :disabled="aiLoading">
-                            <span :class="{ 'bk-spin-txt': aiLoading }">✦</span>
-                            <span x-text="aiLoading ? 'در حال تولید…' : 'تولید با AI'"></span>
-                        </button>
-                        <button type="button" class="bk-seo-btn bk-seo-btn-ghost" @click="applyAiDraft('title')" x-show="aiDraft.title">اعمال پیشنهاد</button>
-                    </div>
-                </div>
-
-                <!-- Keywords -->
-                <div x-show="aiTab === 'keywords'" class="bk-modal-pane">
-                    <label class="bk-seo-label">کلمه کلیدی اصلی</label>
-                    <input type="text" class="bk-seo-input" x-model="edit.focus_keyword" placeholder="Focus keyword">
-                    <label class="bk-seo-label" style="margin-top:10px;">کلیدواژه‌های جانبی</label>
-                    <div class="bk-kw-box">
-                        <template x-for="(kw, i) in editKeywordList" :key="'ek'+i">
-                            <span class="bk-fk-chip">
-                                <span x-text="kw"></span>
-                                <button type="button" class="bk-fk-remove" @click="editKeywordList.splice(i,1); syncKeywordsStr()">&times;</button>
-                            </span>
-                        </template>
-                        <input type="text" class="bk-seo-input" style="border:none;box-shadow:none;min-width:120px;flex:1;"
-                               x-model="kwDraft" @keydown.enter.prevent="addEditKeyword()" placeholder="+ کلیدواژه">
-                    </div>
-                    <div class="bk-ai-output" style="margin-top:10px;" x-text="aiDraft.keywords || 'پیشنهادهای AI اینجا نمایش داده می‌شود…'"></div>
-                    <div class="bk-modal-actions">
-                        <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="generateAI('keywords')" :disabled="aiLoading">
-                            <span>✦</span> تولید کلیدواژه
-                        </button>
-                        <button type="button" class="bk-seo-btn bk-seo-btn-ghost" @click="applyAiDraft('keywords')" x-show="aiDraft.keywords">اعمال</button>
-                    </div>
-                </div>
-
-                <!-- Internal links -->
-                <div x-show="aiTab === 'links'" class="bk-modal-pane">
-                    <div class="bk-link-stats" x-show="linkStats">
-                        <span>داخلی: <strong x-text="linkStats.internal || 0"></strong></span>
-                        <span>خارجی: <strong x-text="linkStats.external || 0"></strong></span>
-                    </div>
-                    <p class="bk-hint">جستجوی مقالات مرتبط بر اساس کلیدواژه و پیشنهاد لینک داخلی هوشمند.</p>
-                    <div class="bk-row-flex">
-                        <input type="text" class="bk-seo-input" x-model="linkAnchor" :placeholder="edit.focus_keyword || 'کلیدواژه / انکر'">
-                        <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="searchRelatedPosts()" :disabled="linkBusy">جستجو</button>
-                        <button type="button" class="bk-seo-btn bk-seo-btn-ghost" @click="smartSuggestLinks()" :disabled="linkBusy">پیشنهاد هوشمند</button>
-                    </div>
-                    <div class="bk-report" x-show="internalReport.show" :class="'is-' + internalReport.type" x-text="internalReport.message"></div>
-                    <ul class="bk-search-list" x-show="postResults.length">
-                        <template x-for="p in postResults" :key="'mp'+p.id">
-                            <li>
-                                <div>
-                                    <strong x-text="p.title"></strong>
-                                    <small dir="ltr" x-text="p.permalink"></small>
-                                    <span class="bk-seo-tag muted" x-show="p.focus_keyword" x-text="p.focus_keyword"></span>
-                                </div>
-                                <button type="button" class="bk-seo-btn-sm" @click="selectInternalTarget(p)">انتخاب</button>
-                            </li>
-                        </template>
-                    </ul>
-                    <div x-show="selectedInternalPost" class="bk-selected-target">
-                        <div>هدف: <strong x-text="selectedInternalPost?.title"></strong></div>
-                        <div class="bk-row-flex" style="margin-top:8px;">
-                            <input type="text" class="bk-seo-input" x-model="linkAnchor" placeholder="انکر تکست">
-                            <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="applyInternalNote()">ثبت پیشنهاد لینک</button>
-                        </div>
-                        <p class="bk-hint" style="margin-top:8px;">برای درج مستقیم در محتوا، از ویرایشگر مطلب استفاده کنید. اینجا پیشنهاد و گزارش لینک‌ها ذخیره می‌شود.</p>
-                    </div>
-                    <div x-show="currentInternalLinks.length" style="margin-top:12px;">
-                        <label class="bk-seo-label">لینک‌های داخلی فعلی مقاله</label>
-                        <ul class="bk-search-list">
-                            <template x-for="(l, li) in currentInternalLinks" :key="'il'+li">
-                                <li>
-                                    <div>
-                                        <strong x-text="l.text || l.href"></strong>
-                                        <small dir="ltr" x-text="l.href"></small>
-                                    </div>
-                                </li>
-                            </template>
-                        </ul>
-                    </div>
-                </div>
-
-                <!-- External links -->
-                <div x-show="aiTab === 'external'" class="bk-modal-pane">
-                    <div class="bk-link-stats" x-show="linkStats">
-                        <span>داخلی: <strong x-text="linkStats.internal || 0"></strong></span>
-                        <span>خارجی: <strong x-text="linkStats.external || 0"></strong></span>
-                    </div>
-                    <div class="bk-field"><label class="bk-seo-label">انکر تکست</label><input type="text" class="bk-seo-input" x-model="extAnchor"></div>
-                    <div class="bk-field" style="margin-top:8px;"><label class="bk-seo-label">URL</label><input type="url" dir="ltr" class="bk-seo-input" x-model="extUrl" placeholder="https://"></div>
-                    <label style="display:flex;align-items:center;gap:8px;margin:10px 0;font-size:12px;font-weight:600;">
-                        <input type="checkbox" x-model="extNofollow"> nofollow
-                    </label>
-                    <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="applyExternalNote()">ثبت لینک خارجی</button>
-                    <div class="bk-report" x-show="externalReport.show" :class="'is-' + externalReport.type" x-text="externalReport.message"></div>
-                    <div x-show="currentExternalLinks.length" style="margin-top:12px;">
-                        <label class="bk-seo-label">لینک‌های خارجی فعلی</label>
-                        <ul class="bk-search-list">
-                            <template x-for="(l, li) in currentExternalLinks" :key="'el'+li">
-                                <li>
-                                    <div>
-                                        <strong x-text="l.text || l.href"></strong>
-                                        <small dir="ltr" x-text="l.href"></small>
-                                        <span class="bk-seo-tag muted" x-show="l.nofollow">nofollow</span>
-                                    </div>
-                                </li>
-                            </template>
-                        </ul>
-                    </div>
-                </div>
-
-                <!-- Rewrite -->
-                <div x-show="aiTab === 'rewrite'" class="bk-modal-pane">
-                    <p class="bk-hint">بازنویسی محتوا با حفظ معنا و بهینه‌سازی سئو. نتیجه را می‌توانید در ویرایشگر مطلب جایگزین کنید.</p>
-                    <textarea class="bk-seo-input" rows="8" x-model="aiDraft.rewrite" placeholder="نتیجه بازنویسی اینجا ظاهر می‌شود…"></textarea>
-                    <div class="bk-modal-actions">
-                        <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="generateAI('rewrite')" :disabled="aiLoading">
-                            <span>✦</span> بازنویسی با AI
-                        </button>
-                    </div>
-                </div>
+                <label class="bk-seo-label">عنوان سئو</label>
+                <input type="text" class="bk-seo-input" x-model="edit.seo_title" maxlength="70">
+                
+                <label class="bk-seo-label">متا دیسکریپشن</label>
+                <textarea class="bk-seo-input" x-model="edit.description" rows="3" maxlength="170"></textarea>
+                
+                <label class="bk-seo-label">کلمه کلیدی اصلی</label>
+                <input type="text" class="bk-seo-input" x-model="edit.focus_keyword">
+                
+                <label class="bk-seo-label">کلمات کلیدی جانبی (با ویرگول جدا کنید)</label>
+                <input type="text" class="bk-seo-input" x-model="edit.keywords_str">
             </div>
-
             <div class="bk-seo-modal-foot">
-                <button type="button" class="bk-seo-btn bk-seo-btn-ghost" @click="closeEdit()">بستن</button>
+                <button type="button" class="bk-seo-btn bk-seo-btn-ghost" @click="edit.open = false">انصراف</button>
                 <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="saveEdit()" :disabled="edit.saving">
-                    <span x-text="edit.saving ? 'در حال ذخیره…' : 'ذخیره تغییرات متا'"></span>
+                    <span x-text="edit.saving ? 'در حال ذخیره…' : 'ذخیره تغییرات'"></span>
                 </button>
             </div>
         </div>
@@ -623,55 +461,6 @@ $robots  = esc_textarea($si['robots_txt'] ?? '');
 .bk-seo-modal-x { border: none; background: transparent; font-size: 18px; cursor: pointer; color: #94A3B8; }
 .bk-seo-modal-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 .bk-seo-modal-foot { padding: 12px 16px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #F1F5F9; background: #F8FAFC; }
-
-.bk-articles-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:12px; }
-.bk-articles-filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-.bk-search-combo { display:flex; align-items:center; background:#fff; border:1px solid #CBD5E1; border-radius:10px; overflow:hidden; min-width:220px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
-.bk-search-combo:focus-within { border-color:#2563EB; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
-.bk-search-ico { width:18px; height:18px; margin-inline-start:12px; color:#94A3B8; flex-shrink:0; }
-.bk-search-input { border:none !important; box-shadow:none !important; outline:none; padding:9px 10px; font-size:12px; flex:1; min-width:0; background:transparent; }
-.bk-search-go { border:none; background:#2563EB; color:#fff; padding:0 14px; height:38px; cursor:pointer; font-weight:800; }
-.bk-search-go:hover { background:#1D4ED8; }
-.bk-select-wrap { position:relative; }
-.bk-modern-select { appearance:none; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat left 10px center; padding:9px 12px 9px 28px; border:1px solid #CBD5E1; border-radius:10px; font-size:12px; font-weight:700; color:#334155; cursor:pointer; min-width:150px; }
-.bk-modern-select:focus { border-color:#2563EB; outline:none; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
-.bk-edit-meta-btn { display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,#7C3AED,#2563EB); color:#fff; border:none; border-radius:8px; padding:7px 12px; font-size:11px; font-weight:800; cursor:pointer; box-shadow:0 2px 8px rgba(124,58,237,.25); }
-.bk-edit-meta-btn:hover { filter:brightness(1.05); }
-.bk-ai-studio-modal { width:min(720px,100%) !important; max-height:90vh; display:flex; flex-direction:column; }
-.bk-ai-head { background:linear-gradient(135deg,#F5F3FF,#EFF6FF); }
-.bk-ai-head-title { display:flex; align-items:center; gap:10px; }
-.bk-ai-head-title strong { display:block; font-size:14px; }
-.bk-ai-head-title small { display:block; font-size:11px; color:#64748B; font-weight:600; }
-.bk-ai-spark { width:32px; height:32px; border-radius:10px; background:linear-gradient(135deg,#7C3AED,#2563EB); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; }
-.bk-ai-provider-bar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid #F1F5F9; flex-wrap:wrap; font-size:12px; font-weight:700; }
-.bk-ai-hint { font-size:10px; color:#94A3B8; font-weight:600; }
-.bk-modal-tabs { display:flex; gap:4px; padding:8px 12px; border-bottom:1px solid #F1F5F9; overflow-x:auto; }
-.bk-modal-tabs button { appearance:none; border:none; background:transparent; padding:8px 12px; font-size:12px; font-weight:700; color:#64748B; border-radius:8px; cursor:pointer; white-space:nowrap; }
-.bk-modal-tabs button.is-active { background:#EFF6FF; color:#2563EB; }
-.bk-ai-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-@media (max-width:640px){ .bk-ai-grid { grid-template-columns:1fr; } }
-.bk-ai-output { min-height:48px; padding:10px 12px; background:#F8FAFC; border:1px dashed #CBD5E1; border-radius:8px; font-size:12px; color:#334155; line-height:1.6; white-space:pre-wrap; }
-.bk-modal-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
-.bk-kw-box { display:flex; flex-wrap:wrap; gap:6px; padding:8px; border:1px solid #CBD5E1; border-radius:10px; background:#fff; min-height:44px; align-items:center; }
-.bk-hint { font-size:12px; color:#64748B; margin:0 0 10px; line-height:1.6; }
-.bk-row-flex { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-.bk-search-list { list-style:none; margin:10px 0 0; padding:0; max-height:220px; overflow:auto; }
-.bk-search-list li { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px; border:1px solid #F1F5F9; border-radius:8px; margin-bottom:6px; background:#fff; }
-.bk-search-list li strong { display:block; font-size:12px; }
-.bk-search-list li small { display:block; font-size:10px; color:#94A3B8; direction:ltr; }
-.bk-link-stats { display:flex; gap:16px; font-size:12px; font-weight:700; margin-bottom:10px; padding:8px 12px; background:#F8FAFC; border-radius:8px; }
-.bk-report { font-size:12px; padding:8px 12px; border-radius:8px; margin-top:10px; }
-.bk-report.is-success { background:#F0FDF4; color:#166534; }
-.bk-report.is-warn { background:#FFFBEB; color:#92400E; }
-.bk-report.is-error { background:#FEF2F2; color:#991B1B; }
-.bk-selected-target { margin-top:12px; padding:12px; background:#EFF6FF; border-radius:10px; font-size:12px; }
-.bk-seo-modal-bg { align-items:flex-start !important; padding-top:40px !important; background:rgba(248,250,252,.8) !important; backdrop-filter:blur(6px); }
-.bk-seo-modal { margin-top:0; animation:bkModalIn .28s ease; }
-@keyframes bkModalIn { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
-.bk-spin-txt { display:inline-block; animation:bkspin .7s linear infinite; }
-@keyframes bkspin { to { transform:rotate(360deg); } }
-.bk-wizard-spin { width:14px; height:14px; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; animation:bkspin .7s linear infinite; display:inline-block; }
-
 </style>
 
 <script>
@@ -694,7 +483,8 @@ function bankaiSeoEngineData() {
         fixedList: [],
         fixedKeywordInput: '',
         savingFixed: false,
-
+        
+        // Articles state
         articles: [],
         page: 1,
         perPage: 10,
@@ -706,25 +496,6 @@ function bankaiSeoEngineData() {
         loading: false,
 
         edit: { open: false, row: null, seo_title: '', description: '', focus_keyword: '', keywords_str: '', saving: false },
-        editKeywordList: [],
-        kwDraft: '',
-        aiTab: 'title',
-        aiProvider: '',
-        aiLoading: false,
-        aiDraft: { title: '', description: '', keywords: '', rewrite: '' },
-
-        linkBusy: false,
-        linkAnchor: '',
-        postResults: [],
-        selectedInternalPost: null,
-        internalReport: { show: false, type: 'success', message: '' },
-        externalReport: { show: false, type: 'success', message: '' },
-        extAnchor: '',
-        extUrl: '',
-        extNofollow: true,
-        linkStats: { internal: 0, external: 0 },
-        currentInternalLinks: [],
-        currentExternalLinks: [],
 
         initEngine: function () {
             this.parseFixedKeywords(<?php echo wp_json_encode($fixed_raw); ?>);
@@ -742,13 +513,11 @@ function bankaiSeoEngineData() {
         cfg: function () {
             return window.bankaiCoreData || window.bankaiEditorSeo || {};
         },
-        ajaxUrl: function () {
-            const c = this.cfg();
-            return c.ajaxUrl || (window.ajaxurl || '/wp-admin/admin-ajax.php');
-        },
         openArticlesPanel: function () {
             this.seoPanel = 'articles';
-            if (!this.articles.length) this.loadArticles();
+            if (!this.articles.length) {
+                this.loadArticles();
+            }
         },
         loadArticles: async function () {
             this.loading = true;
@@ -756,8 +525,10 @@ function bankaiSeoEngineData() {
                 const c = this.cfg();
                 const base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
                 const url = `${base}seo/articles?page=${this.page}&per_page=${this.perPage}&search=${encodeURIComponent(this.searchQ || '')}&orderby=${this.orderby}&order=${this.order}`;
+                
                 const r = await fetch(url, { credentials: 'same-origin', headers: { 'X-WP-Nonce': c.nonce || '' } });
                 const j = await r.json();
+                
                 if (j && j.success && j.data) {
                     this.articles = j.data.items || [];
                     this.total = j.data.total || 0;
@@ -774,12 +545,10 @@ function bankaiSeoEngineData() {
             if (kw && !this.fixedList.includes(kw)) {
                 this.fixedList.push(kw);
                 this.fixedKeywordInput = '';
-                this.saveFixedKeywords();
             }
         },
         removeFixedKeyword: function(index) {
             this.fixedList.splice(index, 1);
-            this.saveFixedKeywords();
         },
         saveFixedKeywords: async function () {
             this.savingFixed = true;
@@ -803,55 +572,24 @@ function bankaiSeoEngineData() {
             }
         },
         openEdit: function (row) {
-            const kws = (row.keywords || []).slice();
             this.edit = {
                 open: true,
                 row: row,
                 seo_title: row.seo_title || '',
                 description: row.description || '',
                 focus_keyword: row.focus_keyword || '',
-                keywords_str: kws.join('، '),
+                keywords_str: (row.keywords || []).join('، '),
                 saving: false
             };
-            this.editKeywordList = kws;
-            this.kwDraft = '';
-            this.aiTab = 'title';
-            this.aiDraft = { title: '', description: '', keywords: '', rewrite: '' };
-            this.postResults = [];
-            this.selectedInternalPost = null;
-            this.internalReport = { show: false, type: 'success', message: '' };
-            this.externalReport = { show: false, type: 'success', message: '' };
-            this.linkAnchor = row.focus_keyword || '';
-            this.extAnchor = '';
-            this.extUrl = '';
-            this.linkStats = { internal: row.internal_links || 0, external: row.external_links || 0 };
-            this.currentInternalLinks = [];
-            this.currentExternalLinks = [];
-            this.loadArticleLinks();
-        },
-        closeEdit: function () {
-            this.edit.open = false;
-        },
-        syncKeywordsStr: function () {
-            this.edit.keywords_str = (this.editKeywordList || []).join('، ');
-        },
-        addEditKeyword: function () {
-            const kw = (this.kwDraft || '').trim();
-            if (!kw) return;
-            if (!this.editKeywordList.includes(kw)) {
-                this.editKeywordList.push(kw);
-                this.syncKeywordsStr();
-            }
-            this.kwDraft = '';
         },
         saveEdit: async function () {
             if (!this.edit.row) return;
             this.edit.saving = true;
-            this.syncKeywordsStr();
             try {
                 const c = this.cfg();
                 const base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
-                const keywords = (this.editKeywordList || []).slice();
+                const keywords = this.edit.keywords_str.split(/[,،]+/).map(s => s.trim()).filter(Boolean);
+                
                 const r = await fetch(base + 'seo/articles/' + this.edit.row.id, {
                     method: 'POST',
                     credentials: 'same-origin',
@@ -874,163 +612,6 @@ function bankaiSeoEngineData() {
                 this.edit.saving = false;
             }
         },
-        generateAI: async function (task) {
-            if (!this.edit.row) return;
-            this.aiLoading = true;
-            try {
-                const c = this.cfg();
-                const body = new FormData();
-                body.append('action', 'bankai_ai_seo_task');
-                body.append('nonce', c.nonce || '');
-                body.append('task', task === 'title' ? 'meta_title_desc' : task);
-                body.append('post_id', this.edit.row.id);
-                body.append('title', this.edit.row.title || '');
-                body.append('seo_title', this.edit.seo_title || '');
-                body.append('description', this.edit.description || '');
-                body.append('focus_keyword', this.edit.focus_keyword || '');
-                body.append('provider', this.aiProvider || '');
-                const r = await fetch(this.ajaxUrl(), { method: 'POST', credentials: 'same-origin', body });
-                const j = await r.json();
-                const data = (j && j.data) ? j.data : (j || {});
-                if (task === 'title') {
-                    this.aiDraft.title = data.title || data.seo_title || data.meta_title || '';
-                    this.aiDraft.description = data.description || data.meta_description || '';
-                } else if (task === 'keywords') {
-                    const list = data.keywords || data.list || [];
-                    this.aiDraft.keywords = Array.isArray(list) ? list.join('، ') : String(list || data.text || '');
-                    if (data.focus_keyword) this.edit.focus_keyword = data.focus_keyword;
-                } else if (task === 'rewrite') {
-                    this.aiDraft.rewrite = data.content || data.text || data.rewrite || '';
-                }
-            } catch (e) {
-                console.error('AI error', e);
-                this.aiDraft.keywords = this.aiDraft.keywords || 'خطا در ارتباط با AI';
-            } finally {
-                this.aiLoading = false;
-            }
-        },
-        applyAiDraft: function (task) {
-            if (task === 'title') {
-                if (this.aiDraft.title) this.edit.seo_title = this.aiDraft.title;
-                if (this.aiDraft.description) this.edit.description = this.aiDraft.description;
-            } else if (task === 'keywords' && this.aiDraft.keywords) {
-                const parts = this.aiDraft.keywords.split(/[,،]+/).map(s => s.trim()).filter(Boolean);
-                parts.forEach(p => {
-                    if (!this.editKeywordList.includes(p)) this.editKeywordList.push(p);
-                });
-                this.syncKeywordsStr();
-            }
-        },
-        loadArticleLinks: async function () {
-            if (!this.edit.row) return;
-            try {
-                const c = this.cfg();
-                const base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
-                const r = await fetch(base + 'seo/links/' + this.edit.row.id, {
-                    credentials: 'same-origin',
-                    headers: { 'X-WP-Nonce': c.nonce || '' }
-                });
-                const j = await r.json();
-                if (j && j.success && j.data) {
-                    this.currentInternalLinks = j.data.internal || [];
-                    this.currentExternalLinks = j.data.external || [];
-                    this.linkStats = {
-                        internal: (j.data.counts && j.data.counts.internal) || this.currentInternalLinks.length,
-                        external: (j.data.counts && j.data.counts.external) || this.currentExternalLinks.length
-                    };
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        },
-        searchRelatedPosts: async function () {
-            this.linkBusy = true;
-            this.postResults = [];
-            try {
-                const c = this.cfg();
-                const q = this.linkAnchor || this.edit.focus_keyword || this.edit.row?.title || '';
-                const base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
-                const r = await fetch(base + 'seo/search-posts?q=' + encodeURIComponent(q), {
-                    credentials: 'same-origin',
-                    headers: { 'X-WP-Nonce': c.nonce || '' }
-                });
-                const j = await r.json();
-                const list = (j && j.success && j.data) ? j.data : [];
-                this.postResults = list.filter(p => !this.edit.row || p.id !== this.edit.row.id);
-                this.internalReport = {
-                    show: true,
-                    type: this.postResults.length ? 'success' : 'warn',
-                    message: this.postResults.length
-                        ? this.postResults.length + ' مقاله مرتبط پیدا شد.'
-                        : 'مقاله‌ای یافت نشد.'
-                };
-            } catch (e) {
-                this.internalReport = { show: true, type: 'error', message: e.message || 'خطا در جستجو' };
-            } finally {
-                this.linkBusy = false;
-            }
-        },
-        smartSuggestLinks: async function () {
-            if (!this.edit.row) return;
-            this.linkBusy = true;
-            this.postResults = [];
-            try {
-                const c = this.cfg();
-                const base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
-                const keywords = [];
-                if (this.edit.focus_keyword) keywords.push(this.edit.focus_keyword);
-                (this.editKeywordList || []).forEach(k => keywords.push(k));
-                const r = await fetch(base + 'seo/suggest-links', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': c.nonce || '' },
-                    body: JSON.stringify({ post_id: this.edit.row.id, keywords })
-                });
-                const j = await r.json();
-                const list = (j && j.success && j.data && j.data.suggestions) ? j.data.suggestions : [];
-                this.postResults = list;
-                this.internalReport = {
-                    show: true,
-                    type: list.length ? 'success' : 'warn',
-                    message: list.length
-                        ? list.length + ' پیشنهاد لینک داخلی بر اساس کلمات کلیدی.'
-                        : 'پیشنهادی یافت نشد.'
-                };
-            } catch (e) {
-                this.internalReport = { show: true, type: 'error', message: e.message || 'خطا' };
-            } finally {
-                this.linkBusy = false;
-            }
-        },
-        selectInternalTarget: function (p) {
-            this.selectedInternalPost = p;
-            this.linkAnchor = p.suggested_anchor || p.focus_keyword || p.title || this.linkAnchor;
-        },
-        applyInternalNote: function () {
-            if (!this.selectedInternalPost) return;
-            this.internalReport = {
-                show: true,
-                type: 'success',
-                message: 'پیشنهاد لینک به «' + this.selectedInternalPost.title + '» با انکر «' + (this.linkAnchor || '') + '» ثبت شد. برای درج در محتوا از ویرایشگر مطلب استفاده کنید.'
-            };
-        },
-        applyExternalNote: function () {
-            const phrase = (this.extAnchor || '').trim();
-            const url = (this.extUrl || '').trim();
-            if (!phrase || phrase.length < 2) {
-                this.externalReport = { show: true, type: 'warn', message: 'انکر تکست را وارد کنید.' };
-                return;
-            }
-            if (!url || !/^https?:\/\//i.test(url)) {
-                this.externalReport = { show: true, type: 'warn', message: 'یک URL معتبر با http(s) وارد کنید.' };
-                return;
-            }
-            this.externalReport = {
-                show: true,
-                type: 'success',
-                message: 'لینک خارجی «' + phrase + '» → ' + url + (this.extNofollow ? ' (nofollow)' : '') + ' ثبت شد. برای درج در محتوا از ویرایشگر مطلب استفاده کنید.'
-            };
-        },
         runSeoAuditInline: function() {
             this.seoAudit.running = true;
             setTimeout(() => {
@@ -1045,32 +626,6 @@ function bankaiSeoEngineData() {
                     ]
                 };
             }, 600);
-        },
-        runAutoWizard: function () {
-            if (this.wizardBusy) return;
-            this.wizardBusy = true;
-            this.seoPanel = 'tools';
-            const ids = ['auto_meta', 'sitemap_pro', 'canonical_guard', 'open_graph_ai'];
-            ids.forEach(id => { this.seoState[id] = true; });
-            setTimeout(() => {
-                this.wizardBusy = false;
-                this.runSeoAuditInline();
-            }, 900);
-        },
-        toggleSeoModule: function () {},
-        openSeoDrawer: function () {},
-        saveIntegration: async function (payload) {
-            const key = payload._key || 'google';
-            this.integSaving[key] = true;
-            try {
-                const c = this.cfg();
-                // best-effort; core may handle via existing endpoints
-                if (typeof window.bankaiAdmin !== 'undefined' && window.bankaiAdmin.saveIntegration) {
-                    await window.bankaiAdmin.saveIntegration(payload);
-                }
-            } finally {
-                this.integSaving[key] = false;
-            }
         }
     };
 }

@@ -39,7 +39,7 @@ defined('BANKAI_CORE_VIEWS_DIR') || define(
     BANKAI_CORE_DIR . 'views/'
 );
 
-defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.0.0');
+defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.0.18');
 
 /*
 |--------------------------------------------------------------------------

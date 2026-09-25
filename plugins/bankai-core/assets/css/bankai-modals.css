@@ -218,3 +218,24 @@
     margin-inline-end: 4px;
 }
 @keyframes bankai-spin { to { transform: rotate(360deg); } }
+
+
+/* Fluent modal polish */
+.bankai-modal,
+.bankai-modal-panel,
+#bankai-admin-app .bankai-modal {
+  border-radius: 20px !important;
+  border: none !important;
+  box-shadow: 0 16px 48px rgba(0,0,0,.16) !important;
+  overflow: hidden;
+}
+.bankai-modal-header,
+#bankai-admin-app .bankai-modal-header {
+  background: linear-gradient(135deg, #f0edff 0%, #e8f3fc 100%) !important;
+  border-bottom: 1px solid rgba(0,0,0,.06) !important;
+}
+.bankai-modal-backdrop,
+.bankai-modal-overlay {
+  backdrop-filter: blur(6px);
+  background: rgba(0,0,0,.35) !important;
+}

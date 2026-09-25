@@ -18,7 +18,7 @@ body.toplevel_page_bankai-core #wpwrap,
 body.toplevel_page_bankai-core #wpcontent,
 body.toplevel_page_bankai-core #wpbody,
 body.toplevel_page_bankai-core #wpbody-content {
-  background-color: #f6f8fa !important;
+  background-color: #f3f3f3 !important;
   color: #1f2328 !important;
   min-height: 100vh !important;
 }
@@ -63,29 +63,38 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
 #bankai-admin-app,
 .bankai-app-wrapper,
 .bankai-admin-wrap {
-  --bankai-bg-main: #f6f8fa;
+  /* Fluent Windows 11 + Material 3 tokens */
+  --bankai-bg-main: #f3f3f3;
   --bankai-bg-surface: #ffffff;
-  --bankai-card-bg: rgba(255, 255, 255, 0.96);
-  --bankai-card-border: #d0d7de;
-  --bankai-border-subtle: #eaeff2;
+  --bankai-card-bg: #ffffff;
+  --bankai-card-border: rgba(0, 0, 0, 0.06);
+  --bankai-border-subtle: rgba(0, 0, 0, 0.05);
   
-  --bankai-text-main: #1f2328;
-  --bankai-text-muted: #656d76;
-  --bankai-text-subtle: #8c959f;
+  --bankai-text-main: #1a1a1a;
+  --bankai-text-muted: #605e5c;
+  --bankai-text-subtle: #8a8886;
   
-  --bankai-accent: #0969da;
-  --bankai-accent-hover: #085cc4;
-  --bankai-accent-subtle: rgba(9, 105, 218, 0.08);
+  --bankai-accent: #0078d4;
+  --bankai-accent-hover: #106ebe;
+  --bankai-accent-subtle: rgba(0, 120, 212, 0.1);
   
-  --bankai-success: #1f883d;
-  --bankai-success-subtle: rgba(31, 136, 61, 0.08);
-  --bankai-danger: #cf222e;
-  --bankai-purple: #8250df;
-  --bankai-purple-subtle: rgba(130, 80, 223, 0.08);
+  --bankai-success: #0f7b3a;
+  --bankai-success-subtle: rgba(15, 123, 58, 0.1);
+  --bankai-danger: #c42b1c;
+  --bankai-purple: #6b4eff;
+  --bankai-purple-subtle: rgba(107, 78, 255, 0.1);
+
+  --bankai-radius-sm: 8px;
+  --bankai-radius-md: 12px;
+  --bankai-radius-lg: 16px;
+  --bankai-radius-xl: 20px;
+  --bankai-shadow-1: 0 1px 2px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.06);
+  --bankai-shadow-2: 0 4px 16px rgba(0,0,0,.08);
+  --bankai-shadow-3: 0 12px 32px rgba(0,0,0,.12);
 
   background-color: var(--bankai-bg-main) !important;
   color: var(--bankai-text-main) !important;
-  font-family: "Inter", "Vazirmatn", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: "Segoe UI", "Vazirmatn", "Inter", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
   min-height: calc(100vh - 32px);
   margin: 0;
   padding: 0;
@@ -143,7 +152,7 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
 .bankai-app-wrapper .bankai-ambient-grid {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(31, 35, 40, 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px);
   background-size: 26px 26px;
   mask-image: radial-gradient(ellipse 95% 75% at 50% 30%, #000 35%, transparent 95%);
   -webkit-mask-image: radial-gradient(ellipse 95% 75% at 50% 30%, #000 35%, transparent 95%);
@@ -1774,4 +1783,310 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
   font-weight: 600;
   color: #1F2328;
   box-shadow: 0 4px 14px rgba(31, 35, 40, 0.08);
+}
+
+/* ==========================================================================
+   Fluent Windows 11 + Material You (Android) — Admin Shell Theme
+   ========================================================================== */
+
+body.toplevel_page_bankai-core #wpcontent,
+body.toplevel_page_bankai-core #wpbody-content {
+  background-color: #f3f3f3 !important;
+}
+
+/* Header — acrylic / mica */
+#bankai-admin-header {
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(20px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.7) inset !important;
+}
+
+#bankai-admin-app .bankai-logo-mark,
+.bankai-app-wrapper .bankai-logo-mark {
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.2);
+}
+
+/* Sidebar — elevated surface */
+#bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-inline-end: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 1px 0 12px rgba(0, 0, 0, 0.03) !important;
+}
+
+#bankai-admin-app .bankai-nav-item,
+.bankai-app-wrapper .bankai-nav-item {
+  border-radius: 999px !important;
+  margin: 2px 10px !important;
+  padding: 10px 14px !important;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease !important;
+  border: none !important;
+}
+
+#bankai-admin-app .bankai-nav-item:hover,
+.bankai-app-wrapper .bankai-nav-item:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: var(--bankai-text-main) !important;
+}
+
+#bankai-admin-app .bankai-nav-item.is-active,
+#bankai-admin-app .bankai-nav-item.active,
+.bankai-app-wrapper .bankai-nav-item.is-active,
+.bankai-app-wrapper .bankai-nav-item.active {
+  background: var(--bankai-accent-subtle) !important;
+  color: var(--bankai-accent) !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+
+#bankai-admin-app .bankai-nav-item .material-symbols-outlined,
+.bankai-app-wrapper .bankai-nav-item .material-symbols-outlined {
+  font-size: 20px !important;
+}
+
+/* Main content cards */
+#bankai-admin-app .bankai-card,
+#bankai-admin-app .bk-card,
+.bankai-app-wrapper .bankai-card,
+.bankai-app-wrapper .bk-card {
+  background: var(--bankai-card-bg) !important;
+  border: 1px solid var(--bankai-card-border) !important;
+  border-radius: var(--bankai-radius-lg) !important;
+  box-shadow: var(--bankai-shadow-1) !important;
+  transition: box-shadow .2s ease, transform .15s ease !important;
+}
+
+#bankai-admin-app .bankai-card:hover,
+.bankai-app-wrapper .bankai-card:hover {
+  box-shadow: var(--bankai-shadow-2) !important;
+}
+
+/* Buttons — pill Fluent style */
+#bankai-admin-app .bankai-btn,
+#bankai-admin-app .bk-btn-primary,
+#bankai-admin-app button.button-primary,
+.bankai-app-wrapper .bankai-btn {
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em;
+  transition: filter .15s ease, transform .1s ease, box-shadow .15s ease !important;
+}
+
+#bankai-admin-app .bankai-btn-primary,
+#bankai-admin-app .bk-btn-primary {
+  background: var(--bankai-accent) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 1px 3px rgba(0, 120, 212, 0.3) !important;
+}
+
+#bankai-admin-app .bankai-btn-primary:hover,
+#bankai-admin-app .bk-btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+#bankai-admin-app .bankai-btn-ghost,
+#bankai-admin-app .bk-btn-ghost {
+  border-radius: 999px !important;
+  border: 1px solid rgba(0,0,0,.08) !important;
+  background: #fff !important;
+}
+
+/* Inputs */
+#bankai-admin-app input[type="text"],
+#bankai-admin-app input[type="search"],
+#bankai-admin-app input[type="url"],
+#bankai-admin-app input[type="number"],
+#bankai-admin-app input[type="email"],
+#bankai-admin-app input[type="password"],
+#bankai-admin-app textarea,
+#bankai-admin-app select {
+  border-radius: var(--bankai-radius-sm) !important;
+  border: 1px solid rgba(0,0,0,.08) !important;
+  background: #fafafa !important;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease !important;
+}
+
+#bankai-admin-app input:focus,
+#bankai-admin-app textarea:focus,
+#bankai-admin-app select:focus {
+  background: #fff !important;
+  border-color: var(--bankai-accent) !important;
+  box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.18) !important;
+  outline: none !important;
+}
+
+/* Tabs inside pages */
+#bankai-admin-app .bankai-tabs,
+#bankai-admin-app .bk-tabs {
+  gap: 6px !important;
+}
+
+#bankai-admin-app .bankai-tabs button,
+#bankai-admin-app .bk-tabs button,
+#bankai-admin-app .bankai-subtab {
+  border-radius: 999px !important;
+  padding: 8px 14px !important;
+  border: none !important;
+  background: transparent !important;
+  font-weight: 600 !important;
+}
+
+#bankai-admin-app .bankai-tabs button.is-active,
+#bankai-admin-app .bk-tabs button.is-active,
+#bankai-admin-app .bankai-subtab.is-active {
+  background: var(--bankai-accent-subtle) !important;
+  color: var(--bankai-accent) !important;
+}
+
+/* Tables */
+#bankai-admin-app table,
+#bankai-admin-app .bankai-table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: var(--bankai-radius-md) !important;
+  overflow: hidden;
+  border: 1px solid var(--bankai-card-border) !important;
+}
+
+#bankai-admin-app table th {
+  background: #fafafa !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid var(--bankai-border-subtle) !important;
+}
+
+#bankai-admin-app table td {
+  border-bottom: 1px solid var(--bankai-border-subtle) !important;
+}
+
+#bankai-admin-app table tr:last-child td {
+  border-bottom: none !important;
+}
+
+#bankai-admin-app table tr:hover td {
+  background: rgba(0, 120, 212, 0.03) !important;
+}
+
+/* Badges / chips */
+#bankai-admin-app .bankai-badge,
+#bankai-admin-app .bk-badge,
+#bankai-admin-app .bk-chip {
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+}
+
+/* Progress / score rings already exist — soft glow */
+#bankai-admin-app .bankai-score-ring,
+#bankai-admin-app .bk-score-ring {
+  filter: drop-shadow(0 2px 6px rgba(0,120,212,.12));
+}
+
+/* Toast */
+#bankai-admin-app .bankai-toast,
+.bankai-app-wrapper .bankai-toast {
+  border-radius: 999px !important;
+  box-shadow: var(--bankai-shadow-2) !important;
+  border: none !important;
+  backdrop-filter: blur(12px);
+}
+
+/* Section headers */
+#bankai-admin-app .bankai-section-title,
+#bankai-admin-app h2.bankai-h2,
+#bankai-admin-app .bankai-page-title {
+  letter-spacing: -0.02em;
+  font-weight: 700 !important;
+}
+
+/* Module switch cards on overview */
+#bankai-admin-app .bankai-module-card,
+#bankai-admin-app .bankai-feature-card {
+  border-radius: var(--bankai-radius-lg) !important;
+  border: 1px solid var(--bankai-card-border) !important;
+  box-shadow: var(--bankai-shadow-1) !important;
+  transition: transform .15s ease, box-shadow .2s ease !important;
+}
+
+#bankai-admin-app .bankai-module-card:hover,
+#bankai-admin-app .bankai-feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--bankai-shadow-2) !important;
+}
+
+/* AI Studio provider cards */
+#bankai-admin-app .bankai-provider-card,
+#bankai-admin-app .ai-provider-card {
+  border-radius: var(--bankai-radius-lg) !important;
+  border: 1px solid var(--bankai-card-border) !important;
+  box-shadow: var(--bankai-shadow-1) !important;
+}
+
+#bankai-admin-app .bankai-provider-card.is-active,
+#bankai-admin-app .ai-provider-card.is-active {
+  border-color: var(--bankai-purple) !important;
+  box-shadow: 0 0 0 2px rgba(107, 78, 255, 0.18) !important;
+}
+
+/* Switches Material style */
+#bankai-admin-app input[type="checkbox"] {
+  accent-color: var(--bankai-accent);
+}
+
+/* Content area padding */
+#bankai-admin-app #bankai-main-content,
+#bankai-admin-app .bankai-main-content {
+  padding: 20px 22px 40px !important;
+}
+
+/* Loading overlay mica */
+#bankai-admin-app .bankai-tab-loading-overlay {
+  background-color: rgba(243, 243, 243, 0.65) !important;
+  backdrop-filter: blur(6px) !important;
+}
+
+#bankai-admin-app .bankai-loading-pill {
+  border-radius: 999px !important;
+  border: none !important;
+  box-shadow: var(--bankai-shadow-2) !important;
+}
+
+/* Scrollbars thin Fluent */
+#bankai-admin-app ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+#bankai-admin-app ::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,.15);
+  border-radius: 8px;
+}
+#bankai-admin-app ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,.25);
+}
+
+
+/* Material Symbols — ensure icon font applies everywhere in admin shell */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined' !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  user-select: none;
 }

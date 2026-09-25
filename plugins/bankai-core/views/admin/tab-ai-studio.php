@@ -8,7 +8,8 @@ defined('ABSPATH') || exit;
 
 /** @var array $state */
 $studio      = Bankai_AI_Studio::instance();
-$catalog     = Bankai_AI_Studio::providers_catalog();
+$catalog     = Bankai_AI_Studio::all_providers_catalog();
+$custom_raw  = Bankai_AI_Studio::get_custom_providers_raw();
 $keys        = $studio->get_keys();
 $models      = $studio->get_selected_models();
 $default_p   = $studio->get_default_provider();
@@ -294,6 +295,56 @@ input:checked + .bankai-slider:before { transform: translateX(16px); }
     font-size: 12.5px; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,.3);
     display: flex; align-items: center; gap: 10px;
 }
+
+/* Fluent Win11 / Material override for AI Studio */
+#tab-ai-studio {
+  --ai-ink: #1a1a1a;
+  --ai-muted: #605e5c;
+  --ai-line: rgba(0,0,0,.06);
+  --ai-radius: 16px;
+}
+#tab-ai-studio .ai-hero {
+  background:
+    radial-gradient(900px 320px at 0% 0%, rgba(107,78,255,.12), transparent 55%),
+    radial-gradient(800px 280px at 100% 0%, rgba(0,120,212,.12), transparent 50%),
+    #ffffff !important;
+  color: #1a1a1a !important;
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.04) !important;
+  border-radius: 20px !important;
+}
+#tab-ai-studio .ai-hero::after { opacity: .35; }
+#tab-ai-studio .ai-kicker { color: #605e5c !important; }
+#tab-ai-studio .ai-hero h1,
+#tab-ai-studio .ai-hero h2,
+#tab-ai-studio .ai-hero p,
+#tab-ai-studio .ai-hero strong { color: #1a1a1a !important; }
+#tab-ai-studio .ai-provider-card,
+#tab-ai-studio .bankai-card {
+  border-radius: 16px !important;
+  border: 1px solid rgba(0,0,0,.06) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05) !important;
+  background: #fff !important;
+}
+#tab-ai-studio input[type=text],
+#tab-ai-studio input[type=password],
+#tab-ai-studio select,
+#tab-ai-studio textarea {
+  border-radius: 10px !important;
+  border: 1px solid rgba(0,0,0,.08) !important;
+  background: #fafafa !important;
+}
+#tab-ai-studio button {
+  border-radius: 999px !important;
+}
+#tab-ai-studio .ai-badge-free {
+  background: #dff6e8 !important;
+  color: #0f7b3a !important;
+  border-radius: 999px !important;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+}
 </style>
 
 <div id="tab-ai-studio"
@@ -348,171 +399,453 @@ input:checked + .bankai-slider:before { transform: translateX(16px); }
         </div>
     </div>
 
-    <div class="ai-section-title">
-        <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2"/></svg>
-            پیکربندی موتورهای هوش مصنوعی
-        </h3>
-        <span class="hint">کلیدها با الگوریتم امنیتی بانک داده در دیتابیس انکریپت می‌شوند</span>
+    <!-- Sub-tabs (like SEO engine) -->
+    <div class="ai-studio-subtabs">
+        <button type="button" class="ai-studio-subtab" :class="{ 'is-active': aiStudioTab === 'engines' }" @click="aiStudioTab = 'engines'">
+            <span class="material-symbols-outlined">dns</span>
+            موتورهای AI
+        </button>
+        <button type="button" class="ai-studio-subtab" :class="{ 'is-active': aiStudioTab === 'custom' }" @click="aiStudioTab = 'custom'">
+            <span class="material-symbols-outlined">smart_toy</span>
+            ایجنت و مدل سفارشی
+        </button>
+        <button type="button" class="ai-studio-subtab" :class="{ 'is-active': aiStudioTab === 'sandbox' }" @click="aiStudioTab = 'sandbox'">
+            <span class="material-symbols-outlined">science</span>
+            سندباکس تست
+        </button>
+        <button type="button" class="ai-studio-subtab" :class="{ 'is-active': aiStudioTab === 'modules' }" @click="aiStudioTab = 'modules'">
+            <span class="material-symbols-outlined">tune</span>
+            ماژول‌ها
+        </button>
     </div>
 
-    <!-- Provider Cards Grid -->
-    <div class="ai-provider-grid">
-        <?php foreach ($catalog as $id => $meta):
-            $st = $status_map[$id] ?? [];
-            $sel_model = $models[$id] ?? ($meta['default'] ?? '');
-            $accent = $meta['accent'] ?? '#4F46E5';
-            $glow = $meta['glow'] ?? 'rgba(79,70,229,.2)';
-            $status_key = $st['status'] ?? 'missing_key';
-            $label = $st['label'] ?? __('بدون کلید API', 'bankai-core');
-            $masked = $st['masked_key'] ?? '';
-        ?>
-        <div class="ai-provider-card"
-             x-data="bankaiProviderCard({
-                id: '<?php echo esc_js($id); ?>',
-                key: '<?php echo esc_js($masked); ?>',
-                model: '<?php echo esc_js($sel_model); ?>',
-                status: '<?php echo esc_js($status_key); ?>',
-                label: '<?php echo esc_js($label); ?>'
-             })">
-            <div class="ai-card-ribbon" style="background: linear-gradient(90deg, <?php echo esc_attr($accent); ?>, <?php echo esc_attr($accent); ?>88);"></div>
-            <div class="ai-provider-body">
-                <div class="ai-provider-top">
-                    <div>
-                        <div class="ai-provider-name" style="display:flex;align-items:center;gap:8px;">
-                            <span style="width:10px;height:10px;border-radius:50%;background:<?php echo esc_attr($accent); ?>;box-shadow:0 0 0 4px <?php echo esc_attr($glow); ?>;"></span>
-                            <?php echo esc_html($meta['name'] ?? $meta['label'] ?? $id); ?>
-                            <?php if (!empty($meta['free_tier'])): ?>
-                                <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;">رایگان</span>
+    <!-- ========== TAB: ENGINES ========== -->
+    <div x-show="aiStudioTab === 'engines'" x-cloak>
+        <div class="ai-section-title">
+            <h3>
+                <span class="material-symbols-outlined" style="color:#0078d4;font-size:18px;vertical-align:middle">hub</span>
+                پیکربندی موتورهای هوش مصنوعی
+            </h3>
+            <span class="hint">کلیدها در دیتابیس رمزنگاری می‌شوند</span>
+        </div>
+        <div class="ai-provider-grid">
+            <?php foreach ($catalog as $id => $meta):
+                $st = $status_map[$id] ?? [];
+                $sel_model = $models[$id] ?? ($meta['default'] ?? '');
+                $accent = $meta['accent'] ?? '#4F46E5';
+                $glow = $meta['glow'] ?? 'rgba(79,70,229,.2)';
+                $status_key = $st['status'] ?? 'missing_key';
+                $label = $st['label'] ?? __('بدون کلید API', 'bankai-core');
+                $masked = $st['masked_key'] ?? '';
+                $is_custom = !empty($meta['custom']);
+            ?>
+            <div class="ai-provider-card"
+                 x-data="bankaiProviderCard({
+                    id: '<?php echo esc_js($id); ?>',
+                    key: '<?php echo esc_js($masked); ?>',
+                    model: '<?php echo esc_js($sel_model); ?>',
+                    status: '<?php echo esc_js($status_key); ?>',
+                    label: '<?php echo esc_js($label); ?>'
+                 })">
+                <div class="ai-card-ribbon" style="background: linear-gradient(90deg, <?php echo esc_attr($accent); ?>, <?php echo esc_attr($accent); ?>88);"></div>
+                <div class="ai-provider-body">
+                    <div class="ai-provider-top">
+                        <div>
+                            <div class="ai-provider-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <span style="width:10px;height:10px;border-radius:50%;background:<?php echo esc_attr($accent); ?>;box-shadow:0 0 0 4px <?php echo esc_attr($glow); ?>;"></span>
+                                <?php echo esc_html($meta['name'] ?? $meta['label'] ?? $id); ?>
+                                <?php if (!empty($meta['free_tier'])): ?>
+                                    <span class="ai-badge-free">رایگان</span>
+                                <?php endif; ?>
+                                <?php if ($is_custom): ?>
+                                    <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:#F3E8FF;color:#6b4eff;">سفارشی</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="ai-provider-tagline"><?php echo esc_html($meta['tagline'] ?? ''); ?></div>
+                            <?php if (!empty($meta['docs'])): ?>
+                            <a class="ai-docs" href="<?php echo esc_url($meta['docs']); ?>" target="_blank" rel="noopener">دریافت API Key ↗</a>
                             <?php endif; ?>
                         </div>
-                        <div class="ai-provider-tagline"><?php echo esc_html($meta['tagline'] ?? ''); ?></div>
-                        <a class="ai-docs" href="<?php echo esc_url($meta['docs'] ?? '#'); ?>" target="_blank" rel="noopener">دریافت API Key ↗</a>
+                        <span class="ai-status-pill" :class="status" x-text="label"><?php echo esc_html($label); ?></span>
                     </div>
-                    <span class="ai-status-pill" :class="status" x-text="label"><?php echo esc_html($label); ?></span>
+                    <div class="ai-field">
+                        <label>مدل فعال</label>
+                        <select x-model="model">
+                            <?php foreach (($meta['models'] ?? []) as $m):
+                                $m_label = $m;
+                                if ($m === 'openrouter/auto') $m_label = '⚡ خودکار (هوشمند)';
+                                elseif ($m === 'openrouter/free') $m_label = '⚡ خودکار رایگان ($0)';
+                            ?>
+                            <option value="<?php echo esc_attr($m); ?>" <?php selected($sel_model, $m); ?>><?php echo esc_html($m_label); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="ai-field">
+                        <label>API Key</label>
+                        <div style="display:flex;gap:6px;">
+                            <input :type="showKey ? 'text' : 'password'" x-model="key" @input="keyDirty = true"
+                                   @focus="if(!keyDirty && key.indexOf('•') !== -1){ key=''; keyDirty=true; }"
+                                   placeholder="کلید API جدید..." autocomplete="off" style="flex:1;">
+                            <button type="button" @click="showKey = !showKey" class="ai-mini-btn"><span x-text="showKey ? 'مخفی' : 'نمایش'"></span></button>
+                            <button type="button" @click="clearKey()" class="ai-mini-btn is-danger">حذف</button>
+                        </div>
+                    </div>
+                    <div class="ai-card-actions">
+                        <button type="button" class="save" :disabled="saving"
+                                style="background: linear-gradient(135deg, <?php echo esc_attr($accent); ?>, <?php echo esc_attr($accent); ?>cc);"
+                                @click="save()"><span x-text="saving ? 'در حال ذخیره...' : 'ذخیره تنظیمات'"></span></button>
+                        <button type="button" class="test" :disabled="testing" @click="test()"><span x-text="testing ? 'تست...' : 'تست اتصال'"></span></button>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <!-- ========== TAB: CUSTOM AGENTS ========== -->
+    <div x-show="aiStudioTab === 'custom'" x-cloak class="bk-custom-tab">
+        <div class="bk-custom-layout">
+            <!-- Left: forms -->
+            <div class="bk-custom-main">
+                <div class="bk-custom-card">
+                    <div class="bk-custom-card-head">
+                        <div>
+                            <h3><span class="material-symbols-outlined">add_circle</span> ساخت ایجنت جدید</h3>
+                            <p>ثبت کامل یک موتور AI با Endpoint و مدل‌های اختصاصی</p>
+                        </div>
+                        <button type="button" class="ai-btn-ghost" @click="showCustomGuide = !showCustomGuide">
+                            <span class="material-symbols-outlined">menu_book</span>
+                            راهنما
+                        </button>
+                    </div>
+
+                    <div class="bk-custom-guide" x-show="showCustomGuide" x-cloak>
+                        <strong>راهنمای اتصال ایجنت سفارشی</strong>
+                        <ol>
+                            <li><b>OpenAI Compatible</b> — برای OpenRouter، Groq، DeepSeek، vLLM، LM Studio، LocalAI و هر API شبیه OpenAI</li>
+                            <li><b>Endpoint</b> باید آدرس کامل Chat Completions باشد، مثال:
+                                <code dir="ltr">https://api.example.com/v1/chat/completions</code>
+                            </li>
+                            <li><b>بدنه ارسالی خودکار:</b>
+<pre dir="ltr">{
+  "model": "MODEL_ID",
+  "messages": [
+    {"role":"system","content":"..."},
+    {"role":"user","content":"..."}
+  ],
+  "temperature": 0.4,
+  "max_tokens": 1200
+}</pre>
+                            </li>
+                            <li><b>Gemini / Anthropic</b> اگر Endpoint خالی باشد از API رسمی همان سرویس استفاده می‌شود.</li>
+                            <li>پس از ذخیره، ایجنت در تب «موتورهای AI» و در سئو مقالات قابل انتخاب است.</li>
+                        </ol>
+                    </div>
+
+                    <div class="bk-custom-form-grid">
+                        <div class="ai-field">
+                            <label>نام نمایشی *</label>
+                            <input type="text" x-model="customForm.name" placeholder="مثلاً My Local LLM">
+                        </div>
+                        <div class="ai-field">
+                            <label>شناسه یکتا (انگلیسی)</label>
+                            <input type="text" x-model="customForm.id" placeholder="خالی = خودکار" dir="ltr">
+                        </div>
+                        <div class="ai-field">
+                            <label>نوع اتصال *</label>
+                            <select x-model="customForm.type">
+                                <option value="openai_compat">OpenAI Compatible</option>
+                                <option value="gemini">Google Gemini API</option>
+                                <option value="anthropic">Anthropic Messages</option>
+                            </select>
+                        </div>
+                        <div class="ai-field">
+                            <label>Endpoint (URL)</label>
+                            <input type="url" x-model="customForm.endpoint" placeholder="https://api.../v1/chat/completions" dir="ltr">
+                        </div>
+                        <div class="ai-field bk-span-2">
+                            <label>مدل‌ها (هر خط یا با کاما)</label>
+                            <textarea x-model="customForm.models" rows="3" placeholder="model-a&#10;model-b" dir="ltr"></textarea>
+                        </div>
+                        <div class="ai-field">
+                            <label>مدل پیش‌فرض</label>
+                            <input type="text" x-model="customForm.default_model" placeholder="اولین مدل" dir="ltr">
+                        </div>
+                        <div class="ai-field">
+                            <label>API Key</label>
+                            <input type="password" x-model="customForm.api_key" autocomplete="off" placeholder="اختیاری — بعداً هم می‌توانید">
+                        </div>
+                        <div class="ai-field">
+                            <label>هدر Auth</label>
+                            <input type="text" x-model="customForm.auth_header" dir="ltr">
+                        </div>
+                        <div class="ai-field">
+                            <label>پیشوند Auth</label>
+                            <input type="text" x-model="customForm.auth_prefix" dir="ltr">
+                        </div>
+                        <div class="ai-field bk-span-2">
+                            <label>هدرهای اضافه (JSON)</label>
+                            <input type="text" x-model="customForm.extra_headers" placeholder='{"HTTP-Referer":"https://example.com"}' dir="ltr">
+                        </div>
+                        <div class="ai-field bk-span-2">
+                            <label>توضیح کوتاه</label>
+                            <input type="text" x-model="customForm.tagline" placeholder="ایجنت سفارشی من">
+                        </div>
+                    </div>
+                    <div class="bk-custom-actions">
+                        <button type="button" class="ai-btn-primary" @click="saveCustomAgent()" :disabled="busy">
+                            <span class="material-symbols-outlined">save</span>
+                            ذخیره ایجنت سفارشی
+                        </button>
+                    </div>
                 </div>
 
-                <div class="ai-field">
-                    <label>مدل فعال</label>
-                    <select x-model="model">
-                        <?php foreach (($meta['models'] ?? []) as $m):
-                            $m_label = $m;
-                            if ($m === 'openrouter/auto') {
-                                $m_label = '⚡ خودکار (هوشمند)';
-                            } elseif ($m === 'openrouter/free') {
-                                $m_label = '⚡ خودکار رایگان ($0)';
-                            }
-                        ?>
-                            <option value="<?php echo esc_attr($m); ?>" <?php selected($sel_model, $m); ?>><?php echo esc_html($m_label); ?></option>
+                <div class="bk-custom-card">
+                    <div class="bk-custom-card-head">
+                        <div>
+                            <h3><span class="material-symbols-outlined">playlist_add</span> افزودن مدل به پروایدر موجود</h3>
+                            <p>فقط یک model id جدید روی موتور فعلی اضافه می‌کند</p>
+                        </div>
+                    </div>
+                    <div class="bk-custom-form-grid bk-custom-form-3">
+                        <div class="ai-field">
+                            <label>پروایدر</label>
+                            <select x-model="extraModel.provider">
+                                <?php foreach ($catalog as $cid => $cmeta): ?>
+                                <option value="<?php echo esc_attr($cid); ?>"><?php echo esc_html($cmeta['name'] ?? $cid); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="ai-field">
+                            <label>شناسه مدل جدید</label>
+                            <input type="text" x-model="extraModel.model" placeholder="model-id" dir="ltr">
+                        </div>
+                        <div class="ai-field" style="display:flex;align-items:flex-end;">
+                            <button type="button" class="ai-btn-primary" style="width:100%;" @click="addExtraModel()" :disabled="busy">افزودن مدل</button>
+                        </div>
+                        <label class="bk-span-3" style="font-size:12px;display:flex;align-items:center;gap:8px;font-weight:600;">
+                            <input type="checkbox" x-model="extraModel.setActive"> به‌عنوان مدل فعال همین پروایدر تنظیم شود
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: saved list -->
+            <div class="bk-custom-side">
+                <div class="bk-custom-card bk-custom-list-card">
+                    <div class="bk-custom-card-head">
+                        <div>
+                            <h3><span class="material-symbols-outlined">inventory_2</span> ایجنت‌های ذخیره‌شده</h3>
+                            <p><?php echo count($custom_raw); ?> مورد</p>
+                        </div>
+                    </div>
+                    <?php if (empty($custom_raw)): ?>
+                    <div class="bk-custom-empty">
+                        <span class="material-symbols-outlined">smart_toy</span>
+                        <p>هنوز ایجنت سفارشی ندارید.<br>از فرم سمت چپ یکی بسازید.</p>
+                    </div>
+                    <?php else: ?>
+                    <div class="bk-custom-list">
+                        <?php foreach ($custom_raw as $cid => $cmeta): ?>
+                        <div class="bk-custom-list-item">
+                            <div class="bk-custom-list-info">
+                                <strong><?php echo esc_html($cmeta['name'] ?? $cid); ?></strong>
+                                <span class="bk-custom-id" dir="ltr"><?php echo esc_html($cid); ?> · <?php echo esc_html($cmeta['type'] ?? ''); ?></span>
+                                <span class="bk-custom-ep" dir="ltr"><?php echo esc_html($cmeta['endpoint'] ?? '—'); ?></span>
+                                <?php if (!empty($cmeta['models']) && is_array($cmeta['models'])): ?>
+                                <div class="bk-custom-models">
+                                    <?php foreach ($cmeta['models'] as $cm): ?>
+                                    <span class="bk-model-chip" dir="ltr"><?php echo esc_html($cm); ?></span>
+                                    <?php endforeach; ?>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                            <button type="button" class="ai-btn-ghost is-danger" @click="deleteCustomAgent('<?php echo esc_js($cid); ?>')">
+                                <span class="material-symbols-outlined">delete</span>
+                            </button>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== TAB: SANDBOX ========== -->
+    <div x-show="aiStudioTab === 'sandbox'" x-cloak>
+        <div class="ai-sandbox" id="ai-sandbox-anchor">
+            <div class="ai-sandbox-head">
+                <div>
+                    <h3>سندباکس تست و تولید هوشمند</h3>
+                    <div style="font-size:11px;color:#64748B;font-weight:600;margin-top:2px;">ارسال پرامپت تست مستقیم به مدل انتخاب‌شده</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <label style="font-size:11px;font-weight:800;color:#64748B;">موتور پیش‌فرض:</label>
+                    <select x-model="defaultProvider" @change="updateDefaultProvider()"
+                            style="padding:8px 12px;border-radius:10px;border:1px solid #E2E8F0;font-size:12px;font-weight:700;background:#fff;">
+                        <?php foreach ($catalog as $id => $meta): ?>
+                            <option value="<?php echo esc_attr($id); ?>" <?php selected($default_p, $id); ?>><?php echo esc_html($meta['name'] ?? $meta['label'] ?? $id); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
+            </div>
+            <div class="ai-sandbox-body">
+                <div class="ai-prompt-row">
+                    <input type="text" x-model="sandboxPrompt" @keydown.enter="generateResult()"
+                           placeholder="یک دستور سئو بنویسید…">
+                    <button type="button" @click="generateResult()" :disabled="generating">
+                        <span x-show="!generating">تولید هوشمند با AI</span>
+                        <span x-show="generating" x-cloak>در حال پردازش...</span>
+                    </button>
+                </div>
+                <div class="ai-loader" x-show="generating" x-cloak>
+                    <span class="ai-loader-bar"></span>
+                    در حال فراخوانی مدل…
+                </div>
+                <div class="ai-result" x-show="sandboxResult && !generating" x-cloak>
+                    <button type="button" class="ai-copy-btn" @click="copyToClipboard(sandboxResult)">کپی متن</button>
+                    <div x-text="sandboxResult"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                <div class="ai-field">
-                    <label>API Key</label>
-                    <div style="display:flex;gap:6px;">
-                        <input :type="showKey ? 'text' : 'password'"
-                               x-model="key"
-                               @input="keyDirty = true"
-                               @focus="if(!keyDirty && key.indexOf('•') !== -1){ key=''; keyDirty=true; }"
-                               placeholder="کلید API جدید..."
-                               autocomplete="off"
-                               style="flex:1;">
-                        <button type="button" @click="showKey = !showKey"
-                                style="appearance:none;border:1px solid #E2E8F0;background:#fff;border-radius:10px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700;color:#64748B;">
-                            <span x-text="showKey ? 'مخفی' : 'نمایش'"></span>
-                        </button>
-                        <button type="button" title="حذف کلید"
-                                @click="clearKey()"
-                                style="appearance:none;border:1px solid #FECACA;background:#FEF2F2;border-radius:10px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:800;color:#B91C1C;">
-                            حذف
-                        </button>
+    <!-- ========== TAB: MODULES ========== -->
+    <div x-show="aiStudioTab === 'modules'" x-cloak>
+        <div class="ai-section-title">
+            <h3>ماژول‌ها و قابلیت‌های خودکار</h3>
+            <span class="hint">تنظیمات بلافاصله اعمال می‌شوند</span>
+        </div>
+        <div class="ai-mod-grid">
+            <?php foreach ($ai_mods as $mod):
+                $mod_id   = esc_attr($mod['id']);
+                $title_fa = esc_html($mod['title_fa']);
+                $desc_fa  = esc_html($mod['description_fa']);
+                $badge    = esc_html($mod['badge']);
+                $is_active = !empty($saved_mods[$mod_id]);
+            ?>
+            <div class="ai-mod-card" x-data="{ active: <?php echo $is_active ? 'true' : 'false'; ?> }">
+                <div class="top">
+                    <div>
+                        <div class="title"><?php echo $title_fa; ?></div>
+                        <span class="badge"><?php echo $badge; ?></span>
                     </div>
+                    <label class="bankai-switch">
+                        <input type="checkbox" x-model="active" @change="toggleModule('<?php echo $mod_id; ?>', active)">
+                        <span class="bankai-slider"></span>
+                    </label>
                 </div>
-
-                <div class="ai-card-actions">
-                    <button type="button" class="save" :disabled="saving"
-                            style="background: linear-gradient(135deg, <?php echo esc_attr($accent); ?>, <?php echo esc_attr($accent); ?>cc);"
-                            @click="save()">
-                        <span x-text="saving ? 'در حال ذخیره...' : 'ذخیره تنظیمات'"></span>
-                    </button>
-                    <button type="button" class="test" :disabled="testing" @click="test()">
-                        <span x-text="testing ? 'تست...' : 'تست اتصال'"></span>
-                    </button>
-                </div>
+                <p><?php echo $desc_fa; ?></p>
             </div>
-        </div>
-        <?php endforeach; ?>
-    </div>
-
-    <!-- Live Sandbox -->
-    <div class="ai-sandbox" id="ai-sandbox-anchor">
-        <div class="ai-sandbox-head">
-            <div>
-                <h3>سندباکس تست و تولید هوشمند</h3>
-                <div style="font-size:11px;color:#64748B;font-weight:600;margin-top:2px;">ارسال پرامپت تست مستقیم به مدل انتخاب‌شده</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-                <label style="font-size:11px;font-weight:800;color:#64748B;">موتور پیش‌فرض:</label>
-                <select x-model="defaultProvider" @change="updateDefaultProvider()"
-                        style="padding:8px 12px;border-radius:10px;border:1px solid #E2E8F0;font-size:12px;font-weight:700;background:#fff;">
-                    <?php foreach ($catalog as $id => $meta): ?>
-                        <option value="<?php echo esc_attr($id); ?>" <?php selected($default_p, $id); ?>><?php echo esc_html($meta['name'] ?? $meta['label'] ?? $id); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </div>
-        <div class="ai-sandbox-body">
-            <div class="ai-prompt-row">
-                <input type="text" x-model="sandboxPrompt" @keydown.enter="generateResult()"
-                       placeholder="یک دستور یا دستورالعمل سئو بنویسید (مثلاً: ۳ عنوان سئو جذاب برای موضوع خرید هوش مصنوعی)...">
-                <button type="button" @click="generateResult()" :disabled="generating">
-                    <span x-show="!generating">تولید هوشمند با AI</span>
-                    <span x-show="generating" x-cloak>در حال پردازش...</span>
-                </button>
-            </div>
-            <div class="ai-loader" x-show="generating" x-cloak>
-                <span class="ai-loader-bar"></span>
-                در حال فراخوانی مدل و تولید پاسخ زنده...
-            </div>
-            <div class="ai-result" x-show="sandboxResult && !generating" x-cloak>
-                <button type="button" class="ai-copy-btn" @click="copyToClipboard(sandboxResult)">کپی متن</button>
-                <div x-text="sandboxResult"></div>
-            </div>
+            <?php endforeach; ?>
         </div>
     </div>
-
-    <!-- AI Modules Automation Toggles -->
-    <div class="ai-section-title">
-        <h3>ماژول‌ها و قابلیت‌های خودکار</h3>
-        <span class="hint">تنظیمات بلافاصله اعمال می‌شوند</span>
-    </div>
-
-    <div class="ai-mod-grid">
-        <?php foreach ($ai_mods as $mod):
-            $mod_id   = esc_attr($mod['id']);
-            $title_fa = esc_html($mod['title_fa']);
-            $desc_fa  = esc_html($mod['description_fa']);
-            $badge    = esc_html($mod['badge']);
-            $is_active = !empty($saved_mods[$mod_id]);
-        ?>
-        <div class="ai-mod-card" x-data="{ active: <?php echo $is_active ? 'true' : 'false'; ?> }">
-            <div class="top">
-                <div>
-                    <div class="title"><?php echo $title_fa; ?></div>
-                    <span class="badge"><?php echo $badge; ?></span>
-                </div>
-                <label class="bankai-switch">
-                    <input type="checkbox" x-model="active" @change="toggleModule('<?php echo $mod_id; ?>', active)">
-                    <span class="bankai-slider"></span>
-                </label>
-            </div>
-            <p><?php echo $desc_fa; ?></p>
-        </div>
-        <?php endforeach; ?>
     </div>
 </div>
 
+<style>
+
+/* AI Studio sub-tabs */
+#tab-ai-studio .ai-studio-subtabs {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 6px; margin: 0 0 18px;
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 999px; width: fit-content; max-width: 100%;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+#tab-ai-studio .ai-studio-subtab {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 16px; border: none; border-radius: 999px;
+  background: transparent; font-size: 12px; font-weight: 700;
+  color: #605e5c; cursor: pointer; transition: all .15s ease;
+}
+#tab-ai-studio .ai-studio-subtab .material-symbols-outlined { font-size: 18px; }
+#tab-ai-studio .ai-studio-subtab:hover { background: rgba(0,0,0,.04); color: #1a1a1a; }
+#tab-ai-studio .ai-studio-subtab.is-active {
+  background: rgba(0,120,212,.1); color: #0078d4;
+}
+#tab-ai-studio .ai-mini-btn {
+  appearance: none; border: 1px solid #E2E8F0; background: #fff;
+  border-radius: 10px; padding: 0 10px; cursor: pointer;
+  font-size: 11px; font-weight: 700; color: #64748B;
+}
+#tab-ai-studio .ai-mini-btn.is-danger {
+  border-color: #FECACA; background: #FEF2F2; color: #B91C1C;
+}
+#tab-ai-studio .bk-custom-layout {
+  display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; align-items: start;
+}
+#tab-ai-studio .bk-custom-card {
+  background: #fff; border: 1px solid rgba(0,0,0,.06);
+  border-radius: 16px; padding: 18px 18px 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05); margin-bottom: 14px;
+}
+#tab-ai-studio .bk-custom-card-head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
+}
+#tab-ai-studio .bk-custom-card-head h3 {
+  margin: 0; font-size: 14px; font-weight: 800;
+  display: flex; align-items: center; gap: 6px; color: #1a1a1a;
+}
+#tab-ai-studio .bk-custom-card-head h3 .material-symbols-outlined { color: #6b4eff; font-size: 20px; }
+#tab-ai-studio .bk-custom-card-head p { margin: 4px 0 0; font-size: 12px; color: #8a8886; }
+#tab-ai-studio .bk-custom-form-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+#tab-ai-studio .bk-custom-form-3 { grid-template-columns: 1fr 1fr auto; }
+#tab-ai-studio .bk-span-2 { grid-column: span 2; }
+#tab-ai-studio .bk-span-3 { grid-column: 1 / -1; }
+#tab-ai-studio .bk-custom-form-grid textarea {
+  width: 100%; border-radius: 10px; border: 1px solid rgba(0,0,0,.08);
+  background: #fafafa; padding: 10px 12px; font-size: 12px; min-height: 72px;
+}
+#tab-ai-studio .bk-custom-actions { margin-top: 14px; }
+#tab-ai-studio .bk-custom-guide {
+  background: #f8f9fa; border: 1px solid rgba(0,0,0,.06);
+  border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+  font-size: 12px; line-height: 1.7; color: #605e5c;
+}
+#tab-ai-studio .bk-custom-guide strong { color: #1a1a1a; display: block; margin-bottom: 8px; }
+#tab-ai-studio .bk-custom-guide ol { margin: 0; padding-inline-start: 18px; }
+#tab-ai-studio .bk-custom-guide pre {
+  direction: ltr; text-align: left; background: #fff; border-radius: 8px;
+  padding: 10px; overflow: auto; margin: 8px 0 0; font-size: 11px;
+}
+#tab-ai-studio .bk-custom-empty {
+  text-align: center; padding: 28px 12px; color: #8a8886;
+}
+#tab-ai-studio .bk-custom-empty .material-symbols-outlined {
+  font-size: 40px; color: #c8c6c4; display: block; margin-bottom: 8px;
+}
+#tab-ai-studio .bk-custom-list { display: flex; flex-direction: column; gap: 10px; }
+#tab-ai-studio .bk-custom-list-item {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 10px; padding: 12px; background: #fafafa; border-radius: 12px;
+  border: 1px solid rgba(0,0,0,.04);
+}
+#tab-ai-studio .bk-custom-list-info { min-width: 0; flex: 1; }
+#tab-ai-studio .bk-custom-list-info strong { display: block; font-size: 13px; }
+#tab-ai-studio .bk-custom-id { display: block; font-size: 11px; color: #8a8886; margin-top: 2px; }
+#tab-ai-studio .bk-custom-ep {
+  display: block; font-size: 11px; color: #605e5c; margin-top: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+#tab-ai-studio .bk-custom-models { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+#tab-ai-studio .bk-model-chip {
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: #f0edff; color: #6b4eff;
+}
+#tab-ai-studio .ai-btn-ghost.is-danger { color: #c42b1c; }
+@media (max-width: 960px) {
+  #tab-ai-studio .bk-custom-layout { grid-template-columns: 1fr; }
+  #tab-ai-studio .bk-custom-form-grid,
+  #tab-ai-studio .bk-custom-form-3 { grid-template-columns: 1fr; }
+  #tab-ai-studio .bk-span-2, #tab-ai-studio .bk-span-3 { grid-column: auto; }
+}
+</style>
 <script>
 (function () {
     if (!window.bankaiAdminNonce) {
@@ -535,6 +868,23 @@ document.addEventListener('alpine:init', () => {
         sandboxResult: '',
         generating: false,
         toast: { visible: false, message: '' },
+        aiStudioTab: 'engines',
+        showCustomGuide: false,
+        customMode: 'new',
+        customForm: {
+            id: '',
+            name: '',
+            type: 'openai_compat',
+            endpoint: '',
+            models: '',
+            default_model: '',
+            auth_header: 'Authorization',
+            auth_prefix: 'Bearer ',
+            extra_headers: '',
+            api_key: '',
+            tagline: 'ایجنت سفارشی'
+        },
+        extraModel: { provider: 'openrouter', model: '', setActive: true },
 
         showToast(msg) {
             this.toast.message = msg;
@@ -613,6 +963,88 @@ document.addEventListener('alpine:init', () => {
             navigator.clipboard.writeText(text).then(() => {
                 this.showToast('متن در حافظه کپی شد.');
             });
+        },
+
+        saveCustomAgent() {
+            const f = this.customForm;
+            if (!f.name || !f.name.trim()) {
+                this.showToast('نام ایجنت الزامی است');
+                return;
+            }
+            this.busy = true;
+            const data = new FormData();
+            data.append('action', 'bankai_save_custom_provider');
+            data.append('nonce', window.bankaiAdminNonce || '<?php echo wp_create_nonce('bankai_admin_nonce'); ?>');
+            data.append('id', f.id || '');
+            data.append('name', f.name);
+            data.append('type', f.type);
+            data.append('endpoint', f.endpoint || '');
+            data.append('models', f.models || '');
+            data.append('default_model', f.default_model || '');
+            data.append('auth_header', f.auth_header || 'Authorization');
+            data.append('auth_prefix', f.auth_prefix || 'Bearer ');
+            data.append('extra_headers', f.extra_headers || '');
+            data.append('api_key', f.api_key || '');
+            data.append('tagline', f.tagline || '');
+            fetch(ajaxurl, { method: 'POST', body: data })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        this.showToast(res.data?.message || 'ذخیره شد');
+                        setTimeout(() => window.location.reload(), 700);
+                    } else {
+                        this.showToast('خطا: ' + (res.data?.message || 'ذخیره نشد'));
+                    }
+                })
+                .catch(() => this.showToast('خطا در ارتباط'))
+                .finally(() => { this.busy = false; });
+        },
+
+        deleteCustomAgent(id) {
+            if (!id || !confirm('این ایجنت حذف شود؟')) return;
+            this.busy = true;
+            const data = new FormData();
+            data.append('action', 'bankai_delete_custom_provider');
+            data.append('nonce', window.bankaiAdminNonce || '<?php echo wp_create_nonce('bankai_admin_nonce'); ?>');
+            data.append('id', id);
+            fetch(ajaxurl, { method: 'POST', body: data })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        this.showToast('حذف شد');
+                        setTimeout(() => window.location.reload(), 600);
+                    } else {
+                        this.showToast(res.data?.message || 'خطا');
+                    }
+                })
+                .finally(() => { this.busy = false; });
+        },
+
+        addExtraModel() {
+            const p = this.extraModel.provider;
+            const m = (this.extraModel.model || '').trim();
+            if (!p || !m) {
+                this.showToast('پروایدر و مدل را وارد کنید');
+                return;
+            }
+            this.busy = true;
+            const data = new FormData();
+            data.append('action', 'bankai_add_provider_model');
+            data.append('nonce', window.bankaiAdminNonce || '<?php echo wp_create_nonce('bankai_admin_nonce'); ?>');
+            data.append('provider', p);
+            data.append('model', m);
+            if (this.extraModel.setActive) data.append('set_active', '1');
+            fetch(ajaxurl, { method: 'POST', body: data })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        this.showToast(res.data?.message || 'مدل اضافه شد');
+                        setTimeout(() => window.location.reload(), 700);
+                    } else {
+                        this.showToast(res.data?.message || 'خطا');
+                    }
+                })
+                .finally(() => { this.busy = false; });
         },
 
         toggleModule(modId, state) {

@@ -221,6 +221,20 @@
             mediaState: mediaState,
             watermarkStudio: watermarkStudio,
             mediaDrawer: { show: false, id: '', title: '' },
+            mediaSubTab: 'watermark',
+            compressOpts: { format: 'webp', quality: 82, maxWidth: 1600 },
+            mediaLib: {
+                items: [],
+                page: 1,
+                hasMore: false,
+                loading: false,
+                busy: false,
+                progress: 0,
+                progressText: '',
+                doneCount: 0,
+                totalCount: 0,
+                savedBytes: 0
+            },
             moduleActive: moduleActive,
 
             seoDrawer: { show: false, id: '', title: '' },
@@ -845,8 +859,154 @@
 
             /* ---- Media & Watermark ---- */
             initMediaStudio: function () {
-                // no-op; state already hydrated
+                if (!this.mediaSubTab) this.mediaSubTab = 'watermark';
+                if (!this.compressOpts) {
+                    this.compressOpts = { format: 'webp', quality: 82, maxWidth: 1600 };
+                }
+                if (!this.mediaLib) {
+                    this.mediaLib = {
+                        items: [], page: 1, hasMore: false, loading: false, busy: false,
+                        progress: 0, progressText: '', doneCount: 0, totalCount: 0, savedBytes: 0
+                    };
+                }
             },
+
+            formatMediaBytes: function (n) {
+                n = Number(n) || 0;
+                if (n < 1024) return n + ' B';
+                if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+                return (n / 1048576).toFixed(2) + ' MB';
+            },
+
+            loadMediaLibrary: function (reset) {
+                var self = this;
+                if (self.mediaLib.loading) return;
+                if (reset) {
+                    self.mediaLib.page = 1;
+                    self.mediaLib.items = [];
+                    self.mediaLib.hasMore = false;
+                }
+                self.mediaLib.loading = true;
+                ajax('bankai_list_media_library', {
+                    page: self.mediaLib.page,
+                    per_page: 18
+                }).then(function (res) {
+                    var d = (res && res.data) || res || {};
+                    var items = (d.items || []).map(function (it) {
+                        return Object.assign({ working: false, optimized: false, bytes_after: 0 }, it);
+                    });
+                    if (reset) self.mediaLib.items = items;
+                    else self.mediaLib.items = self.mediaLib.items.concat(items);
+                    self.mediaLib.hasMore = !!d.has_more;
+                    if (d.has_more) self.mediaLib.page = (self.mediaLib.page || 1) + 1;
+                }).catch(function () {
+                    self.showToast(self.t('error'), 'error');
+                }).finally(function () {
+                    self.mediaLib.loading = false;
+                });
+            },
+
+            onMediaGridScroll: function (e) {
+                var el = e.target;
+                if (!el || this.mediaLib.loading || !this.mediaLib.hasMore) return;
+                if (el.scrollTop + el.clientHeight >= el.scrollHeight - 80) {
+                    this.loadMediaLibrary(false);
+                }
+            },
+
+            compressOneMedia: function (img) {
+                var self = this;
+                if (!img || img.working || self.mediaLib.busy) return;
+                img.working = true;
+                ajax('bankai_compress_attachment', {
+                    id: img.id,
+                    format: self.compressOpts.format,
+                    quality: self.compressOpts.quality,
+                    max_width: self.compressOpts.maxWidth || 0
+                }).then(function (res) {
+                    var d = (res && res.data) || res || {};
+                    if (res.success) {
+                        img.bytes_after = d.bytes_after || img.bytes;
+                        img.format = d.format || img.format;
+                        img.thumb = d.thumb || img.thumb;
+                        img.url = d.url || img.url;
+                        img.optimized = true;
+                        self.showToast(d.message || self.t('saved'), 'success');
+                    } else {
+                        self.showToast((d && d.message) || self.t('error'), 'error');
+                    }
+                }).catch(function () {
+                    self.showToast(self.t('error'), 'error');
+                }).finally(function () {
+                    img.working = false;
+                });
+            },
+
+            compressAllMedia: async function () {
+                var self = this;
+                if (self.mediaLib.busy) return;
+                // Ensure we have items
+                if (!self.mediaLib.items.length) {
+                    await new Promise(function (resolve) {
+                        self.loadMediaLibrary(true);
+                        var t = setInterval(function () {
+                            if (!self.mediaLib.loading) { clearInterval(t); resolve(); }
+                        }, 120);
+                    });
+                }
+                // Load remaining pages first (up to reasonable cap)
+                var guard = 0;
+                while (self.mediaLib.hasMore && guard < 20) {
+                    guard++;
+                    await new Promise(function (resolve) {
+                        self.loadMediaLibrary(false);
+                        var t = setInterval(function () {
+                            if (!self.mediaLib.loading) { clearInterval(t); resolve(); }
+                        }, 120);
+                    });
+                }
+                var list = self.mediaLib.items.slice();
+                if (!list.length) {
+                    self.showToast(self.isRtl ? 'تصویری نیست' : 'No images', 'info');
+                    return;
+                }
+                self.mediaLib.busy = true;
+                self.mediaLib.progress = 0;
+                self.mediaLib.doneCount = 0;
+                self.mediaLib.totalCount = list.length;
+                self.mediaLib.savedBytes = 0;
+                self.mediaLib.progressText = self.isRtl ? 'شروع فشرده‌سازی گروهی…' : 'Starting bulk compress…';
+
+                for (var i = 0; i < list.length; i++) {
+                    var img = list[i];
+                    img.working = true;
+                    self.mediaLib.progressText = (self.isRtl ? 'در حال فشرده‌سازی: ' : 'Compressing: ') + (img.title || img.id);
+                    try {
+                        var res = await ajax('bankai_compress_attachment', {
+                            id: img.id,
+                            format: self.compressOpts.format,
+                            quality: self.compressOpts.quality,
+                            max_width: self.compressOpts.maxWidth || 0
+                        });
+                        var d = (res && res.data) || res || {};
+                        if (res.success) {
+                            img.bytes_after = d.bytes_after || img.bytes;
+                            img.format = d.format || img.format;
+                            img.thumb = d.thumb || img.thumb;
+                            img.url = d.url || img.url;
+                            img.optimized = true;
+                            self.mediaLib.savedBytes += (d.saved || Math.max(0, (img.bytes || 0) - (d.bytes_after || 0)));
+                        }
+                    } catch (e) {}
+                    img.working = false;
+                    self.mediaLib.doneCount = i + 1;
+                    self.mediaLib.progress = Math.round(((i + 1) / list.length) * 100);
+                }
+                self.mediaLib.busy = false;
+                self.mediaLib.progressText = self.isRtl ? 'فشرده‌سازی گروهی تمام شد' : 'Bulk compress finished';
+                self.showToast(self.mediaLib.progressText, 'success');
+            },
+
 
             getWatermarkPositionStyle: function () {
                 var map = {

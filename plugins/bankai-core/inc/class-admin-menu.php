@@ -123,10 +123,18 @@ class Bankai_Admin_Menu {
             null
         );
 
+        // Material Symbols Outlined — required for admin icons (sidebar, media, AI, SEO)
+        wp_enqueue_style(
+            'bankai-material-symbols',
+            'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-50..200&display=swap',
+            [],
+            null
+        );
+
         wp_enqueue_style(
             'bankai-admin-css',
             bankai_asset_url('css/bankai-admin.css'),
-            ['bankai-admin-fonts'],
+            ['bankai-admin-fonts', 'bankai-material-symbols'],
             BANKAI_CORE_VERSION
         );
 
