@@ -188,12 +188,23 @@ class Bankai_Admin_Menu {
             );
         }
 
-        // Scripts in footer
+        // Scripts in footer; Alpine deferred after admin app is ready
         $js_ver = static function (string $rel) {
             $path = BANKAI_CORE_DIR . 'assets/js/' . $rel;
             $base = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0';
             return is_file($path) ? $base . '.' . (string) filemtime($path) : $base;
         };
+
+        wp_enqueue_script(
+            'bankai-htmx-js',
+            bankai_asset_url('js/htmx.min.js'),
+            [],
+            $js_ver('htmx.min.js'),
+            true
+        );
+        if (function_exists('wp_script_add_data')) {
+            wp_script_add_data('bankai-htmx-js', 'strategy', 'defer');
+        }
 
         wp_enqueue_media();
 
@@ -226,22 +237,20 @@ class Bankai_Admin_Menu {
         }
 
 
-        // Enqueue V2 Design System CSS
-        $v2_css = BANKAI_CORE_DIR . 'assets/css/bankai-v2-design-system.css';
-        if (is_file($v2_css)) {
-            wp_enqueue_style(
-                'bankai-v2-design-system',
-                bankai_asset_url('css/bankai-v2-design-system.css'),
-                ['bankai-admin-css'],
-                BANKAI_CORE_VERSION . '.' . (string) filemtime($v2_css)
-            );
-        }
-
         wp_enqueue_script(
             'bankai-admin-js',
             bankai_asset_url('js/bankai-admin.js'),
-            ['jquery'],
+            ['jquery', 'bankai-htmx-js'],
             $js_ver('bankai-admin.js'),
+            true
+        );
+
+        // Alpine must load after bankai-admin.js (registers Alpine.data)
+        wp_enqueue_script(
+            'bankai-alpine-js',
+            bankai_asset_url('js/alpine.min.js'),
+            ['bankai-admin-js'],
+            $js_ver('alpine.min.js'),
             true
         );
         // Do NOT defer Alpine — it auto-starts and must see prior registrations

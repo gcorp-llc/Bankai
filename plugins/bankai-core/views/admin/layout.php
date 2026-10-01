@@ -18,27 +18,28 @@ $bankai_data = [
 ];
 
 $bankai_state = [
-    'seoModules'        => $state['seoModules'] ?? [],
-    'speedModules'      => $state['speedModules'] ?? [],
-    'speedStats'        => $state['speedStats'] ?? [],
-    'speedSettings'     => $state['speedSettings'] ?? [],
-    'mediaModules'      => $state['mediaModules'] ?? [],
+    'seoModules'      => $state['seoModules'] ?? [],
+    'speedModules'    => $state['speedModules'] ?? [],
+    'speedStats'      => $state['speedStats'] ?? [],
+    'speedSettings'   => $state['speedSettings'] ?? [],
+    'mediaModules'    => $state['mediaModules'] ?? [],
     'watermarkSettings' => $state['watermarkSettings'] ?? [],
-    'coreModules'       => $state['coreModules'] ?? [],
-    'seoIntegrations'   => $state['seoIntegrations'] ?? [],
-    'homeUrl'           => $state['homeUrl'] ?? home_url('/'),
-    'stats'             => $state['stats'] ?? [],
-    'aiModules'         => $state['aiModules'] ?? [],
-    'providers'         => $state['providers'] ?? [],
+    'coreModules'     => $state['coreModules'] ?? [],
+    'seoIntegrations' => $state['seoIntegrations'] ?? [],
+    'homeUrl'         => $state['homeUrl'] ?? home_url('/'),
+    'stats'           => $state['stats'] ?? [],
+    'aiModules'       => $state['aiModules'] ?? [],
+    'providers'       => $state['providers'] ?? [],
     'aiDefaultProvider' => $state['aiDefaultProvider'] ?? 'gemini',
 ];
 ?>
 <div id="bankai-admin-app"
      class="bankai-admin-wrap"
+     x-data="bankaiAdmin()"
      :dir="isRtl ? 'rtl' : 'ltr'"
      :class="{ 'rtl': isRtl, 'ltr': !isRtl }">
 
-    <!-- Bridge PHP → Vanilla JS -->
+    <!-- Bridge PHP → Alpine -->
     <script>
         window.bankaiData = <?php echo wp_json_encode($bankai_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
         window.bankaiCoreData = window.bankaiData;
@@ -58,6 +59,15 @@ $bankai_state = [
             }
             return false;
         };
+
+        window.toggleLanguage = function () {
+            if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.toggleLanguage === 'function') {
+                return window.bankaiAdminInstance.toggleLanguage();
+            }
+            return false;
+        };
+
+        window.toggleRtl = window.toggleLanguage;
     </script>
 
     <!-- Ambient Background -->
@@ -66,9 +76,16 @@ $bankai_state = [
         <div class="bankai-ambient-orb bankai-orb-1"></div>
         <div class="bankai-ambient-orb bankai-orb-2"></div>
         <div class="bankai-ambient-orb bankai-orb-3"></div>
+        <div class="bankai-ambient-particles">
+            <span class="bankai-particle p-1"></span>
+            <span class="bankai-particle p-2"></span>
+            <span class="bankai-particle p-3"></span>
+            <span class="bankai-particle p-4"></span>
+            <span class="bankai-particle p-5"></span>
+        </div>
     </div>
 
-    <!-- Toast Host -->
+    <!-- Toast -->
     <?php
     $toast_file = defined('BANKAI_CORE_VIEWS_DIR') ? BANKAI_CORE_VIEWS_DIR . 'admin/toast.php' : '';
     if ($toast_file && is_file($toast_file)) {
@@ -79,10 +96,11 @@ $bankai_state = [
     <!-- Page Progress -->
     <div id="bankai-page-loader"
          class="bankai-page-progress-track"
-         style="display: none;"
+         x-show="pageLoading"
+         x-cloak
          role="progressbar"
          aria-live="polite">
-        <div class="bankai-page-progress-bar" style="width: 0%;"></div>
+        <div class="bankai-page-progress-bar" :style="{ width: pageProgress + '%' }"></div>
     </div>
 
     <!-- Header -->
@@ -96,8 +114,24 @@ $bankai_state = [
     <!-- Body Layout -->
     <div class="bankai-body-layout">
 
+        <!--
+            Mobile Overlay lives INSIDE .bankai-body-layout on purpose:
+            .bankai-body-layout establishes its own stacking context
+            (position:relative + z-index:1), so a fixed-position child of
+            #bankai-admin-app (the old location) could never out-rank a
+            sibling of .bankai-body-layout no matter how high its own
+            z-index was set — .bankai-sidebar (z-index:9999) was trapped
+            below .bankai-mobile-overlay (z-index:9998) and rendered
+            underneath the blur on mobile. Keeping the overlay as a true
+            sibling of the sidebar here lets the existing z-index values
+            (sidebar 9999 > overlay 9998 > main-content 1) resolve as
+            intended.
+        -->
         <div class="bankai-mobile-overlay"
-             style="display: none;"
+             x-show="mobileMenuOpen"
+             x-cloak
+             x-transition.opacity
+             @click="closeMobileMenu()"
              aria-hidden="true"></div>
 
         <!-- Sidebar -->
@@ -111,7 +145,9 @@ $bankai_state = [
         <!-- Main Content -->
         <main id="bankai-main-content" class="bankai-main-content">
             <div class="bankai-tab-loading-overlay"
-                 style="display: none;"
+                 x-show="pageLoading"
+                 x-cloak
+                 x-transition.opacity
                  role="status"
                  aria-live="polite">
                 <div class="bankai-loading-pill">
@@ -119,8 +155,8 @@ $bankai_state = [
                         <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".2" stroke-width="2.5"/>
                         <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
-                    <span>
-                        <?php esc_html_e('در حال بارگذاری بخش...', 'bankai-core'); ?>
+                    <span x-text="isRtl ? 'در حال بارگذاری بخش...' : 'Loading section...'">
+                        <?php esc_html_e('Loading section...', 'bankai-core'); ?>
                     </span>
                 </div>
             </div>
@@ -133,7 +169,6 @@ $bankai_state = [
                 'ai-studio',
                 'speed-cache',
                 'media-watermark',
-                'theme-kits',
                 'settings-license',
             ];
 
@@ -152,10 +187,6 @@ $bankai_state = [
 
     </div>
 
-    <!-- Toast Notification Host -->
-    <div class="bankai-toast-host" id="bankai-toast-host" style="display:none; position:fixed; bottom:28px; left:50%; transform:translateX(-50%); z-index:100000;">
-        <div class="bankai-toast" id="bankai-toast-message"
-             style="background:#fff; color:#1F2328; border:1px solid #D0D7DE; padding:12px 18px; border-radius:12px; font-size:13px; font-weight:700; box-shadow:0 12px 32px rgba(15,23,42,.12); min-width:220px; text-align:center;"></div>
-    </div>
+    <!-- Toast UI: views/admin/toast.php (included above) — no duplicate host -->
 
 </div>
