@@ -70,7 +70,8 @@
 
     var i18nFa = {
         navOverview: 'پیشخوان و سلامت',
-        navTheme: 'کیت‌های قالب',
+        coreModulesTitle: 'موتورهای اصلی بنکای',
+        navTheme: 'تقویم جلالی',
         navSeo: 'موتور سئو و اسکیما',
         navSpeed: 'کش و سرعت',
         navMedia: 'رسانه و واترمارک',
@@ -114,7 +115,8 @@
 
     var i18nEn = {
         navOverview: 'Dashboard & Health',
-        navTheme: 'Theme Kits',
+        coreModulesTitle: 'Bankai Core Engines',
+        navTheme: 'Jalali Calendar',
         navSeo: 'SEO & Schema Engine',
         navSpeed: 'Speed & Cache',
         navMedia: 'Media & Watermark',
@@ -201,7 +203,7 @@
 
         // Defaults if empty
         if (!Object.keys(moduleActive).length) {
-            ['seo_engine', 'speed_cache', 'media_watermark', 'ai_studio', 'llms_txt', 'theme_kits'].forEach(function (k) {
+            ['seo_engine', 'speed_cache', 'media_watermark', 'ai_studio', 'llms_txt', 'jalali_calendar'].forEach(function (k) {
                 moduleActive[k] = true;
             });
         }
@@ -292,7 +294,7 @@
                     'speed-cache': 'speed_cache',
                     'media-watermark': 'media_watermark',
                     'ai-studio': 'ai_studio',
-                    'theme-kits': 'theme_kits'
+                    'jalali-calendar': 'jalali_calendar'
                 };
                 var modKey = map[tab];
                 if (modKey && this.moduleActive[modKey] === false) {
@@ -320,18 +322,21 @@
                     'speed-cache': 'speed_cache',
                     'media-watermark': 'media_watermark',
                     'ai-studio': 'ai_studio',
-                    'theme-kits': 'theme_kits'
+                    'jalali-calendar': 'jalali_calendar'
                 };
                 var modKey = map[tab];
                 if (!modKey) return true;
                 return this.moduleActive[modKey] !== false;
             },
 
-            showToast: function (message, type) {
-                this.toast = { show: true, message: message || '', type: type || 'success' };
+            showToast: function (message, type, duration) {
+                var t = type || 'success';
+                if (t === 'warn') t = 'warning';
+                var ms = duration || (t === 'error' ? 4800 : 3600);
+                this.toast = { show: true, message: message || '', type: t, duration: ms };
                 var self = this;
                 clearTimeout(this._toastTimer);
-                this._toastTimer = setTimeout(function () { self.toast.show = false; }, 3200);
+                this._toastTimer = setTimeout(function () { self.toast.show = false; }, ms);
             },
 
             toggleLanguage: function () {
@@ -353,7 +358,7 @@
                             speed_cache: 'speed-cache',
                             media_watermark: 'media-watermark',
                             ai_studio: 'ai-studio',
-                            theme_kits: 'theme-kits'
+                            jalali_calendar: 'jalali-calendar'
                         };
                         if (!enabled && reverse[key] && self.activeTab === reverse[key]) {
                             self.setTab('overview');

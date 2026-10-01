@@ -32,6 +32,7 @@ final class Bankai_SEO_Engine
     public const META_X_DESC      = '_bankai_seo_x_description';
     public const META_X_IMAGE     = '_bankai_seo_x_image';
     public const META_SCHEMA      = '_bankai_seo_schema';
+    public const META_REDIRECT    = '_bankai_seo_redirect';
     public const META_SCORE       = '_bankai_seo_score';
     public const META_VIEWS       = '_bankai_post_views';
 
@@ -50,6 +51,7 @@ final class Bankai_SEO_Engine
         'x_title'        => self::META_X_TITLE,
         'x_description'  => self::META_X_DESC,
         'x_image'        => self::META_X_IMAGE,
+        'redirect'       => self::META_REDIRECT,
     ];
 
     public static function instance(): self
@@ -68,6 +70,8 @@ final class Bankai_SEO_Engine
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action('wp_head', [$this, 'render_meta'], 1);
         add_action('wp_head', [$this, 'render_schema'], 20);
+        add_action('template_redirect', [$this, 'handle_post_redirect'], 1);
+        add_action('wp_head', [$this, 'render_analytics'], 5);
         add_filter('pre_get_document_title', [$this, 'filter_document_title'], 20);
         add_action('wp_footer', [$this, 'print_view_tracker'], 99);
     }
@@ -104,6 +108,15 @@ final class Bankai_SEO_Engine
             'auth_callback'     => static fn(): bool => current_user_can('edit_posts'),
         ]);
 
+        register_post_meta('', self::META_REDIRECT, [
+            'type'              => 'string',
+            'single'            => true,
+            'show_in_rest'      => true,
+            'default'           => '',
+            'sanitize_callback' => 'esc_url_raw',
+            'auth_callback'     => static fn(): bool => current_user_can('edit_posts'),
+        ]);
+
         register_post_meta('', self::META_SCORE, [
             'type'              => 'integer',
             'single'            => true,
@@ -122,10 +135,19 @@ final class Bankai_SEO_Engine
     public function sanitize_robots(mixed $value): array
     {
         $value = is_array($value) ? $value : [];
-        return [
-            'index'  => !empty($value['index']),
-            'follow' => !empty($value['follow']),
+        $out = [
+            'index'             => !empty($value['index']),
+            'follow'            => !empty($value['follow']),
+            'noarchive'         => !empty($value['noarchive']),
+            'nosnippet'         => !empty($value['nosnippet']),
+            'noimageindex'      => !empty($value['noimageindex']),
+            'max_snippet'       => isset($value['max_snippet']) ? (int) $value['max_snippet'] : -1,
+            'max_image_preview' => in_array(($value['max_image_preview'] ?? 'large'), ['none', 'standard', 'large'], true)
+                ? (string) $value['max_image_preview']
+                : 'large',
+            'hide_date'         => !empty($value['hide_date']),
         ];
+        return $out;
     }
 
     public function register_rest_routes(): void
@@ -283,10 +305,23 @@ final class Bankai_SEO_Engine
         $analysis = $this->analyze($post_id);
         update_post_meta($post_id, self::META_SCORE, (int) ($analysis['score'] ?? 0));
 
+        $link_suggestions = [];
+        try {
+            $kw = (string) get_post_meta($post_id, self::META_KEYWORD, true);
+            if ($kw !== '' && method_exists($this, 'suggest_related_posts')) {
+                $link_suggestions = $this->suggest_related_posts($post_id, $kw, 5);
+            } elseif ($kw !== '') {
+                $link_suggestions = $this->quick_related_posts($post_id, $kw, 5);
+            }
+        } catch (\Throwable $e) {
+            $link_suggestions = [];
+        }
+
         return new WP_REST_Response([
-            'success'  => true,
-            'data'     => $this->get_seo_data($post_id),
-            'analysis' => $analysis,
+            'success'           => true,
+            'data'              => $this->get_seo_data($post_id),
+            'analysis'          => $analysis,
+            'link_suggestions'  => $link_suggestions,
         ]);
     }
 
@@ -454,8 +489,13 @@ final class Bankai_SEO_Engine
             'description'   => $description !== '' ? $description : wp_trim_words(wp_strip_all_tags($post->post_content), 25, '...'),
             'focus_keyword' => $focus,
             'keywords'      => array_values($keywords),
-            'canonical'     => $canonical !== '' ? $canonical : get_permalink($post_id),
-            'robots'        => is_array($robots) ? $robots : ['index' => true, 'follow' => true],
+            'canonical'     => ($canonical !== '' && preg_match('#^https?://#i', $canonical))
+                ? $canonical
+                : (string) get_permalink($post_id),
+            'robots'        => array_merge([
+                'index' => true, 'follow' => true, 'noarchive' => false, 'nosnippet' => false,
+                'noimageindex' => false, 'max_snippet' => -1, 'max_image_preview' => 'large', 'hide_date' => false,
+            ], is_array($robots) ? $robots : []),
             'og_title'      => (string) get_post_meta($post_id, self::META_OG_TITLE, true),
             'og_description'=> (string) get_post_meta($post_id, self::META_OG_DESC, true),
             'og_image'      => (string) get_post_meta($post_id, self::META_OG_IMAGE, true),
@@ -463,8 +503,58 @@ final class Bankai_SEO_Engine
             'x_description' => (string) get_post_meta($post_id, self::META_X_DESC, true),
             'x_image'       => (string) get_post_meta($post_id, self::META_X_IMAGE, true),
             'schema'        => (string) get_post_meta($post_id, self::META_SCHEMA, true),
+            'redirect'      => (string) get_post_meta($post_id, self::META_REDIRECT, true),
             'score'         => (int) get_post_meta($post_id, self::META_SCORE, true),
         ];
+    }
+
+
+
+    /**
+     * Inject GA4 / GTM from saved integration settings (real IDs only).
+     */
+    public function render_analytics(): void
+    {
+        if (is_admin()) {
+            return;
+        }
+        $si = [];
+        if (function_exists('bankai_get_option')) {
+            $si = bankai_get_option('seo_integrations', []);
+        }
+        if (!is_array($si) || empty($si)) {
+            $si = get_option('bankai_seo_integrations', []);
+        }
+        if (!is_array($si)) {
+            $si = [];
+        }
+        $ga4 = trim((string) ($si['ga4_measurement_id'] ?? $si['google_analytics_id'] ?? ''));
+        $gtm = trim((string) ($si['google_tag_manager_id'] ?? ''));
+        $gsc = trim((string) ($si['google_site_verification'] ?? ''));
+
+        if ($gsc !== '') {
+            printf(
+                '<meta name="google-site-verification" content="%s" />' . "\n",
+                esc_attr($gsc)
+            );
+        }
+
+        if ($gtm !== '' && preg_match('/^GTM-[A-Z0-9]+$/i', $gtm)) {
+            // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript
+            printf(
+                "<!-- Bankai GTM -->\n<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','%s');</script>\n",
+                esc_js($gtm)
+            );
+        }
+
+        if ($ga4 !== '' && preg_match('/^G-[A-Z0-9]+$/i', $ga4)) {
+            // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript
+            printf(
+                "<!-- Bankai GA4 -->\n<script async src=\"https://www.googletagmanager.com/gtag/js?id=%s\"></script>\n<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','%s');</script>\n",
+                esc_attr($ga4),
+                esc_js($ga4)
+            );
+        }
     }
 
     public function analyze(int $post_id, array $overrides = []): array
@@ -501,6 +591,38 @@ final class Bankai_SEO_Engine
         // --- Basic ---
         $checks[] = $this->check('focus_keyword', 'کلمه کلیدی اصلی تنظیم شده', $has_kw,
             $has_kw ? 'کلمه کلیدی اصلی تنظیم شده است.' : 'یک کلمه کلیدی اصلی برای این محتوا تنظیم کنید.', 'basic');
+
+        // Secondary keywords
+        $sec_raw = $overrides['keywords'] ?? get_post_meta($post_id, self::META_KEYWORDS, true);
+        $sec_list = [];
+        if (is_array($sec_raw)) {
+            $sec_list = $sec_raw;
+        } elseif (is_string($sec_raw) && $sec_raw !== '') {
+            $decoded = json_decode($sec_raw, true);
+            $sec_list = is_array($decoded) ? $decoded : array_filter(array_map('trim', explode(',', $sec_raw)));
+        }
+        $sec_list = array_values(array_filter(array_map(static function ($k) {
+            return is_string($k) ? trim($k) : '';
+        }, $sec_list)));
+        $sec_list = array_values(array_filter($sec_list, static function ($k) use ($keyword) {
+            return $k !== '' && mb_strtolower($k) !== mb_strtolower($keyword);
+        }));
+        $sec_in_body = 0;
+        foreach ($sec_list as $sk) {
+            if (mb_stripos($clean_text, $sk) !== false || mb_stripos($seo_title ?: $title, $sk) !== false) {
+                $sec_in_body++;
+            }
+        }
+        $sec_ok = count($sec_list) >= 1 && $sec_in_body >= min(1, count($sec_list));
+        $checks[] = $this->check(
+            'secondary_keywords',
+            'کلیدواژه‌های فرعی',
+            $sec_ok,
+            $sec_ok
+                ? sprintf('%d کلیدواژه فرعی و حضور در محتوا تایید شد.', count($sec_list))
+                : (count($sec_list) ? 'حداقل یک کلیدواژه فرعی را در عنوان یا متن به کار ببرید.' : '۲–۳ کلیدواژه فرعی مرتبط اضافه کنید.'),
+            'basic'
+        );
 
         $checks[] = $this->check('kw_in_title', 'کلمه کلیدی در عنوان سئو',
             $has_kw && mb_stripos($seo_title ?: $title, $keyword) !== false,
@@ -550,13 +672,20 @@ final class Bankai_SEO_Engine
             $img_count === 0 ? 'تصویری در محتوا نیست.' : 'تصویری با کلمه کلیدی اصلی به‌عنوان alt اضافه کنید.', 'advanced');
 
         $density = 0.0;
+        $kw_occurrences = 0;
         if ($has_kw && $word_count > 0) {
-            $kw_count = mb_substr_count(mb_strtolower($clean_text), $kw_lower);
-            $density  = round(($kw_count / $word_count) * 100, 2);
+            // Phrase-level count (Unicode); better for multi-word Persian keywords
+            $kw_occurrences = mb_substr_count(mb_strtolower($clean_text), $kw_lower);
+            $kw_words = max(1, count(preg_split('/\s+/u', trim($keyword), -1, PREG_SPLIT_NO_EMPTY) ?: [1]));
+            // Approximate density: (occurrences * keyword-word-count) / total words * 100
+            $density = round((($kw_occurrences * $kw_words) / $word_count) * 100, 2);
         }
         $checks[] = $this->check('kw_density', 'چگالی کلمه کلیدی',
             $has_kw && $density >= 0.5 && $density <= 2.5,
-            sprintf('چگالی کلمه کلیدی %.2f٪ است. هدف حدود ۱٪.', $density), 'advanced');
+            !$has_kw
+                ? 'ابتدا کلمه کلیدی اصلی را تنظیم کنید.'
+                : sprintf('چگالی کلمه کلیدی %.2f٪ است (%d بار در متن). هدف حدود ۰٫۵–۲٫۵٪.', $density, $kw_occurrences),
+            'advanced');
 
         $url_path = (string) (wp_parse_url($permalink, PHP_URL_PATH) ?: $permalink);
         $url_len  = mb_strlen(rawurldecode($url_path));
@@ -565,8 +694,16 @@ final class Bankai_SEO_Engine
             sprintf('مسیر آدرس %d کاراکتر است.%s', $url_len, $url_len <= 100 ? ' مناسب است.' : ' کوتاه‌تر پیشنهاد می‌شود (زیر ۱۰۰ کاراکتر مسیر).'), 'advanced');
 
         $extracted_links = $this->extract_links_from_html($raw_content);
-        $internal        = count($extracted_links['internal']);
-        $external        = count($extracted_links['external']);
+        // SEO-relevant internal links: exclude pure in-page anchors (#section)
+        $internal_seo = array_values(array_filter(
+            $extracted_links['internal'],
+            static function ($item) {
+                $h = trim((string) ($item['href'] ?? ''));
+                return $h !== '' && !preg_match('/^#/', $h);
+            }
+        ));
+        $internal = count($internal_seo);
+        $external = count($extracted_links['external']);
 
         $checks[] = $this->check('internal_links', 'لینک داخلی',
             $internal >= 1,
@@ -611,6 +748,74 @@ final class Bankai_SEO_Engine
             !$long_para,
             $long_para ? 'حداقل یک پاراگراف طولانی است. پاراگراف‌های کوتاه پیشنهاد می‌شود.' : 'طول پاراگراف‌ها مناسب است.', 'content');
 
+        // Lists
+        $has_list = (bool) preg_match('/<(ul|ol)\b/i', $raw_content);
+        $checks[] = $this->check('has_lists', 'استفاده از فهرست',
+            $has_list,
+            $has_list ? 'فهرست (لیست) در محتوا وجود دارد.' : 'برای خوانایی بهتر از لیست شماره‌دار یا نقطه‌ای استفاده کنید.', 'content');
+
+        // Sentence length (approx for FA/EN)
+        $sentences = preg_split('/(?<=[.!?…۔])\s+/u', $clean_text, -1, PREG_SPLIT_NO_EMPTY);
+        $long_sent = 0;
+        $sent_count = is_array($sentences) ? count($sentences) : 0;
+        if (is_array($sentences)) {
+            foreach ($sentences as $s) {
+                $sw = preg_split('/\s+/u', trim($s), -1, PREG_SPLIT_NO_EMPTY);
+                if (is_array($sw) && count($sw) > 40) {
+                    $long_sent++;
+                }
+            }
+        }
+        $sent_ok = $sent_count === 0 || ($long_sent / max(1, $sent_count)) < 0.35;
+        $checks[] = $this->check('sentence_length', 'طول جملات',
+            $sent_ok,
+            $sent_ok ? 'طول جملات در محدوده مناسب است.' : sprintf('%d جمله بسیار طولانی است؛ کوتاه‌تر بنویسید.', $long_sent), 'content');
+
+        // Heading ratio vs words
+        $h_count = count($headings[0] ?? []);
+        $need_h = $word_count > 300 ? max(1, (int) floor($word_count / 350)) : 0;
+        $h_ok = $need_h === 0 || $h_count >= $need_h;
+        $checks[] = $this->check('heading_ratio', 'نسبت زیرتیتر به طول متن',
+            $h_ok,
+            $h_ok ? 'تعداد زیرتیترها با طول محتوا هماهنگ است.' : sprintf('برای %d کلمه حدود %d زیرتیتر پیشنهاد می‌شود (الان: %d).', $word_count, $need_h, $h_count), 'content');
+
+        // Duplicate title / slug across site
+        $dup_msg = 'عنوان و آدرس یکتا هستند.';
+        $dup_ok = true;
+        if ($slug !== '') {
+            $by_slug = get_posts([
+                'name'           => $slug,
+                'post_type'      => $post->post_type,
+                'post_status'    => ['publish', 'draft', 'pending', 'future'],
+                'exclude'        => [$post_id],
+                'posts_per_page' => 1,
+                'fields'         => 'ids',
+            ]);
+            if (!empty($by_slug)) {
+                $dup_ok = false;
+                $dup_msg = 'اسلاگ تکراری با پست دیگری وجود دارد.';
+            }
+        }
+        if ($dup_ok && $title !== '') {
+            $title_hits = get_posts([
+                's'              => $title,
+                'post_type'      => $post->post_type,
+                'post_status'    => 'publish',
+                'exclude'        => [$post_id],
+                'posts_per_page' => 8,
+                'fields'         => 'ids',
+            ]);
+            foreach ($title_hits as $hid) {
+                if (mb_strtolower(get_the_title((int) $hid)) === mb_strtolower($title)) {
+                    $dup_ok = false;
+                    $dup_msg = 'عنوان دقیقاً با پست دیگری یکسان است.';
+                    break;
+                }
+            }
+        }
+        $checks[] = $this->check('unique_title', 'یکتایی عنوان/اسلاگ',
+            $dup_ok, $dup_msg, 'advanced');
+
         $has_media = $img_count > 0 || (bool) preg_match('/<(video|iframe|embed)\b/i', $raw_content);
         $checks[]  = $this->check('rich_media', 'رسانه غنی',
             $has_media,
@@ -652,6 +857,101 @@ final class Bankai_SEO_Engine
         return compact('key', 'label', 'passed', 'message', 'group');
     }
 
+
+    /**
+     * 301 redirect for single posts with redirect meta set.
+     */
+
+    /**
+     * Lightweight related posts by keyword / title for on-save suggestions.
+     *
+     * @return list<array{id:int,title:string,permalink:string}>
+     */
+    public function quick_related_posts(int $post_id, string $keyword, int $limit = 5): array
+    {
+        $keyword = trim($keyword);
+        if ($keyword === '') {
+            return [];
+        }
+        $q = new \WP_Query([
+            'post_type'              => ['post', 'page'],
+            'post_status'            => 'publish',
+            's'                      => $keyword,
+            'post__not_in'           => [$post_id],
+            'posts_per_page'         => $limit,
+            'ignore_sticky_posts'    => true,
+            'no_found_rows'          => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+        ]);
+        $out = [];
+        foreach ($q->posts as $p) {
+            $out[] = [
+                'id'        => (int) $p->ID,
+                'title'     => get_the_title($p),
+                'permalink' => get_permalink($p),
+            ];
+        }
+        return $out;
+    }
+
+    public function handle_post_redirect(): void
+    {
+        if (is_admin() || !is_singular()) {
+            return;
+        }
+        $post_id = get_queried_object_id();
+        if (!$post_id) {
+            return;
+        }
+        $target = trim((string) get_post_meta($post_id, self::META_REDIRECT, true));
+        if ($target === '' || !preg_match('#^https?://#i', $target)) {
+            return;
+        }
+        $current = get_permalink($post_id);
+        if ($current && untrailingslashit($current) === untrailingslashit($target)) {
+            return;
+        }
+        wp_safe_redirect($target, 301);
+        exit;
+    }
+
+    /**
+     * BreadcrumbList JSON-LD for current singular content.
+     */
+    public function build_breadcrumb_schema(int $post_id): array
+    {
+        $items = [];
+        $pos = 1;
+        $items[] = [
+            '@type'    => 'ListItem',
+            'position' => $pos++,
+            'name'     => get_bloginfo('name'),
+            'item'     => home_url('/'),
+        ];
+        $cats = get_the_category($post_id);
+        if (!empty($cats) && !is_wp_error($cats)) {
+            $cat = $cats[0];
+            $items[] = [
+                '@type'    => 'ListItem',
+                'position' => $pos++,
+                'name'     => $cat->name,
+                'item'     => get_category_link($cat->term_id),
+            ];
+        }
+        $items[] = [
+            '@type'    => 'ListItem',
+            'position' => $pos,
+            'name'     => get_the_title($post_id),
+            'item'     => get_permalink($post_id),
+        ];
+        return [
+            '@context'        => 'https://schema.org',
+            '@type'           => 'BreadcrumbList',
+            'itemListElement' => $items,
+        ];
+    }
+
     public function filter_document_title(string $title): string
     {
         if (!is_singular()) {
@@ -676,13 +976,29 @@ final class Bankai_SEO_Engine
             return;
         }
 
-        $robots      = $data['robots'];
+        $robots      = is_array($data['robots'] ?? null) ? $data['robots'] : [];
         $robot_parts = [
             !empty($robots['index']) ? 'index' : 'noindex',
             !empty($robots['follow']) ? 'follow' : 'nofollow',
         ];
+        if (!empty($robots['noarchive'])) {
+            $robot_parts[] = 'noarchive';
+        }
+        if (!empty($robots['nosnippet'])) {
+            $robot_parts[] = 'nosnippet';
+        }
+        if (!empty($robots['noimageindex'])) {
+            $robot_parts[] = 'noimageindex';
+        }
+        if (isset($robots['max_snippet']) && (int) $robots['max_snippet'] >= 0) {
+            $robot_parts[] = 'max-snippet:' . (int) $robots['max_snippet'];
+        }
+        $mip = $robots['max_image_preview'] ?? 'large';
+        if (in_array($mip, ['none', 'standard', 'large'], true)) {
+            $robot_parts[] = 'max-image-preview:' . $mip;
+        }
         
-        printf('<meta name="robots" content="%s">' . "\n", esc_attr(implode(',', $robot_parts)));
+        printf('<meta name="robots" content="%s">' . "\n", esc_attr(implode(', ', $robot_parts)));
 
         if (!empty($data['description'])) {
             printf('<meta name="description" content="%s">' . "\n", esc_attr($data['description']));
@@ -725,39 +1041,67 @@ final class Bankai_SEO_Engine
             return;
         }
 
+        $nodes = [];
+
         $custom = (string) get_post_meta($post_id, self::META_SCHEMA, true);
         if ($custom !== '') {
             $decoded = json_decode($custom, true);
             if (is_array($decoded)) {
-                echo '<script type="application/ld+json">'
-                    . wp_json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-                    . '</script>' . "\n";
-                return;
+                // @graph or single node
+                if (isset($decoded['@graph']) && is_array($decoded['@graph'])) {
+                    foreach ($decoded['@graph'] as $node) {
+                        if (is_array($node)) {
+                            $nodes[] = $node;
+                        }
+                    }
+                } else {
+                    $nodes[] = $decoded;
+                }
             }
         }
 
-        $schema = [
-            '@context'      => 'https://schema.org',
-            '@type'         => $post->post_type === 'post' ? 'Article' : 'WebPage',
-            'headline'      => get_the_title($post_id),
-            'description'   => get_the_excerpt($post_id),
-            'url'           => get_permalink($post_id),
-            'datePublished' => get_the_date(DATE_W3C, $post_id),
-            'dateModified'  => get_the_modified_date(DATE_W3C, $post_id),
-            'author'        => [
-                '@type' => 'Person',
-                'name'  => get_the_author_meta('display_name', (int) $post->post_author),
-            ],
-        ];
-
-        $image = get_the_post_thumbnail_url($post_id, 'full');
-        if ($image) {
-            $schema['image'] = [$image];
+        if (!$nodes) {
+            $nodes[] = [
+                '@type'         => $post->post_type === 'post' ? 'Article' : 'WebPage',
+                'headline'      => get_the_title($post_id),
+                'description'   => get_the_excerpt($post_id),
+                'url'           => get_permalink($post_id),
+                'datePublished' => get_the_date(DATE_W3C, $post_id),
+                'dateModified'  => get_the_modified_date(DATE_W3C, $post_id),
+                'author'        => [
+                    '@type' => 'Person',
+                    'name'  => get_the_author_meta('display_name', (int) $post->post_author),
+                ],
+            ];
+            $image = get_the_post_thumbnail_url($post_id, 'full');
+            if ($image) {
+                $nodes[0]['image'] = [$image];
+            }
         }
 
+        // Always attach BreadcrumbList if not already present
+        $has_bc = false;
+        foreach ($nodes as $n) {
+            if (($n['@type'] ?? '') === 'BreadcrumbList') {
+                $has_bc = true;
+                break;
+            }
+        }
+        if (!$has_bc) {
+            $bc = $this->build_breadcrumb_schema($post_id);
+            unset($bc['@context']);
+            $nodes[] = $bc;
+        }
+
+        $payload = [
+            '@context' => 'https://schema.org',
+            '@graph'   => $nodes,
+        ];
+
         echo '<script type="application/ld+json">'
-            . wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-            . '</script>' . "\n";
+            . wp_json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            . '</script>' . "
+";
     }
 
     public function api_articles_list(WP_REST_Request $request): WP_REST_Response
@@ -834,6 +1178,8 @@ final class Bankai_SEO_Engine
                 'external_links' => count($extracted['external']),
                 'cover'          => get_the_post_thumbnail_url($id, 'thumbnail') ?: '',
                 'modified'       => get_the_modified_date('Y-m-d H:i', $p),
+                'date'           => get_the_date('Y-m-d H:i', $p),
+                'status_label'   => get_post_status_object($p->post_status)->label ?? $p->post_status,
             ];
         }
 

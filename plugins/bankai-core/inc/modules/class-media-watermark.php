@@ -33,11 +33,20 @@ class Bankai_Media_Watermark
 
         add_filter('wp_handle_upload', [$this, 'process_uploaded_image'], 20);
 
-        // Content filters
+        // Content filters — optimized image loading
         if ($this->is_sub_active('lazy_loading') || $this->setting('lazy_load', true)) {
             add_filter('the_content', [$this, 'filter_content_lazy'], 20);
             add_filter('post_thumbnail_html', [$this, 'filter_thumb_lazy'], 20, 5);
             add_filter('wp_get_attachment_image_attributes', [$this, 'filter_attachment_attrs'], 20, 3);
+            add_filter('wp_content_img_tag', [$this, 'filter_content_img_tag'], 10, 3);
+            add_filter('wp_get_attachment_image', [$this, 'filter_attachment_image_html'], 20, 5);
+        }
+
+        // Reduce oversized originals & default quality
+        if ($this->is_sub_active('webp_avif_converter') || $this->setting('convert_webp', true)) {
+            add_filter('jpeg_quality', [$this, 'filter_jpeg_quality']);
+            add_filter('wp_editor_set_quality', [$this, 'filter_jpeg_quality']);
+            add_filter('big_image_size_threshold', [$this, 'filter_big_image_threshold']);
         }
 
         if ($this->is_sub_active('dynamic_watermarking') || $this->setting('apply_content', false)) {
@@ -343,32 +352,83 @@ class Bankai_Media_Watermark
 
     public function filter_content_lazy(string $content): string
     {
-        if (is_admin() || (function_exists('wp_is_json_request') && wp_is_json_request())) {
+        if ($content === '' || is_admin() || (function_exists('wp_is_json_request') && wp_is_json_request())) {
             return $content;
         }
-        return preg_replace_callback('/<img\b([^>]*?)>/i', function ($m) {
+
+        $index = 0;
+        $result = preg_replace_callback('/<img\b([^>]*?)>/i', function ($m) use (&$index) {
+            $index++;
             $attrs = $m[1];
-            if (stripos($attrs, 'loading=') !== false) {
-                return $m[0];
-            }
-            // Skip tiny tracking pixels
+
+            // Skip 1x1 trackers
             if (preg_match('/width=["\']1["\']/', $attrs) && preg_match('/height=["\']1["\']/', $attrs)) {
                 return $m[0];
             }
-            return '<img loading="lazy" decoding="async"' . $attrs . '>';
-        }, $content) ?? $content;
+
+            // First content image ≈ LCP candidate → eager + high priority
+            $is_lcp = ($index === 1 && (is_singular() || is_front_page()));
+
+            // Normalize loading
+            if (preg_match('/\sloading=["\'][^"\']*["\']/i', $attrs)) {
+                $attrs = preg_replace(
+                    '/\sloading=["\'][^"\']*["\']/i',
+                    $is_lcp ? ' loading="eager"' : ' loading="lazy"',
+                    $attrs
+                );
+            } else {
+                $attrs .= $is_lcp ? ' loading="eager"' : ' loading="lazy"';
+            }
+
+            // decoding
+            if (!preg_match('/\sdecoding=/i', $attrs)) {
+                $attrs .= ' decoding="async"';
+            }
+
+            // fetchpriority
+            if ($is_lcp) {
+                if (preg_match('/\sfetchpriority=/i', $attrs)) {
+                    $attrs = preg_replace('/\sfetchpriority=["\'][^"\']*["\']/i', ' fetchpriority="high"', $attrs);
+                } else {
+                    $attrs .= ' fetchpriority="high"';
+                }
+            } elseif (!preg_match('/\sfetchpriority=/i', $attrs)) {
+                // leave default (auto) for others
+            }
+
+            return '<img' . $attrs . '>';
+        }, $content);
+
+        return is_string($result) ? $result : $content;
     }
 
-    public function filter_thumb_lazy(string $html): string
+    public function filter_thumb_lazy(string $html, $post_id = null, $post_thumbnail_id = null, $size = null, $attr = null): string
     {
-        if ($html === '' || stripos($html, 'loading=') !== false) {
+        if ($html === '') {
             return $html;
         }
-        return str_replace('<img ', '<img loading="lazy" decoding="async" ', $html);
+        // Featured image often LCP on singular
+        $is_lcp = is_singular() && in_the_loop() && is_main_query();
+        if ($is_lcp) {
+            $html = preg_replace('/\sloading=["\'][^"\']*["\']/i', '', $html) ?? $html;
+            $html = preg_replace('/\sfetchpriority=["\'][^"\']*["\']/i', '', $html) ?? $html;
+            if (stripos($html, '<img ') !== false) {
+                $html = str_replace('<img ', '<img loading="eager" fetchpriority="high" decoding="async" ', $html);
+            }
+            return $html;
+        }
+        if (stripos($html, 'loading=') === false) {
+            $html = str_replace('<img ', '<img loading="lazy" decoding="async" ', $html);
+        } elseif (stripos($html, 'decoding=') === false) {
+            $html = str_replace('<img ', '<img decoding="async" ', $html);
+        }
+        return $html;
     }
 
-    public function filter_attachment_attrs(array $attr): array
+    public function filter_attachment_attrs(array $attr, $attachment = null, $size = null): array
     {
+        $is_lcp = is_singular() && empty($attr['loading']);
+        // Default lazy; callers for featured can override via filter order
         if (empty($attr['loading'])) {
             $attr['loading'] = 'lazy';
         }
@@ -377,6 +437,65 @@ class Bankai_Media_Watermark
         }
         return $attr;
     }
+
+    /**
+     * WP 6.0+ content img tag filter — precise per-image control.
+     */
+    public function filter_content_img_tag(string $filtered_image, string $context, int $attachment_id): string
+    {
+        if ($filtered_image === '' || is_admin()) {
+            return $filtered_image;
+        }
+        static $count = 0;
+        $count++;
+        $is_lcp = ($count === 1 && is_singular());
+
+        if ($is_lcp) {
+            $filtered_image = preg_replace('/\sloading=["\'][^"\']*["\']/i', ' loading="eager"', $filtered_image) ?? $filtered_image;
+            if (!preg_match('/\sfetchpriority=/i', $filtered_image)) {
+                $filtered_image = str_replace('<img ', '<img fetchpriority="high" ', $filtered_image);
+            }
+            if (!preg_match('/\sdecoding=/i', $filtered_image)) {
+                $filtered_image = str_replace('<img ', '<img decoding="async" ', $filtered_image);
+            }
+        } else {
+            if (!preg_match('/\sloading=/i', $filtered_image)) {
+                $filtered_image = str_replace('<img ', '<img loading="lazy" ', $filtered_image);
+            }
+            if (!preg_match('/\sdecoding=/i', $filtered_image)) {
+                $filtered_image = str_replace('<img ', '<img decoding="async" ', $filtered_image);
+            }
+        }
+        return $filtered_image;
+    }
+
+    public function filter_attachment_image_html(string $html, $attachment_id, $size, $icon, $attr): string
+    {
+        if ($html === '' || is_admin()) {
+            return $html;
+        }
+        if (stripos($html, 'decoding=') === false) {
+            $html = str_replace('<img ', '<img decoding="async" ', $html);
+        }
+        return $html;
+    }
+
+    public function filter_jpeg_quality($quality)
+    {
+        $q = (int) $this->setting('quality', 82);
+        return max(60, min(92, $q > 0 ? $q : 82));
+    }
+
+    public function filter_big_image_threshold($threshold)
+    {
+        // Cap very large uploads so scaled versions are generated sooner
+        $max_w = (int) $this->setting('max_width', 2560);
+        if ($max_w > 0) {
+            return $max_w;
+        }
+        return $threshold;
+    }
+
 
     /* ---------- AJAX ---------- */
 

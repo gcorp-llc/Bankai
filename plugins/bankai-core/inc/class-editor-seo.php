@@ -74,6 +74,14 @@ class Bankai_Editor_SEO
 
     private function render_panel(int $post_id): void
     {
+        // Editor sidebar panel lives at views/tab-seo-engine.php (NOT admin/tab-seo-engine.php)
+        $file = (defined('BANKAI_CORE_DIR') ? BANKAI_CORE_DIR : '') . 'views/tab-seo-engine.php';
+        if (is_file($file)) {
+            // phpcs:ignore WordPress.PHP.DontExtract.extract_extract
+            extract(['post_id' => $post_id], EXTR_SKIP);
+            include $file;
+            return;
+        }
         if (function_exists('bankai_render_view')) {
             bankai_render_view('tab-seo-engine.php', ['post_id' => $post_id]);
         }
@@ -81,19 +89,19 @@ class Bankai_Editor_SEO
 
     public function enqueue_assets(string $hook): void
     {
+        static $font_filter = false;
+        if (!$font_filter) {
+            $font_filter = true;
+            add_filter('style_loader_tag', [__CLASS__, 'async_font_style_tag'], 10, 4);
+        }
+
         if (!in_array($hook, ['post.php', 'post-new.php', 'edit.php'], true)) {
             return;
         }
 
         wp_enqueue_style(
-            'bankai-material-symbols',
-            'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap',
-            [],
-            null
-        );
-        wp_enqueue_style(
             'bankai-vazirmatn',
-            'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap',
+            'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap',
             [],
             null
         );
@@ -103,11 +111,20 @@ class Bankai_Editor_SEO
         wp_enqueue_style(
             'bankai-editor-seo',
             bankai_asset_url('css/editor-seo.css'),
-            ['bankai-material-symbols', 'bankai-vazirmatn'],
+            ['bankai-vazirmatn'],
             $ver . '.' . (string) @filemtime(BANKAI_CORE_DIR . 'assets/css/editor-seo.css')
         );
 
+        // Preload SEO panel CSS for faster sidebar paint
+        add_action('admin_head', static function () {
+            $href = bankai_asset_url('css/editor-seo.css');
+            if ($href) {
+                echo '<link rel="preload" href="' . esc_url($href) . '" as="style">' . "\n";
+            }
+        }, 1);
+
         if (in_array($hook, ['post.php', 'post-new.php'], true)) {
+            wp_enqueue_media();
             // Register Alpine.data BEFORE Alpine auto-starts: load component first, Alpine second.
             $js_ver = $ver . '.' . (string) @filemtime(BANKAI_CORE_DIR . 'assets/js/editor-seo.js');
             wp_enqueue_script(
@@ -153,37 +170,32 @@ class Bankai_Editor_SEO
 
         // Same CSS + Alpine + core JS for Gutenberg context.
         wp_enqueue_style(
-            'bankai-material-symbols',
-            'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap',
-            [],
-            null
-        );
-        wp_enqueue_style(
             'bankai-vazirmatn',
-            'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap',
+            'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap',
             [],
             null
         );
         wp_enqueue_style(
             'bankai-editor-seo',
             bankai_asset_url('css/editor-seo.css'),
-            ['bankai-material-symbols', 'bankai-vazirmatn'],
+            ['bankai-vazirmatn'],
             $ver
         );
 
-        wp_enqueue_script(
-            'alpinejs',
-            'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',
-            [],
-            '3.14.1',
-            ['strategy' => 'defer']
-        );
-
+        // Register Alpine.data BEFORE Alpine boots
         wp_enqueue_script(
             'bankai-editor-seo',
             bankai_asset_url('js/editor-seo.js'),
             ['wp-api-fetch'],
             $ver,
+            true
+        );
+
+        wp_enqueue_script(
+            'alpinejs',
+            bankai_asset_url('js/alpine.min.js'),
+            ['bankai-editor-seo'],
+            '3.14.1',
             true
         );
 
@@ -225,6 +237,7 @@ class Bankai_Editor_SEO
                 'wp-data',
                 'wp-i18n',
                 'bankai-editor-seo',
+                'alpinejs',
             ],
             $ver,
             true
@@ -330,6 +343,8 @@ class Bankai_Editor_SEO
         }
 
         wp_localize_script('bankai-editor-seo', 'bankaiEditorSeo', [
+                'postDate'   => $post_id ? get_the_date('Y/m/d', $post_id) : '',
+                'postAuthor' => $post_id ? get_the_author_meta('display_name', (int) get_post_field('post_author', $post_id)) : '',
             'postId'            => $post_id,
             'isRtl'             => is_rtl(),
             'version'           => $ver,
@@ -348,4 +363,17 @@ class Bankai_Editor_SEO
             ],
         ]);
     }
+    /**
+     * Load Google font CSS without blocking editor paint.
+     */
+    public static function async_font_style_tag($html, $handle, $href, $media)
+    {
+        if ($handle !== 'bankai-vazirmatn') {
+            return $html;
+        }
+        $href = (string) $href;
+        return '<link rel="preload" href="' . esc_url($href) . '" as="style" onload="this.onload=null;this.rel=\'stylesheet\'" />' . "\n"
+            . '<noscript><link rel="stylesheet" href="' . esc_url($href) . '"></noscript>' . "\n";
+    }
+
 }

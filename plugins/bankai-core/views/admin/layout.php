@@ -164,11 +164,11 @@ $bankai_state = [
             <?php
             $tabs = [
                 'overview',
-                'theme-kits',
+                'articles',
                 'seo-engine',
+                'ai-studio',
                 'speed-cache',
                 'media-watermark',
-                'ai-studio',
                 'settings-license',
             ];
 
@@ -187,11 +187,6 @@ $bankai_state = [
 
     </div>
 
-    <div class="bankai-toast-host" x-show="toast.show" x-cloak x-transition.opacity style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:100000;">
-        <div class="bankai-toast" :class="toast.type"
-             style="background:#fff;color:#1F2328;border:1px solid #D0D7DE;padding:12px 18px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 12px 32px rgba(15,23,42,.12);min-width:220px;text-align:center;"
-             :style="toast.type==='error' ? 'border-color:#FECACA;color:#B91C1C' : 'border-color:#D0D7DE;color:#1F2328'"
-             x-text="toast.message"></div>
-    </div>
+    <!-- Toast UI: views/admin/toast.php (included above) — no duplicate host -->
 
 </div>

@@ -1,5 +1,5 @@
 <!-- Tab: Theme Kits & Customizer -->
-<div id="tab-theme-kits" class="bankai-tab-pane" x-show="activeTab === 'theme-kits'" x-cloak>
+<div id="tab-theme-kits" class="bankai-tab-pane" style="width:100%;max-width:100%;box-sizing:border-box" x-show="activeTab === 'theme-kits'" x-cloak>
 
     <!-- Header -->
     <div class="bankai-card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; flex-wrap: wrap; gap: 14px;">

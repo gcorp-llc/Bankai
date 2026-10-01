@@ -50,9 +50,9 @@ $robots  = esc_textarea($si['robots_txt'] ?? '');
         </div>
         
         <nav class="bk-seo-tabs" role="tablist">
-            <button type="button" role="tab" class="bk-seo-tab" :class="{ 'is-active': seoPanel === 'tools' }" @click="seoPanel = 'tools'">ماژول‌های سئو</button>
-            <button type="button" role="tab" class="bk-seo-tab" :class="{ 'is-active': seoPanel === 'articles' }" @click="openArticlesPanel()">مدیریت مقالات</button>
-            <button type="button" role="tab" class="bk-seo-tab" :class="{ 'is-active': seoPanel === 'analytics' }" @click="seoPanel = 'analytics'">گوگل آنالیتیکس</button>
+            <button type="button" role="tab" class="bk-seo-tab" :class="{ 'is-active': seoPanel === 'tools' }" @click="seoPanel = 'tools'"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg> ماژول‌های سئو</button>
+            <button type="button" role="tab" class="bk-seo-tab" :class="{ 'is-active': seoPanel === 'analytics' }" @click="seoPanel = 'analytics'"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg> گوگل آنالیتیکس</button>
+            <button type="button" role="tab" class="bk-seo-tab" :class="{ 'is-active': seoPanel === 'sitewide' }" @click="seoPanel = 'sitewide'; loadSitewide()"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg> سئوی سایت</button>
         </nav>
     </div>
 
@@ -228,8 +228,68 @@ $robots  = esc_textarea($si['robots_txt'] ?? '');
         </div>
     </div>
 
+    <!-- Google Analytics Panel (real settings) -->
+    <div x-show="seoPanel === 'analytics'" x-cloak class="bankai-card" style="padding:20px;border-radius:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+            <div>
+                <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;">
+                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+                    گوگل آنالیتیکس (GA4)
+                </h3>
+                <p style="margin:6px 0 0;font-size:12px;color:#64748B;line-height:1.6;">
+                    شناسه اندازه‌گیری واقعی سایت را وارد کنید. اسکریپت فقط وقتی Measurement ID معتبر باشد در فرانت‌اند تزریق می‌شود.
+                </p>
+            </div>
+            <span class="bk-seo-chip" :style="integEdit.ga4 ? 'background:#e8f5e9;color:#0f7b3a' : 'background:#fef2f2;color:#c42b1c'"
+                  x-text="integEdit.ga4 ? 'متصل / آماده تزریق' : 'شناسه تنظیم نشده'"></span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div>
+                <label class="bk-seo-label">GA4 Measurement ID</label>
+                <input type="text" class="bk-seo-input" x-model="integEdit.ga4" placeholder="G-XXXXXXXXXX" dir="ltr">
+                <p style="margin:6px 0 0;font-size:11px;color:#94A3B8;">از Admin → Data Streams در کنسول Google Analytics کپی کنید.</p>
+            </div>
+            <div>
+                <label class="bk-seo-label">Google Tag Manager ID (اختیاری)</label>
+                <input type="text" class="bk-seo-input" x-model="integEdit.gtm" placeholder="GTM-XXXXXXX" dir="ltr">
+            </div>
+            <div style="grid-column:1/-1">
+                <label class="bk-seo-label">کد تأیید Search Console</label>
+                <input type="text" class="bk-seo-input" x-model="integEdit.gsc" placeholder="content از متای google-site-verification">
+            </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:18px;">
+            <button type="button" class="bk-seo-btn bk-seo-btn-primary"
+                @click="saveIntegration({ _key:'google', google_analytics_id: integEdit.ga4, ga4_measurement_id: integEdit.ga4, google_tag_manager_id: integEdit.gtm, google_site_verification: integEdit.gsc })"
+                :disabled="integSaving.google">
+                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/></svg>
+                <span x-text="integSaving.google ? 'در حال ذخیره…' : 'ذخیره اتصال آنالیتیکس'"></span>
+            </button>
+            <a class="bk-seo-btn bk-seo-btn-ghost" href="https://analytics.google.com/" target="_blank" rel="noopener">
+                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7M10 14L21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> باز کردن Google Analytics
+            </a>
+            <a class="bk-seo-btn bk-seo-btn-ghost" href="https://support.google.com/analytics/answer/9304153" target="_blank" rel="noopener">
+                راهنمای دریافت Measurement ID
+            </a>
+        </div>
+
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:14px;">
+            <div style="font-size:12px;font-weight:800;margin-bottom:8px;color:#0F172A;">وضعیت فعلی (از تنظیمات ذخیره‌شده)</div>
+            <ul style="margin:0;padding:0;list-style:none;font-size:12px;color:#475569;line-height:1.8;">
+                <li>✓ Measurement ID: <strong dir="ltr" x-text="integEdit.ga4 || '—'"></strong></li>
+                <li>✓ GTM: <strong dir="ltr" x-text="integEdit.gtm || '—'"></strong></li>
+                <li>✓ Search Console meta: <strong x-text="integEdit.gsc ? 'تنظیم شده' : 'تنظیم نشده'"></strong></li>
+            </ul>
+            <p style="margin:10px 0 0;font-size:11px;color:#94A3B8;">
+                گزارش ترافیک زنده نیازمند اتصال Service Account یا Data API است؛ در این نسخه شناسه واقعی ذخیره و در سایت تزریق می‌شود. اعداد دمو نمایش داده نمی‌شوند.
+            </p>
+        </div>
+    </div>
+
     <!-- Articles Section -->
-    <div id="bk-seo-articles-section" x-show="seoPanel === 'articles'" x-cloak>
+    <div id="bk-seo-articles-section" x-show="false" x-cloak>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px;">
             <h3 class="bk-section-title" style="margin:0;">جدول ممیزی سئوی مقالات</h3>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -362,9 +422,106 @@ $robots  = esc_textarea($si['robots_txt'] ?? '');
         </div>
     </div>
 
-</div>
+<!-- Site-wide SEO -->
+    <div x-show="seoPanel === 'sitewide'" class="bk-sitewide-panel" style="display:none" :style="seoPanel === 'sitewide' ? 'display:block' : 'display:none'">
+        <h3 class="bk-section-title">سئوی سراسری سایت</h3>
+        <p class="bk-fk-desc" style="margin-bottom:16px">سازمان، آرشیوها، ریدایرکت، ۴۰۴، نقشه سایت و hreflang — خارج از ویرایش تک‌پست.</p>
 
+        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
+            <h4 style="margin:0 0 12px;font-size:13px;">Organization / WebSite Schema</h4>
+            <div class="bk-field"><label>نام سازمان</label><input type="text" x-model="sw.settings.org_name"></div>
+            <div class="bk-field"><label>لوگو (URL)</label><input type="url" dir="ltr" x-model="sw.settings.org_logo"></div>
+            <div class="bk-field"><label>sameAs (هر خط یک شبکه اجتماعی)</label><textarea rows="3" dir="ltr" x-model="sw.settings.org_same_as"></textarea></div>
+            <label class="bk-switch-row"><span>SearchAction در اسکیمای سایت</span><input type="checkbox" x-model="sw.settings.website_search"></label>
+        </div>
+
+        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
+            <h4 style="margin:0 0 12px;font-size:13px;">noindex آرشیوها</h4>
+            <label class="bk-switch-row"><span>نویسنده</span><input type="checkbox" x-model="sw.settings.noindex_author"></label>
+            <label class="bk-switch-row"><span>تاریخ</span><input type="checkbox" x-model="sw.settings.noindex_date"></label>
+            <label class="bk-switch-row"><span>برچسب‌ها</span><input type="checkbox" x-model="sw.settings.noindex_tag"></label>
+            <label class="bk-switch-row"><span>نتایج جستجو</span><input type="checkbox" x-model="sw.settings.noindex_search"></label>
+            <label class="bk-switch-row"><span>پیوست‌ها</span><input type="checkbox" x-model="sw.settings.noindex_attach"></label>
+            <p class="bk-fk-desc">سئوی دسته/برچسب در صفحه ویرایش همان term در وردپرس (فیلدهای بنکای) قابل تنظیم است.</p>
+        </div>
+
+        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
+            <h4 style="margin:0 0 12px;font-size:13px;">نقشه سایت</h4>
+            <p class="bk-fk-desc">ایندکس: <a :href="sw.sitemapIndex" target="_blank" dir="ltr" x-text="sw.sitemapIndex"></a></p>
+            <div class="bk-field"><label>شناسه پست‌های exclude (با کاما)</label><input type="text" dir="ltr" x-model="sw.settings.sitemap_exclude_ids" placeholder="12, 45, 90"></div>
+        </div>
+
+        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
+            <h4 style="margin:0 0 12px;font-size:13px;">hreflang / چندزبانه</h4>
+            <label class="bk-switch-row"><span>فعال (یا تشخیص خودکار Polylang/WPML)</span><input type="checkbox" x-model="sw.settings.hreflang_enabled"></label>
+            <div class="bk-field"><label>زبان پیش‌فرض</label><input type="text" dir="ltr" x-model="sw.settings.hreflang_default" placeholder="fa"></div>
+        </div>
+
+        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
+            <h4 style="margin:0 0 12px;font-size:13px;">Search Console</h4>
+            <div class="bk-field"><label>Property URL</label><input type="url" dir="ltr" x-model="sw.settings.gsc_property" placeholder="https://example.com/"></div>
+            <p class="bk-fk-desc">تأیید مالکیت از تب یکپارچه‌سازی؛ این فیلد برای لینک سریع و گزارش‌هاست.</p>
+        </div>
+
+        <div style="margin-bottom:20px;">
+            <button type="button" class="button button-primary" @click="saveSitewide()" :disabled="sw.saving">
+                <span x-text="sw.saving ? 'در حال ذخیره…' : 'ذخیره تنظیمات سئوی سایت'"></span>
+            </button>
+        </div>
+
+        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h4 style="margin:0;font-size:13px;">ریدایرکت سراسری</h4>
+                <button type="button" class="button" @click="sw.redirects.push({id:'',from:'',to:'',code:301})">+ ردیف</button>
+            </div>
+            <template x-for="(r,i) in sw.redirects" :key="'rd'+i">
+                <div style="display:grid;grid-template-columns:1fr 1fr 90px 36px;gap:8px;margin-bottom:8px;">
+                    <input type="text" dir="ltr" placeholder="/old-path" x-model="r.from">
+                    <input type="url" dir="ltr" placeholder="https://…" x-model="r.to">
+                    <select x-model.number="r.code"><option :value="301">301</option><option :value="302">302</option><option :value="410">410</option></select>
+                    <button type="button" class="button" @click="sw.redirects.splice(i,1)">×</button>
+                </div>
+            </template>
+            <button type="button" class="button button-primary" @click="saveRedirects()" :disabled="sw.savingRd">ذخیره ریدایرکت‌ها</button>
+        </div>
+
+        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h4 style="margin:0;font-size:13px;">لاگ ۴۰۴</h4>
+                <button type="button" class="button" @click="clear404()">پاک کردن</button>
+            </div>
+            <template x-if="!sw.log404.length"><p class="bk-fk-desc">موردی ثبت نشده.</p></template>
+            <table class="bk-seo-table" x-show="sw.log404.length">
+                <thead><tr><th>URI</th><th>تعداد</th><th>آخرین</th></tr></thead>
+                <tbody>
+                    <template x-for="row in sw.log404" :key="row.uri">
+                        <tr>
+                            <td dir="ltr" x-text="row.uri"></td>
+                            <td x-text="row.count"></td>
+                            <td x-text="row.last ? new Date(row.last*1000).toLocaleString() : ''"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
 <style>
+.bk-sitewide-panel .bk-field { margin-bottom: 12px; }
+.bk-sitewide-panel .bk-field label { display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; }
+.bk-sitewide-panel .bk-field input,
+.bk-sitewide-panel .bk-field textarea,
+.bk-sitewide-panel .bk-field select {
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 10px; font-size: 13px;
+}
+.bk-sitewide-panel .bk-switch-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px; color: #334155;
+}
+.bk-sitewide-panel .bankai-card { background:#fff; border:1px solid #E2E8F0; border-radius:12px; }
+
 /* CSS Styling System for Bankai SEO Engine */
 #tab-seo-engine { font-family: inherit; color: #0F172A; }
 #tab-seo-engine [x-cloak] { display: none !important; }
@@ -467,9 +624,31 @@ $robots  = esc_textarea($si['robots_txt'] ?? '');
 function bankaiSeoEngineData() {
     return {
         seoPanel: 'tools',
+        sw: {
+            settings: {
+                org_name: '', org_logo: '', org_same_as: '', website_search: true,
+                noindex_author: true, noindex_date: true, noindex_tag: false, noindex_search: true, noindex_attach: true,
+                sitemap_exclude_ids: '', hreflang_enabled: false, hreflang_default: '', gsc_property: ''
+            },
+            redirects: [],
+            log404: [],
+            sitemapIndex: '',
+            saving: false,
+            savingRd: false
+        },
         wizardBusy: false,
         seoAudit: { running: false, score: 0, items: [] },
-        seoState: {},
+        seoState: <?php
+            $__ss = [];
+            foreach ($seo_mods as $__m) {
+                $__id = $__m['id'] ?? '';
+                if ($__id !== '') {
+                    $__ss[$__id] = !empty($__m['enabled']);
+                }
+            }
+            echo wp_json_encode($__ss);
+        ?>,
+
         integEdit: {
             ga4: '<?php echo $ga4; ?>',
             gtm: '<?php echo $gtm; ?>',
@@ -497,7 +676,88 @@ function bankaiSeoEngineData() {
 
         edit: { open: false, row: null, seo_title: '', description: '', focus_keyword: '', keywords_str: '', saving: false },
 
+        loadSitewide: function () {
+            var self = this;
+            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
+            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
+            fetch(root + 'seo/sitewide', { credentials: 'same-origin', headers: { 'X-WP-Nonce': nonce } })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (!j || !j.success || !j.data) return;
+                    if (j.data.settings) self.sw.settings = Object.assign({}, self.sw.settings, j.data.settings);
+                    self.sw.redirects = j.data.redirects || [];
+                    self.sw.log404 = j.data.log404 || [];
+                    self.sw.sitemapIndex = (window.location.origin || '') + '/sitemap.xml';
+                }).catch(function () {});
+        },
+        saveSitewide: function () {
+            var self = this;
+            self.sw.saving = true;
+            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
+            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
+            fetch(root + 'seo/sitewide', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
+                body: JSON.stringify({ settings: self.sw.settings })
+            }).then(function (r) { return r.json(); }).then(function (j) {
+                self.sw.saving = false;
+                if (window.bankaiAdmin && bankaiAdmin.showToast) bankaiAdmin.showToast((j && j.success) ? 'ذخیره شد' : 'خطا', j && j.success ? 'success' : 'error');
+            }).catch(function () { self.sw.saving = false; });
+        },
+        saveRedirects: function () {
+            var self = this;
+            self.sw.savingRd = true;
+            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
+            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
+            fetch(root + 'seo/redirects', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
+                body: JSON.stringify({ redirects: self.sw.redirects })
+            }).then(function (r) { return r.json(); }).then(function (j) {
+                self.sw.savingRd = false;
+                if (j && j.data) self.sw.redirects = j.data;
+                if (window.bankaiAdmin && bankaiAdmin.showToast) bankaiAdmin.showToast('ریدایرکت‌ها ذخیره شد', 'success');
+            }).catch(function () { self.sw.savingRd = false; });
+        },
+        clear404: function () {
+            var self = this;
+            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
+            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
+            fetch(root + 'seo/404-log', { method: 'DELETE', credentials: 'same-origin', headers: { 'X-WP-Nonce': nonce } })
+                .then(function () { self.sw.log404 = []; });
+        },
+        toggleSeoModule: function (modId) {
+            var self = this;
+            var enabled = !!self.seoState[modId];
+            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
+            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
+            fetch(root + 'module/' + encodeURIComponent(modId), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
+                body: JSON.stringify({ enabled: enabled })
+            }).then(function (r) { return r.json(); }).then(function (j) {
+                if (j && j.success) {
+                    if (window.bankaiAdmin && bankaiAdmin.showToast) bankaiAdmin.showToast(j.message || 'ذخیره شد', 'success');
+                    else if (typeof Alpine !== 'undefined' && window.bankaiShowToast) window.bankaiShowToast(j.message || 'ذخیره شد');
+                } else {
+                    self.seoState[modId] = !enabled;
+                    if (window.bankaiAdmin && bankaiAdmin.showToast) bankaiAdmin.showToast((j && j.message) || 'خطا در ذخیره', 'error');
+                }
+            }).catch(function () {
+                self.seoState[modId] = !enabled;
+            });
+        },
         initEngine: function () {
+            // Seed module toggles from server-rendered state if empty
+            if (!this.seoState || !Object.keys(this.seoState).length) {
+                var mods = (window.bankaiState && window.bankaiState.seoModules) || [];
+                var map = {};
+                (mods || []).forEach(function (m) {
+                    if (m && m.id) map[m.id] = !!m.enabled;
+                });
+                this.seoState = map;
+            }
             this.parseFixedKeywords(<?php echo wp_json_encode($fixed_raw); ?>);
             this.runSeoAuditInline();
         },

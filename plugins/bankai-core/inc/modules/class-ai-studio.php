@@ -43,6 +43,11 @@ final class Bankai_AI_Studio
         add_action('wp_ajax_bankai_test_ai_connections', [$this, 'ajax_test_connections']);
         add_action('wp_ajax_bankai_generate_ai_prompt', [$this, 'ajax_generate_prompt']);
         add_action('wp_ajax_bankai_toggle_ai_module', [$this, 'ajax_toggle_ai_module']);
+        add_action('wp_ajax_bankai_ai_generate_article', [$this, 'ajax_generate_article']);
+        add_action('wp_ajax_bankai_ai_remove_queue_item', [$this, 'ajax_remove_queue_item']);
+        add_action('bankai_publish_scheduled_ai_post', [$this, 'cron_publish_scheduled'], 10, 1);
+        add_action('save_post', [$this, 'on_save_post_modules'], 40, 3);
+        add_action('add_attachment', [$this, 'on_add_attachment_alt'], 20);
         add_action('wp_ajax_bankai_set_default_provider', [$this, 'ajax_set_default_provider']);
         add_action('wp_ajax_bankai_save_custom_provider', [$this, 'ajax_save_custom_provider']);
         add_action('wp_ajax_bankai_delete_custom_provider', [$this, 'ajax_delete_custom_provider']);
@@ -519,25 +524,39 @@ final class Bankai_AI_Studio
 
         $task          = sanitize_key(wp_unslash($_POST['task'] ?? ''));
         $title         = sanitize_text_field(wp_unslash($_POST['title'] ?? ''));
-        $content       = wp_strip_all_tags(wp_unslash($_POST['content'] ?? ''));
+        $raw_content   = wp_unslash($_POST['content'] ?? '');
         $focus         = sanitize_text_field(wp_unslash($_POST['focus_keyword'] ?? ''));
         $locale        = sanitize_text_field(wp_unslash($_POST['locale'] ?? 'fa_IR'));
         $provider      = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
         $img_context   = sanitize_text_field(wp_unslash($_POST['image_context'] ?? $_POST['context'] ?? ''));
         $img_url       = esc_url_raw(wp_unslash($_POST['image_url'] ?? $_POST['src'] ?? ''));
         $articles_data = wp_unslash($_POST['articles'] ?? $_POST['site_articles'] ?? '');
+        $rewrite_style = sanitize_key(wp_unslash($_POST['rewrite_style'] ?? 'seo'));
 
         if ($provider === '') {
             $provider = $this->get_default_provider();
         }
 
-        $content = mb_substr(preg_replace('/\s+/u', ' ', $content), 0, 8000);
+        if ($task === 'rewrite') {
+            // Keep light HTML structure for rewrite quality
+            $content = wp_kses($raw_content, [
+                'p' => [], 'br' => [], 'h2' => [], 'h3' => [], 'h4' => [],
+                'ul' => [], 'ol' => [], 'li' => [],
+                'strong' => [], 'b' => [], 'em' => [], 'i' => [],
+                'a' => ['href' => [], 'title' => []],
+            ]);
+            $content = mb_substr($content, 0, 14000);
+        } else {
+            $content = wp_strip_all_tags($raw_content);
+            $content = mb_substr(preg_replace('/\s+/u', ' ', $content), 0, 8000);
+        }
         $is_fa   = (stripos($locale, 'fa') !== false || stripos($locale, 'persian') !== false);
 
         $extra = [
             'img_context'   => $img_context,
             'img_url'       => $img_url,
             'articles_data' => $articles_data,
+            'rewrite_style' => $rewrite_style ?? 'seo',
         ];
 
         $prompts = $this->build_seo_prompts($task, $title, $content, $focus, $is_fa, $extra);
@@ -561,7 +580,9 @@ final class Bankai_AI_Studio
     private function build_seo_prompts(string $task, string $title, string $content, string $focus, bool $is_fa, array $extra = []): ?array
     {
         $lang = $is_fa ? 'Persian (Farsi)' : 'English';
-        $snippet = $content !== '' ? mb_substr($content, 0, 3500) : '(empty)';
+        $snip_len = ($task === 'rewrite') ? 12000 : 3500;
+        $snippet = $content !== '' ? mb_substr($content, 0, $snip_len) : '(empty)';
+        $style = sanitize_key((string) ($extra['rewrite_style'] ?? 'seo'));
 
         $base_sys = "You are Bankai SEO Agent — a senior SEO strategist and copywriter for WordPress content. "
             . "Always respond in {$lang}. Follow search intent, include the focus keyword naturally, avoid keyword stuffing, "
@@ -603,11 +624,20 @@ final class Bankai_AI_Studio
                 ];
 
             case 'rewrite':
+                $style_hint = [
+                    'seo'       => 'Optimize for SEO: clear H2/H3 structure, natural focus keyword usage, scannable paragraphs.',
+                    'formal'    => 'Use a formal, professional tone suitable for business or academic readers.',
+                    'simple'    => 'Simplify language for a general audience; short sentences and clear explanations.',
+                    'engaging'  => 'Make it more engaging and persuasive while staying factual.',
+                    'expand'    => 'Expand the content with useful detail while staying on-topic; keep structure.',
+                    'shorten'   => 'Condense the article; keep key points, remove fluff, preserve headings.',
+                ];
+                $hint = $style_hint[$style] ?? $style_hint['seo'];
                 return [
-                    'system' => $base_sys . ' Rewrite the article to be clearer, more engaging, and SEO-friendly. Keep the same language and approximate length. Output only the rewritten body text.',
-                    'user'   => "Rewrite this article.\nTitle: {$title}\nFocus: {$focus}\n\n{$snippet}",
-                    'temperature' => 0.65,
-                    'max_tokens'  => 2500,
+                    'system' => $base_sys . ' You rewrite full article bodies. Output ONLY valid HTML body fragments using <p>, <h2>, <h3>, <ul>, <ol>, <li>, <strong>, <em>, <a>. No markdown, no code fences, no title tag, no html/body wrappers. Preserve meaning and language. Approximate length unless style says expand/shorten. ' . $hint,
+                    'user'   => "Rewrite this article body.\nTitle: {$title}\nFocus keyword: {$focus}\nStyle: {$style}\n\nContent:\n{$snippet}",
+                    'temperature' => 0.62,
+                    'max_tokens'  => 8000,
                 ];
 
             case 'outline':
@@ -907,9 +937,40 @@ final class Bankai_AI_Studio
             } catch (Throwable $e) {
                 $last_error = $e;
                 $msg = $e->getMessage();
-                // Only fall through on model-not-found style errors
-                if (!preg_match('/404|not found|no longer available|does not exist|invalid model|model_not_found/i', $msg)) {
-                    throw $e;
+                // Fall through on model-not-found OR transient server errors
+                if (!preg_match('/404|not found|no longer available|does not exist|invalid model|model_not_found|429|500|502|503|504|timeout|timed out/i', $msg)) {
+                    // still try next model for empty/unknown errors
+                    if (!preg_match('/empty|پاسخ خالی|Empty/i', $msg)) {
+                        // continue to cross-provider below rather than hard-fail immediately
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Cross-provider fallback: try other providers that have API keys
+        $tried = [$provider => true];
+        foreach ($keys as $pid => $k) {
+            $k = is_string($k) ? trim($k) : '';
+            if ($k === '' || isset($tried[$pid])) {
+                continue;
+            }
+            $tried[$pid] = true;
+            $models_p = [];
+            if (isset($catalog[$pid]['models']) && is_array($catalog[$pid]['models'])) {
+                $models_p = $catalog[$pid]['models'];
+            }
+            $sel = trim((string) ($models[$pid] ?? ''));
+            if ($sel !== '') {
+                array_unshift($models_p, $sel);
+            }
+            $models_p = array_values(array_unique(array_filter($models_p)));
+            foreach ($models_p as $try_model) {
+                try {
+                    return $this->dispatch_chat($pid, $k, $try_model, $system, $user, $temperature, $max_tokens);
+                } catch (Throwable $e) {
+                    $last_error = $e;
+                    break; // next provider
                 }
             }
         }
@@ -1560,6 +1621,23 @@ final class Bankai_AI_Studio
             wp_send_json_error(['message' => 'Permission denied'], 403);
         }
 
+        // Optional: fill fields from curl snippet
+        $curl = (string) wp_unslash($_POST['curl_snippet'] ?? '');
+        if ($curl !== '' && empty($_POST['endpoint'])) {
+            if (preg_match('/curl\s+(?:-X\s+POST\s+)?["\']([^"\']+)["\']/i', $curl, $m)
+                || preg_match('/curl\s+-X\s+POST\s+(\S+)/i', $curl, $m)) {
+                $_POST['endpoint'] = $m[1];
+            }
+            if (preg_match('/"model"\s*:\s*"([^"]+)"/', $curl, $mm)) {
+                if (empty($_POST['default_model'])) {
+                    $_POST['default_model'] = $mm[1];
+                }
+                if (empty($_POST['models'])) {
+                    $_POST['models'] = $mm[1];
+                }
+            }
+        }
+
         $id = sanitize_key(wp_unslash($_POST['id'] ?? ''));
         $name = sanitize_text_field(wp_unslash($_POST['name'] ?? ''));
         $type = sanitize_key(wp_unslash($_POST['type'] ?? 'openai_compat'));
@@ -1766,4 +1844,278 @@ final class Bankai_AI_Studio
         }
         wp_send_json_success(['message' => 'مدل حذف شد.']);
     }
+
+
+    /**
+     * Internal SEO task runner (modules / automation).
+     */
+    private function run_seo_task(string $task, array $ctx, array $extra = []): array
+    {
+        $title = (string) ($ctx['title'] ?? '');
+        $content = (string) ($ctx['content'] ?? '');
+        $focus = (string) ($ctx['focus_keyword'] ?? '');
+        $locale = determine_locale();
+        $is_fa = (stripos($locale, 'fa') !== false);
+        $prompts = $this->build_seo_prompts($task, $title, $content, $focus, $is_fa, $extra);
+        if ($prompts === null) {
+            throw new Exception('Unknown SEO task: ' . $task);
+        }
+        $raw = $this->chat($this->get_default_provider(), $prompts['system'], $prompts['user'], [
+            'temperature' => $prompts['temperature'] ?? 0.55,
+            'max_tokens'  => $prompts['max_tokens'] ?? 800,
+        ]);
+        return $this->parse_seo_response($task, $raw, $focus, $is_fa);
+    }
+
+    /**
+     * Module automation: auto SEO meta on publish when module enabled.
+     */
+    public function on_save_post_modules(int $post_id, $post = null, $update = null): void
+    {
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+            return;
+        }
+        if (wp_is_post_revision($post_id)) {
+            return;
+        }
+        $post = $post instanceof WP_Post ? $post : get_post($post_id);
+        if (!$post || !in_array($post->post_status, ['publish', 'future'], true)) {
+            return;
+        }
+        if (!in_array($post->post_type, ['post', 'page'], true)) {
+            return;
+        }
+        $mods = get_option(self::OPT_MODULES, []);
+        if (!is_array($mods) || empty($mods['auto_seo_meta'])) {
+            return;
+        }
+        // Only fill empty fields — never overwrite manual SEO
+        $title = (string) get_post_meta($post_id, '_bankai_seo_title', true);
+        $desc  = (string) get_post_meta($post_id, '_bankai_seo_description', true);
+        $kw    = (string) get_post_meta($post_id, '_bankai_seo_focus_keyword', true);
+        if ($title !== '' && $desc !== '' && $kw !== '') {
+            return;
+        }
+        try {
+            $content = wp_strip_all_tags($post->post_content);
+            $snippet = mb_substr($content, 0, 2500);
+            $ctx = [
+                'title' => $post->post_title,
+                'content' => $snippet,
+                'focus_keyword' => $kw,
+            ];
+            if ($kw === '') {
+                $res = $this->run_seo_task('focus_keyword', $ctx);
+                if (!empty($res['focus_keyword'])) {
+                    update_post_meta($post_id, '_bankai_seo_focus_keyword', sanitize_text_field($res['focus_keyword']));
+                    $kw = $res['focus_keyword'];
+                    $ctx['focus_keyword'] = $kw;
+                }
+            }
+            if ($title === '') {
+                $res = $this->run_seo_task('meta_title', $ctx);
+                if (!empty($res['seo_title'])) {
+                    update_post_meta($post_id, '_bankai_seo_title', sanitize_text_field($res['seo_title']));
+                }
+            }
+            if ($desc === '') {
+                $res = $this->run_seo_task('meta_description', $ctx);
+                if (!empty($res['description'])) {
+                    update_post_meta($post_id, '_bankai_seo_description', sanitize_text_field($res['description']));
+                }
+            }
+        } catch (Throwable $e) {
+            // silent — never block publish
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[Bankai AI modules] ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Module: auto-suggest alt text when attachment added (queued style).
+     */
+    public function on_add_attachment_alt(int $attachment_id): void
+    {
+        $mods = get_option(self::OPT_MODULES, []);
+        if (!is_array($mods) || empty($mods['alt_generator'])) {
+            return;
+        }
+        if (!wp_attachment_is_image($attachment_id)) {
+            return;
+        }
+        $alt = (string) get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
+        if ($alt !== '') {
+            return;
+        }
+        $title = get_the_title($attachment_id);
+        $url = wp_get_attachment_url($attachment_id);
+        try {
+            $res = $this->run_seo_task('image_alt_text', [
+                'title' => $title,
+                'content' => $title,
+                'focus_keyword' => '',
+            ], [
+                'img_url' => $url,
+                'img_context' => $title,
+            ]);
+            $text = $res['text'] ?? ($res['alt'] ?? '');
+            if (is_string($text) && trim($text) !== '') {
+                update_post_meta($attachment_id, '_wp_attachment_image_alt', sanitize_text_field(mb_substr(trim($text), 0, 125)));
+            }
+        } catch (Throwable $e) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[Bankai alt module] ' . $e->getMessage());
+            }
+        }
+    }
+
+
+    public function ajax_generate_article(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $topic = sanitize_text_field(wp_unslash($_POST['topic'] ?? ''));
+        $focus = sanitize_text_field(wp_unslash($_POST['focus'] ?? ''));
+        $length = absint($_POST['length'] ?? 1500);
+        $status = sanitize_key($_POST['status'] ?? 'draft');
+        $schedule_at = sanitize_text_field(wp_unslash($_POST['schedule_at'] ?? ''));
+        $notes = sanitize_textarea_field(wp_unslash($_POST['notes'] ?? ''));
+        if ($topic === '') {
+            wp_send_json_error(['message' => 'موضوع خالی است']);
+        }
+        $length = max(400, min(7000, $length));
+        $system = 'شما نویسنده حرفه‌ای سئو به زبان فارسی هستید. خروجی فقط بدنه مقاله HTML ساده با تگ‌های p, h2, h3, ul, li باشد. بدون markdown و بدون عنوان اصلی تکراری.';
+        $user = "موضوع: {$topic}\nکلمه کلیدی: {$focus}\nطول تقریبی: {$length} کلمه\nدستورالعمل: {$notes}\nیک مقاله کامل، ساختارمند و قابل انتشار بنویس.";
+        try {
+            $body = $this->chat($this->get_default_provider(), $system, $user, [
+                'temperature' => 0.65,
+                'max_tokens'  => min(16000, max(2000, (int) ($length * 2.5))),
+            ]);
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage()], 500);
+        }
+        $postarr = [
+            'post_title'   => $topic,
+            'post_content' => wp_kses_post($body),
+            'post_status'  => $status === 'future' ? 'future' : 'draft',
+            'post_type'    => 'post',
+            'post_author'  => get_current_user_id(),
+        ];
+        if ($status === 'future' && $schedule_at !== '') {
+            $ts = strtotime($schedule_at);
+            if ($ts && $ts > time()) {
+                $postarr['post_date'] = gmdate('Y-m-d H:i:s', $ts - (int) (get_option('gmt_offset') * HOUR_IN_SECONDS));
+                $postarr['post_date_gmt'] = gmdate('Y-m-d H:i:s', $ts);
+                $postarr['post_status'] = 'future';
+            } else {
+                $postarr['post_status'] = 'draft';
+            }
+        }
+        $post_id = wp_insert_post($postarr, true);
+        if (is_wp_error($post_id)) {
+            wp_send_json_error(['message' => $post_id->get_error_message()]);
+        }
+        if ($focus !== '') {
+            update_post_meta($post_id, '_bankai_seo_focus_keyword', $focus);
+        }
+
+        $seo_done = [];
+        $do_seo = !empty($_POST['do_seo']);
+        if ($do_seo) {
+            $ctx = [
+                'title' => $topic,
+                'content' => mb_substr(wp_strip_all_tags($body), 0, 6000),
+                'focus_keyword' => $focus,
+            ];
+            try {
+                if ($focus === '') {
+                    $res = $this->run_seo_task('focus_keyword', $ctx);
+                    if (!empty($res['focus_keyword'])) {
+                        $focus = sanitize_text_field((string) $res['focus_keyword']);
+                        update_post_meta($post_id, '_bankai_seo_focus_keyword', $focus);
+                        $ctx['focus_keyword'] = $focus;
+                        $seo_done[] = 'focus_keyword';
+                    }
+                }
+                $res = $this->run_seo_task('meta_title', $ctx);
+                if (!empty($res['seo_title'])) {
+                    update_post_meta($post_id, '_bankai_seo_title', sanitize_text_field((string) $res['seo_title']));
+                    $seo_done[] = 'meta_title';
+                }
+                $res = $this->run_seo_task('meta_description', $ctx);
+                if (!empty($res['description'])) {
+                    update_post_meta($post_id, '_bankai_seo_description', sanitize_text_field((string) $res['description']));
+                    $seo_done[] = 'meta_description';
+                }
+                $res = $this->run_seo_task('keywords', $ctx);
+                $kws = $res['keywords'] ?? ($res['list'] ?? null);
+                if (is_array($kws) && $kws) {
+                    update_post_meta($post_id, '_bankai_seo_keywords', wp_json_encode(array_values($kws), JSON_UNESCAPED_UNICODE));
+                    $seo_done[] = 'keywords';
+                }
+            } catch (\Throwable $e) {
+                // keep post even if SEO steps fail
+            }
+            if (class_exists('Bankai_SEO_Engine')) {
+                try {
+                    $analysis = Bankai_SEO_Engine::instance()->analyze((int) $post_id);
+                    update_post_meta($post_id, '_bankai_seo_score', (int) ($analysis['score'] ?? 0));
+                } catch (\Throwable $e) {}
+            }
+        }
+
+        $queue = get_option('bankai_ai_publish_queue', []);
+        if (!is_array($queue)) {
+            $queue = [];
+        }
+        if (($postarr['post_status'] ?? '') === 'future') {
+            $queue[] = [
+                'post_id'     => $post_id,
+                'title'       => $topic,
+                'topic'       => $topic,
+                'schedule_at' => $schedule_at,
+                'status'      => 'scheduled',
+            ];
+            update_option('bankai_ai_publish_queue', $queue, false);
+        }
+        wp_send_json_success([
+            'message'   => 'مقاله #' . $post_id . ' ایجاد شد (' . ($postarr['post_status'] ?? 'draft') . ')',
+            'post_id'   => $post_id,
+            'edit_link' => get_edit_post_link($post_id, 'raw'),
+            'edit_url'  => get_edit_post_link($post_id, 'raw'),
+            'permalink' => get_permalink($post_id),
+            'seo_done'  => $seo_done ?? [],
+            'queue'     => array_values($queue),
+        ]);
+    }
+
+    public function ajax_remove_queue_item(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $idx = absint($_POST['index'] ?? -1);
+        $queue = get_option('bankai_ai_publish_queue', []);
+        if (!is_array($queue)) {
+            $queue = [];
+        }
+        if ($idx >= 0 && isset($queue[$idx])) {
+            array_splice($queue, $idx, 1);
+            update_option('bankai_ai_publish_queue', array_values($queue), false);
+        }
+        wp_send_json_success(['queue' => array_values($queue)]);
+    }
+
+    public function cron_publish_scheduled(int $post_id): void
+    {
+        $post = get_post($post_id);
+        if ($post && $post->post_status === 'future') {
+            wp_publish_post($post_id);
+        }
+    }
+
 }

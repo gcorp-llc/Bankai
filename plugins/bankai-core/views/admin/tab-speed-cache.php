@@ -16,7 +16,7 @@ $redis = esc_html($stats['redis_latency'] ?? '0.42ms');
 $revs  = (int) ($stats['revisions'] ?? 0);
 $last_purge = esc_html($stats['last_purge'] ?? '');
 ?>
-<div id="tab-speed-cache" class="bankai-tab-pane" x-show="activeTab === 'speed-cache'" x-cloak>
+<div id="tab-speed-cache" class="bankai-tab-pane" style="width:100%;max-width:100%;box-sizing:border-box" x-show="activeTab === 'speed-cache'" x-cloak>
 
     <!-- Header -->
     <div class="bankai-card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding:20px;flex-wrap:wrap;gap:14px;">
@@ -142,6 +142,21 @@ $last_purge = esc_html($stats['last_purge'] ?? '');
             </div>
         </div>
         <?php endforeach; ?>
+    </div>
+
+    <!-- Browser cache status -->
+    <div class="bankai-card" style="padding:18px;margin-bottom:20px;border:1px solid #D0D7DE;border-radius:12px;background:#F6F8FA">
+        <div style="font-weight:800;font-size:13px;margin-bottom:6px;color:#1F2328">کش مرورگر (Browser Cache)</div>
+        <p style="margin:0 0 10px;font-size:12px;color:#656D76;line-height:1.6">
+            با فعال‌سازی ماژول «بهینه‌سازی کش مرورگر»، قوانین <code>.htaccess</code> برای فایل‌های استاتیک
+            (CSS، JS، تصویر، فونت) با <code>max-age=1 سال</code> نوشته می‌شود. روی Nginx باید قطعه زیر را دستی در کانفیگ سرور قرار دهید.
+        </p>
+        <details style="font-size:11px">
+            <summary style="cursor:pointer;font-weight:700;color:#0969DA">نمونه کانفیگ Nginx</summary>
+            <pre style="direction:ltr;text-align:left;background:#0d1117;color:#e6edf3;padding:12px;border-radius:8px;overflow:auto;margin-top:8px;font-size:11px;line-height:1.5"><?php
+                echo esc_html(class_exists('Bankai_Speed_Cache') ? Bankai_Speed_Cache::nginx_browser_cache_snippet() : '');
+            ?></pre>
+        </details>
     </div>
 
     <!-- Speed Drawer — modern, no dark overlay -->

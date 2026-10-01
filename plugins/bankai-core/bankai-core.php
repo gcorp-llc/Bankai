@@ -39,7 +39,7 @@ defined('BANKAI_CORE_VIEWS_DIR') || define(
     BANKAI_CORE_DIR . 'views/'
 );
 
-defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.0.18');
+defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.0.62');
 
 /*
 |--------------------------------------------------------------------------
@@ -96,11 +96,12 @@ final class Bankai_Core
 
         // Feature modules — files always required; constructors gate on active_modules
         $modules = [
-            'class-theme-kits.php',
+            'class-jalali-calendar.php',
             'class-settings-license.php',
             'class-speed-cache.php',
             'class-seo-engine.php',
             'class-seo-integrations.php',
+            'class-seo-sitewide.php',
             'class-media-watermark.php',
             'class-ai-studio.php',
             'class-llms-txt.php',
@@ -139,10 +140,11 @@ final class Bankai_Core
         // Map class → module key (empty key = always on)
         $map = [
             'Bankai_Settings_License' => 'settings_license',
-            'Bankai_Theme_Kits'       => 'theme_kits',
+            'Bankai_Jalali_Calendar'  => 'jalali_calendar',
             'Bankai_Speed_Cache'      => 'speed_cache',
             'Bankai_SEO_Engine'       => 'seo_engine',
             'Bankai_SEO_Integrations' => 'seo_engine',
+            'Bankai_SEO_Sitewide'     => 'seo_engine',
             'Bankai_Media_Watermark'  => 'media_watermark',
             'Bankai_AI_Studio'        => 'ai_studio',
             'Bankai_LLMS_Txt'         => 'llms_txt',
@@ -179,7 +181,7 @@ final class Bankai_Core
         $default_options = [
             'version' => defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0',
             'active_modules' => [
-                'theme_kits'        => true,
+                'jalali_calendar'   => true,
                 'settings_license'  => true,
                 'speed_cache'       => true,
                 'seo_engine'        => true,
@@ -202,6 +204,7 @@ final class Bankai_Core
                 'object_cache'        => false,
                 'server_compression'  => true,
                 'fonts_localizer'     => true,
+                'browser_cache'       => true,
             ],
             'media_modules' => [
                 'webp_avif_converter'     => true,
@@ -236,6 +239,12 @@ final class Bankai_Core
                 $existing = [];
             }
             $merged = array_replace_recursive($default_options, $existing);
+            // Migrate theme_kits → jalali_calendar
+            if (isset($merged['active_modules']['theme_kits']) && !isset($merged['active_modules']['jalali_calendar'])) {
+                $merged['active_modules']['jalali_calendar'] = $merged['active_modules']['theme_kits'];
+            }
+            unset($merged['active_modules']['theme_kits']);
+
             // Ensure active_modules keys exist
             if (!isset($merged['active_modules']) || !is_array($merged['active_modules'])) {
                 $merged['active_modules'] = $default_options['active_modules'];

@@ -8,6 +8,9 @@ document.addEventListener('alpine:init', () => {
         loading: false,
         saving: false,
         serpMobile: false,
+        serpDate: '',
+        serpAuthor: '',
+        autoLinkSuggestions: [],
 
         seo: {
             id: 0,
@@ -20,7 +23,7 @@ document.addEventListener('alpine:init', () => {
             focus_keyword: '',
             keywords: [],
             canonical: '',
-            robots: { index: true, follow: true },
+            robots: { index: true, follow: true, noarchive: false, nosnippet: false, noimageindex: false, max_snippet: -1, max_image_preview: 'large', hide_date: false },
             og_title: '',
             og_description: '',
             og_image: '',
@@ -28,6 +31,7 @@ document.addEventListener('alpine:init', () => {
             x_description: '',
             x_image: '',
             schema: '',
+            redirect: '',
             score: 0
         },
 
@@ -46,6 +50,8 @@ document.addEventListener('alpine:init', () => {
 
         openGroups: { basic: true, advanced: true, title: false, content: false },
         schemaType: 'Article',
+        faqItems: [{ q: '', a: '' }],
+        howToSteps: [{ name: '', text: '' }],
 
         // Links state
         linkData: { internal: [], external: [], counts: { internal: 0, external: 0 } },
@@ -277,6 +283,14 @@ document.addEventListener('alpine:init', () => {
             }
             // Keywords
             let list = [];
+            if (data.redirect !== undefined) this.seo.redirect = data.redirect || '';
+            if (data.robots && typeof data.robots === 'object') {
+                this.seo.robots = Object.assign({}, this.seo.robots, data.robots);
+            }
+            const cfg = window.bankaiEditorSeo || {};
+            this.serpDate = cfg.postDate || '';
+            this.serpAuthor = cfg.postAuthor || '';
+
             if (Array.isArray(data.keywords)) {
                 list = data.keywords.map((k) => String(k).trim()).filter(Boolean);
             } else if (typeof data.keywords === 'string' && data.keywords) {
@@ -354,6 +368,11 @@ document.addEventListener('alpine:init', () => {
                 const json = await res.json();
                 if (json.success) {
                     this.showToast('تنظیمات سئو ذخیره شد', 'success');
+                    const sug = (json.data && json.data.link_suggestions) || json.link_suggestions || [];
+                    if (Array.isArray(sug) && sug.length) {
+                        this.autoLinkSuggestions = sug;
+                    }
+                    if (json.analysis) this.analysis = json.analysis;
                 } else {
                     this.showToast(json.message || 'خطا در ذخیره‌سازی', 'error');
                 }
@@ -578,19 +597,88 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        /**
+         * Insert link on first free text match inside editor HTML (not inside existing <a>).
+         * Internal: follow + target=_blank + rel=noopener
+         * External: optional nofollow + target=_blank
+         * Bold wrap when bold=true.
+         */
         insertLinkIntoEditor(keyword, url, title = '', nofollow = false, bold = true) {
+            const needle = String(keyword || '').trim();
+            const href = String(url || '').trim();
+            if (!needle || !href) return false;
+
             let html = this.getEditorRawContent();
-            if (!html || !keyword || !url) return false;
-            const rel = nofollow ? ' rel="nofollow noopener"' : ' rel="noopener"';
-            const esc = String(keyword).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const re = new RegExp('(?<!<a[^>]*>)(' + esc + ')(?![^<]*</a>)', 'i');
-            if (!re.test(html)) {
+            if (!html) return false;
+
+            let doc;
+            try {
+                doc = new DOMParser().parseFromString('<div id="bk-root">' + html + '</div>', 'text/html');
+            } catch (e) {
                 return false;
             }
-            const inner = bold ? '<strong>$1</strong>' : '$1';
-            const titleAttr = String(title || keyword).replace(/"/g, '&quot;');
-            html = html.replace(re, '<a href="' + url + '" title="' + titleAttr + '"' + rel + '>' + inner + '</a>');
-            this.setEditorRawContent(html);
+            const root = doc.getElementById('bk-root') || doc.body;
+            if (!root) return false;
+
+            const needleLower = needle.toLowerCase();
+            let done = false;
+
+            const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                    if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+                    let p = node.parentElement;
+                    while (p) {
+                        const tag = (p.tagName || '').toLowerCase();
+                        if (tag === 'a' || tag === 'script' || tag === 'style') return NodeFilter.FILTER_REJECT;
+                        p = p.parentElement;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                const text = node.nodeValue;
+                const idx = text.toLowerCase().indexOf(needleLower);
+                if (idx === -1) continue;
+
+                const before = text.slice(0, idx);
+                const match = text.slice(idx, idx + needle.length);
+                const after = text.slice(idx + needle.length);
+
+                const a = doc.createElement('a');
+                a.setAttribute('href', href);
+                a.setAttribute('target', '_blank');
+                const relParts = ['noopener'];
+                if (nofollow) relParts.unshift('nofollow');
+                a.setAttribute('rel', relParts.join(' '));
+                if (title) a.setAttribute('title', String(title));
+
+                if (bold) {
+                    const strong = doc.createElement('strong');
+                    strong.textContent = match;
+                    a.appendChild(strong);
+                } else {
+                    a.textContent = match;
+                }
+
+                const parent = node.parentNode;
+                if (!parent) continue;
+                if (before) parent.insertBefore(doc.createTextNode(before), node);
+                parent.insertBefore(a, node);
+                if (after) parent.insertBefore(doc.createTextNode(after), node);
+                parent.removeChild(node);
+                done = true;
+                break;
+            }
+
+            if (!done) return false;
+
+            const out = root.innerHTML;
+            this.setEditorRawContent(out);
             return true;
         },
 
@@ -1053,6 +1141,20 @@ document.addEventListener('alpine:init', () => {
         },
 
         rebuildSchema() {
+            this.syncSchemaFromForms(true);
+        },
+
+        onSchemaTypeChange() {
+            if (this.schemaType === 'FAQPage' && (!this.faqItems || !this.faqItems.length)) {
+                this.faqItems = [{ q: '', a: '' }];
+            }
+            if (this.schemaType === 'HowTo' && (!this.howToSteps || !this.howToSteps.length)) {
+                this.howToSteps = [{ name: '', text: '' }];
+            }
+            this.syncSchemaFromForms(true);
+        },
+
+        syncSchemaFromForms(force) {
             const type = this.schemaType || 'Article';
             const title = this.seo.seo_title || this.seo.title || '';
             const desc = this.seo.description || '';
@@ -1060,22 +1162,60 @@ document.addEventListener('alpine:init', () => {
             const schema = {
                 '@context': 'https://schema.org',
                 '@type': type,
-                'headline': title,
-                'description': desc,
-                'url': url
+                headline: title,
+                name: title,
+                description: desc,
+                url: url
             };
             if (type === 'FAQPage') {
-                schema.mainEntity = [];
+                const ents = (this.faqItems || [])
+                    .filter((i) => (i.q || '').trim())
+                    .map((i) => ({
+                        '@type': 'Question',
+                        name: i.q,
+                        acceptedAnswer: { '@type': 'Answer', text: i.a || '' }
+                    }));
+                schema.mainEntity = ents;
             }
             if (type === 'HowTo') {
-                schema.step = [];
+                schema.step = (this.howToSteps || [])
+                    .filter((s) => (s.name || s.text || '').trim())
+                    .map((s, idx) => ({
+                        '@type': 'HowToStep',
+                        position: idx + 1,
+                        name: s.name || ('مرحله ' + (idx + 1)),
+                        text: s.text || ''
+                    }));
             }
             this.seo.schema = JSON.stringify(schema, null, 2);
-            this.onFieldChange();
+            if (force !== false) this.onFieldChange();
+        },
+
+        pickMedia(field) {
+            if (!window.wp || !wp.media) {
+                this.showToast('کتابخانه رسانه در دسترس نیست', 'error');
+                return;
+            }
+            const frame = wp.media({
+                title: 'انتخاب تصویر',
+                button: { text: 'استفاده از این تصویر' },
+                multiple: false,
+                library: { type: 'image' }
+            });
+            const self = this;
+            frame.on('select', function () {
+                const att = frame.state().get('selection').first().toJSON();
+                const url = (att && (att.url || (att.sizes && att.sizes.full && att.sizes.full.url))) || '';
+                if (!url) return;
+                if (field === 'og_image') self.seo.og_image = url;
+                else if (field === 'x_image') self.seo.x_image = url;
+                self.onFieldChange();
+            });
+            frame.open();
         },
 
 
-
+        
         autoSplitLongParagraphs() {
             let html = this.getEditorRawContent();
             if (!html) {
@@ -1296,6 +1436,8 @@ document.addEventListener('alpine:init', () => {
                 }));
                 if (!this.postResults.length) {
                     this.showToast('مقاله مرتبطی یافت نشد', 'info');
+                } else {
+                    this.showToast(this.postResults.length + ' مقاله مرتبط — تایید کنید سپس محل لینک را مشخص کنید', 'success');
                 }
             } catch (e) {
                 this.showToast('خطا در جستجوی مقالات', 'error');
@@ -1521,12 +1663,13 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        showToast(message, type = 'info') {
-            this.toast = { show: true, message, type };
-            setTimeout(() => { this.toast.show = false; }, 3200);
-            if (window.bankaiAdmin && typeof window.bankaiAdmin.showToast === 'function') {
-                window.bankaiAdmin.showToast(message, type);
-            }
+        showToast(message, type = 'info', duration = 0) {
+            let t = type || 'info';
+            if (t === 'warn') t = 'warning';
+            const ms = duration || (t === 'error' ? 4800 : 3600);
+            this.toast = { show: true, message: message || '', type: t, duration: ms };
+            clearTimeout(this._toastTimer);
+            this._toastTimer = setTimeout(() => { this.toast.show = false; }, ms);
         }
     }));
 });

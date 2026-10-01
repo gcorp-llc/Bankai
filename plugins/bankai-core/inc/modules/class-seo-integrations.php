@@ -234,6 +234,11 @@ final class Bankai_SEO_Integrations
             return;
         }
 
+        $exclude = [];
+        if (class_exists('Bankai_SEO_Sitewide')) {
+            $exclude = Bankai_SEO_Sitewide::instance()->get_sitemap_exclude_ids();
+        }
+
         nocache_headers();
         header('Content-Type: application/xml; charset=utf-8');
 
@@ -242,19 +247,57 @@ final class Bankai_SEO_Integrations
             echo '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
             echo '  <sitemap><loc>' . esc_url(home_url('/sitemap-posts.xml')) . '</loc></sitemap>' . "\n";
             echo '  <sitemap><loc>' . esc_url(home_url('/sitemap-pages.xml')) . '</loc></sitemap>' . "\n";
+            echo '  <sitemap><loc>' . esc_url(home_url('/sitemap-tax.xml')) . '</loc></sitemap>' . "\n";
+            if (class_exists('WooCommerce')) {
+                echo '  <sitemap><loc>' . esc_url(home_url('/sitemap-products.xml')) . '</loc></sitemap>' . "\n";
+            }
             echo '</sitemapindex>';
             return;
         }
 
-        $post_type = $type === 'pages' ? 'page' : 'post';
-        $q = new WP_Query([
+        if ($type === 'tax') {
+            echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+            echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+            foreach (['category', 'post_tag'] as $tax) {
+                $terms = get_terms(['taxonomy' => $tax, 'hide_empty' => true]);
+                if (is_wp_error($terms) || !is_array($terms)) {
+                    continue;
+                }
+                foreach ($terms as $term) {
+                    $robots = (string) get_term_meta((int) $term->term_id, '_bankai_term_seo_robots', true);
+                    if (str_contains($robots, 'noindex')) {
+                        continue;
+                    }
+                    $link = get_term_link($term);
+                    if (is_wp_error($link)) {
+                        continue;
+                    }
+                    echo "  <url>\n    <loc>" . esc_url($link) . "</loc>\n  </url>\n";
+                }
+            }
+            echo '</urlset>';
+            return;
+        }
+
+        $post_type = 'post';
+        if ($type === 'pages') {
+            $post_type = 'page';
+        } elseif ($type === 'products') {
+            $post_type = 'product';
+        }
+
+        $args = [
             'post_type'      => $post_type,
             'post_status'    => 'publish',
-            'posts_per_page' => 1000,
+            'posts_per_page' => 2000,
             'orderby'        => 'modified',
             'order'          => 'DESC',
             'no_found_rows'  => true,
-        ]);
+        ];
+        if ($exclude) {
+            $args['post__not_in'] = $exclude;
+        }
+        $q = new WP_Query($args);
 
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"';
@@ -266,11 +309,21 @@ final class Bankai_SEO_Integrations
         while ($q->have_posts()) {
             $q->the_post();
             $id  = get_the_ID();
+            if (in_array((int) $id, $exclude, true)) {
+                continue;
+            }
+            // Skip noindex posts
+            $robots = get_post_meta($id, '_bankai_seo_robots', true);
+            if (is_array($robots) && isset($robots['index']) && empty($robots['index'])) {
+                continue;
+            }
             $url = get_permalink($id);
             $mod = get_the_modified_time('c');
+            $priority = ($post_type === 'page') ? '0.6' : '0.8';
             echo "  <url>\n";
             echo '    <loc>' . esc_url($url) . "</loc>\n";
             echo '    <lastmod>' . esc_html($mod) . "</lastmod>\n";
+            echo '    <priority>' . $priority . "</priority>\n";
             if (!empty($s['sitemap_include_images'])) {
                 $img = get_the_post_thumbnail_url($id, 'full');
                 if ($img) {

@@ -111,76 +111,150 @@ class Bankai_Admin_Menu {
             return;
         }
 
-        add_action('admin_head', function () {
-            echo '<link rel="preconnect" href="https://fonts.googleapis.com">' . "\n";
-            echo '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' . "\n";
-        });
+        // Fonts: system stack first; Vazirmatn progressive (async, few weights)
+        $has_local_font = is_file(BANKAI_CORE_DIR . 'assets/fonts/Vazirmatn-Regular.woff2');
+        add_action('admin_head', static function () use ($has_local_font) {
+            // Preload main admin CSS for faster first paint
+            $href = bankai_asset_url('css/bankai-admin.css');
+            if ($href) {
+                echo '<link rel="preload" href="' . esc_url($href) . '" as="style">' . "\n";
+            }
+            if ($has_local_font) {
+                $woff = bankai_asset_url('fonts/Vazirmatn-Regular.woff2');
+                echo '<link rel="preload" href="' . esc_url($woff) . '" as="font" type="font/woff2" crossorigin>' . "\n";
+            } else {
+                echo '<link rel="preconnect" href="https://fonts.googleapis.com">' . "\n";
+                echo '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' . "\n";
+            }
+            // Non-blocking font CSS so admin paints with system fonts first
+            if (!$has_local_font) {
+                $font_css = 'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap';
+                echo '<link rel="preload" href="' . esc_url($font_css) . '" as="style" onload="this.onload=null;this.rel=\'stylesheet\'">' . "\n";
+                echo '<noscript><link rel="stylesheet" href="' . esc_url($font_css) . '"></noscript>' . "\n";
+            }
+        }, 1);
 
-        wp_enqueue_style(
-            'bankai-admin-fonts',
-            'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Vazirmatn:wght@400;500;600;700;800&display=swap',
-            [],
-            null
-        );
+        if ($has_local_font && is_file(BANKAI_CORE_DIR . 'assets/fonts/bankai-fonts.css')) {
+            wp_enqueue_style(
+                'bankai-admin-fonts',
+                bankai_asset_url('fonts/bankai-fonts.css'),
+                [],
+                BANKAI_CORE_VERSION
+            );
+        } else {
+            // Registered for dependency order; actual load is async in admin_head above
+            wp_register_style(
+                'bankai-admin-fonts',
+                'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap',
+                [],
+                null
+            );
+            // Do not wp_enqueue_style — avoids render-blocking duplicate
+        }
 
-        // Material Symbols Outlined — required for admin icons (sidebar, media, AI, SEO)
-        wp_enqueue_style(
-            'bankai-material-symbols',
-            'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-50..200&display=swap',
-            [],
-            null
-        );
+        // No Material Symbols — icons are inline SVG (solar). Saves ~100KB+ font download.
+
+        $css_ver = BANKAI_CORE_VERSION;
+        $admin_css = BANKAI_CORE_DIR . 'assets/css/bankai-admin.css';
+        if (is_file($admin_css)) {
+            $css_ver .= '.' . (string) filemtime($admin_css);
+        }
 
         wp_enqueue_style(
             'bankai-admin-css',
             bankai_asset_url('css/bankai-admin.css'),
-            ['bankai-admin-fonts', 'bankai-material-symbols'],
-            BANKAI_CORE_VERSION
+            ['bankai-admin-fonts'],
+            $css_ver
         );
 
-        if (file_exists(BANKAI_CORE_DIR . 'assets/css/bankai-sidebar-sticky.css')) {
+        // Secondary CSS: only if files exist; versioned by mtime
+        $sticky = BANKAI_CORE_DIR . 'assets/css/bankai-sidebar-sticky.css';
+        if (is_file($sticky)) {
             wp_enqueue_style(
                 'bankai-sidebar-sticky',
                 bankai_asset_url('css/bankai-sidebar-sticky.css'),
                 ['bankai-admin-css'],
-                BANKAI_CORE_VERSION
+                BANKAI_CORE_VERSION . '.' . (string) filemtime($sticky)
             );
         }
 
-        if (file_exists(BANKAI_CORE_DIR . 'assets/css/bankai-modals.css')) {
+        $modals = BANKAI_CORE_DIR . 'assets/css/bankai-modals.css';
+        if (is_file($modals)) {
             wp_enqueue_style(
                 'bankai-modals',
                 bankai_asset_url('css/bankai-modals.css'),
                 ['bankai-admin-css'],
-                BANKAI_CORE_VERSION
+                BANKAI_CORE_VERSION . '.' . (string) filemtime($modals)
             );
         }
+
+        // Scripts in footer; Alpine deferred after admin app is ready
+        $js_ver = static function (string $rel) {
+            $path = BANKAI_CORE_DIR . 'assets/js/' . $rel;
+            $base = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0';
+            return is_file($path) ? $base . '.' . (string) filemtime($path) : $base;
+        };
 
         wp_enqueue_script(
             'bankai-htmx-js',
             bankai_asset_url('js/htmx.min.js'),
             [],
-            '1.9.10',
+            $js_ver('htmx.min.js'),
             true
         );
+        if (function_exists('wp_script_add_data')) {
+            wp_script_add_data('bankai-htmx-js', 'strategy', 'defer');
+        }
 
         wp_enqueue_media();
+
+        // Classic editor assets for in-panel TinyMCE (safe — no fatal require)
+        if (function_exists('wp_enqueue_editor')) {
+            wp_enqueue_editor();
+        }
+        // Optional bundled class (only if file actually exists on this install)
+        $editor_class = ABSPATH . 'wp-admin/includes/class-wp-editor.php';
+        if (!class_exists('_WP_Editors', false) && is_readable($editor_class)) {
+            require_once $editor_class;
+        }
+        if (class_exists('_WP_Editors') && is_callable(['_WP_Editors', 'enqueue_default_editor'])) {
+            try {
+                \_WP_Editors::enqueue_default_editor();
+            } catch (\Throwable $e) {
+                // ignore — wp_enqueue_editor above is enough
+            }
+        }
+        // Styles / scripts only if already registered by core
+        foreach (['editor-buttons', 'dashicons'] as $style) {
+            if (wp_style_is($style, 'registered') || $style === 'dashicons') {
+                wp_enqueue_style($style);
+            }
+        }
+        foreach (['editor', 'quicktags', 'wplink', 'jquery-ui-autocomplete', 'wp-util'] as $script) {
+            if (wp_script_is($script, 'registered')) {
+                wp_enqueue_script($script);
+            }
+        }
+
 
         wp_enqueue_script(
             'bankai-admin-js',
             bankai_asset_url('js/bankai-admin.js'),
             ['jquery', 'bankai-htmx-js'],
-            BANKAI_CORE_VERSION,
+            $js_ver('bankai-admin.js'),
             true
         );
 
+        // Alpine must load after bankai-admin.js (registers Alpine.data)
         wp_enqueue_script(
             'bankai-alpine-js',
             bankai_asset_url('js/alpine.min.js'),
             ['bankai-admin-js'],
-            '3.13.5',
+            $js_ver('alpine.min.js'),
             true
         );
+        // Do NOT defer Alpine — it auto-starts and must see prior registrations
+
 
         $core_data = [
             'ajaxUrl'    => admin_url('admin-ajax.php'),
@@ -290,6 +364,7 @@ class Bankai_Admin_Menu {
 
         return [
             'seoModules'   => $this->get_seo_modules(),
+            'seoModuleSettings' => get_option('bankai_seo_module_settings', []) ?: [],
             'speedModules' => $this->get_speed_modules(),
             'mediaModules' => $this->get_media_modules(),
             'aiModules'    => $this->get_ai_modules(),
@@ -396,6 +471,7 @@ class Bankai_Admin_Menu {
             ['id' => 'database_optimizer', 'title' => 'Database Heuristic Sweeper', 'title_fa' => 'پاکسازی هوشمند پایگاه‌داده وردپرس', 'badge' => 'MAINTENANCE', 'badge_color' => '#F59E0B', 'icon' => '🧹', 'description' => 'Scheduled cleanup of post revisions, orphaned postmeta, spam comments, and transient transients.', 'description_fa' => 'حذف رونوشت‌های قدیمی، متادیتای یتیم، نظرات اسپم و بهینه‌سازی جداول MySQL طبق زمان‌بندی.', 'enabled' => true],
             ['id' => 'object_cache', 'title' => 'Redis Object Cache', 'title_fa' => 'کش آبجکت و دیتابیس ردیس (Redis)', 'badge' => 'IN-MEMORY', 'badge_color' => '#EF4444', 'icon' => '🧠', 'description' => 'Persistent Redis/Memcached daemon integration to cache complex MySQL queries and theme options.', 'description_fa' => 'ذخیره پرسرعت کوئری‌های پیچیده دیتابیس و تنظیمات قالب در حافظه رم برای کاهش لود سرور.', 'enabled' => true],
             ['id' => 'server_compression', 'title' => 'Gzip & Brotli Compression', 'title_fa' => 'فشرده‌سازی لایه‌ای بروتلی و Gzip', 'badge' => 'TRANSFER', 'badge_color' => '#6366F1', 'icon' => '🗜️', 'description' => 'Dynamic HTTP header configuration to compress static text, SVG, JSON, and Web fonts.', 'description_fa' => 'ارسال هدرهای فشرده‌سازی با بالاترین نرخ تراکم جهت کاهش چشمگیر حجم تبادل اطلاعات.', 'enabled' => true],
+            ['id' => 'browser_cache', 'title' => 'Browser Cache Headers', 'title_fa' => 'بهینه‌سازی کش مرورگر', 'badge' => 'LIGHTHOUSE', 'badge_color' => '#0EA5E9', 'icon' => '🌐', 'description' => 'Long-lived Cache-Control and Expires headers for static CSS, JS, images and fonts via .htaccess.', 'description_fa' => 'هدرهای Cache-Control و Expires بلندمدت برای فایل‌های استاتیک (CSS، JS، تصویر، فونت) از طریق .htaccess — بهبود امتیاز Lighthouse.', 'enabled' => true],
             ['id' => 'fonts_localizer', 'title' => 'Google & Persian Fonts Localizer', 'title_fa' => 'میزبانی محلی فونت‌های فارسی و گوگل', 'badge' => 'PRIVACY / SPEED', 'badge_color' => '#10B981', 'icon' => '🔤', 'description' => 'Self-hosts Google and Persian Vazirmatn fonts locally with preconnect links and display:swap.', 'description_fa' => 'میزبانی فونت‌های فارسی نظیر وزیرمتن مستقیماً روی سرور بدون نیاز به درخواست خارجی و تحمیل تاخیر.', 'enabled' => true],
         ];
         foreach ($mods as &$m) {

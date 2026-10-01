@@ -34,14 +34,14 @@ $positions = [
     <div class="bk-media-page-head bankai-card">
         <div>
             <h2 class="bk-media-title">
-                <span class="material-symbols-outlined">photo_library</span>
+                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M21 9v10a2 2 0 0 1-2 2H7"/><circle cx="9" cy="11" r="1.5"/><path d="M3 15l4-3 3 2 4-4 3 3"/></svg>
                 موتور رسانه و واترمارک
             </h2>
             <p class="bk-media-sub">WebP · فشرده‌سازی · واترمارک · Lazy Load</p>
         </div>
         <div class="bk-media-head-actions">
             <button type="button" class="bankai-btn-ghost" @click="regenerateThumbnails()" :disabled="busy">
-                <span class="material-symbols-outlined">restart_alt</span>
+                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
                 بازتولید بندانگشتی
             </button>
         </div>
@@ -50,19 +50,19 @@ $positions = [
     <!-- Env chips -->
     <div class="bk-media-env-row">
         <div class="bk-env-chip" :class="<?php echo $gd_ok ? "'is-ok'" : "'is-bad'"; ?>">
-            <span class="material-symbols-outlined"><?php echo $gd_ok ? 'check_circle' : 'cancel'; ?></span>
+            <?php $__ic = $gd_ok ? 'check_circle' : 'cancel'; echo function_exists("bankai_icon") ? bankai_icon(is_string($__ic)?$__ic:"settings") : ""; ?>
             GD
         </div>
         <div class="bk-env-chip" :class="<?php echo $imagick_ok ? "'is-ok'" : "'is-muted'"; ?>">
-            <span class="material-symbols-outlined"><?php echo $imagick_ok ? 'check_circle' : 'remove_circle_outline'; ?></span>
+            <?php $__ic = $imagick_ok ? 'check_circle' : 'remove_circle_outline'; echo function_exists("bankai_icon") ? bankai_icon(is_string($__ic)?$__ic:"settings") : ""; ?>
             Imagick
         </div>
         <div class="bk-env-chip" :class="<?php echo $webp_ok ? "'is-ok'" : "'is-bad'"; ?>">
-            <span class="material-symbols-outlined"><?php echo $webp_ok ? 'check_circle' : 'cancel'; ?></span>
+            <?php $__ic = $webp_ok ? 'check_circle' : 'cancel'; echo function_exists("bankai_icon") ? bankai_icon(is_string($__ic)?$__ic:"settings") : ""; ?>
             WebP
         </div>
         <div class="bk-env-chip" :class="watermarkStudio.lazy_load ? 'is-ok' : 'is-muted'">
-            <span class="material-symbols-outlined">hourglass_empty</span>
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
             Lazy Load
         </div>
     </div>
@@ -71,17 +71,17 @@ $positions = [
     <div class="bk-media-subtabs">
         <button type="button" class="bk-media-subtab" :class="{ 'is-active': mediaSubTab === 'watermark' }"
                 @click="mediaSubTab = 'watermark'">
-            <span class="material-symbols-outlined">branding_watermark</span>
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
             استودیو واترمارک
         </button>
         <button type="button" class="bk-media-subtab" :class="{ 'is-active': mediaSubTab === 'compress' }"
                 @click="mediaSubTab = 'compress'; loadMediaLibrary(true)">
-            <span class="material-symbols-outlined">compress</span>
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
             فشرده‌سازی تصاویر
         </button>
         <button type="button" class="bk-media-subtab" :class="{ 'is-active': mediaSubTab === 'modules' }"
                 @click="mediaSubTab = 'modules'">
-            <span class="material-symbols-outlined">tune</span>
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
             ماژول‌ها
         </button>
     </div>
@@ -90,7 +90,7 @@ $positions = [
     <div x-show="mediaSubTab === 'watermark'" x-cloak class="bk-wm-studio bankai-card">
         <div class="bk-wm-studio-head">
             <h3>
-                <span class="material-symbols-outlined">palette</span>
+                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.1-.7-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-5-4.6-9-10-9z"/></svg>
                 استودیو واترمارک تعاملی
             </h3>
             <label class="bk-switch-inline">
@@ -124,12 +124,12 @@ $positions = [
                 <div class="bk-wm-type-row">
                     <button type="button" class="bk-wm-type-btn" :class="{ 'is-active': watermarkStudio.type === 'text' }"
                             @click="watermarkStudio.type = 'text'">
-                        <span class="material-symbols-outlined">title</span>
+                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
                         متن
                     </button>
                     <button type="button" class="bk-wm-type-btn" :class="{ 'is-active': watermarkStudio.type === 'image' }"
                             @click="watermarkStudio.type = 'image'">
-                        <span class="material-symbols-outlined">image</span>
+                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
                         لوگو
                     </button>
                 </div>
@@ -144,7 +144,7 @@ $positions = [
                 <label class="bk-wm-label">لوگوی واترمارک</label>
                 <div class="bk-wm-logo-row">
                     <button type="button" class="bankai-btn-ghost" @click="pickWatermarkImage()">
-                        <span class="material-symbols-outlined">photo_library</span>
+                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M21 9v10a2 2 0 0 1-2 2H7"/><circle cx="9" cy="11" r="1.5"/><path d="M3 15l4-3 3 2 4-4 3 3"/></svg>
                         انتخاب از رسانه
                     </button>
                     <span class="bk-muted" x-text="watermarkStudio.image_id ? ('ID: ' + watermarkStudio.image_id) : 'انتخاب نشده'"></span>
@@ -160,7 +160,7 @@ $positions = [
                             title="<?php echo esc_attr($meta['label']); ?>"
                             :class="{ 'is-active': watermarkStudio.position === '<?php echo esc_js($pos); ?>' }"
                             @click="watermarkStudio.position = '<?php echo esc_js($pos); ?>'">
-                        <span class="material-symbols-outlined"><?php echo esc_html($meta['icon']); ?></span>
+                        <?php $__ic = esc_html($meta['icon']); echo function_exists("bankai_icon") ? bankai_icon(is_string($__ic)?$__ic:"settings") : ""; ?>
                     </button>
                     <?php endforeach; ?>
                 </div>
@@ -192,7 +192,7 @@ $positions = [
             </div>
 
             <button type="button" class="bankai-btn-primary bk-wm-save" @click="saveWatermarkStudio()" :disabled="busy">
-                <span class="material-symbols-outlined">save</span>
+                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/></svg>
                 ذخیره تنظیمات رسانه
             </button>
         </div>
@@ -222,11 +222,11 @@ $positions = [
             </div>
             <div class="bk-compress-toolbar-actions">
                 <button type="button" class="bankai-btn-ghost" @click="loadMediaLibrary(true)" :disabled="mediaLib.loading">
-                    <span class="material-symbols-outlined" :class="{ 'bk-spin': mediaLib.loading }">refresh</span>
+                    <svg class="solar-icon" :class="{ 'bk-spin': mediaLib.loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.1-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
                     تازه‌سازی
                 </button>
                 <button type="button" class="bankai-btn-primary" @click="compressAllMedia()" :disabled="mediaLib.busy || !mediaLib.items.length">
-                    <span class="material-symbols-outlined">auto_fix_high</span>
+                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
                     فشرده‌سازی همه
                 </button>
             </div>
@@ -262,18 +262,18 @@ $positions = [
                             <span class="bk-size-old" x-text="formatMediaBytes(img.bytes)"></span>
                             <template x-if="img.bytes_after">
                                 <span class="bk-size-new">
-                                    <span class="material-symbols-outlined">arrow_forward</span>
+                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
                                     <span x-text="formatMediaBytes(img.bytes_after)"></span>
                                 </span>
                             </template>
                         </div>
                         <div class="bk-media-card-actions">
                             <a class="bk-icon-btn" :href="img.url" target="_blank" rel="noopener" title="مشاهده">
-                                <span class="material-symbols-outlined">open_in_new</span>
+                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7M10 14L21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
                             </a>
                             <button type="button" class="bk-icon-btn is-primary" @click="compressOneMedia(img)"
                                     :disabled="img.working || mediaLib.busy" title="فشرده کردن">
-                                <span class="material-symbols-outlined" :class="{ 'bk-spin': img.working }">compress</span>
+                                <svg class="solar-icon" :class="{ 'bk-spin': img.working }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
                             </button>
                         </div>
                     </div>
@@ -366,7 +366,7 @@ $positions = [
 .bk-media-title {
     margin:0; font-size:18px; font-weight:800; display:flex; align-items:center; gap:8px;
 }
-.bk-media-title .material-symbols-outlined { color:#0078d4; font-size:24px; }
+.bk-media-title .solar-icon { color:#0078d4; font-size:24px; }
 .bk-media-sub { margin:4px 0 0; font-size:12px; color:#8a8886; }
 .bk-media-head-actions { display:flex; gap:8px; flex-wrap:wrap; }
 
@@ -376,7 +376,7 @@ $positions = [
     padding:8px 14px; border-radius:999px; font-size:12px; font-weight:700;
     background:#fff; border:1px solid rgba(0,0,0,.06); box-shadow:0 1px 2px rgba(0,0,0,.04);
 }
-.bk-env-chip .material-symbols-outlined { font-size:18px; }
+.bk-env-chip .solar-icon { font-size:18px; }
 .bk-env-chip.is-ok { color:#0f7b3a; background:#dff6e8; border-color:transparent; }
 .bk-env-chip.is-bad { color:#c42b1c; background:#fde7e9; border-color:transparent; }
 .bk-env-chip.is-muted { color:#8a8886; }
@@ -392,7 +392,7 @@ $positions = [
     font-size:12px; font-weight:700; cursor:pointer; color:#605e5c;
     transition: background .15s ease, color .15s ease;
 }
-.bk-media-subtab .material-symbols-outlined { font-size:18px; }
+.bk-media-subtab .solar-icon { font-size:18px; }
 .bk-media-subtab:hover { background:rgba(0,0,0,.04); color:#1a1a1a; }
 .bk-media-subtab.is-active { background:rgba(0,120,212,.1); color:#0078d4; }
 
@@ -446,7 +446,7 @@ $positions = [
     display:grid; place-items:center; cursor:pointer; color:#605e5c;
     transition: all .15s ease;
 }
-.bk-wm-pos-btn .material-symbols-outlined { font-size:22px; }
+.bk-wm-pos-btn .solar-icon { font-size:22px; }
 .bk-wm-pos-btn:hover { background:rgba(0,120,212,.08); color:#0078d4; }
 .bk-wm-pos-btn.is-active {
     background:#0078d4; color:#fff; border-color:transparent;
@@ -518,14 +518,14 @@ $positions = [
 .bk-media-card-sizes { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; margin-bottom:8px; }
 .bk-size-old { color:#c42b1c; background:#fde7e9; padding:3px 8px; border-radius:999px; }
 .bk-size-new { color:#0f7b3a; background:#dff6e8; padding:3px 8px; border-radius:999px; display:inline-flex; align-items:center; gap:2px; }
-.bk-size-new .material-symbols-outlined { font-size:14px; }
+.bk-size-new .solar-icon { font-size:14px; }
 .bk-media-card-actions { display:flex; gap:6px; }
 .bk-icon-btn {
     width:36px; height:36px; border-radius:10px; border:1px solid rgba(0,0,0,.06);
     background:#fafafa; display:grid; place-items:center; cursor:pointer; color:#605e5c;
 }
 .bk-icon-btn.is-primary { background:rgba(0,120,212,.1); color:#0078d4; border-color:transparent; }
-.bk-icon-btn .material-symbols-outlined { font-size:18px; }
+.bk-icon-btn .solar-icon { font-size:18px; }
 .bk-media-empty { padding:28px; text-align:center; color:#8a8886; font-size:13px; border-radius:16px !important; }
 .bk-media-loadmore { text-align:center; padding:8px; }
 .bk-badge-soft {

@@ -67,7 +67,7 @@ class Bankai_Rest_API
         'media_watermark',
         'ai_studio',
         'llms_txt',
-        'theme_kits',
+        'jalali_calendar',
         'settings_license',
     ];
 
@@ -236,7 +236,7 @@ class Bankai_Rest_API
     private function sanitize_value($value, string $key)
     {
         // Boolean maps / arrays
-        if (in_array($key, ['active_modules', 'seo_modules', 'speed_modules', 'media_modules', 'ai_modules', 'ai_keys', 'seo_integrations', 'watermark_settings'], true)) {
+        if (in_array($key, ['active_modules', 'seo_modules', 'speed_modules', 'media_modules', 'ai_modules', 'ai_keys', 'seo_integrations', 'watermark_settings', 'jalali_settings'], true)) {
             return $this->sanitize_array(is_array($value) ? $value : []);
         }
 
@@ -347,7 +347,7 @@ class Bankai_Rest_API
 
         $module_groups = [
             'seo_modules'   => ['auto_meta', 'sitemap_pro', 'canonical_guard', 'open_graph_ai', 'local_seo_schema', 'llms_txt_builder'],
-            'speed_modules' => ['page_caching', 'asset_optimization', 'database_optimizer', 'object_cache', 'server_compression', 'fonts_localizer'],
+            'speed_modules' => ['page_caching', 'asset_optimization', 'database_optimizer', 'object_cache', 'server_compression', 'fonts_localizer', 'browser_cache'],
             'media_modules' => ['webp_avif_converter', 'dynamic_watermarking', 'exif_metadata_scrubber', 'cloud_offload_cdn', 'retina_generator', 'svg_sanitizer'],
             'ai_modules'    => ['smart_excerpt_generator', 'llm_manifest_auto', 'meta_desc_auto', 'bulk_content_enricher', 'faq_schema_ai', 'brand_voice_tuning'],
         ];
@@ -377,6 +377,12 @@ class Bankai_Rest_API
         }
         $modules[$module_id] = $enabled;
         bankai_update_option($target_group, $modules);
+
+        if ($target_group === 'speed_modules' && in_array($module_id, ['browser_cache', 'server_compression'], true)) {
+            if (class_exists('Bankai_Speed_Cache')) {
+                Bankai_Speed_Cache::sync_htaccess_rules_static();
+            }
+        }
 
         return new WP_REST_Response([
             'success' => true,
@@ -447,7 +453,7 @@ class Bankai_Rest_API
 
     private function count_active_core_modules(): int
     {
-        $keys = ['seo_engine', 'speed_cache', 'media_watermark', 'ai_studio', 'llms_txt', 'theme_kits'];
+        $keys = ['seo_engine', 'speed_cache', 'media_watermark', 'ai_studio', 'llms_txt', 'jalali_calendar'];
         $n    = 0;
         foreach ($keys as $k) {
             if (function_exists('bankai_is_module_active') && bankai_is_module_active($k)) {

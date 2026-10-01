@@ -189,40 +189,40 @@ final class Bankai_Dashboard_Stats
     {
         $map = [
             'seo_engine' => [
-                'label'    => 'SEO & Schema Engine',
-                'label_fa' => 'موتور سئو و اسکیما',
-                'desc'     => 'Automated meta generation, Schema.org builder & XML Sitemaps.',
-                'desc_fa'  => 'تولید خودکار متاتگ‌ها، تولیدکننده کدهای اسکیما و نقشه‌های داینامیک XML.',
+                'label'    => 'SEO & Schema',
+                'label_fa' => 'سئو و اسکیما',
+                'desc'     => 'Meta tags, structured data, sitemap and on-page analysis.',
+                'desc_fa'  => 'متاتگ، داده ساختاریافته، نقشه سایت و تحلیل سئوی درون‌صفحه.',
             ],
-            'media_watermark' => [
-                'label'    => 'Media Optimizer',
-                'label_fa' => 'بهینه‌ساز رسانه',
-                'desc'     => 'WebP/AVIF auto-conversion, async processor & lazyloading.',
-                'desc_fa'  => 'تبدیل خودکار به WebP/AVIF، پردازش ناهمگام و لود تنبل تصاویر.',
+            'ai_studio' => [
+                'label'    => 'AI Studio',
+                'label_fa' => 'استودیو هوش مصنوعی',
+                'desc'     => 'Multi-provider AI for content, meta and SEO assistants.',
+                'desc_fa'  => 'اتصال چندموتوره برای تولید محتوا، متا و دستیار سئو.',
             ],
             'speed_cache' => [
-                'label'    => 'Speed & Cache Engine',
-                'label_fa' => 'موتور کش و شتاب‌دهنده',
-                'desc'     => 'Zero-latency dynamic HTML page caching & Redis object store.',
-                'desc_fa'  => 'کش صفحات HTML فوق‌سریع و پایگاه داده کش اشیاء ردیس.',
+                'label'    => 'Speed & Cache',
+                'label_fa' => 'کش و سرعت',
+                'desc'     => 'Page cache, asset optimization and database cleanup.',
+                'desc_fa'  => 'کش صفحه، بهینه‌سازی فایل‌ها و پاکسازی دیتابیس.',
+            ],
+            'media_watermark' => [
+                'label'    => 'Media & Watermark',
+                'label_fa' => 'رسانه و واترمارک',
+                'desc'     => 'Image compression, WebP conversion and watermarks.',
+                'desc_fa'  => 'فشرده‌سازی تصویر، تبدیل WebP و واترمارک.',
+            ],
+            'jalali_calendar' => [
+                'label'    => 'Jalali Calendar',
+                'label_fa' => 'تقویم جلالی',
+                'desc'     => 'Persian (Jalali) dates across WordPress front and admin.',
+                'desc_fa'  => 'نمایش تاریخ شمسی در نوشته‌ها، دیدگاه‌ها و پیشخوان وردپرس.',
             ],
             'llms_txt' => [
                 'label'    => 'LLM Manifest',
-                'label_fa' => 'مانیفست هوش مصنوعی',
-                'desc'     => 'Structured markdown index endpoints for AI agents.',
-                'desc_fa'  => 'اندپوینت‌های استاندارد متنی مارک‌داون برای دستیاران هوش مصنوعی و LLMها.',
-            ],
-            'ai_studio' => [
-                'label'    => 'AI Content Studio',
-                'label_fa' => 'استودیو هوش مصنوعی',
-                'desc'     => 'Server-side AI content generation & prompt engineering.',
-                'desc_fa'  => 'تولید محتوا، ایده و تیترهای سئو شده با مدل‌های پیشرفته هوش مصنوعی.',
-            ],
-            'theme_kits' => [
-                'label'    => 'Theme Kits',
-                'label_fa' => 'کیت‌های قالب',
-                'desc'     => 'Starter kits and typography presets.',
-                'desc_fa'  => 'کیت‌های استارتر و پیش‌فرض‌های تایپوگرافی.',
+                'label_fa' => 'مانیفست LLM',
+                'desc'     => 'llms.txt and AI-friendly site index endpoints.',
+                'desc_fa'  => 'فایل llms.txt و اندپوینت ایندکس مناسب عامل‌های هوش مصنوعی.',
             ],
         ];
 
