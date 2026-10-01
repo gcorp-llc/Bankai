@@ -565,14 +565,20 @@ if ($post_id && !$post) {
             </div>
 
             <div class="bk-card" x-show="postImages.length || optReport.length">
-                <div class="bk-card-head">
-                    <span>گزارش تصاویر</span>
-                    <span class="bk-badge" x-text="(postImages.length || optReport.length) + ' مورد'"></span>
+                <div class="bk-card-head" style="justify-content:space-between;">
+                    <span>مدیریت تصاویر و کاور مقاله</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button type="button" class="bk-btn-ghost bk-btn-xs" @click="generateAllImagesAlt()" :disabled="optBusy" title="تولید Alt برای همه تصاویر با AI">
+                            تولید AI Alt همه
+                        </button>
+                        <span class="bk-badge" x-text="(postImages.length || optReport.length) + ' مورد'"></span>
+                    </div>
                 </div>
                 <template x-for="(img, i) in (optReport.length ? optReport : postImages)" :key="img.id || img.src || i">
                     <div class="bk-img-report-card bk-img-report-stack">
-                        <div class="bk-img-thumb-wrap bk-img-thumb-lg">
+                        <div class="bk-img-thumb-wrap bk-img-thumb-lg" style="position:relative;">
                             <img :src="img.src || img.original_src" alt="" class="bk-img-thumb" loading="lazy">
+                            <span class="bk-badge" style="position:absolute;top:6px;right:6px;background:#3B82F6;color:#fff;border:none;font-size:10px;padding:2px 8px;border-radius:6px;" x-show="img.is_cover">کاور مقاله</span>
                         </div>
                         <div class="bk-img-size-row">
                             <span class="bk-size-before" x-show="img.size_before || img.format_before || img.format">
@@ -586,14 +592,19 @@ if ($post_id && !$post) {
                             </span>
                             <span class="bk-tag" style="background:#FEF3C7;color:#D97706" x-show="img.watermarked">Watermark</span>
                         </div>
-                        <div class="bk-alt-edit">
-                            <input type="text" :value="img.new_alt || img.alt || ''" @change="updateImageAlt(img, $event.target.value)" placeholder="متن جایگزین (Alt)">
+                        <div class="bk-alt-edit-row" style="display:flex;gap:6px;align-items:center;">
+                            <input type="text" x-model="img.new_alt" placeholder="متن جایگزین (Alt)..." style="flex:1;">
+                            <button type="button" class="bk-btn-ghost bk-btn-xs" @click="generateSingleImageAlt(img)" title="تولید Alt با AI">AI</button>
+                            <button type="button" class="bk-btn-primary bk-btn-xs" @click="confirmImageAlt(img)" title="تایید و ذخیره Alt">تایید Alt</button>
                         </div>
-                        <div class="bk-img-actions">
+                        <div class="bk-img-actions" style="display:flex;gap:6px;align-items:center;margin-top:4px;">
                             <a class="bk-icon-action" :href="img.src || img.original_src" target="_blank" rel="noopener" title="مشاهده">
                                 <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7M10 14L21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
                             </a>
-                            <button type="button" class="bk-icon-action" x-show="img.watermarked" @click="removeImageWatermark(img)" title="حذف واترمارک">
+                            <button type="button" class="bk-btn-ghost bk-btn-xs" x-show="!img.watermarked" @click="applyImageWatermark(img)">
+                                اعمال واترمارک
+                            </button>
+                            <button type="button" class="bk-icon-action is-danger" x-show="img.watermarked" @click="removeImageWatermark(img)" title="حذف واترمارک">
                                 <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.7c.3 0 6.5 6.2 6.5 10.8a6.5 6.5 0 1 1-13 0C5.5 8.9 11.7 2.7 12 2.7z"/></svg>
                             </button>
                         </div>
@@ -874,6 +885,18 @@ if ($post_id && !$post) {
                             <button type="button" class="bk-btn-ghost bk-action-btn">سئوی تصاویر مقاله</button>
                         </div>
 
+                        <!-- Auto Categories & Tags -->
+                        <div class="bk-action-card" @click="runAiAction('taxonomies')" :class="{ 'is-disabled': aiLoading }">
+                            <div class="bk-action-icon bk-icon-purple">
+                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                            </div>
+                            <div class="bk-action-content">
+                                <h4>تنظیم دسته‌بندی و برچسب‌ها</h4>
+                                <p>شناسایی یا ایجاد دسته‌بندی و برچسب‌های سئوشده بر اساس کلمات کلیدی مقاله.</p>
+                            </div>
+                            <button type="button" class="bk-btn-ghost bk-action-btn">تنظیم دسته و برچسب</button>
+                        </div>
+
                     </div>
                 </div>
 
@@ -940,6 +963,31 @@ if ($post_id && !$post) {
                                         </div>
                                     </div>
                                 </template>
+                            </div>
+                        </div>
+
+                        <!-- Taxonomies Review -->
+                        <div class="bk-review-item" x-show="(aiDraft.categories && aiDraft.categories.length) || (aiDraft.tags && aiDraft.tags.length)">
+                            <label class="bk-review-label">
+                                <strong>دسته‌بندی و برچسب‌های سئوشده اعمال‌شده</strong>
+                            </label>
+                            <div class="bk-review-box">
+                                <div x-show="aiDraft.categories && aiDraft.categories.length" style="margin-bottom:6px;">
+                                    <small>دسته‌بندی‌ها:</small>
+                                    <div class="bk-chips-flex" style="margin-top:4px;">
+                                        <template x-for="cat in aiDraft.categories" :key="cat">
+                                            <span class="bk-chip" x-text="cat"></span>
+                                        </template>
+                                    </div>
+                                </div>
+                                <div x-show="aiDraft.tags && aiDraft.tags.length">
+                                    <small>برچسب‌ها:</small>
+                                    <div class="bk-chips-flex" style="margin-top:4px;">
+                                        <template x-for="tag in aiDraft.tags" :key="tag">
+                                            <span class="bk-chip" x-text="'#' + tag"></span>
+                                        </template>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

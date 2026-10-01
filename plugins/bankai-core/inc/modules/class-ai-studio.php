@@ -592,19 +592,19 @@ final class Bankai_AI_Studio
             case 'meta_title':
             case 'title':
                 return [
-                    'system' => $base_sys . ' Output ONLY the SEO title text, nothing else. Max 60 characters.',
-                    'user'   => "Write an optimized SEO meta title for this article.\nFocus keyword: {$focus}\nArticle title: {$title}\nContent excerpt:\n{$snippet}",
+                    'system' => $base_sys . ' Output ONLY the SEO title text, nothing else. Target length: 50–60 Persian characters. Include the focus keyword naturally near the beginning. Do NOT truncate or leave incomplete.',
+                    'user'   => "Write a complete, highly engaging, and standard-compliant SEO meta title (50–60 characters).\nFocus keyword: {$focus}\nArticle title: {$title}\nContent excerpt:\n{$snippet}",
                     'temperature' => 0.5,
-                    'max_tokens'  => 80,
+                    'max_tokens'  => 120,
                 ];
 
             case 'meta_description':
             case 'description':
                 return [
-                    'system' => $base_sys . ' Output ONLY the meta description, nothing else. 120–155 characters. Include the focus keyword naturally.',
-                    'user'   => "Write an optimized SEO meta description.\nFocus keyword: {$focus}\nArticle title: {$title}\nContent excerpt:\n{$snippet}",
+                    'system' => $base_sys . ' Output ONLY the meta description text, nothing else. Target length: 125–155 Persian characters. Include the focus keyword and a clear value call-to-action or summary.',
+                    'user'   => "Write an engaging, complete, and standard-compliant SEO meta description (125–155 characters).\nFocus keyword: {$focus}\nArticle title: {$title}\nContent excerpt:\n{$snippet}",
                     'temperature' => 0.55,
-                    'max_tokens'  => 120,
+                    'max_tokens'  => 180,
                 ];
 
             case 'focus_keyword':

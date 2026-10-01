@@ -104,6 +104,8 @@ document.addEventListener('alpine:init', () => {
             focus_keyword: '',
             keywords: [],
             rewrite: '',
+            categories: [],
+            tags: [],
             altTexts: [],   // [ { id, src, currentAlt, suggestedAlt, context } ]
             smartLinks: []  // [ { keyword, target_post_id, target_title, target_url, reason } ]
         },
@@ -210,6 +212,7 @@ document.addEventListener('alpine:init', () => {
         init() {
             this.initFixedKeywords();
             this.loadSeo();
+            this.setupLiveWatcher();
 
             document.addEventListener('bankai-ai-result', (e) => {
                 if (!e || !e.detail) return;
@@ -227,6 +230,37 @@ document.addEventListener('alpine:init', () => {
                 this.pushKeywordsToSeo();
                 this.onFieldChange();
             });
+        },
+
+        setupLiveWatcher() {
+            let lastContent = '';
+            let lastTitle = '';
+
+            const checkChange = () => {
+                const ctx = this.getEditorContext();
+                if (ctx.rawHtml !== lastContent || ctx.title !== lastTitle) {
+                    lastContent = ctx.rawHtml;
+                    lastTitle = ctx.title;
+                    if (this._analyzeTimer) clearTimeout(this._analyzeTimer);
+                    this._analyzeTimer = setTimeout(() => {
+                        this.analyze(false);
+                        if (this.activeTab === 'links') this.loadLinks();
+                    }, 600);
+                }
+            };
+
+            if (window.wp && wp.data && wp.data.subscribe) {
+                try {
+                    wp.data.subscribe(() => {
+                        checkChange();
+                    });
+                } catch (e) {}
+            }
+
+            const contentEl = document.getElementById('content');
+            const titleEl = document.getElementById('title');
+            if (contentEl) contentEl.addEventListener('input', checkChange);
+            if (titleEl) titleEl.addEventListener('input', checkChange);
         },
 
         initFixedKeywords() {
@@ -416,6 +450,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         async analyze(forceSave = false) {
+            if (forceSave) this.loading = true;
             try {
                 const cfg = window.bankaiEditorSeo || {};
                 const ctx = this.getEditorContext();
@@ -443,13 +478,27 @@ document.addEventListener('alpine:init', () => {
                     if (data.groups && typeof data.groups === 'object') {
                         this.analysis.groups = data.groups;
                     }
+                    window.dispatchEvent(new CustomEvent('bankai-seo-score', {
+                        detail: { score: this.analysis.score, postId: this.postId }
+                    }));
+                }
+                if (forceSave) {
+                    this.loadLinks();
+                    this.scanPostImages();
+                    this.showToast('تحلیل سئو و اطلاعات مقاله به روز شد', 'success');
                 }
             } catch (e) {
                 console.warn('[Bankai SEO] analyze error', e);
+            } finally {
+                if (forceSave) this.loading = false;
             }
         },
 
                 async loadLinks() {
+            const content = this.getEditorRawContent() || this.seo.content || '';
+            const localLinks = this.extractLinksFromHtmlLocal(content);
+            this.linkData = localLinks;
+
             if (!this.postId) return;
             try {
                 const res = await fetch(this.restBase() + 'seo/links/' + this.postId, {
@@ -462,7 +511,7 @@ document.addEventListener('alpine:init', () => {
                     : (json && json.data) ? json.data
                     : (json && (json.internal || json.external)) ? json
                     : null;
-                if (data) {
+                if (data && (!content || (!localLinks.internal.length && !localLinks.external.length))) {
                     this.linkData = {
                         internal: Array.isArray(data.internal) ? data.internal : [],
                         external: Array.isArray(data.external) ? data.external : [],
@@ -474,6 +523,68 @@ document.addEventListener('alpine:init', () => {
                 }
             } catch (e) {
                 console.warn('[Bankai SEO] load links error', e);
+            }
+        },
+
+        extractLinksFromHtmlLocal(html) {
+            if (!html) return { internal: [], external: [], counts: { internal: 0, external: 0 } };
+            try {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const anchors = doc.querySelectorAll('a[href]');
+                const internal = [];
+                const external = [];
+                const seen = new Set();
+
+                const currentHost = (window.location.hostname || '').toLowerCase().replace(/^www\./, '');
+
+                anchors.forEach((a) => {
+                    let href = (a.getAttribute('href') || '').trim();
+                    if (!href || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+                    const text = (a.textContent || '').trim() || href;
+                    const key = href.toLowerCase() + '|' + text.toLowerCase();
+                    if (seen.has(key)) return;
+                    seen.add(key);
+
+                    const item = {
+                        href: href,
+                        text: text,
+                        nofollow: (a.getAttribute('rel') || '').toLowerCase().includes('nofollow')
+                    };
+
+                    let isInternal = false;
+                    if (href.startsWith('/') && !href.startsWith('//')) {
+                        isInternal = true;
+                    } else if (href.startsWith('#')) {
+                        isInternal = true;
+                    } else {
+                        try {
+                            const urlObj = new URL(href, window.location.origin);
+                            const host = urlObj.hostname.toLowerCase().replace(/^www\./, '');
+                            if (host === currentHost) {
+                                isInternal = true;
+                            }
+                        } catch (e) {
+                            isInternal = !href.includes('://');
+                        }
+                    }
+
+                    if (isInternal) {
+                        internal.push(item);
+                    } else {
+                        external.push(item);
+                    }
+                });
+
+                return {
+                    internal: internal,
+                    external: external,
+                    counts: {
+                        internal: internal.length,
+                        external: external.length
+                    }
+                };
+            } catch (e) {
+                return { internal: [], external: [], counts: { internal: 0, external: 0 } };
             }
         },
 
@@ -914,6 +1025,32 @@ document.addEventListener('alpine:init', () => {
                     this.aiReviewOpen = true;
                     this.showToast(newLinks.length + ' لینک پیشنهادی به سایدباکس اضافه شد', 'success');
 
+                } else if (actionKey === 'taxonomies') {
+                    this.aiProgress = 50;
+                    this.aiStepText = 'در حال استخراج و تنظیم دسته‌بندی و برچسب‌ها بر اساس کلیدواژه‌ها...';
+                    this.setChecklistStatus('keywords', 'loading');
+
+                    const cfg = window.bankaiEditorSeo || {};
+                    const body = new FormData();
+                    body.append('action', 'bankai_ai_assign_taxonomies');
+                    body.append('nonce', cfg.adminNonce || cfg.nonce || '');
+                    body.append('post_id', this.postId || 0);
+                    body.append('keywords', JSON.stringify(this.keywordList));
+                    body.append('apply', '1');
+
+                    const r = await fetch(cfg.ajaxUrl || window.ajaxurl || '/wp-admin/admin-ajax.php', {
+                        method: 'POST', credentials: 'same-origin', body
+                    });
+                    const json = await r.json();
+                    if (json && json.success && json.data) {
+                        this.aiDraft.categories = json.data.categories || [];
+                        this.aiDraft.tags = json.data.tags || [];
+                        this.aiProgress = 100;
+                        this.setChecklistStatus('keywords', 'success');
+                        this.aiReviewOpen = true;
+                        this.showToast('دسته‌بندی و برچسب‌های پیشنهادی سئو تنظیم شدند', 'success');
+                    }
+
                 } else if (actionKey === 'images') {
                     this.aiProgress = 30;
                     this.aiStepText = 'در حال اسکن تصاویر بدون متن جایگزین (Alt Text)...';
@@ -1025,8 +1162,8 @@ document.addEventListener('alpine:init', () => {
                     this.setChecklistStatus('links', 'success');
 
                     // Step 4: Images & Alt Text
-                    this.aiProgress = 85;
-                    this.aiStepText = 'گام ۴/۴: اسکن و تولید متن جایگزین برای تصاویر...';
+                    this.aiProgress = 80;
+                    this.aiStepText = 'گام ۴/۵: اسکن و تولید متن جایگزین برای تصاویر...';
                     this.setChecklistStatus('images', 'loading');
 
                     const missingImgs = this.scanMissingImageAlts();
@@ -1044,6 +1181,27 @@ document.addEventListener('alpine:init', () => {
                         this.aiDraft.altTexts = generatedAlts;
                     }
                     this.setChecklistStatus('images', 'success');
+
+                    // Step 5: Taxonomies (Categories & Tags)
+                    this.aiProgress = 95;
+                    this.aiStepText = 'گام ۵/۵: تنظیم دسته‌بندی و برچسب‌های سئوشده بر اساس کلمات کلیدی...';
+                    try {
+                        const cfg = window.bankaiEditorSeo || {};
+                        const taxBody = new FormData();
+                        taxBody.append('action', 'bankai_ai_assign_taxonomies');
+                        taxBody.append('nonce', cfg.adminNonce || cfg.nonce || '');
+                        taxBody.append('post_id', this.postId || 0);
+                        taxBody.append('keywords', JSON.stringify(this.aiDraft.keywords.length ? this.aiDraft.keywords : this.keywordList));
+                        taxBody.append('apply', '1');
+                        const rTax = await fetch(cfg.ajaxUrl || window.ajaxurl || '/wp-admin/admin-ajax.php', {
+                            method: 'POST', credentials: 'same-origin', body: taxBody
+                        });
+                        const jTax = await rTax.json();
+                        if (jTax && jTax.success && jTax.data) {
+                            this.aiDraft.categories = jTax.data.categories || [];
+                            this.aiDraft.tags = jTax.data.tags || [];
+                        }
+                    } catch (eTax) {}
 
                     this.aiProgress = 100;
                     this.aiStepText = 'عملیات یک‌پارچه با موفقیت انجام شد!';
@@ -1616,7 +1774,6 @@ document.addEventListener('alpine:init', () => {
             alt = String(alt || '').trim();
             img.alt = alt;
             img.new_alt = alt;
-            // Update in editor content
             this.updateImageAltInEditor(img.src || img.original_src, alt);
             try {
                 const cfg = window.bankaiEditorSeo || {};
@@ -1633,9 +1790,94 @@ document.addEventListener('alpine:init', () => {
                 if (json && json.success && json.data && json.data.content) {
                     this.setEditorRawContent(json.data.content);
                 }
-                this.showToast('Alt ذخیره شد', 'success');
             } catch (e) {
-                this.showToast('خطا در ذخیره Alt', 'error');
+                console.warn(e);
+            }
+        },
+
+        async confirmImageAlt(img) {
+            if (!img) return;
+            const alt = String(img.new_alt || img.alt || '').trim();
+            if (!alt) {
+                this.showToast('لطفاً ابتدا متن جایگزین را وارد کنید', 'warn');
+                return;
+            }
+            await this.updateImageAlt(img, alt);
+            this.showToast('متن جایگزین (Alt) تایید و ذخیره شد', 'success');
+        },
+
+        async generateSingleImageAlt(img) {
+            if (!img) return;
+            this.showToast('در حال تولید متن جایگزین (Alt) با هوش مصنوعی...', 'info');
+            try {
+                const ctx = this.getEditorContext();
+                const res = await this.callSeoAi('image_alt_text', ctx, {
+                    image_url: img.src,
+                    image_context: img.context || ctx.title
+                });
+                const alt = res.alt_text || res.text || '';
+                if (alt) {
+                    img.new_alt = alt;
+                    img.alt = alt;
+                    this.showToast('متن جایگزین پیشنهادی آماده تایید است', 'success');
+                }
+            } catch (e) {
+                this.showToast((e && e.message) || 'خطا در تولید Alt با AI', 'error');
+            }
+        },
+
+        async generateAllImagesAlt() {
+            const list = this.optReport.length ? this.optReport : this.postImages;
+            if (!list.length) {
+                this.showToast('تصویری برای تولید Alt وجود ندارد', 'info');
+                return;
+            }
+            this.optBusy = true;
+            this.showToast('در حال تولید Alt هوشمند برای تمام تصاویر...', 'info');
+            try {
+                const ctx = this.getEditorContext();
+                let count = 0;
+                for (let i = 0; i < list.length; i++) {
+                    const img = list[i];
+                    const res = await this.callSeoAi('image_alt_text', ctx, {
+                        image_url: img.src,
+                        image_context: img.context || ctx.title
+                    });
+                    const alt = res.alt_text || res.text || '';
+                    if (alt) {
+                        img.new_alt = alt;
+                        img.alt = alt;
+                        count++;
+                    }
+                }
+                this.showToast(`برای ${count} تصویر متن جایگزین با هوش مصنوعی تولید شد. لطفاً تایید کنید.`, 'success');
+            } catch (e) {
+                this.showToast((e && e.message) || 'خطا در تولید گروهی Alt', 'error');
+            } finally {
+                this.optBusy = false;
+            }
+        },
+
+        async applyImageWatermark(img) {
+            if (!img || !img.src) return;
+            try {
+                const cfg = window.bankaiEditorSeo || {};
+                const body = new FormData();
+                body.append('action', 'bankai_apply_image_watermark');
+                body.append('nonce', cfg.adminNonce || cfg.nonce || '');
+                body.append('src', img.src || '');
+                body.append('attachment_id', img.attachment_id || 0);
+                const r = await fetch(cfg.ajaxUrl || window.ajaxurl || '/wp-admin/admin-ajax.php', {
+                    method: 'POST', credentials: 'same-origin', body
+                });
+                const json = await r.json();
+                if (!json || !json.success) {
+                    throw new Error((json && json.data && json.data.message) || 'اعمال واترمارک با خطا مواجه شد');
+                }
+                img.watermarked = true;
+                this.showToast(json.data.message || 'واترمارک اعمال شد', 'success');
+            } catch (e) {
+                this.showToast((e && e.message) || 'خطا در اعمال واترمارک', 'error');
             }
         },
 

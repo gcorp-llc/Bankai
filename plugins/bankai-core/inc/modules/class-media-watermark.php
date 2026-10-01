@@ -61,6 +61,7 @@ class Bankai_Media_Watermark
         add_action('wp_ajax_bankai_optimize_post_images', [$this, 'ajax_optimize_post_images']);
         add_action('wp_ajax_bankai_scan_post_images', [$this, 'ajax_scan_post_images']);
         add_action('wp_ajax_bankai_update_image_alt', [$this, 'ajax_update_image_alt']);
+        add_action('wp_ajax_bankai_apply_image_watermark', [$this, 'ajax_apply_image_watermark']);
         add_action('wp_ajax_bankai_remove_image_watermark', [$this, 'ajax_remove_image_watermark']);
         add_action('wp_ajax_bankai_list_media_library', [$this, 'ajax_list_media_library']);
         add_action('wp_ajax_bankai_compress_attachment', [$this, 'ajax_compress_attachment']);
@@ -723,7 +724,7 @@ class Bankai_Media_Watermark
             $html = $post ? (string) $post->post_content : '';
         }
 
-        $images = $this->parse_content_images($html);
+        $images = $this->parse_content_images($html, $post_id);
         wp_send_json_success(['images' => $images, 'count' => count($images)]);
     }
 
@@ -758,8 +759,79 @@ class Bankai_Media_Watermark
         $report = [];
         $updated_html = $html;
 
+        if ($post_id > 0) {
+            $thumb_id = get_post_thumbnail_id($post_id);
+            if ($thumb_id) {
+                $thumb_url  = wp_get_attachment_url($thumb_id);
+                $thumb_path = $this->url_to_path($thumb_url);
+                if ($thumb_path && file_exists($thumb_path)) {
+                    $item = [
+                        'src'           => $thumb_url,
+                        'original_src'  => $thumb_url,
+                        'alt'           => (string) get_post_meta($thumb_id, '_wp_attachment_image_alt', true),
+                        'new_alt'       => '',
+                        'format_before' => $this->mime_to_ext(@getimagesize($thumb_path)['mime'] ?? ''),
+                        'format_after'  => '',
+                        'size_before'   => (int) filesize($thumb_path),
+                        'size_after'    => 0,
+                        'resized'       => false,
+                        'watermarked'   => false,
+                        'converted'     => false,
+                        'attachment_id' => $thumb_id,
+                        'is_cover'      => true,
+                        'label'         => 'کاور مقاله',
+                        'actions'       => [],
+                        'ok'            => true,
+                        'message'       => '',
+                    ];
+
+                    if ($do_resize) {
+                        if ($this->resize_image_file($thumb_path, $max_width, $quality)) {
+                            $item['resized'] = true;
+                            $item['actions'][] = 'resize';
+                        }
+                    }
+
+                    if ($do_webp && get_post_mime_type($thumb_id) !== 'image/webp') {
+                        $webp_path = preg_replace('/\.(jpe?g|png)$/i', '.webp', $thumb_path);
+                        if ($webp_path && $this->convert_to_webp_file($thumb_path, $webp_path, $quality)) {
+                            $new_url = $this->path_to_url($webp_path);
+                            if ($new_url) {
+                                $item['converted'] = true;
+                                $item['actions'][] = 'webp';
+                                $item['src'] = $new_url;
+                                $item['format_after'] = 'webp';
+                                update_post_meta($thumb_id, '_bankai_webp_path', $webp_path);
+                            }
+                        }
+                    }
+
+                    if ($do_watermark) {
+                        if ($this->apply_watermark($thumb_path)) {
+                            $item['watermarked'] = true;
+                            $item['actions'][] = 'watermark';
+                            update_post_meta($thumb_id, '_bankai_watermarked', 1);
+                        }
+                    }
+
+                    if ($do_alt && trim($item['alt']) === '') {
+                        $new_alt = $default_alt !== '' ? $default_alt : $this->guess_alt_from_src($thumb_url, $post_id);
+                        $item['new_alt'] = $new_alt;
+                        update_post_meta($thumb_id, '_wp_attachment_image_alt', $new_alt);
+                        $item['actions'][] = 'alt';
+                    }
+
+                    $item['size_after'] = (int) filesize($thumb_path);
+                    if (!$item['format_after']) {
+                        $item['format_after'] = $item['format_before'];
+                    }
+                    $report[] = $item;
+                }
+            }
+        }
+
         if (!preg_match_all('/<img\b([^>]*?)>/i', $html, $matches, PREG_SET_ORDER)) {
-            wp_send_json_success(['images' => [], 'report' => [], 'content' => $html, 'message' => 'تصویری یافت نشد.']);
+            wp_send_json_success(['images' => [], 'report' => $report, 'content' => $updated_html, 'message' => 'پردازش کاور انجام شد. تصویری در محتوا یافت نشد.']);
         }
 
         foreach ($matches as $idx => $m) {
@@ -919,6 +991,38 @@ class Bankai_Media_Watermark
         wp_send_json_success(['content' => $updated, 'alt' => $alt]);
     }
 
+    public function ajax_apply_image_watermark(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('upload_files')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $src = esc_url_raw(wp_unslash($_POST['src'] ?? ''));
+        $att_id = absint($_POST['attachment_id'] ?? 0);
+        if (!$att_id && $src) {
+            $att_id = attachment_url_to_postid($src);
+        }
+        $path = $att_id ? get_attached_file($att_id) : $this->url_to_path($src);
+        if (!$path || !file_exists($path)) {
+            wp_send_json_error(['message' => 'فایل تصویر یافت نشد.'], 404);
+        }
+
+        if ($att_id && !get_post_meta($att_id, '_bankai_original_backup', true)) {
+            $backup_path = $path . '.bankai_bak';
+            @copy($path, $backup_path);
+            update_post_meta($att_id, '_bankai_original_backup', $backup_path);
+        }
+
+        $ok = $this->apply_watermark($path);
+        if ($ok) {
+            if ($att_id) {
+                update_post_meta($att_id, '_bankai_watermarked', 1);
+            }
+            wp_send_json_success(['message' => 'واترمارک روی تصویر اعمال شد.', 'watermarked' => true, 'src' => $src]);
+        }
+        wp_send_json_error(['message' => 'اعمال واترمارک با خطا مواجه شد.'], 500);
+    }
+
     public function ajax_remove_image_watermark(): void
     {
         check_ajax_referer('bankai_admin_nonce', 'nonce');
@@ -945,39 +1049,70 @@ class Bankai_Media_Watermark
         wp_send_json_success(['message' => 'پرچم واترمارک حذف شد. فایل اصلی در دسترس نبود.', 'src' => $src]);
     }
 
-    private function parse_content_images(string $html): array
+    private function parse_content_images(string $html, int $post_id = 0): array
     {
-        $out = [];
-        if (!preg_match_all('/<img\b([^>]*?)>/i', $html, $matches, PREG_SET_ORDER)) {
-            return $out;
+        $out  = [];
+        $seen = [];
+
+        if ($post_id > 0) {
+            $thumb_id = get_post_thumbnail_id($post_id);
+            if ($thumb_id) {
+                $thumb_url = wp_get_attachment_url($thumb_id);
+                if ($thumb_url) {
+                    $thumb_path = $this->url_to_path($thumb_url);
+                    $thumb_alt  = (string) get_post_meta($thumb_id, '_wp_attachment_image_alt', true);
+                    $ext        = pathinfo(parse_url($thumb_url, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION);
+                    $seen[$thumb_url] = true;
+                    $out[] = [
+                        'id'            => 'cover_' . $thumb_id,
+                        'src'           => $thumb_url,
+                        'alt'           => $thumb_alt,
+                        'new_alt'       => $thumb_alt,
+                        'attachment_id' => $thumb_id,
+                        'size'          => ($thumb_path && file_exists($thumb_path)) ? (int) filesize($thumb_path) : 0,
+                        'format'        => strtolower((string) $ext),
+                        'watermarked'   => (bool) get_post_meta($thumb_id, '_bankai_watermarked', true),
+                        'has_alt'       => trim($thumb_alt) !== '',
+                        'is_cover'      => true,
+                        'label'         => 'کاور مقاله',
+                    ];
+                }
+            }
         }
-        foreach ($matches as $i => $m) {
-            $attrs = $m[1];
-            $src = '';
-            $alt = '';
-            if (preg_match('/\bsrc=["\']([^"\']+)["\']/i', $attrs, $sm)) {
-                $src = $sm[1];
+
+        if (preg_match_all('/<img\b([^>]*?)>/i', $html, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $i => $m) {
+                $attrs = $m[1];
+                $src   = '';
+                $alt   = '';
+                if (preg_match('/\bsrc=["\']([^"\']+)["\']/i', $attrs, $sm)) {
+                    $src = $sm[1];
+                }
+                if (preg_match('/\balt=["\']([^"\']*)["\']/i', $attrs, $am)) {
+                    $alt = $am[1];
+                }
+                if ($src === '' || isset($seen[$src])) {
+                    continue;
+                }
+                $seen[$src] = true;
+                $att_id = attachment_url_to_postid($src);
+                $path = $this->url_to_path($src);
+                $size = ($path && file_exists($path)) ? (int) filesize($path) : 0;
+                $ext = pathinfo(parse_url($src, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION);
+                $out[] = [
+                    'id'            => 'img_' . $i,
+                    'src'           => $src,
+                    'alt'           => $alt,
+                    'new_alt'       => $alt,
+                    'attachment_id' => $att_id,
+                    'size'          => $size,
+                    'format'        => strtolower((string) $ext),
+                    'watermarked'   => $att_id ? (bool) get_post_meta($att_id, '_bankai_watermarked', true) : false,
+                    'has_alt'       => trim($alt) !== '',
+                    'is_cover'      => false,
+                    'label'         => '',
+                ];
             }
-            if (preg_match('/\balt=["\']([^"\']*)["\']/i', $attrs, $am)) {
-                $alt = $am[1];
-            }
-            if ($src === '') {
-                continue;
-            }
-            $att_id = attachment_url_to_postid($src);
-            $path = $this->url_to_path($src);
-            $size = ($path && file_exists($path)) ? (int) filesize($path) : 0;
-            $ext = pathinfo(parse_url($src, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION);
-            $out[] = [
-                'id'            => 'img_' . $i,
-                'src'           => $src,
-                'alt'           => $alt,
-                'attachment_id' => $att_id,
-                'size'          => $size,
-                'format'        => strtolower($ext),
-                'watermarked'   => $att_id ? (bool) get_post_meta($att_id, '_bankai_watermarked', true) : false,
-                'has_alt'       => trim($alt) !== '',
-            ];
         }
         return $out;
     }

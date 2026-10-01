@@ -68,6 +68,7 @@ final class Bankai_SEO_Engine
         add_action('init', [$this, 'register_meta']);
         add_action('init', [$this, 'maybe_create_views_table'], 20);
         add_action('rest_api_init', [$this, 'register_rest_routes']);
+        add_action('wp_ajax_bankai_ai_assign_taxonomies', [$this, 'ajax_assign_taxonomies']);
         add_action('wp_head', [$this, 'render_meta'], 1);
         add_action('wp_head', [$this, 'render_schema'], 20);
         add_action('template_redirect', [$this, 'handle_post_redirect'], 1);
@@ -477,21 +478,21 @@ final class Bankai_SEO_Engine
             }
         }
 
+        $resolved_canonical = $this->get_canonical_url($post_id);
+
         return [
             'id'            => $post_id,
             'type'          => $post->post_type,
             'status'        => $post->post_status,
             'title'         => get_the_title($post_id),
-            'permalink'     => get_permalink($post_id),
+            'permalink'     => $resolved_canonical,
             'slug'          => $post->post_name,
             'content'       => $post->post_content,
             'seo_title'     => $seo_title !== '' ? $seo_title : get_the_title($post_id),
             'description'   => $description !== '' ? $description : wp_trim_words(wp_strip_all_tags($post->post_content), 25, '...'),
             'focus_keyword' => $focus,
             'keywords'      => array_values($keywords),
-            'canonical'     => ($canonical !== '' && preg_match('#^https?://#i', $canonical))
-                ? $canonical
-                : (string) get_permalink($post_id),
+            'canonical'     => $resolved_canonical,
             'robots'        => array_merge([
                 'index' => true, 'follow' => true, 'noarchive' => false, 'nosnippet' => false,
                 'noimageindex' => false, 'max_snippet' => -1, 'max_image_preview' => 'large', 'hide_date' => false,
@@ -1236,6 +1237,164 @@ final class Bankai_SEO_Engine
             'success' => true,
             'data'    => ['keywords' => $list],
             'message' => 'ذخیره شد',
+        ]);
+    }
+
+    /**
+     * Resolve Canonical URL based on WordPress site permalink structure and article slug.
+     */
+    public function get_canonical_url(int $post_id): string
+    {
+        $custom = (string) get_post_meta($post_id, self::META_CANONICAL, true);
+        if ($custom !== '' && preg_match('#^https?://#i', $custom)) {
+            return $custom;
+        }
+
+        $post = get_post($post_id);
+        if (!$post) {
+            return (string) get_permalink($post_id);
+        }
+
+        if ($post->post_status === 'publish') {
+            $perm = (string) get_permalink($post_id);
+            if ($perm !== '' && !str_contains($perm, '?p=')) {
+                return $perm;
+            }
+        }
+
+        if (function_exists('get_sample_permalink')) {
+            $sample = get_sample_permalink($post);
+            if (is_array($sample) && !empty($sample[0])) {
+                $template = $sample[0];
+                $slug = !empty($sample[1])
+                    ? $sample[1]
+                    : (!empty($post->post_name) ? $post->post_name : sanitize_title($post->post_title ?: ('post-' . $post_id)));
+                if ($slug !== '') {
+                    $url = str_replace('%postname%', $slug, $template);
+                    $url = str_replace('%pagename%', $slug, $url);
+                    if (preg_match('#^https?://#i', $url)) {
+                        return $url;
+                    }
+                }
+            }
+        }
+
+        return (string) get_permalink($post_id);
+    }
+
+    public function ajax_assign_taxonomies(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+
+        $post_id  = absint($_POST['post_id'] ?? 0);
+        $keywords = wp_unslash($_POST['keywords'] ?? []);
+        if (is_string($keywords)) {
+            $keywords = preg_split('/[,،\n]+/u', $keywords);
+        }
+        if (!is_array($keywords)) {
+            $keywords = [];
+        }
+        $keywords = array_values(array_filter(array_map('sanitize_text_field', $keywords)));
+
+        $post = $post_id ? get_post($post_id) : null;
+        $title = $post ? $post->post_title : sanitize_text_field(wp_unslash($_POST['title'] ?? ''));
+        $content = $post ? wp_strip_all_tags($post->post_content) : sanitize_text_field(wp_unslash($_POST['content'] ?? ''));
+
+        $existing_cats = get_terms(['taxonomy' => 'category', 'hide_empty' => false]);
+        $existing_tags = get_terms(['taxonomy' => 'post_tag', 'hide_empty' => false]);
+
+        $cat_names = is_array($existing_cats) && !is_wp_error($existing_cats) ? wp_list_pluck($existing_cats, 'name') : [];
+        $tag_names = is_array($existing_tags) && !is_wp_error($existing_tags) ? wp_list_pluck($existing_tags, 'name') : [];
+
+        $suggested_cats = [];
+        $suggested_tags = [];
+
+        if (class_exists('Bankai_AI_Studio')) {
+            try {
+                $prompt_sys = "You are Bankai SEO Taxonomy Assistant. Output ONLY valid JSON with keys: \"categories\" (array of strings, 1-2 categories), \"tags\" (array of strings, 4-8 tags in Persian). Base on article title, content, and keywords. Output ONLY JSON, no markdown fences.";
+                $prompt_user = "Article Title: {$title}\nKeywords: " . implode(', ', $keywords) . "\nExisting Site Categories: " . implode(', ', $cat_names) . "\nExisting Site Tags: " . implode(', ', array_slice($tag_names, 0, 40)) . "\nContent Excerpt:\n" . mb_substr($content, 0, 1500);
+
+                $provider = Bankai_AI_Studio::instance()->get_default_provider();
+                $raw = Bankai_AI_Studio::instance()->chat($provider, $prompt_sys, $prompt_user, ['temperature' => 0.4, 'max_tokens' => 350]);
+
+                if (preg_match('/\{[\s\S]*\}/u', $raw, $m)) {
+                    $json = json_decode($m[0], true);
+                    if (is_array($json)) {
+                        if (!empty($json['categories']) && is_array($json['categories'])) {
+                            $suggested_cats = array_map('sanitize_text_field', $json['categories']);
+                        }
+                        if (!empty($json['tags']) && is_array($json['tags'])) {
+                            $suggested_tags = array_map('sanitize_text_field', $json['tags']);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Fallback
+            }
+        }
+
+        if (empty($suggested_cats)) {
+            if (!empty($keywords[0])) {
+                $suggested_cats[] = $keywords[0];
+            }
+        }
+        if (empty($suggested_tags)) {
+            $suggested_tags = array_slice($keywords, 0, 6);
+        }
+
+        $applied_cats = [];
+        $applied_tags = [];
+        if (!empty($_POST['apply']) && $post_id > 0) {
+            $cat_ids = [];
+            foreach ($suggested_cats as $cname) {
+                $cname = trim((string) $cname);
+                if ($cname === '') continue;
+                $term = get_term_by('name', $cname, 'category');
+                if (!$term) {
+                    $inserted = wp_insert_term($cname, 'category');
+                    if (!is_wp_error($inserted) && isset($inserted['term_id'])) {
+                        $cat_ids[] = (int) $inserted['term_id'];
+                        $applied_cats[] = $cname;
+                    }
+                } else {
+                    $cat_ids[] = (int) $term->term_id;
+                    $applied_cats[] = $term->name;
+                }
+            }
+            if (!empty($cat_ids)) {
+                wp_set_post_categories($post_id, $cat_ids);
+            }
+
+            $tag_ids = [];
+            foreach ($suggested_tags as $tname) {
+                $tname = trim((string) $tname);
+                if ($tname === '') continue;
+                $term = get_term_by('name', $tname, 'post_tag');
+                if (!$term) {
+                    $inserted = wp_insert_term($tname, 'post_tag');
+                    if (!is_wp_error($inserted) && isset($inserted['term_id'])) {
+                        $tag_ids[] = (int) $inserted['term_id'];
+                        $applied_tags[] = $tname;
+                    }
+                } else {
+                    $tag_ids[] = (int) $term->term_id;
+                    $applied_tags[] = $term->name;
+                }
+            }
+            if (!empty($tag_ids)) {
+                wp_set_post_tags($post_id, $tag_ids, true);
+            }
+        }
+
+        wp_send_json_success([
+            'categories' => array_values(array_unique($suggested_cats)),
+            'tags'       => array_values(array_unique($suggested_tags)),
+            'applied_categories' => $applied_cats,
+            'applied_tags'       => $applied_tags,
+            'message'    => 'دسته‌بندی‌ها و برچسب‌های سئوشده استخراج و اعمال شدند.',
         ]);
     }
 
