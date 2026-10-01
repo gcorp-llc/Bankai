@@ -195,8 +195,8 @@ final class Bankai_Dashboard_Stats
                 'desc_fa'  => 'متاتگ، داده ساختاریافته، نقشه سایت و تحلیل سئوی درون‌صفحه.',
             ],
             'ai_studio' => [
-                'label'    => 'AI Studio',
-                'label_fa' => 'استودیو هوش مصنوعی',
+                'label'    => 'AI',
+                'label_fa' => 'AI',
                 'desc'     => 'Multi-provider AI for content, meta and SEO assistants.',
                 'desc_fa'  => 'اتصال چندموتوره برای تولید محتوا، متا و دستیار سئو.',
             ],

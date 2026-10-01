@@ -188,23 +188,12 @@ class Bankai_Admin_Menu {
             );
         }
 
-        // Scripts in footer; Alpine deferred after admin app is ready
+        // Scripts in footer
         $js_ver = static function (string $rel) {
             $path = BANKAI_CORE_DIR . 'assets/js/' . $rel;
             $base = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0';
             return is_file($path) ? $base . '.' . (string) filemtime($path) : $base;
         };
-
-        wp_enqueue_script(
-            'bankai-htmx-js',
-            bankai_asset_url('js/htmx.min.js'),
-            [],
-            $js_ver('htmx.min.js'),
-            true
-        );
-        if (function_exists('wp_script_add_data')) {
-            wp_script_add_data('bankai-htmx-js', 'strategy', 'defer');
-        }
 
         wp_enqueue_media();
 
@@ -245,18 +234,6 @@ class Bankai_Admin_Menu {
                 bankai_asset_url('css/bankai-v2-design-system.css'),
                 ['bankai-admin-css'],
                 BANKAI_CORE_VERSION . '.' . (string) filemtime($v2_css)
-            );
-        }
-
-        // React Application using WP element
-        $react_js = BANKAI_CORE_DIR . 'assets/js/bankai-admin-react.js';
-        if (is_file($react_js)) {
-            wp_enqueue_script(
-                'bankai-admin-react',
-                bankai_asset_url('js/bankai-admin-react.js'),
-                ['wp-element', 'jquery'],
-                BANKAI_CORE_VERSION . '.' . (string) filemtime($react_js),
-                true
             );
         }
 
