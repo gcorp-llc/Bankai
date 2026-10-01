@@ -1,0 +1,467 @@
+/* ==========================================================================
+   Bankai Core - Custom Design Tokens & Scoped Admin Stylesheet
+   Pure CSS Variables · Light/Dark Modes · Full RTL Native · Zero Core Leakage
+   ========================================================================== */
+
+:root {
+  /* Bankai Dark Navy & Slate Palette + Purple/Blue Accents */
+  --bankai-bg-page: #0d1117;
+  --bankai-bg-card: #161b22;
+  --bankai-bg-card-hover: #1f242c;
+  --bankai-bg-sidebar: #161b22;
+  --bankai-bg-input: #0d1117;
+  --bankai-border-color: #30363d;
+  --bankai-border-focus: #58a6ff;
+
+  --bankai-text-main: #c9d1d9;
+  --bankai-text-muted: #8b949e;
+  --bankai-text-white: #ffffff;
+
+  --bankai-accent-purple: #8b5cf6;
+  --bankai-accent-purple-hover: #7c3aed;
+  --bankai-accent-blue: #3b82f6;
+  --bankai-accent-blue-hover: #2563eb;
+
+  --bankai-success: #10b981;
+  --bankai-warning: #f59e0b;
+  --bankai-danger: #ef4444;
+
+  --bankai-radius-sm: 6px;
+  --bankai-radius-md: 8px;
+  --bankai-radius-lg: 12px;
+
+  --bankai-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --bankai-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --bankai-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  --bankai-font-family: "Vazirmatn", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.bankai-light {
+  --bankai-bg-page: #f6f8fa;
+  --bankai-bg-card: #ffffff;
+  --bankai-bg-card-hover: #f3f4f6;
+  --bankai-bg-sidebar: #ffffff;
+  --bankai-bg-input: #ffffff;
+  --bankai-border-color: #d0d7de;
+  --bankai-border-focus: #0969da;
+
+  --bankai-text-main: #1f2328;
+  --bankai-text-muted: #57606a;
+  --bankai-text-white: #ffffff;
+
+  --bankai-accent-purple: #7c3aed;
+  --bankai-accent-purple-hover: #6d28d9;
+  --bankai-accent-blue: #2563eb;
+  --bankai-accent-blue-hover: #1d4ed8;
+
+  --bankai-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --bankai-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --bankai-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Base Wrapper Isolation */
+#bankai-admin-app,
+.bankai-app-wrapper {
+  font-family: var(--bankai-font-family);
+  background-color: var(--bankai-bg-page);
+  color: var(--bankai-text-main);
+  min-height: calc(100vh - 32px);
+  margin-left: -20px;
+  padding: 16px 24px;
+  box-sizing: border-box;
+}
+
+/* Header Component */
+.bankai-admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bankai-bg-card);
+  border: 1px solid var(--bankai-border-color);
+  border-radius: var(--bankai-radius-md);
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--bankai-shadow-sm);
+}
+
+.bankai-header-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bankai-header-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--bankai-text-main);
+}
+
+.bankai-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bankai-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bankai-bg-input);
+  border: 1px solid var(--bankai-border-color);
+  border-radius: var(--bankai-radius-sm);
+  padding: 6px 12px;
+}
+
+.bankai-search-box input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--bankai-text-main);
+  font-size: 0.875rem;
+  width: 200px;
+}
+
+/* Buttons & Icon Buttons */
+.bankai-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: var(--bankai-radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.bankai-btn-primary {
+  background-color: var(--bankai-accent-purple);
+  color: var(--bankai-text-white);
+}
+
+.bankai-btn-primary:hover {
+  background-color: var(--bankai-accent-purple-hover);
+}
+
+.bankai-btn-secondary {
+  background-color: transparent;
+  border-color: var(--bankai-border-color);
+  color: var(--bankai-text-main);
+}
+
+.bankai-btn-secondary:hover {
+  background-color: var(--bankai-bg-card-hover);
+}
+
+.bankai-btn-success {
+  background-color: var(--bankai-success);
+  color: var(--bankai-text-white);
+}
+
+.bankai-btn-icon {
+  background: transparent;
+  border: 1px solid var(--bankai-border-color);
+  border-radius: var(--bankai-radius-sm);
+  color: var(--bankai-text-main);
+  padding: 6px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+}
+
+.bankai-btn-icon:hover {
+  background-color: var(--bankai-bg-card-hover);
+}
+
+/* Sidebar & Navigation */
+.bankai-admin-body {
+  display: flex;
+  gap: 20px;
+}
+
+.bankai-admin-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background-color: var(--bankai-bg-sidebar);
+  border: 1px solid var(--bankai-border-color);
+  border-radius: var(--bankai-radius-md);
+  padding: 16px;
+  box-shadow: var(--bankai-shadow-sm);
+}
+
+.bankai-brand-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--bankai-border-color);
+}
+
+.bankai-brand-logo {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--bankai-accent-purple), var(--bankai-accent-blue));
+  border-radius: var(--bankai-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.bankai-brand-title {
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+}
+
+.bankai-brand-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--bankai-text-muted);
+}
+
+.bankai-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--bankai-success);
+}
+
+.bankai-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bankai-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: var(--bankai-radius-sm);
+  transition: background 0.15s ease;
+}
+
+.bankai-nav-item:hover {
+  background-color: var(--bankai-bg-card-hover);
+}
+
+.bankai-nav-item.active {
+  background-color: rgba(139, 92, 246, 0.15);
+  border-right: 3px solid var(--bankai-accent-purple);
+}
+
+.bankai-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  color: var(--bankai-text-main);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: right;
+  flex: 1;
+}
+
+.bankai-nav-item.disabled .bankai-nav-label {
+  opacity: 0.5;
+}
+
+.bankai-icon-bold {
+  color: var(--bankai-accent-purple);
+}
+
+/* Switch Component */
+.bankai-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.bankai-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.bankai-switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--bankai-border-color);
+  transition: .2s;
+  border-radius: 20px;
+}
+
+.bankai-switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .2s;
+  border-radius: 50%;
+}
+
+.bankai-switch input:checked + .bankai-switch-slider {
+  background-color: var(--bankai-accent-purple);
+}
+
+.bankai-switch input:checked + .bankai-switch-slider:before {
+  transform: translateX(16px);
+}
+
+/* Main Content Area */
+.bankai-admin-content {
+  flex: 1;
+  background-color: var(--bankai-bg-card);
+  border: 1px solid var(--bankai-border-color);
+  border-radius: var(--bankai-radius-md);
+  padding: 24px;
+  box-shadow: var(--bankai-shadow-sm);
+}
+
+.bankai-card {
+  background-color: var(--bankai-bg-card);
+  border: 1px solid var(--bankai-border-color);
+  border-radius: var(--bankai-radius-md);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.bankai-card-title {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Badges */
+.bankai-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+.bankai-badge-purple {
+  background-color: rgba(139, 92, 246, 0.2);
+  color: var(--bankai-accent-purple);
+}
+
+/* Floating Save Bar */
+.bankai-floating-save {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--bankai-bg-card);
+  border: 1px solid var(--bankai-accent-purple);
+  box-shadow: var(--bankai-shadow-lg);
+  border-radius: var(--bankai-radius-md);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 9999;
+}
+
+/* Modals & Onboarding */
+.bankai-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.bankai-modal-content {
+  background-color: var(--bankai-bg-card);
+  border: 1px solid var(--bankai-border-color);
+  border-radius: var(--bankai-radius-lg);
+  width: 540px;
+  max-width: 90%;
+  padding: 24px;
+  box-shadow: var(--bankai-shadow-lg);
+}
+
+.bankai-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.bankai-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--bankai-text-muted);
+  cursor: pointer;
+}
+
+.bankai-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Callouts */
+.bankai-callout {
+  padding: 12px 16px;
+  border-radius: var(--bankai-radius-sm);
+  font-size: 0.875rem;
+  margin-top: 12px;
+}
+
+.bankai-callout-info {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-right: 4px solid var(--bankai-accent-blue);
+  color: var(--bankai-text-main);
+}
+
+/* Toast Notification */
+.bankai-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: var(--bankai-radius-md);
+  background-color: var(--bankai-bg-card);
+  border: 1px solid var(--bankai-border-color);
+  color: var(--bankai-text-main);
+  box-shadow: var(--bankai-shadow-md);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 10001;
+}
+
+.bankai-toast-success {
+  border-color: var(--bankai-success);
+}
+
+.bankai-toast-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--bankai-text-muted);
+}
