@@ -1722,31 +1722,32 @@
    ========================================================= */
 #bankai-seo-sidebar,
 .bankai-seo-root {
-    --c-canvas: #f3f3f3;
+    /* GitHub Light / Primer design tokens */
+    --c-canvas: #f6f8fa;
     --c-card: #ffffff;
-    --c-border: rgba(0, 0, 0, 0.06);
-    --c-border-m: rgba(0, 0, 0, 0.04);
-    --c-fg: #1a1a1a;
-    --c-muted: #605e5c;
-    --c-subtle: #8a8886;
-    --c-blue: #0078d4;
-    --c-blue-s: #e8f3fc;
-    --c-blue-b: #50a6e0;
-    --c-green: #0f7b3a;
-    --c-green-s: #dff6e8;
-    --c-green-t: #0b5c2c;
-    --c-purple: #6b4eff;
-    --c-purple-s: #f0edff;
+    --c-border: #d0d7de;
+    --c-border-m: #d8dee4;
+    --c-fg: #1f2328;
+    --c-muted: #59636e;
+    --c-subtle: #6e7781;
+    --c-blue: #0969da;
+    --c-blue-s: #ddf4ff;
+    --c-blue-b: #54aeff;
+    --c-green: #1a7f37;
+    --c-green-s: #dafbe1;
+    --c-green-t: #1f883d;
+    --c-purple: #0969da;
+    --c-purple-s: #ddf4ff;
     --c-yellow: #9a6700;
-    --c-yellow-s: #fff4ce;
-    --c-red: #c42b1c;
-    --c-red-s: #fde7e9;
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --shadow-1: 0 1px 2px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.06);
-    --shadow-2: 0 4px 16px rgba(0,0,0,.08);
-    --shadow-3: 0 12px 32px rgba(0,0,0,.12);
+    --c-yellow-s: #fff8c5;
+    --c-red: #cf222e;
+    --c-red-s: #ffebe9;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --shadow-1: 0 1px 3px rgba(31,35,40,0.12);
+    --shadow-2: 0 3px 6px rgba(140,149,159,0.15);
+    --shadow-3: 0 8px 24px rgba(140,149,159,0.2);
     font-size: 12.5px;
     background: var(--c-canvas);
     letter-spacing: 0.01em;

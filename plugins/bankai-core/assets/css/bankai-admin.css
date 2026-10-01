@@ -65,34 +65,47 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
 #bankai-admin-app,
 .bankai-app-wrapper,
 .bankai-admin-wrap {
-  /* Fluent Windows 11 + Material 3 tokens */
-  --bankai-bg-main: #f3f3f3;
+  /* GitHub Light / Primer Design Tokens */
+  --bankai-bg-main: #f6f8fa;
   --bankai-bg-surface: #ffffff;
   --bankai-card-bg: #ffffff;
-  --bankai-card-border: rgba(0, 0, 0, 0.06);
-  --bankai-border-subtle: rgba(0, 0, 0, 0.05);
+  --bankai-card-border: #d0d7de;
+  --bankai-border-subtle: #d0d7de;
   
-  --bankai-text-main: #1a1a1a;
-  --bankai-text-muted: #605e5c;
-  --bankai-text-subtle: #8a8886;
+  --bankai-text-main: #1f2328;
+  --bankai-text-muted: #59636e;
+  --bankai-text-subtle: #6e7781;
   
-  --bankai-accent: #0078d4;
-  --bankai-accent-hover: #106ebe;
-  --bankai-accent-subtle: rgba(0, 120, 212, 0.1);
+  --bankai-accent: #0969da;
+  --bankai-accent-hover: #0550ae;
+  --bankai-accent-subtle: #ddf4ff;
   
-  --bankai-success: #0f7b3a;
-  --bankai-success-subtle: rgba(15, 123, 58, 0.1);
-  --bankai-danger: #c42b1c;
-  --bankai-purple: #6b4eff;
-  --bankai-purple-subtle: rgba(107, 78, 255, 0.1);
+  --bankai-btn-primary-bg: #1f883d;
+  --bankai-btn-primary-hover: #1a7f37;
+  --bankai-btn-primary-text: #ffffff;
 
-  --bankai-radius-sm: 8px;
-  --bankai-radius-md: 12px;
-  --bankai-radius-lg: 16px;
-  --bankai-radius-xl: 20px;
-  --bankai-shadow-1: 0 1px 2px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.06);
-  --bankai-shadow-2: 0 4px 16px rgba(0,0,0,.08);
-  --bankai-shadow-3: 0 12px 32px rgba(0,0,0,.12);
+  --bankai-success: #1a7f37;
+  --bankai-success-subtle: #dafbe1;
+  --bankai-success-border: #4ac26b;
+
+  --bankai-warning: #9a6700;
+  --bankai-warning-subtle: #fff8c5;
+  --bankai-warning-border: #d4a72c;
+
+  --bankai-danger: #cf222e;
+  --bankai-danger-subtle: #ffebe9;
+  --bankai-danger-border: #ff8182;
+
+  --bankai-purple: #0969da;
+  --bankai-purple-subtle: #ddf4ff;
+
+  --bankai-radius-sm: 6px;
+  --bankai-radius-md: 8px;
+  --bankai-radius-lg: 12px;
+  --bankai-radius-xl: 14px;
+  --bankai-shadow-1: 0 1px 3px rgba(31,35,40,0.12);
+  --bankai-shadow-2: 0 3px 6px rgba(140,149,159,0.15);
+  --bankai-shadow-3: 0 8px 24px rgba(140,149,159,0.2);
 
   background-color: var(--bankai-bg-main) !important;
   color: var(--bankai-text-main) !important;
