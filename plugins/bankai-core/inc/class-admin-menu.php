@@ -237,20 +237,34 @@ class Bankai_Admin_Menu {
         }
 
 
+        // Enqueue V2 Design System CSS
+        $v2_css = BANKAI_CORE_DIR . 'assets/css/bankai-v2-design-system.css';
+        if (is_file($v2_css)) {
+            wp_enqueue_style(
+                'bankai-v2-design-system',
+                bankai_asset_url('css/bankai-v2-design-system.css'),
+                ['bankai-admin-css'],
+                BANKAI_CORE_VERSION . '.' . (string) filemtime($v2_css)
+            );
+        }
+
+        // React Application using WP element
+        $react_js = BANKAI_CORE_DIR . 'assets/js/bankai-admin-react.js';
+        if (is_file($react_js)) {
+            wp_enqueue_script(
+                'bankai-admin-react',
+                bankai_asset_url('js/bankai-admin-react.js'),
+                ['wp-element', 'jquery'],
+                BANKAI_CORE_VERSION . '.' . (string) filemtime($react_js),
+                true
+            );
+        }
+
         wp_enqueue_script(
             'bankai-admin-js',
             bankai_asset_url('js/bankai-admin.js'),
-            ['jquery', 'bankai-htmx-js'],
+            ['jquery'],
             $js_ver('bankai-admin.js'),
-            true
-        );
-
-        // Alpine must load after bankai-admin.js (registers Alpine.data)
-        wp_enqueue_script(
-            'bankai-alpine-js',
-            bankai_asset_url('js/alpine.min.js'),
-            ['bankai-admin-js'],
-            $js_ver('alpine.min.js'),
             true
         );
         // Do NOT defer Alpine — it auto-starts and must see prior registrations
