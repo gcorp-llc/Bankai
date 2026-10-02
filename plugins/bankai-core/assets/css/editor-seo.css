@@ -952,7 +952,7 @@
 .bk-toast .bk-toast-msg { color: #1f2328; }
 
 /* ---- Utils ---- */
-[x-cloak] { display: none !important; }
+[hidden] { display: none !important; }
 
 .bk-spin {
     animation: bk-spin 0.6s linear infinite;
@@ -2528,4 +2528,9 @@
 }
 .bk-score-ring .bk-progress {
   stroke: var(--score-color, #1E7F5C);
+}
+
+/* CSS Rules for hidden attributes in Editor SEO */
+.bankai-seo-root [hidden] {
+    display: none !important;
 }

@@ -57,8 +57,8 @@
         el.value = value;
         el.dispatchEvent(new Event('input', { bubbles: true }));
         el.dispatchEvent(new Event('change', { bubbles: true }));
-        // Alpine / React friendly
-        if (window.Alpine && el._x_model) {
+
+        if (window.Vanilla && el._x_model) {
             try { el._x_model.set(value); } catch (e) {}
         }
     }
@@ -110,7 +110,7 @@
             if (task === 'meta_title' || task === 'title') {
                 var titleVal = d.seo_title || d.title || text;
                 setField('[data-bankai-field="seo_title"], #bankai_seo_title, input[name="_bankai_seo_title"], input[name="bankai_seo_title"]', titleVal);
-                // Alpine reactive models in sidebar
+
                 document.dispatchEvent(new CustomEvent('bankai-ai-result', { detail: { task: 'meta_title', data: { seo_title: titleVal } } }));
             } else if (task === 'meta_description' || task === 'description') {
                 var descVal = d.description || d.meta_description || text;
@@ -166,6 +166,6 @@
         if (task) runTask(task, btn);
     });
 
-    // Expose for Alpine sidebar
+
     window.bankaiRunSeoAi = runTask;
 })();

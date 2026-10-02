@@ -2,7 +2,7 @@
 /**
  * Bankai Core - Articles Management & Smart AI Generator Wizard
  *
- * PHP Views + Vanilla JS (Zero Alpine/HTMX dependencies)
+ * PHP Views + Vanilla JS
  * GitHub Light / Primer Design System
  *
  * @package Bankai

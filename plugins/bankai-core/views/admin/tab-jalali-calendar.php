@@ -26,8 +26,7 @@ if (class_exists('Bankai_Jalali_Calendar')) {
     $sample = date_i18n(get_option('date_format') . ' ' . get_option('time_format'));
 }
 ?>
-<div id="tab-jalali-calendar" class="bankai-tab-pane" x-show="activeTab === 'jalali-calendar'" x-cloak
-     x-data="bankaiJalaliTab()">
+<div id="tab-jalali-calendar" class="bankai-tab-pane">
     <div class="bankai-card" style="padding:22px;margin-bottom:16px">
         <h2 style="margin:0 0 8px;font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">
             <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
@@ -55,16 +54,16 @@ if (class_exists('Bankai_Jalali_Calendar')) {
 
         <div style="display:grid;gap:12px;margin-bottom:16px">
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
-                <input type="checkbox" x-model="persianDigits"> ارقام فارسی (۰۱۲۳…)
+                <input type="checkbox"> ارقام فارسی (۰۱۲۳…)
             </label>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
-                <input type="checkbox" x-model="dualDate"> نمایش دوگانه (شمسی + میلادی)
+                <input type="checkbox"> نمایش دوگانه (شمسی + میلادی)
             </label>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
-                <input type="checkbox" x-model="datepicker"> دیت‌پیکر جلالی در ادمین
+                <input type="checkbox"> دیت‌پیکر جلالی در ادمین
             </label>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
-                <input type="checkbox" x-model="adminColumn"> تبدیل ستون تاریخ در لیست نوشته‌ها
+                <input type="checkbox"> تبدیل ستون تاریخ در لیست نوشته‌ها
             </label>
         </div>
 
@@ -73,26 +72,16 @@ if (class_exists('Bankai_Jalali_Calendar')) {
             <input type="text" class="bankai-jalali-date" placeholder="تاریخ شمسی را انتخاب کنید" style="max-width:260px">
         </div>
 
-        <button type="button" class="bankai-btn bankai-btn-primary" @click="save()" :disabled="saving"
+        <button type="button" class="bankai-btn bankai-btn-primary" :disabled="saving"
                 style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;border:none;background:#0078d4;color:#fff;font-weight:700;cursor:pointer">
-            <span x-text="saving ? 'در حال ذخیره…' : 'ذخیره تنظیمات'"></span>
+            <span></span>
         </button>
-        <p x-show="msg" style="margin:10px 0 0;font-size:12px;font-weight:600;color:#0f7b3a" x-text="msg"></p>
+        <p style="margin:10px 0 0;font-size:12px;font-weight:600;color:#0f7b3a"></p>
     </div>
 </div>
 <script>
-document.addEventListener('alpine:init', function () {
-    Alpine.data('bankaiJalaliTab', function () {
-        return {
-            persianDigits: <?php echo $persian_digits ? 'true' : 'false'; ?>,
-            dualDate: <?php echo $dual_date ? 'true' : 'false'; ?>,
-            datepicker: <?php echo $datepicker ? 'true' : 'false'; ?>,
-            adminColumn: <?php echo $admin_column ? 'true' : 'false'; ?>,
-            saving: false,
-            msg: '',
-            init: function () {
-                this.$nextTick(function () {
-                    if (window.BankaiJalaliDatepicker) window.BankaiJalaliDatepicker.init();
+document.addEventListener('DOMContentLoaded', function () {
+
                 });
             },
             save: function () {

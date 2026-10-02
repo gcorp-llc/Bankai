@@ -125,7 +125,7 @@ class Bankai_Editor_SEO
 
         if (in_array($hook, ['post.php', 'post-new.php'], true)) {
             wp_enqueue_media();
-            // Register Alpine.data BEFORE Alpine auto-starts: load component first, Alpine second.
+
             $js_ver = $ver . '.' . (string) @filemtime(BANKAI_CORE_DIR . 'assets/js/editor-seo.js');
             wp_enqueue_script(
                 'bankai-editor-seo',
@@ -161,7 +161,7 @@ class Bankai_Editor_SEO
     {
         $ver = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0';
 
-        // Same CSS + Alpine + core JS for Gutenberg context.
+
         wp_enqueue_style(
             'bankai-vazirmatn',
             'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap',
@@ -175,7 +175,7 @@ class Bankai_Editor_SEO
             $ver
         );
 
-        // Register Alpine.data BEFORE Alpine boots
+
         wp_enqueue_script(
             'bankai-editor-seo',
             bankai_asset_url('js/editor-seo.js'),
