@@ -135,13 +135,6 @@ class Bankai_Editor_SEO
                 true
             );
 
-            wp_enqueue_script(
-                'alpinejs',
-                bankai_asset_url('js/alpine.min.js'),
-                ['bankai-editor-seo'],
-                '3.14.1',
-                true
-            );
 
             $post_id = 0;
             if (isset($_GET['post'])) {
@@ -191,13 +184,6 @@ class Bankai_Editor_SEO
             true
         );
 
-        wp_enqueue_script(
-            'alpinejs',
-            bankai_asset_url('js/alpine.min.js'),
-            ['bankai-editor-seo'],
-            '3.14.1',
-            true
-        );
 
         $post_id = 0;
         if (isset($_GET['post'])) {
@@ -237,7 +223,6 @@ class Bankai_Editor_SEO
                 'wp-data',
                 'wp-i18n',
                 'bankai-editor-seo',
-                'alpinejs',
             ],
             $ver,
             true

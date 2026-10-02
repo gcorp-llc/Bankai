@@ -21,9 +21,8 @@ final class Bankai_AI_Generator_Wizard
 
     private function __construct()
     {
-        add_action('admin_menu', [$this, 'register_hidden_wizard_page']);
+        add_action('admin_init', [$this, 'redirect_legacy_wizard_page']);
         add_action('admin_head-edit.php', [$this, 'inject_button_script']);
-        add_action('admin_enqueue_scripts', [$this, 'enqueue_wizard_assets']);
         add_action('admin_notices', [$this, 'render_needs_review_notice']);
         add_filter('views_edit-post', [$this, 'add_needs_review_subsubsub_link']);
         add_action('pre_get_posts', [$this, 'filter_posts_by_needs_review']);
@@ -36,49 +35,15 @@ final class Bankai_AI_Generator_Wizard
         add_action('wp_ajax_bankai_dismiss_needs_review_notice', [$this, 'ajax_dismiss_notice']);
     }
 
-    public function register_hidden_wizard_page(): void
+    /**
+     * @deprecated Legacy bookmark redirect to new Article Management AI tab
+     */
+    public function redirect_legacy_wizard_page(): void
     {
-        add_submenu_page(
-            null, // Hidden page
-            __('تولید مقاله با هوش مصنوعی', 'bankai-core'),
-            __('تولید مقاله با هوش مصنوعی', 'bankai-core'),
-            'publish_posts',
-            'bankai-ai-generator-wizard',
-            [$this, 'render_wizard_page']
-        );
-    }
-
-    public function enqueue_wizard_assets(string $hook_suffix): void
-    {
-        $page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
-        if ($page !== 'bankai-ai-generator-wizard' && $hook_suffix !== 'edit.php') {
-            return;
-        }
-
-        // Only enqueue scoped assets for wizard and edit.php
-        wp_enqueue_style(
-            'bankai-admin-css',
-            bankai_asset_url('css/bankai-admin.css'),
-            [],
-            BANKAI_CORE_VERSION
-        );
-
-        if ($page === 'bankai-ai-generator-wizard') {
-            wp_enqueue_script(
-                'bankai-ai-wizard-js',
-                bankai_asset_url('js/bankai-ai-wizard.js'),
-                ['jquery'],
-                BANKAI_CORE_VERSION . '.' . time(),
-                true
-            );
-
-            wp_localize_script('bankai-ai-wizard-js', 'bankaiWizardData', [
-                'ajaxUrl'    => admin_url('admin-ajax.php'),
-                'nonce'      => wp_create_nonce('bankai_admin_nonce'),
-                'timeZone'   => function_exists('wp_timezone_string') ? wp_timezone_string() : 'UTC',
-                'categories' => get_categories(['hide_empty' => false]),
-                'authors'    => get_users(['capability' => 'edit_posts', 'fields' => ['ID', 'display_name']]),
-            ]);
+        if (isset($_GET['page']) && sanitize_key($_GET['page']) === 'bankai-ai-generator-wizard') {
+            $target = admin_url('admin.php?page=bankai-core&tab=articles&subtab=ai-generate');
+            wp_safe_redirect($target, 302);
+            exit;
         }
     }
 
@@ -89,7 +54,7 @@ final class Bankai_AI_Generator_Wizard
         }
 
         $ai_active = function_exists('bankai_is_module_active') ? bankai_is_module_active('ai_studio') : true;
-        $wizard_url = admin_url('admin.php?page=bankai-ai-generator-wizard&_wpnonce=' . wp_create_nonce('bankai_ai_wizard'));
+        $target_url = admin_url('admin.php?page=bankai-core&tab=articles&subtab=ai-generate&_wpnonce=' . wp_create_nonce('bankai_ai_wizard') . '#tab-articles');
 
         ?>
         <script id="bankai-ai-btn-injector">
@@ -98,13 +63,13 @@ final class Bankai_AI_Generator_Wizard
                 if (!addNewBtn) return;
 
                 var aiBtn = document.createElement('a');
-                aiBtn.href = "<?php echo esc_url($wizard_url); ?>";
+                aiBtn.href = "<?php echo esc_url($target_url); ?>";
                 aiBtn.className = "page-title-action bankai-ai-gen-btn";
-                aiBtn.style.cssText = "background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; margin-right: 8px; font-weight: 600; box-shadow: 0 2px 6px rgba(99,102,241,0.3); display: inline-flex; align-items: center; gap: 6px;";
+                aiBtn.style.cssText = "background: #1f883d; color: #ffffff; border: 1px solid #1a7f37; margin-right: 8px; font-weight: 600; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;";
                 aiBtn.innerHTML = "✨ تولید مقاله با AI";
 
                 <?php if (!$ai_active) : ?>
-                aiBtn.href = "<?php echo esc_url(admin_url('admin.php?page=bankai-core#tab-ai-studio')); ?>";
+                aiBtn.href = "<?php echo esc_url(admin_url('admin.php?page=bankai-core&tab=ai-studio')); ?>";
                 aiBtn.title = "ماژول AI غیرفعال است. جهت فعال‌سازی کلیک کنید.";
                 aiBtn.style.opacity = "0.7";
                 <?php endif; ?>
@@ -115,14 +80,6 @@ final class Bankai_AI_Generator_Wizard
         <?php
     }
 
-    public function render_wizard_page(): void
-    {
-        if (!current_user_can('publish_posts')) {
-            wp_die(__('شما دسترسی لازم برای این بخش را ندارید.', 'bankai-core'));
-        }
-
-        bankai_render_view('admin/ai-wizard.php', []);
-    }
 
     public function render_needs_review_notice(): void
     {

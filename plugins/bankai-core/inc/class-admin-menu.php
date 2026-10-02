@@ -195,17 +195,6 @@ class Bankai_Admin_Menu {
             return is_file($path) ? $base . '.' . (string) filemtime($path) : $base;
         };
 
-        wp_enqueue_script(
-            'bankai-htmx-js',
-            bankai_asset_url('js/htmx.min.js'),
-            [],
-            $js_ver('htmx.min.js'),
-            true
-        );
-        if (function_exists('wp_script_add_data')) {
-            wp_script_add_data('bankai-htmx-js', 'strategy', 'defer');
-        }
-
         wp_enqueue_media();
 
         // Classic editor assets for in-panel TinyMCE (safe — no fatal require)
@@ -240,20 +229,10 @@ class Bankai_Admin_Menu {
         wp_enqueue_script(
             'bankai-admin-js',
             bankai_asset_url('js/bankai-admin.js'),
-            ['jquery', 'bankai-htmx-js'],
+            ['jquery'],
             $js_ver('bankai-admin.js'),
             true
         );
-
-        // Alpine must load after bankai-admin.js (registers Alpine.data)
-        wp_enqueue_script(
-            'bankai-alpine-js',
-            bankai_asset_url('js/alpine.min.js'),
-            ['bankai-admin-js'],
-            $js_ver('alpine.min.js'),
-            true
-        );
-        // Do NOT defer Alpine — it auto-starts and must see prior registrations
 
 
         $core_data = [
@@ -309,22 +288,17 @@ class Bankai_Admin_Menu {
     }
 
     public function add_defer_attribute(string $tag, string $handle, string $src = ''): string {
-        if (!in_array($handle, ['bankai-alpine-js', 'bankai-htmx-js'], true)) {
-            return $tag;
-        }
-
-        if (empty($src) || strpos($tag, ' src=') === false) {
-            return $tag;
-        }
-
-        if (strpos($tag, ' defer') !== false) {
-            return $tag;
-        }
-
-        return str_replace(' src=', ' defer="defer" src=', $tag);
+        return $tag;
     }
 
     private function get_current_tab(): string {
+        if (!empty($_GET['tab'])) {
+            $allowed = ['overview', 'articles', 'seo-engine', 'ai-studio', 'speed-cache', 'media-watermark', 'settings-license', 'theme-kits'];
+            $tab = sanitize_key(wp_unslash($_GET['tab']));
+            if (in_array($tab, $allowed, true)) {
+                return $tab;
+            }
+        }
         $page = isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : $this->menu_slug;
         return self::TAB_MAP[$page] ?? 'overview';
     }

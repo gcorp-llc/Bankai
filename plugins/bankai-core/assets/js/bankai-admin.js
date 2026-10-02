@@ -273,6 +273,8 @@
 
             init: function () {
                 window.bankaiAdminInstance = this;
+                var startTab = this.activeTab || 'overview';
+                this.setTab(startTab);
             },
 
             t: function (key) {
@@ -302,18 +304,26 @@
                     return;
                 }
                 var self = this;
-                this.pageLoading = true;
-                this.pageProgress = 40;
-                setTimeout(function () {
-                    self.activeTab = tab;
-                    self.pageProgress = 100;
-                    self.pageLoading = false;
-                    self.closeMobileMenu();
-                    if (tab === 'seo-engine') {
-                        if (typeof self.runSeoAuditInline === 'function') self.runSeoAuditInline();
-                        if (self.seoPanel === 'articles' && typeof self.loadArticles === 'function') self.loadArticles();
+                self.activeTab = tab;
+                document.querySelectorAll('.bankai-tab-pane').forEach(function(pane) {
+                    if (pane.id === 'tab-' + tab) {
+                        pane.style.display = 'block';
+                    } else {
+                        pane.style.display = 'none';
                     }
-                }, 160);
+                });
+                document.querySelectorAll('.bankai-nav-btn').forEach(function(btn) {
+                    if (btn.id === 'nav-tab-' + tab || btn.getAttribute('data-tab') === tab) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                self.closeMobileMenu();
+                if (tab === 'seo-engine') {
+                    if (typeof self.runSeoAuditInline === 'function') self.runSeoAuditInline();
+                    if (self.seoPanel === 'articles' && typeof self.loadArticles === 'function') self.loadArticles();
+                }
             },
 
             isModuleNavEnabled: function (tab) {
@@ -1332,4 +1342,11 @@
 
         };
     };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof window.bankaiAdmin === 'function') {
+            var app = window.bankaiAdmin();
+            app.init();
+        }
+    });
 })();
