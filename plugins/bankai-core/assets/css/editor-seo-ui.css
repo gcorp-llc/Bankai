@@ -41,7 +41,7 @@
     background: #f6f8fa;
 }
 
-/* Fit Alpine sidebar inside meta box */
+
 #bankai_seo_engine #bankai-seo-sidebar {
     min-height: 380px;
     max-height: min(78vh, 920px);

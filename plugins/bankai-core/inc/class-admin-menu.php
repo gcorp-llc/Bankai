@@ -188,7 +188,7 @@ class Bankai_Admin_Menu {
             );
         }
 
-        // Scripts in footer; Alpine deferred after admin app is ready
+
         $js_ver = static function (string $rel) {
             $path = BANKAI_CORE_DIR . 'assets/js/' . $rel;
             $base = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0';
@@ -291,9 +291,22 @@ class Bankai_Admin_Menu {
         return $tag;
     }
 
-    private function get_current_tab(): string {
+    public static function get_allowed_tabs(): array {
+        return [
+            'overview',
+            'seo-engine',
+            'ai-studio',
+            'articles',
+            'speed-cache',
+            'media-watermark',
+            'theme-kits',
+            'settings-license',
+        ];
+    }
+
+    public function get_current_tab(): string {
         if (!empty($_GET['tab'])) {
-            $allowed = ['overview', 'articles', 'seo-engine', 'ai-studio', 'speed-cache', 'media-watermark', 'settings-license', 'theme-kits'];
+            $allowed = self::get_allowed_tabs();
             $tab = sanitize_key(wp_unslash($_GET['tab']));
             if (in_array($tab, $allowed, true)) {
                 return $tab;
@@ -303,10 +316,18 @@ class Bankai_Admin_Menu {
         return self::TAB_MAP[$page] ?? 'overview';
     }
 
+    public function get_current_subtab(): string {
+        if (!empty($_GET['subtab'])) {
+            return sanitize_key(wp_unslash($_GET['subtab']));
+        }
+        return '';
+    }
+
     public function render_admin_layout(): void {
         $state = array_merge(
             [
                 'activeTab' => $this->get_current_tab(),
+                'activeSubtab' => $this->get_current_subtab(),
                 'isRtl'     => is_rtl(),
             ],
             $this->get_initial_state_data()

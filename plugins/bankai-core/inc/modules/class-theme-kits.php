@@ -75,7 +75,7 @@ class Bankai_Theme_Kits {
                 'version'     => 'v1.1.0',
                 'description' => 'Financial tech startup design system with modern aesthetics and dark mode.',
                 'thumbnail'   => bankai_asset_url('images/logo.jpg'),
-                'badges'      => ['Alpine.js', 'Tailwind', 'Light/Dark'],
+                'badges'      => ['Vanilla.js', 'Tailwind', 'Light/Dark'],
             ],
         ];
     }
