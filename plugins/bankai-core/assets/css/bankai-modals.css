@@ -239,3 +239,47 @@
   backdrop-filter: blur(6px);
   background: rgba(0,0,0,.35) !important;
 }
+
+
+
+
+/* Bento UI modals */
+.bankai-modal,
+.bankai-modal-dialog,
+.bankai-modal__panel,
+.bankai-dialog {
+  border: 1px solid rgba(0,0,0,.06) !important;
+  border-radius: 24px !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 24px 64px rgba(0,0,0,.14) !important;
+}
+.bankai-modal-backdrop,
+.bankai-modal-overlay {
+  background: rgba(0,0,0,.28) !important;
+  backdrop-filter: blur(12px) saturate(140%) !important;
+}
+.bankai-modal-header,
+.bankai-modal__header {
+  border-bottom: 1px solid rgba(0,0,0,.06) !important;
+  background: transparent !important;
+}
+.bankai-modal-footer,
+.bankai-modal__footer {
+  border-top: 1px solid rgba(0,0,0,.06) !important;
+  background: transparent !important;
+}
+.bankai-modal input,
+.bankai-modal select,
+.bankai-modal textarea {
+  background: #F5F5F7 !important;
+  border: 1px solid rgba(0,0,0,.08) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+.bankai-modal .button-primary,
+.bankai-modal .bankai-btn-primary {
+  background: #0071E3 !important;
+  border: none !important;
+  border-radius: 980px !important;
+  box-shadow: none !important;
+}

@@ -68,8 +68,15 @@ final class Bankai_SEO_Engine
         add_action('init', [$this, 'register_meta']);
         add_action('init', [$this, 'maybe_create_views_table'], 20);
         add_action('rest_api_init', [$this, 'register_rest_routes']);
-        add_action('wp_ajax_bankai_ai_assign_taxonomies', [$this, 'ajax_assign_taxonomies']);
         add_action('wp_head', [$this, 'render_meta'], 1);
+        // جلوگیری از تگ canonical تکراری وردپرس
+        remove_action('wp_head', 'rel_canonical');
+        add_action('wp_head', [$this, 'suppress_competing_seo'], 0);
+        add_action('send_headers', [$this, 'send_security_headers'], 1);
+        add_filter('the_content', [$this, 'filter_noopener_links'], 20);
+        add_action('init', [$this, 'register_web_manifest']);
+        add_action('template_redirect', [$this, 'serve_web_manifest'], 0);
+        add_filter('site_icon_meta_tags', [$this, 'ensure_single_description_guard'], 99);
         add_action('wp_head', [$this, 'render_schema'], 20);
         add_action('template_redirect', [$this, 'handle_post_redirect'], 1);
         add_action('wp_head', [$this, 'render_analytics'], 5);
@@ -361,33 +368,73 @@ final class Bankai_SEO_Engine
             $params = [];
         }
         $q = sanitize_text_field((string) ($request->get_param('q') ?? $request->get_param('s') ?? $params['q'] ?? $params['s'] ?? ''));
-        if (mb_strlen($q) < 2) {
-            return new WP_REST_Response(['success' => true, 'data' => []]);
+        $exclude = absint($request->get_param('post_id') ?? ($params['post_id'] ?? 0));
+        $limit = min(25, max(5, absint($request->get_param('limit') ?? ($params['limit'] ?? 15))));
+
+        $found = [];
+        $ids = [];
+
+        // 1) Title/content search (no meta AND restriction)
+        if (mb_strlen($q) >= 2) {
+            foreach (get_posts([
+                'post_type'      => ['post', 'page'],
+                'post_status'    => 'publish',
+                'posts_per_page' => $limit,
+                'post__not_in'   => $exclude > 0 ? [$exclude] : [],
+                's'              => $q,
+                'orderby'        => 'relevance',
+            ]) as $p) {
+                $ids[$p->ID] = true;
+                $found[] = $p;
+            }
+            // 2) Keyword meta search
+            foreach (get_posts([
+                'post_type'      => ['post', 'page'],
+                'post_status'    => 'publish',
+                'posts_per_page' => $limit,
+                'post__not_in'   => $exclude > 0 ? [$exclude] : [],
+                'meta_query'     => [
+                    'relation' => 'OR',
+                    [
+                        'key'     => self::META_KEYWORD,
+                        'value'   => $q,
+                        'compare' => 'LIKE',
+                    ],
+                    [
+                        'key'     => self::META_KEYWORDS,
+                        'value'   => $q,
+                        'compare' => 'LIKE',
+                    ],
+                ],
+            ]) as $p) {
+                if (!isset($ids[$p->ID])) {
+                    $ids[$p->ID] = true;
+                    $found[] = $p;
+                }
+            }
         }
 
-        $exclude = absint($request->get_param('post_id') ?? ($params['post_id'] ?? 0));
-        $posts = get_posts([
-            'post_type'      => ['post', 'page'],
-            'post_status'    => 'publish',
-            'posts_per_page' => 15,
-            'post__not_in'   => $exclude > 0 ? [$exclude] : [],
-            's'              => $q,
-            'meta_query'     => [
-                'relation' => 'OR',
-                [
-                    'key'     => self::META_KEYWORD,
-                    'value'   => $q,
-                    'compare' => 'LIKE',
-                ],
-                [
-                    'key'     => self::META_KEYWORDS,
-                    'value'   => $q,
-                    'compare' => 'LIKE',
-                ],
-            ],
-        ]);
+        // 3) Fallback: recent published posts when few results
+        if (count($found) < 5) {
+            foreach (get_posts([
+                'post_type'      => 'post',
+                'post_status'    => 'publish',
+                'posts_per_page' => $limit,
+                'post__not_in'   => $exclude > 0 ? [$exclude] : [],
+                'orderby'        => 'date',
+                'order'          => 'DESC',
+            ]) as $p) {
+                if (!isset($ids[$p->ID])) {
+                    $ids[$p->ID] = true;
+                    $found[] = $p;
+                }
+                if (count($found) >= $limit) {
+                    break;
+                }
+            }
+        }
 
-        $data = array_map(function (\WP_Post $p): array {
+        $data = array_map(static function (\WP_Post $p): array {
             return [
                 'id'            => $p->ID,
                 'title'         => get_the_title($p),
@@ -395,7 +442,7 @@ final class Bankai_SEO_Engine
                 'type'          => $p->post_type,
                 'focus_keyword' => (string) get_post_meta($p->ID, self::META_KEYWORD, true),
             ];
-        }, $posts);
+        }, array_slice($found, 0, $limit));
 
         return new WP_REST_Response(['success' => true, 'data' => $data]);
     }
@@ -478,21 +525,21 @@ final class Bankai_SEO_Engine
             }
         }
 
-        $resolved_canonical = $this->get_canonical_url($post_id);
-
         return [
             'id'            => $post_id,
             'type'          => $post->post_type,
             'status'        => $post->post_status,
             'title'         => get_the_title($post_id),
-            'permalink'     => $resolved_canonical,
+            'permalink'     => $this->resolve_pretty_permalink($post_id, $post),
             'slug'          => $post->post_name,
             'content'       => $post->post_content,
             'seo_title'     => $seo_title !== '' ? $seo_title : get_the_title($post_id),
             'description'   => $description !== '' ? $description : wp_trim_words(wp_strip_all_tags($post->post_content), 25, '...'),
             'focus_keyword' => $focus,
             'keywords'      => array_values($keywords),
-            'canonical'     => $resolved_canonical,
+            'canonical'     => ($canonical !== '' && preg_match('#^https?://#i', $canonical) && strpos($canonical, '?p=') === false)
+                ? $canonical
+                : $this->resolve_pretty_permalink($post_id, $post),
             'robots'        => array_merge([
                 'index' => true, 'follow' => true, 'noarchive' => false, 'nosnippet' => false,
                 'noimageindex' => false, 'max_snippet' => -1, 'max_image_preview' => 'large', 'hide_date' => false,
@@ -1062,50 +1109,265 @@ final class Bankai_SEO_Engine
         }
 
         if (!$nodes) {
-            $nodes[] = [
-                '@type'         => $post->post_type === 'post' ? 'Article' : 'WebPage',
-                'headline'      => get_the_title($post_id),
-                'description'   => get_the_excerpt($post_id),
-                'url'           => get_permalink($post_id),
-                'datePublished' => get_the_date(DATE_W3C, $post_id),
-                'dateModified'  => get_the_modified_date(DATE_W3C, $post_id),
-                'author'        => [
-                    '@type' => 'Person',
-                    'name'  => get_the_author_meta('display_name', (int) $post->post_author),
-                ],
-            ];
-            $image = get_the_post_thumbnail_url($post_id, 'full');
-            if ($image) {
-                $nodes[0]['image'] = [$image];
-            }
+            $nodes[] = $this->build_default_article_node($post);
         }
+
+        // تکمیل فیلدهای اجباری Article برای تمام نودها
+        $nodes = array_map(function ($n) use ($post) {
+            return $this->enrich_article_node(is_array($n) ? $n : [], $post);
+        }, $nodes);
 
         // Always attach BreadcrumbList if not already present
         $has_bc = false;
         foreach ($nodes as $n) {
-            if (($n['@type'] ?? '') === 'BreadcrumbList') {
+            $type = $n['@type'] ?? '';
+            if ($type === 'BreadcrumbList' || (is_array($type) && in_array('BreadcrumbList', $type, true))) {
                 $has_bc = true;
                 break;
             }
         }
         if (!$has_bc) {
-            $bc = $this->build_breadcrumb_schema($post_id);
+            $bc = $this->build_breadcrumb_schema((int) $post->ID);
             unset($bc['@context']);
             $nodes[] = $bc;
         }
 
+        // یک بلوک JSON-LD واحد (@graph) برای جلوگیری از اسکیمای پراکنده
         $payload = [
             '@context' => 'https://schema.org',
-            '@graph'   => $nodes,
+            '@graph'   => array_values(array_filter($nodes)),
         ];
 
         echo '<script type="application/ld+json">'
             . wp_json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-            . '</script>' . "
-";
+            . '</script>' . "\n";
     }
 
-    public function api_articles_list(WP_REST_Request $request): WP_REST_Response
+    private function build_default_article_node(\WP_Post $post): array
+    {
+        $post_id = (int) $post->ID;
+        $node = [
+            '@type'            => $post->post_type === 'post' ? 'Article' : 'WebPage',
+            '@id'              => get_permalink($post_id) . '#article',
+            'headline'         => get_the_title($post_id),
+            'description'      => wp_strip_all_tags(get_the_excerpt($post_id)),
+            'url'              => get_permalink($post_id),
+            'mainEntityOfPage' => get_permalink($post_id),
+            'datePublished'    => get_the_date(DATE_W3C, $post_id),
+            'dateModified'     => get_the_modified_date(DATE_W3C, $post_id),
+            'author'           => [
+                '@type' => 'Person',
+                'name'  => get_the_author_meta('display_name', (int) $post->post_author),
+                'url'   => get_author_posts_url((int) $post->post_author),
+            ],
+            'publisher'        => [
+                '@type' => 'Organization',
+                'name'  => get_bloginfo('name'),
+                'url'   => home_url('/'),
+            ],
+        ];
+        $logo = $this->get_site_logo_url();
+        if ($logo) {
+            $node['publisher']['logo'] = [
+                '@type' => 'ImageObject',
+                'url'   => $logo,
+            ];
+        }
+        $image = get_the_post_thumbnail_url($post_id, 'full');
+        if ($image) {
+            $node['image'] = [$image];
+        }
+        return $node;
+    }
+
+    private function enrich_article_node(array $n, \WP_Post $post): array
+    {
+        $type = $n['@type'] ?? '';
+        $is_article = $type === 'Article' || $type === 'BlogPosting' || $type === 'NewsArticle'
+            || (is_array($type) && array_intersect($type, ['Article', 'BlogPosting', 'NewsArticle']));
+        if (!$is_article) {
+            return $n;
+        }
+        $post_id = (int) $post->ID;
+        if (empty($n['datePublished'])) {
+            $n['datePublished'] = get_the_date(DATE_W3C, $post_id);
+        }
+        if (empty($n['dateModified'])) {
+            $n['dateModified'] = get_the_modified_date(DATE_W3C, $post_id);
+        }
+        if (empty($n['author'])) {
+            $n['author'] = [
+                '@type' => 'Person',
+                'name'  => get_the_author_meta('display_name', (int) $post->post_author),
+            ];
+        } elseif (is_array($n['author']) && empty($n['author']['name']) && empty($n['author']['@type'])) {
+            $n['author'] = [
+                '@type' => 'Person',
+                'name'  => is_string($n['author']) ? $n['author'] : get_the_author_meta('display_name', (int) $post->post_author),
+            ];
+        }
+        if (empty($n['headline'])) {
+            $n['headline'] = get_the_title($post_id);
+        }
+        if (empty($n['image'])) {
+            $img = get_the_post_thumbnail_url($post_id, 'full');
+            if ($img) {
+                $n['image'] = [$img];
+            }
+        }
+        return $n;
+    }
+
+    private function get_site_logo_url(): string
+    {
+        $custom = (int) get_theme_mod('custom_logo');
+        if ($custom) {
+            $url = wp_get_attachment_image_url($custom, 'full');
+            if ($url) {
+                return $url;
+            }
+        }
+        $icon = (int) get_option('site_icon');
+        if ($icon) {
+            $url = wp_get_attachment_image_url($icon, 'full');
+            if ($url) {
+                return $url;
+            }
+        }
+        return '';
+    }
+
+    /** جلوگیری از تگ‌های تکراری Rank Math / Yoast روی فرانت */
+    public function suppress_competing_seo(): void
+    {
+        // Yoast
+        if (defined('WPSEO_VERSION')) {
+            add_filter('wpseo_frontend_presenter_classes', static fn() => []);
+            add_filter('wpseo_meta_description', '__return_false', 100);
+            add_filter('wpseo_canonical', '__return_false', 100);
+            add_filter('wpseo_json_ld_output', '__return_false', 100);
+            add_filter('wpseo_opengraph_title', '__return_false', 100);
+        }
+        // Rank Math
+        if (defined('RANK_MATH_VERSION') || class_exists('RankMath')) {
+            add_filter('rank_math/frontend/disable_adjacent_rel_links', '__return_true');
+            remove_all_actions('rank_math/head');
+            add_filter('rank_math/json_ld', static fn() => [], 99);
+            add_filter('rank_math/frontend/description', '__return_false', 99);
+            add_filter('rank_math/frontend/canonical', '__return_false', 99);
+        }
+    }
+
+    public function send_security_headers(): void
+    {
+        if (is_admin() || wp_doing_ajax() || (defined('REST_REQUEST') && REST_REQUEST)) {
+            return;
+        }
+        if (!headers_sent()) {
+            header('X-Content-Type-Options: nosniff');
+            header('X-Frame-Options: SAMEORIGIN');
+            header('Referrer-Policy: strict-origin-when-cross-origin');
+            header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+            // HSTS فقط روی HTTPS
+            if (is_ssl()) {
+                header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+            }
+        }
+    }
+
+    public function filter_noopener_links(string $content): string
+    {
+        if ($content === '' || stripos($content, 'target=') === false) {
+            return $content;
+        }
+        return preg_replace_callback(
+            '/<a\b([^>]*target=["\']_blank["\'][^>]*)>/i',
+            static function ($m) {
+                $attrs = $m[1];
+                if (preg_match('/\brel=/i', $attrs)) {
+                    $attrs = preg_replace_callback(
+                        '/\brel=(["\'])(.*?)\1/i',
+                        static function ($rm) {
+                            $rels = preg_split('/\s+/', trim($rm[2]));
+                            foreach (['noopener', 'noreferrer'] as $need) {
+                                if (!in_array($need, $rels, true)) {
+                                    $rels[] = $need;
+                                }
+                            }
+                            return 'rel=' . $rm[1] . implode(' ', $rels) . $rm[1];
+                        },
+                        $attrs,
+                        1
+                    );
+                } else {
+                    $attrs .= ' rel="noopener noreferrer"';
+                }
+                return '<a' . $attrs . '>';
+            },
+            $content
+        ) ?: $content;
+    }
+
+    public function register_web_manifest(): void
+    {
+        add_rewrite_rule('^manifest\.webmanifest$', 'index.php?bankai_manifest=1', 'top');
+        add_filter('query_vars', static function ($v) {
+            $v[] = 'bankai_manifest';
+            return $v;
+        });
+        add_action('wp_head', static function () {
+            echo '<link rel="manifest" href="' . esc_url(home_url('/manifest.webmanifest')) . '">' . "\n";
+        }, 4);
+    }
+
+    public function serve_web_manifest(): void
+    {
+        if ((int) get_query_var('bankai_manifest') !== 1) {
+            // path fallback
+            $uri = $_SERVER['REQUEST_URI'] ?? '';
+            if (!preg_match('#/manifest\.webmanifest/?$#', (string) $uri)) {
+                return;
+            }
+        }
+        $name = get_bloginfo('name') ?: 'Site';
+        $desc = get_bloginfo('description') ?: $name;
+        $icon = $this->get_site_logo_url();
+        $icons = [];
+        if ($icon) {
+            $icons[] = [
+                'src'   => $icon,
+                'sizes' => '512x512',
+                'type'  => 'image/png',
+                'purpose' => 'any maskable',
+            ];
+        }
+        $manifest = [
+            'name'             => $name,
+            'short_name'       => mb_substr($name, 0, 12),
+            'description'      => $desc,
+            'start_url'        => home_url('/'),
+            'scope'            => home_url('/'),
+            'display'          => 'standalone',
+            'background_color' => '#ffffff',
+            'theme_color'      => '#2563eb',
+            'lang'             => get_bloginfo('language') ?: 'fa',
+            'dir'              => is_rtl() ? 'rtl' : 'ltr',
+            'icons'            => $icons,
+        ];
+        nocache_headers();
+        header('Content-Type: application/manifest+json; charset=utf-8');
+        echo wp_json_encode($manifest, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        exit;
+    }
+
+    /** placeholder guard — meta description فقط از render_meta */
+    public function ensure_single_description_guard($tags)
+    {
+        return $tags;
+    }
+
+
+        public function api_articles_list(WP_REST_Request $request): WP_REST_Response
     {
         $page     = max(1, absint($request->get_param('page') ?: 1));
         $per_page = min(100, max(5, absint($request->get_param('per_page') ?: 25)));
@@ -1237,164 +1499,6 @@ final class Bankai_SEO_Engine
             'success' => true,
             'data'    => ['keywords' => $list],
             'message' => 'ذخیره شد',
-        ]);
-    }
-
-    /**
-     * Resolve Canonical URL based on WordPress site permalink structure and article slug.
-     */
-    public function get_canonical_url(int $post_id): string
-    {
-        $custom = (string) get_post_meta($post_id, self::META_CANONICAL, true);
-        if ($custom !== '' && preg_match('#^https?://#i', $custom)) {
-            return $custom;
-        }
-
-        $post = get_post($post_id);
-        if (!$post) {
-            return (string) get_permalink($post_id);
-        }
-
-        if ($post->post_status === 'publish') {
-            $perm = (string) get_permalink($post_id);
-            if ($perm !== '' && !str_contains($perm, '?p=')) {
-                return $perm;
-            }
-        }
-
-        if (function_exists('get_sample_permalink')) {
-            $sample = get_sample_permalink($post);
-            if (is_array($sample) && !empty($sample[0])) {
-                $template = $sample[0];
-                $slug = !empty($sample[1])
-                    ? $sample[1]
-                    : (!empty($post->post_name) ? $post->post_name : sanitize_title($post->post_title ?: ('post-' . $post_id)));
-                if ($slug !== '') {
-                    $url = str_replace('%postname%', $slug, $template);
-                    $url = str_replace('%pagename%', $slug, $url);
-                    if (preg_match('#^https?://#i', $url)) {
-                        return $url;
-                    }
-                }
-            }
-        }
-
-        return (string) get_permalink($post_id);
-    }
-
-    public function ajax_assign_taxonomies(): void
-    {
-        check_ajax_referer('bankai_admin_nonce', 'nonce');
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Permission denied'], 403);
-        }
-
-        $post_id  = absint($_POST['post_id'] ?? 0);
-        $keywords = wp_unslash($_POST['keywords'] ?? []);
-        if (is_string($keywords)) {
-            $keywords = preg_split('/[,،\n]+/u', $keywords);
-        }
-        if (!is_array($keywords)) {
-            $keywords = [];
-        }
-        $keywords = array_values(array_filter(array_map('sanitize_text_field', $keywords)));
-
-        $post = $post_id ? get_post($post_id) : null;
-        $title = $post ? $post->post_title : sanitize_text_field(wp_unslash($_POST['title'] ?? ''));
-        $content = $post ? wp_strip_all_tags($post->post_content) : sanitize_text_field(wp_unslash($_POST['content'] ?? ''));
-
-        $existing_cats = get_terms(['taxonomy' => 'category', 'hide_empty' => false]);
-        $existing_tags = get_terms(['taxonomy' => 'post_tag', 'hide_empty' => false]);
-
-        $cat_names = is_array($existing_cats) && !is_wp_error($existing_cats) ? wp_list_pluck($existing_cats, 'name') : [];
-        $tag_names = is_array($existing_tags) && !is_wp_error($existing_tags) ? wp_list_pluck($existing_tags, 'name') : [];
-
-        $suggested_cats = [];
-        $suggested_tags = [];
-
-        if (class_exists('Bankai_AI_Studio')) {
-            try {
-                $prompt_sys = "You are Bankai SEO Taxonomy Assistant. Output ONLY valid JSON with keys: \"categories\" (array of strings, 1-2 categories), \"tags\" (array of strings, 4-8 tags in Persian). Base on article title, content, and keywords. Output ONLY JSON, no markdown fences.";
-                $prompt_user = "Article Title: {$title}\nKeywords: " . implode(', ', $keywords) . "\nExisting Site Categories: " . implode(', ', $cat_names) . "\nExisting Site Tags: " . implode(', ', array_slice($tag_names, 0, 40)) . "\nContent Excerpt:\n" . mb_substr($content, 0, 1500);
-
-                $provider = Bankai_AI_Studio::instance()->get_default_provider();
-                $raw = Bankai_AI_Studio::instance()->chat($provider, $prompt_sys, $prompt_user, ['temperature' => 0.4, 'max_tokens' => 350]);
-
-                if (preg_match('/\{[\s\S]*\}/u', $raw, $m)) {
-                    $json = json_decode($m[0], true);
-                    if (is_array($json)) {
-                        if (!empty($json['categories']) && is_array($json['categories'])) {
-                            $suggested_cats = array_map('sanitize_text_field', $json['categories']);
-                        }
-                        if (!empty($json['tags']) && is_array($json['tags'])) {
-                            $suggested_tags = array_map('sanitize_text_field', $json['tags']);
-                        }
-                    }
-                }
-            } catch (\Throwable $e) {
-                // Fallback
-            }
-        }
-
-        if (empty($suggested_cats)) {
-            if (!empty($keywords[0])) {
-                $suggested_cats[] = $keywords[0];
-            }
-        }
-        if (empty($suggested_tags)) {
-            $suggested_tags = array_slice($keywords, 0, 6);
-        }
-
-        $applied_cats = [];
-        $applied_tags = [];
-        if (!empty($_POST['apply']) && $post_id > 0) {
-            $cat_ids = [];
-            foreach ($suggested_cats as $cname) {
-                $cname = trim((string) $cname);
-                if ($cname === '') continue;
-                $term = get_term_by('name', $cname, 'category');
-                if (!$term) {
-                    $inserted = wp_insert_term($cname, 'category');
-                    if (!is_wp_error($inserted) && isset($inserted['term_id'])) {
-                        $cat_ids[] = (int) $inserted['term_id'];
-                        $applied_cats[] = $cname;
-                    }
-                } else {
-                    $cat_ids[] = (int) $term->term_id;
-                    $applied_cats[] = $term->name;
-                }
-            }
-            if (!empty($cat_ids)) {
-                wp_set_post_categories($post_id, $cat_ids);
-            }
-
-            $tag_ids = [];
-            foreach ($suggested_tags as $tname) {
-                $tname = trim((string) $tname);
-                if ($tname === '') continue;
-                $term = get_term_by('name', $tname, 'post_tag');
-                if (!$term) {
-                    $inserted = wp_insert_term($tname, 'post_tag');
-                    if (!is_wp_error($inserted) && isset($inserted['term_id'])) {
-                        $tag_ids[] = (int) $inserted['term_id'];
-                        $applied_tags[] = $tname;
-                    }
-                } else {
-                    $tag_ids[] = (int) $term->term_id;
-                    $applied_tags[] = $term->name;
-                }
-            }
-            if (!empty($tag_ids)) {
-                wp_set_post_tags($post_id, $tag_ids, true);
-            }
-        }
-
-        wp_send_json_success([
-            'categories' => array_values(array_unique($suggested_cats)),
-            'tags'       => array_values(array_unique($suggested_tags)),
-            'applied_categories' => $applied_cats,
-            'applied_tags'       => $applied_tags,
-            'message'    => 'دسته‌بندی‌ها و برچسب‌های سئوشده استخراج و اعمال شدند.',
         ]);
     }
 
@@ -1723,4 +1827,31 @@ final class Bankai_SEO_Engine
         }
         return $home_host !== '' && $host === $home_host;
     }
+
+
+    private function resolve_pretty_permalink(int $post_id, $post = null): string
+    {
+        $post = $post instanceof WP_Post ? $post : get_post($post_id);
+        $fallback = (string) get_permalink($post_id);
+        if (!$post || empty($post->post_name)) {
+            return $fallback;
+        }
+        if (function_exists('get_sample_permalink')) {
+            $sample = get_sample_permalink($post_id);
+            if (is_array($sample) && !empty($sample[0])) {
+                $pretty = str_replace(['%pagename%', '%postname%'], $post->post_name, $sample[0]);
+                if (is_string($pretty) && $pretty !== '' && strpos($pretty, '?p=') === false) {
+                    return $pretty;
+                }
+            }
+        }
+        if (strpos($fallback, '?p=') !== false) {
+            $struct = (string) get_option('permalink_structure');
+            if ($struct !== '') {
+                return trailingslashit(home_url(user_trailingslashit($post->post_name)));
+            }
+        }
+        return $fallback;
+    }
+
 }

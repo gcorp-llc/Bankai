@@ -1,109 +1,142 @@
-/**
- * Bankai Theme Admin Dashboard Alpine.js Component (Bankai Framework Style)
- */
-function bankaiThemeAdmin() {
-    return {
-        isRtl: window.bankaiThemeData?.isRtl ?? true,
-        customizeUrl: window.bankaiThemeData?.customizeUrl || '/wp-admin/customize.php',
-        toast: {
-            show: false,
-            message: '',
-            timer: null
-        },
-        modulesState: window.bankaiThemeData?.modules || {
-            transparent_header: true,
-            sticky_header: true,
-            mega_menu: true,
-            white_label: false,
-            custom_fonts: true,
-            woocommerce_boost: true,
-            scroll_to_top: true,
-            page_headers: true,
-        },
-        themeModules: {
-            transparent_header: {
-                title: 'هدر شفاف (Transparent Header)',
-                description: 'طراحی مدرن هدر شیشه‌ای و شفاف برای صفحات نخست و فرود بدون مرز با محتوا',
-                icon: '✨',
-                customizerSection: 'bankai_transparent_header'
-            },
-            sticky_header: {
-                title: 'هدر چسبان هوشمند (Sticky Header)',
-                description: 'ثابت ماندن یا پدیدار شدن نرم هدر هنگام اسکرول به سمت پایین و کوچک‌سازی ارتفاع',
-                icon: '📌',
-                customizerSection: 'bankai_sticky_header'
-            },
-            mega_menu: {
-                title: 'مگامنو حرفه‌ای (Advanced Mega Menu)',
-                description: 'ایجاد منوهای چندستونه، افزودن ابزارک، تصاویر و دسته‌بندی‌های غنی به ناوبری سایت',
-                icon: '🗂️',
-                customizerSection: 'bankai_mega_menu'
-            },
-            custom_fonts: {
-                title: 'فونت‌های محلی و اختصاصی (Custom Local Fonts)',
-                description: 'بارگذاری مستقیم فونت‌های وزیرمتن، ایران‌یکان و وب‌فونت‌ها از سرور خودتان بدون نقض GDPR',
-                icon: '🔤',
-                customizerSection: 'bankai_typography_section'
-            },
-            woocommerce_boost: {
-                title: 'بهینه‌ساز فروشگاه ووکامرس (WooCommerce Booster)',
-                description: 'افزودن تسویه‌حساب بدون حواس‌پرتی، سبد خرید بازشونده و گالری زوم محصولات',
-                icon: '🛍️',
-                customizerSection: 'bankai_woocommerce_section'
-            },
-            scroll_to_top: {
-                title: 'دکمه بازگشت به بالا (Scroll To Top)',
-                description: 'دکمه شناور نرم با قابلیت سفارشی‌سازی رنگ، موقعیت چپ/راست و آیکون',
-                icon: '⬆️',
-                customizerSection: 'bankai_scroll_to_top'
-            },
-            page_headers: {
-                title: 'طرح عناوین برگه (Page Header & Hero)',
-                description: 'شخصی‌سازی هیرو بنر، عنوان نوشته، بردکرامب و تصویر پس‌زمینه در بالای محتوا',
-                icon: '🖼️',
-                customizerSection: 'bankai_page_header'
-            },
-            white_label: {
-                title: 'برچسب سفید آژانسی (White Label Pro)',
-                description: 'تغییر نام و برند قالب Bankai به نام برند یا شرکت مشتری در کل پنل وردپرس',
-                icon: '🏷️',
-                customizerSection: 'bankai_white_label'
-            }
-        },
+(function () {
+  'use strict';
+  var root = document.getElementById('bankai-theme-admin');
+  if (!root || !window.bankaiThemeAdmin) return;
+  var cfg = window.bankaiThemeAdmin;
+  var statusEl = document.getElementById('bta-global-status');
 
-        init() {
-            // Initialization
-        },
+  function setStatus(msg, el) {
+    var t = el || statusEl;
+    if (t) t.textContent = msg || '';
+  }
 
-        toggleModule(key) {
-            this.modulesState[key] = !this.modulesState[key];
-            const modTitle = this.themeModules[key]?.title || key;
-            const statusText = this.modulesState[key] ? 'فعال' : 'غیرفعال';
-            
-            this.showToast(`ماژول ${modTitle} با موفقیت ${statusText} شد.`);
+  function post(action, data) {
+    var body = new URLSearchParams();
+    body.set('action', action);
+    body.set('nonce', cfg.nonce);
+    Object.keys(data || {}).forEach(function (k) {
+      body.set(k, data[k]);
+    });
+    return fetch(cfg.ajaxUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      body: body.toString()
+    }).then(function (r) { return r.json(); });
+  }
 
-            // Call WP AJAX if present
-            if (window.bankaiThemeData?.ajaxUrl) {
-                const formData = new FormData();
-                formData.append('action', 'bankai_toggle_theme_module');
-                formData.append('module', key);
-                formData.append('state', this.modulesState[key] ? '1' : '0');
-                formData.append('nonce', window.bankaiThemeData.nonce || '');
+  /* Tabs */
+  root.querySelectorAll('.bta-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var id = tab.getAttribute('data-tab');
+      root.querySelectorAll('.bta-tab').forEach(function (t) {
+        t.classList.toggle('is-active', t === tab);
+      });
+      root.querySelectorAll('.bta-panel').forEach(function (p) {
+        p.classList.toggle('is-active', p.getAttribute('data-panel') === id);
+      });
+    });
+  });
 
-                fetch(window.bankaiThemeData.ajaxUrl, {
-                    method: 'POST',
-                    body: formData
-                }).catch(() => {});
-            }
-        },
+  /* Demo filters */
+  var typeFilter = 'all';
+  var catFilter = 'all';
+  function applyDemoFilters() {
+    root.querySelectorAll('#bta-demos .bta-card').forEach(function (card) {
+      var okType = typeFilter === 'all' || card.getAttribute('data-type') === typeFilter;
+      var okCat = catFilter === 'all' || card.getAttribute('data-cat') === catFilter;
+      card.classList.toggle('is-hidden', !(okType && okCat));
+    });
+  }
+  root.querySelectorAll('[data-filter-group="demo-type"] .bta-chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      root.querySelectorAll('[data-filter-group="demo-type"] .bta-chip').forEach(function (c) {
+        c.classList.toggle('is-active', c === chip);
+      });
+      typeFilter = chip.getAttribute('data-filter');
+      applyDemoFilters();
+    });
+  });
+  root.querySelectorAll('[data-filter-group="demo-cat"] .bta-chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      root.querySelectorAll('[data-filter-group="demo-cat"] .bta-chip').forEach(function (c) {
+        c.classList.toggle('is-active', c === chip);
+      });
+      catFilter = chip.getAttribute('data-cat');
+      applyDemoFilters();
+    });
+  });
 
-        showToast(msg) {
-            this.toast.message = msg;
-            this.toast.show = true;
-            if (this.toast.timer) clearTimeout(this.toast.timer);
-            this.toast.timer = setTimeout(() => {
-                this.toast.show = false;
-            }, 3000);
-        }
-    };
-}
+  /* Import demo */
+  root.querySelectorAll('[data-import-demo]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var id = btn.getAttribute('data-import-demo');
+      btn.disabled = true;
+      setStatus(cfg.i18n.importing);
+      post('bankai_theme_import_demo', { demo: id })
+        .then(function (j) {
+          setStatus((j && j.data && j.data.message) || (j && j.success ? cfg.i18n.done : cfg.i18n.error));
+          btn.disabled = false;
+        })
+        .catch(function () {
+          setStatus(cfg.i18n.error);
+          btn.disabled = false;
+        });
+    });
+  });
+
+  /* Apply pattern */
+  root.querySelectorAll('[data-apply-pattern]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var id = btn.getAttribute('data-apply-pattern');
+      var group = btn.getAttribute('data-group');
+      btn.disabled = true;
+      setStatus(cfg.i18n.importing);
+      post('bankai_theme_apply_pattern', { pattern: id, group: group })
+        .then(function (j) {
+          setStatus((j && j.data && j.data.message) || cfg.i18n.done);
+          btn.disabled = false;
+        })
+        .catch(function () {
+          setStatus(cfg.i18n.error);
+          btn.disabled = false;
+        });
+    });
+  });
+
+  /* Style cards visual active */
+  root.querySelectorAll('.bta-style-card input').forEach(function (input) {
+    input.addEventListener('change', function () {
+      root.querySelectorAll('.bta-style-card').forEach(function (c) {
+        c.classList.toggle('is-active', c.contains(input) && input.checked);
+      });
+    });
+  });
+
+  /* Save blog */
+  var saveBlog = document.getElementById('bta-save-blog');
+  if (saveBlog) {
+    saveBlog.addEventListener('click', function () {
+      var style = (root.querySelector('input[name="blog_card_style"]:checked') || {}).value || 'default';
+      saveBlog.disabled = true;
+      post('bankai_theme_save_blog_cards', {
+        style: style,
+        per_page: document.getElementById('blog_posts_per_page').value,
+        pagination: document.getElementById('blog_pagination').value,
+        title_chars: document.getElementById('blog_title_chars').value,
+        excerpt_chars: document.getElementById('blog_excerpt_chars').value,
+        show_author: document.getElementById('blog_show_author').checked ? '1' : '',
+        show_date: document.getElementById('blog_show_date').checked ? '1' : '',
+        show_cats: document.getElementById('blog_show_cats').checked ? '1' : '',
+        show_excerpt: document.getElementById('blog_show_excerpt').checked ? '1' : ''
+      }).then(function (j) {
+        var st = document.getElementById('bta-blog-status');
+        setStatus((j && j.data && j.data.message) || cfg.i18n.saved, st);
+        saveBlog.disabled = false;
+      }).catch(function () {
+        setStatus(cfg.i18n.error, document.getElementById('bta-blog-status'));
+        saveBlog.disabled = false;
+      });
+    });
+  }
+})();

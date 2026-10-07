@@ -300,6 +300,18 @@ final class Bankai_SEO_Sitewide
             'name'  => $s['org_name'] ?: get_bloginfo('name'),
             'url'   => home_url('/'),
         ];
+        if (empty($s['org_logo'])) {
+            $icon_id = (int) get_option('site_icon');
+            if ($icon_id) {
+                $s['org_logo'] = (string) wp_get_attachment_image_url($icon_id, 'full');
+            }
+            if (empty($s['org_logo'])) {
+                $logo_id = (int) get_theme_mod('custom_logo');
+                if ($logo_id) {
+                    $s['org_logo'] = (string) wp_get_attachment_image_url($logo_id, 'full');
+                }
+            }
+        }
         if (!empty($s['org_logo'])) {
             $org['logo'] = [
                 '@type' => 'ImageObject',

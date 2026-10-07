@@ -125,7 +125,7 @@ class Bankai_Editor_SEO
 
         if (in_array($hook, ['post.php', 'post-new.php'], true)) {
             wp_enqueue_media();
-
+            // Register Alpine.data BEFORE Alpine auto-starts: load component first, Alpine second.
             $js_ver = $ver . '.' . (string) @filemtime(BANKAI_CORE_DIR . 'assets/js/editor-seo.js');
             wp_enqueue_script(
                 'bankai-editor-seo',
@@ -135,6 +135,13 @@ class Bankai_Editor_SEO
                 true
             );
 
+            wp_enqueue_script(
+                'alpinejs',
+                bankai_asset_url('js/alpine.min.js'),
+                ['bankai-editor-seo'],
+                '3.14.1',
+                true
+            );
 
             $post_id = 0;
             if (isset($_GET['post'])) {
@@ -161,7 +168,7 @@ class Bankai_Editor_SEO
     {
         $ver = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0';
 
-
+        // Same CSS + Alpine + core JS for Gutenberg context.
         wp_enqueue_style(
             'bankai-vazirmatn',
             'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap',
@@ -175,7 +182,7 @@ class Bankai_Editor_SEO
             $ver
         );
 
-
+        // Register Alpine.data BEFORE Alpine boots
         wp_enqueue_script(
             'bankai-editor-seo',
             bankai_asset_url('js/editor-seo.js'),
@@ -184,6 +191,13 @@ class Bankai_Editor_SEO
             true
         );
 
+        wp_enqueue_script(
+            'alpinejs',
+            bankai_asset_url('js/alpine.min.js'),
+            ['bankai-editor-seo'],
+            '3.14.1',
+            true
+        );
 
         $post_id = 0;
         if (isset($_GET['post'])) {
@@ -223,6 +237,7 @@ class Bankai_Editor_SEO
                 'wp-data',
                 'wp-i18n',
                 'bankai-editor-seo',
+                'alpinejs',
             ],
             $ver,
             true
@@ -302,6 +317,8 @@ class Bankai_Editor_SEO
     {
         $ai_providers = [];
         $ai_default = 'gemini';
+        $image_providers = [];
+        $image_default = '';
         if (class_exists('Bankai_AI_Studio')) {
             $studio = Bankai_AI_Studio::instance();
             $ai_default = $studio->get_default_provider();
@@ -312,6 +329,22 @@ class Bankai_Editor_SEO
                         'name' => $p['name'],
                     ];
                 }
+            }
+            if (method_exists($studio, 'image_provider_status_list')) {
+                foreach ($studio->image_provider_status_list() as $p) {
+                    if (!empty($p['has_key'])) {
+                        $image_providers[] = [
+                            'id'   => $p['id'],
+                            'name' => $p['name'],
+                        ];
+                    }
+                }
+            }
+            if (method_exists($studio, 'get_default_image_provider')) {
+                $image_default = (string) $studio->get_default_image_provider();
+            }
+            if ($image_default === '' && $image_providers) {
+                $image_default = $image_providers[0]['id'];
             }
         }
 
@@ -327,10 +360,18 @@ class Bankai_Editor_SEO
             $fixed_kw = array_values(array_filter(array_map('trim', preg_split('/[,،\n]+/u', $raw) ?: [])));
         }
 
+        $featured_id  = $post_id ? (int) get_post_thumbnail_id($post_id) : 0;
+        $featured_url = $featured_id ? (string) wp_get_attachment_image_url($featured_id, 'large') : '';
+        if ($featured_id && !$featured_url) {
+            $featured_url = (string) wp_get_attachment_url($featured_id);
+        }
+
         wp_localize_script('bankai-editor-seo', 'bankaiEditorSeo', [
                 'postDate'   => $post_id ? get_the_date('Y/m/d', $post_id) : '',
                 'postAuthor' => $post_id ? get_the_author_meta('display_name', (int) get_post_field('post_author', $post_id)) : '',
             'postId'            => $post_id,
+            'featuredId'        => $featured_id,
+            'featuredUrl'       => $featured_url,
             'isRtl'             => is_rtl(),
             'version'           => $ver,
             'restUrl'           => trailingslashit(esc_url_raw(rest_url('bankai/v1/'))),
@@ -340,6 +381,8 @@ class Bankai_Editor_SEO
             'locale'            => get_user_locale(),
             'defaultAiProvider' => $ai_default,
             'aiProviders'       => $ai_providers,
+            'defaultImageProvider' => $image_default,
+            'imageProviders'    => $image_providers,
             'fixedKeywords'     => $fixed_kw,
             'seoFixedKeywords'  => $fixed_kw,
             'i18n'              => [

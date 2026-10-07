@@ -318,11 +318,12 @@ final class Bankai_SEO_Integrations
                 continue;
             }
             $url = get_permalink($id);
-            $mod = get_the_modified_time('c');
+            $mod = get_post_modified_time('Y-m-d\TH:i:sP', true) ?: gmdate('c');
             $priority = ($post_type === 'page') ? '0.6' : '0.8';
             echo "  <url>\n";
             echo '    <loc>' . esc_url($url) . "</loc>\n";
             echo '    <lastmod>' . esc_html($mod) . "</lastmod>\n";
+            echo '    <changefreq>weekly</changefreq>\n';
             echo '    <priority>' . $priority . "</priority>\n";
             if (!empty($s['sitemap_include_images'])) {
                 $img = get_the_post_thumbnail_url($id, 'full');

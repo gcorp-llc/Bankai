@@ -1,6 +1,6 @@
 <?php
 /**
- * The main template file
+ * Main template (blog / home)
  *
  * @package Bankai_Theme
  */
@@ -10,36 +10,60 @@ defined('ABSPATH') || exit;
 get_header();
 ?>
 
-<main id="primary" class="bankai-content site-main">
-    <div class="bankai-hero">
-        <h1><?php bloginfo('name'); ?></h1>
-        <p><?php bloginfo('description'); ?></p>
-    </div>
+<main id="primary" class="bankai-main site-main">
+	<?php
+$side_pos = function_exists('bankai_sidebar_position') ? bankai_sidebar_position() : 'right';
+$show_side = function_exists('bankai_show_sidebar') && bankai_show_sidebar();
+$layout_class = $show_side ? 'bankai-layout bankai-layout--sidebar-' . esc_attr($side_pos) : 'bankai-layout bankai-layout--full';
+?>
+	<div class="<?php echo esc_attr(bankai_container_class() . ' ' . $layout_class); ?>">
+		<div class="bankai-content">
+			<?php if (is_home() && ! is_front_page()) : ?>
+				<header class="bankai-archive-header">
+					<h1 class="bankai-archive-title"><?php single_post_title(); ?></h1>
+				</header>
+			<?php endif; ?>
 
-    <div class="bankai-posts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
-        <?php
-        if (have_posts()) :
-            while (have_posts()) : the_post();
-                ?>
-                <article id="post-<?php the_ID(); ?>" <?php post_class(); ?> style="background: #FFFFFF; border: 1px solid #D0D7DE; border-radius: 10px; overflow: hidden; padding: 24px;">
-                    <header class="entry-header">
-                        <?php the_title('<h2 class="entry-title" style="margin-top: 0; font-size: 18px;"><a href="' . esc_url(get_permalink()) . '" rel="bookmark" style="text-decoration: none; color: #1F2328;">', '</a></h2>'); ?>
-                    </header>
-                    <div class="entry-summary" style="color: #656D76; font-size: 14px; margin-top: 10px;">
-                        <?php the_excerpt(); ?>
-                    </div>
-                </article>
-                <?php
-            endwhile;
-        else :
-            ?>
-            <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
-                <p><?php esc_html_e('هیچ نوشته‌ای یافت نشد.', 'bankai-theme'); ?></p>
-            </div>
-            <?php
-        endif;
-        ?>
-    </div>
+			<?php if (have_posts()) : ?>
+				<div class="bankai-posts-grid bankai-posts-grid--<?php echo esc_attr((string) bankai_theme_mod('blog_card_style', 'default')); ?>" data-pagination="<?php echo esc_attr((string) bankai_theme_mod('blog_pagination', 'numbers')); ?>" data-context="blog" data-page="1" data-max="<?php echo esc_attr((string) $GLOBALS['wp_query']->max_num_pages); ?>">
+					<?php
+					while (have_posts()) :
+						the_post();
+						if (function_exists('bankai_render_post_card')) {
+							bankai_render_post_card();
+						} else {
+							get_template_part('template-parts/content', get_post_type());
+						}
+					endwhile;
+					?>
+				</div>
+				<?php
+				$pag = (string) bankai_theme_mod('blog_pagination', 'numbers');
+				if ($pag === 'infinite') {
+					echo '<div class="bankai-infinite-status" data-infinite-status hidden><span class="bankai-infinite-status__spin" aria-hidden="true"></span><span>' . esc_html__('در حال بارگذاری…', 'bankai-theme') . '</span></div>';
+					echo '<div class="bankai-infinite-end" data-infinite-end hidden>' . esc_html__('همه مطالب نمایش داده شد', 'bankai-theme') . '</div>';
+				} elseif ($pag === 'prevnext') {
+					the_posts_navigation([
+						'prev_text' => __('قبلی', 'bankai-theme'),
+						'next_text' => __('بعدی', 'bankai-theme'),
+					]);
+				} else {
+					the_posts_pagination([
+						'mid_size'  => 1,
+						'prev_text' => __('قبلی', 'bankai-theme'),
+						'next_text' => __('بعدی', 'bankai-theme'),
+					]);
+				}
+				?>
+			<?php else : ?>
+				<?php get_template_part('template-parts/content', 'none'); ?>
+			<?php endif; ?>
+		</div>
+
+		<?php if (bankai_show_sidebar()) : ?>
+			<?php get_sidebar(); ?>
+		<?php endif; ?>
+	</div>
 </main>
 
 <?php

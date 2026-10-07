@@ -68,6 +68,30 @@ class Bankai_Speed_Cache
         if ($this->is_sub_active('browser_cache') || $this->is_sub_active('server_compression')) {
             add_action('admin_init', [$this, 'maybe_sync_htaccess_rules'], 20);
         }
+
+        // Real file-based HTML page cache
+        if ($this->is_sub_active('page_caching')) {
+            add_action('template_redirect', [$this, 'page_cache_maybe_serve'], 0);
+            add_action('template_redirect', [$this, 'page_cache_start_buffer'], 1);
+            add_action('shutdown', [$this, 'page_cache_end_buffer'], 0);
+            add_action('save_post', [$this, 'page_cache_purge_post'], 20, 1);
+            add_action('comment_post', [$this, 'page_cache_purge_on_comment'], 20, 1);
+            add_action('switch_theme', [$this, 'page_cache_purge_all']);
+            add_action('wp_update_nav_menu', [$this, 'page_cache_purge_all']);
+        }
+
+        // Head cleanup + heartbeat + revision limits (always-on light wins when asset opt is on)
+        if ($this->is_sub_active('asset_optimization') || $this->is_sub_active('page_caching')) {
+            add_action('init', [$this, 'speed_head_cleanup'], 5);
+            add_action('init', [$this, 'speed_limit_revisions'], 5);
+            add_action('init', [$this, 'speed_control_heartbeat'], 20);
+            add_filter('wp_resource_hints', [$this, 'speed_resource_hints'], 10, 2);
+        }
+
+        // Optional HTML minify on cached output only (safe)
+        if ($this->is_sub_active('asset_optimization')) {
+            add_filter('bankai_page_cache_html', [$this, 'maybe_minify_html'], 10, 1);
+        }
     }
 
     private function is_sub_active(string $id): bool
@@ -142,6 +166,12 @@ class Bankai_Speed_Cache
         do_action('bankai_purge_all_caches');
         $purged[] = 'bankai_hook';
 
+        // Bankai file page cache
+        $n = $this->page_cache_purge_all();
+        if ($n >= 0) {
+            $purged[] = 'bankai_page_cache:' . $n;
+        }
+
         // Track purge time
         if (function_exists('bankai_update_option')) {
             bankai_update_option('last_cache_purge', current_time('mysql'));
@@ -178,17 +208,51 @@ class Bankai_Speed_Cache
             "DELETE FROM {$wpdb->posts} WHERE post_status = 'auto-draft' AND post_modified < DATE_SUB(NOW(), INTERVAL 7 DAY)"
         );
 
-        $tables = [$wpdb->posts, $wpdb->postmeta, $wpdb->options, $wpdb->comments, $wpdb->commentmeta];
+        $deleted_trash = (int) $wpdb->query(
+            "DELETE FROM {$wpdb->posts} WHERE post_status = 'trash' AND post_modified < DATE_SUB(NOW(), INTERVAL 30 DAY)"
+        );
+
+        $deleted_spam = (int) $wpdb->query(
+            "DELETE FROM {$wpdb->comments} WHERE comment_approved = 'spam'"
+        );
+
+        $deleted_trash_comments = (int) $wpdb->query(
+            "DELETE FROM {$wpdb->comments} WHERE comment_approved = 'trash'"
+        );
+
+        // Orphaned postmeta
+        $deleted_orphan_meta = (int) $wpdb->query(
+            "DELETE pm FROM {$wpdb->postmeta} pm LEFT JOIN {$wpdb->posts} p ON p.ID = pm.post_id WHERE p.ID IS NULL"
+        );
+
+        // Expired transients cleanup (key + timeout pairs)
+        $wpdb->query(
+            "DELETE a, b FROM {$wpdb->options} a
+             INNER JOIN {$wpdb->options} b ON b.option_name = CONCAT('_transient_timeout_', SUBSTRING(a.option_name, 12))
+             WHERE a.option_name LIKE '\_transient\_%'
+               AND a.option_name NOT LIKE '\_transient\_timeout\_%'
+               AND b.option_value < UNIX_TIMESTAMP()"
+        );
+
+        $tables = [$wpdb->posts, $wpdb->postmeta, $wpdb->options, $wpdb->comments, $wpdb->commentmeta, $wpdb->terms, $wpdb->term_taxonomy, $wpdb->termmeta];
         foreach ($tables as $table) {
             // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $wpdb->query("OPTIMIZE TABLE `{$table}`");
         }
+
+        // Refresh revision count for UI
+        $revisions_left = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'revision'");
 
         wp_send_json_success([
             'message'            => __('پایگاه داده با موفقیت بهینه‌سازی شد.', 'bankai-core'),
             'deleted_revisions'  => $deleted_revisions,
             'cleaned_transients' => $deleted_transients,
             'deleted_drafts'     => $deleted_drafts,
+            'deleted_trash'      => $deleted_trash,
+            'deleted_spam'       => $deleted_spam,
+            'deleted_trash_comments' => $deleted_trash_comments,
+            'deleted_orphan_meta'=> $deleted_orphan_meta,
+            'revisions_left'     => $revisions_left,
         ]);
     }
 
@@ -291,19 +355,51 @@ class Bankai_Speed_Cache
         }
 
         $cache_stats = get_option('bankai_cache_stats', []);
-        $hit = is_array($cache_stats) && isset($cache_stats['hit_ratio'])
-            ? $cache_stats['hit_ratio']
-            : '96.4%';
+        if (!is_array($cache_stats)) {
+            $cache_stats = [];
+        }
+        $hits = (int) ($cache_stats['hits'] ?? 0);
+        $misses = (int) ($cache_stats['misses'] ?? 0);
+        $total = $hits + $misses;
+        $hit_ratio = $total > 0 ? (round(($hits / $total) * 100, 1) . '%') : '—';
 
-        $ttfb = !empty($vitals['ttfb']) ? $vitals['ttfb'] : '32ms';
+        $ttfb = !empty($vitals['ttfb']) ? $vitals['ttfb'] : '—';
+
+        // Detect real object cache backend
+        $redis_label = 'N/A';
+        if (wp_using_ext_object_cache()) {
+            global $wp_object_cache;
+            $cls = is_object($wp_object_cache) ? get_class($wp_object_cache) : '';
+            if (stripos($cls, 'redis') !== false) {
+                $redis_label = 'Redis';
+            } elseif (stripos($cls, 'memcache') !== false) {
+                $redis_label = 'Memcached';
+            } else {
+                $redis_label = 'External';
+            }
+        }
+
+        $files = 0;
+        $dir = self::page_cache_dir();
+        if (is_dir($dir)) {
+            $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
+            foreach ($it as $f) {
+                if ($f->isFile() && substr($f->getFilename(), -5) === '.html') {
+                    $files++;
+                }
+            }
+        }
 
         return [
-            'hit_ratio'     => $hit,
+            'hit_ratio'     => $hit_ratio,
+            'hits'          => $hits,
+            'misses'        => $misses,
             'ttfb'          => $ttfb,
-            'redis_latency' => function_exists('wp_cache_get') ? '0.4ms' : 'N/A',
+            'redis_latency' => $redis_label,
             'revisions'     => $revisions,
             'last_purge'    => $last_purge,
             'vitals'        => $vitals,
+            'page_files'    => $files,
         ];
     }
 
@@ -980,5 +1076,283 @@ location ~* \.(html|htm)$ {
 NGX;
     }
 
+
+
+
+    /* ------------------------------------------------------------------
+     * File-based HTML page cache (real)
+     * ----------------------------------------------------------------*/
+
+    public static function page_cache_dir(): string
+    {
+        $dir = WP_CONTENT_DIR . '/cache/bankai-page';
+        if (!is_dir($dir)) {
+            wp_mkdir_p($dir);
+        }
+        return $dir;
+    }
+
+    private function page_cache_key(): string
+    {
+        $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/';
+        $host = isset($_SERVER['HTTP_HOST']) ? (string) $_SERVER['HTTP_HOST'] : '';
+        $scheme = is_ssl() ? 'https' : 'http';
+        return md5($scheme . '://' . $host . $uri);
+    }
+
+    private function page_cache_file(): string
+    {
+        $key = $this->page_cache_key();
+        $sub = substr($key, 0, 2);
+        $dir = self::page_cache_dir() . '/' . $sub;
+        if (!is_dir($dir)) {
+            wp_mkdir_p($dir);
+        }
+        return $dir . '/' . $key . '.html';
+    }
+
+    private function page_cache_ttl(): int
+    {
+        $ttl = (int) (function_exists('bankai_get_option') ? bankai_get_option('cache_ttl', 3600) : 3600);
+        return max(60, min($ttl, 604800));
+    }
+
+    private function page_cache_is_excluded(): bool
+    {
+        $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/';
+        $raw = (string) (function_exists('bankai_get_option') ? bankai_get_option('cache_exclusions', '') : '');
+        $lines = preg_split('/[\r\n]+/', $raw) ?: [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            // glob-ish: * → .*
+            $pat = '#^' . str_replace(['\*', '\?'], ['.*', '.'], preg_quote($line, '#')) . '#i';
+            if (@preg_match($pat, $uri)) {
+                return true;
+            }
+        }
+        // Never cache cart/checkout/account by default
+        if (preg_match('#/(cart|checkout|my-account|wp-login|wp-admin)(/|$)#i', $uri)) {
+            return true;
+        }
+        return false;
+    }
+
+    private function page_cache_can_cache(): bool
+    {
+        if (is_admin() || is_user_logged_in() || is_preview() || is_feed() || is_search() || is_404()) {
+            return false;
+        }
+        if (defined('DONOTCACHEPAGE') && DONOTCACHEPAGE) {
+            return false;
+        }
+        if (defined('REST_REQUEST') && REST_REQUEST) {
+            return false;
+        }
+        $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper((string) $_SERVER['REQUEST_METHOD']) : 'GET';
+        if ($method !== 'GET' && $method !== 'HEAD') {
+            return false;
+        }
+        if (!empty($_GET['preview']) || !empty($_GET['customize_changeset_uuid'])) {
+            return false;
+        }
+        if ($this->page_cache_is_excluded()) {
+            return false;
+        }
+        return true;
+    }
+
+    public function page_cache_maybe_serve(): void
+    {
+        if (!$this->page_cache_can_cache()) {
+            return;
+        }
+        $file = $this->page_cache_file();
+        if (!is_readable($file)) {
+            return;
+        }
+        $mtime = filemtime($file);
+        if (!$mtime || (time() - $mtime) > $this->page_cache_ttl()) {
+            @unlink($file);
+            return;
+        }
+        $html = (string) file_get_contents($file);
+        if ($html === '') {
+            return;
+        }
+        $this->page_cache_bump_stat('hits');
+        header('Content-Type: text/html; charset=UTF-8');
+        header('X-Bankai-Cache: HIT');
+        header('Cache-Control: public, max-age=' . $this->page_cache_ttl());
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        echo $html;
+        exit;
+    }
+
+    /** @var bool */
+    private bool $page_cache_buffering = false;
+
+    public function page_cache_start_buffer(): void
+    {
+        if (!$this->page_cache_can_cache()) {
+            return;
+        }
+        // If we already served from cache we exited
+        $this->page_cache_buffering = true;
+        ob_start();
+    }
+
+    public function page_cache_end_buffer(): void
+    {
+        if (!$this->page_cache_buffering) {
+            return;
+        }
+        $this->page_cache_buffering = false;
+        $html = ob_get_contents();
+        if ($html === false) {
+            return;
+        }
+        // Keep buffer for WP to flush; we also store a copy
+        if (http_response_code() !== 200) {
+            return;
+        }
+        if (!is_string($html) || strlen($html) < 200) {
+            return;
+        }
+        if (stripos($html, '<html') === false && stripos($html, '<!DOCTYPE') === false) {
+            return;
+        }
+
+        $html = apply_filters('bankai_page_cache_html', $html);
+        $file = $this->page_cache_file();
+        // Atomic write
+        $tmp = $file . '.' . getmypid() . '.tmp';
+        if (@file_put_contents($tmp, $html) !== false) {
+            @rename($tmp, $file);
+            $this->page_cache_bump_stat('misses');
+            if (!headers_sent()) {
+                header('X-Bankai-Cache: MISS');
+            }
+        }
+    }
+
+    private function page_cache_bump_stat(string $key): void
+    {
+        $stats = get_option('bankai_cache_stats', []);
+        if (!is_array($stats)) {
+            $stats = [];
+        }
+        $stats[$key] = (int) ($stats[$key] ?? 0) + 1;
+        $stats['updated'] = time();
+        update_option('bankai_cache_stats', $stats, false);
+    }
+
+    public function page_cache_purge_all(): int
+    {
+        $dir = self::page_cache_dir();
+        $n = 0;
+        if (!is_dir($dir)) {
+            return 0;
+        }
+        try {
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($it as $f) {
+                if ($f->isFile()) {
+                    @unlink($f->getPathname());
+                    $n++;
+                } elseif ($f->isDir()) {
+                    @rmdir($f->getPathname());
+                }
+            }
+        } catch (Throwable $e) {
+            // ignore
+        }
+        // reset hit ratio base optionally keep history — soft reset misses/hits on full purge
+        update_option('bankai_cache_stats', ['hits' => 0, 'misses' => 0, 'updated' => time()], false);
+        return $n;
+    }
+
+    public function page_cache_purge_post($post_id): void
+    {
+        $post_id = absint($post_id);
+        if (!$post_id) {
+            return;
+        }
+        // Simple strategy: purge all (safe). Could map URLs later.
+        $this->page_cache_purge_all();
+    }
+
+    public function page_cache_purge_on_comment($comment_id): void
+    {
+        $this->page_cache_purge_all();
+    }
+
+    /* ------------------------------------------------------------------
+     * Extra speed helpers
+     * ----------------------------------------------------------------*/
+
+    public function speed_head_cleanup(): void
+    {
+        if (is_admin()) {
+            return;
+        }
+        remove_action('wp_head', 'wp_generator');
+        remove_action('wp_head', 'rsd_link');
+        remove_action('wp_head', 'wlwmanifest_link');
+        remove_action('wp_head', 'wp_shortlink_wp_head');
+        remove_action('wp_head', 'rest_output_link_wp_head', 10);
+        remove_action('template_redirect', 'rest_output_link_header', 11);
+        remove_action('wp_head', 'adjacent_posts_rel_link_wp_head', 10);
+        add_filter('the_generator', '__return_empty_string');
+    }
+
+    public function speed_limit_revisions(): void
+    {
+        add_filter('wp_revisions_to_keep', static function ($num, $post) {
+            // Cap at 5 unless site already uses a stricter limit
+            if ($num === true || (int) $num < 0) {
+                return 5;
+            }
+            return min((int) $num, 5);
+        }, 10, 2);
+    }
+
+    public function speed_control_heartbeat(): void
+    {
+        // Disable heartbeat on the public front (saves admin-ajax polls)
+        if (!is_admin()) {
+            wp_deregister_script('heartbeat');
+            return;
+        }
+        add_filter('heartbeat_settings', static function ($settings) {
+            $settings['interval'] = 60;
+            return $settings;
+        });
+    }
+
+    public function speed_resource_hints(array $hints, string $relation_type): array
+    {
+        if ($relation_type === 'dns-prefetch') {
+            $hints[] = 'https://fonts.googleapis.com';
+            $hints[] = 'https://fonts.gstatic.com';
+        }
+        if ($relation_type === 'preconnect') {
+            $hints[] = 'https://fonts.gstatic.com';
+        }
+        return array_values(array_unique($hints));
+    }
+
+    public function maybe_minify_html(string $html): string
+    {
+        // Conservative minify: remove HTML comments (not IE conditionals) and excess whitespace between tags
+        $html = preg_replace('/<!--(?!\[if\s)(?!<!)[^\[>].*?-->/s', '', $html) ?? $html;
+        $html = preg_replace('/>\s{2,}</', '><', $html) ?? $html;
+        return $html;
+    }
 
 }

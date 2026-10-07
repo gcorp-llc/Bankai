@@ -1,6 +1,6 @@
 <?php
 /**
- * The template for displaying single posts and pages
+ * Singular (post/page)
  *
  * @package Bankai_Theme
  */
@@ -8,27 +8,38 @@
 defined('ABSPATH') || exit;
 
 get_header();
+
+$side_pos = function_exists('bankai_sidebar_position') ? bankai_sidebar_position() : 'right';
+$show_side = function_exists('bankai_show_sidebar') && bankai_show_sidebar();
+$layout_class = $show_side ? 'bankai-layout bankai-layout--sidebar-' . esc_attr($side_pos) : 'bankai-layout bankai-layout--full';
 ?>
 
-<main id="primary" class="bankai-content site-main">
-    <?php
-    while (have_posts()) : the_post();
-        ?>
-        <article id="post-<?php the_ID(); ?>" <?php post_class(); ?> style="max-width: 800px; margin: 0 auto; background: #FFFFFF; border: 1px solid #D0D7DE; border-radius: 12px; padding: 40px;">
-            <header class="entry-header" style="margin-bottom: 24px; border-bottom: 1px solid #EAEEF2; padding-bottom: 20px;">
-                <?php the_title('<h1 class="entry-title" style="margin: 0; font-size: 28px; font-weight: 800; color: #1F2328;">', '</h1>'); ?>
-                <div class="entry-meta" style="margin-top: 10px; font-size: 13px; color: #656D76;">
-                    <?php echo esc_html(get_the_date()); ?> &bull; <?php echo esc_html(get_the_author()); ?>
-                </div>
-            </header>
+<main id="primary" class="bankai-main site-main">
+	<div class="<?php echo esc_attr(bankai_container_class() . ' ' . $layout_class); ?>">
+		<?php if ($show_side && $side_pos === 'left') : ?>
+			<?php get_sidebar(); ?>
+		<?php endif; ?>
 
-            <div class="entry-content" style="font-size: 16px; line-height: 1.8; color: #1F2328;">
-                <?php the_content(); ?>
-            </div>
-        </article>
-        <?php
-    endwhile;
-    ?>
+		<div class="bankai-content">
+			<?php
+			while (have_posts()) :
+				the_post();
+				get_template_part('template-parts/content', is_page() ? 'page' : 'single');
+
+				if (is_singular('post')) {
+					$show_comments = function_exists('bankai_theme_mod') ? bankai_theme_mod('single_show_comments', true) : true;
+					if ($show_comments && (comments_open() || get_comments_number())) {
+						comments_template();
+					}
+				}
+			endwhile;
+			?>
+		</div>
+
+		<?php if ($show_side && $side_pos !== 'left') : ?>
+			<?php get_sidebar(); ?>
+		<?php endif; ?>
+	</div>
 </main>
 
 <?php

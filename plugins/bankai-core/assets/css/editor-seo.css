@@ -895,27 +895,23 @@
 /* ---- Toast (Win11 glass) ---- */
 .bk-toast {
     position: fixed;
-    bottom: 24px;
     left: 50%;
-    transform: translateX(-50%);
-    z-index: 100001;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100060;
+    min-width: 260px;
+    max-width: min(420px, calc(100vw - 24px));
     display: flex;
     align-items: center;
     gap: 10px;
-    min-width: 200px;
-    max-width: min(360px, calc(100vw - 24px));
-    padding: 12px 14px 14px;
+    padding: 12px 14px;
     border-radius: 14px;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: #1f2328;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(20px) saturate(1.3);
-    -webkit-backdrop-filter: blur(20px) saturate(1.3);
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    box-shadow: 0 16px 36px -10px rgba(15, 23, 42, 0.22), 0 2px 8px rgba(15, 23, 42, 0.06);
-    overflow: hidden;
-    cursor: pointer;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(15,23,42,.08);
+    box-shadow: 0 18px 40px -12px rgba(15,23,42,.28);
+    font-size: 13px;
+    pointer-events: auto;
 }
 .bk-toast-icon {
     width: 28px;
@@ -952,7 +948,7 @@
 .bk-toast .bk-toast-msg { color: #1f2328; }
 
 /* ---- Utils ---- */
-[hidden] { display: none !important; }
+[x-cloak] { display: none !important; }
 
 .bk-spin {
     animation: bk-spin 0.6s linear infinite;
@@ -1511,42 +1507,15 @@
 }
 .bk-search-result-item {
     display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 8px !important;
-    padding: 10px 12px !important;
-    margin-bottom: 8px !important;
-    border-radius: 10px !important;
-    background: #f8f9fa !important;
-    border: 1px solid var(--c-border) !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
-.bk-search-result-body {
-    width: 100% !important;
-    word-break: break-word !important;
-}
-.bk-search-result-body strong {
-    display: block !important;
-    font-size: 12px !important;
-    line-height: 1.5 !important;
-    color: var(--c-fg) !important;
-}
-.bk-search-result-body small {
-    display: block !important;
-    font-size: 10px !important;
-    color: var(--c-muted) !important;
-    margin-top: 2px !important;
-    word-break: break-all !important;
-}
-.bk-search-result-actions,
-.bk-link-sugg-actions {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    gap: 6px !important;
-    width: 100% !important;
-    margin-top: 4px !important;
-    padding-top: 6px !important;
-    border-top: 1px dashed rgba(0, 0, 0, 0.08) !important;
+.bk-search-result-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
 }
 .bk-link-item-row {
     display: flex;
@@ -1722,32 +1691,31 @@
    ========================================================= */
 #bankai-seo-sidebar,
 .bankai-seo-root {
-    /* GitHub Light / Primer design tokens */
-    --c-canvas: #f6f8fa;
+    --c-canvas: #f3f3f3;
     --c-card: #ffffff;
-    --c-border: #d0d7de;
-    --c-border-m: #d8dee4;
-    --c-fg: #1f2328;
-    --c-muted: #59636e;
-    --c-subtle: #6e7781;
-    --c-blue: #0969da;
-    --c-blue-s: #ddf4ff;
-    --c-blue-b: #54aeff;
-    --c-green: #1a7f37;
-    --c-green-s: #dafbe1;
-    --c-green-t: #1f883d;
-    --c-purple: #0969da;
-    --c-purple-s: #ddf4ff;
+    --c-border: rgba(0, 0, 0, 0.06);
+    --c-border-m: rgba(0, 0, 0, 0.04);
+    --c-fg: #1a1a1a;
+    --c-muted: #605e5c;
+    --c-subtle: #8a8886;
+    --c-blue: #0078d4;
+    --c-blue-s: #e8f3fc;
+    --c-blue-b: #50a6e0;
+    --c-green: #0f7b3a;
+    --c-green-s: #dff6e8;
+    --c-green-t: #0b5c2c;
+    --c-purple: #6b4eff;
+    --c-purple-s: #f0edff;
     --c-yellow: #9a6700;
-    --c-yellow-s: #fff8c5;
-    --c-red: #cf222e;
-    --c-red-s: #ffebe9;
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --shadow-1: 0 1px 3px rgba(31,35,40,0.12);
-    --shadow-2: 0 3px 6px rgba(140,149,159,0.15);
-    --shadow-3: 0 8px 24px rgba(140,149,159,0.2);
+    --c-yellow-s: #fff4ce;
+    --c-red: #c42b1c;
+    --c-red-s: #fde7e9;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-1: 0 1px 2px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.06);
+    --shadow-2: 0 4px 16px rgba(0,0,0,.08);
+    --shadow-3: 0 12px 32px rgba(0,0,0,.12);
     font-size: 12.5px;
     background: var(--c-canvas);
     letter-spacing: 0.01em;
@@ -2032,7 +2000,13 @@
 }
 
 .bankai-seo-root .bk-toast {
-    /* styled above */
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 100060 !important;
 }
 
 .bankai-seo-root .bk-alert {
@@ -2528,9 +2502,4 @@
 }
 .bk-score-ring .bk-progress {
   stroke: var(--score-color, #1E7F5C);
-}
-
-/* CSS Rules for hidden attributes in Editor SEO */
-.bankai-seo-root [hidden] {
-    display: none !important;
 }

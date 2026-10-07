@@ -8,7 +8,7 @@
 /* --------------------------------------------------------------------------
    0. FOUC Prevention
    -------------------------------------------------------------------------- */
-[hidden] {
+[x-cloak] {
   display: none !important;
 }
 
@@ -20,8 +20,8 @@ body.toplevel_page_bankai-core #wpwrap,
 body.toplevel_page_bankai-core #wpcontent,
 body.toplevel_page_bankai-core #wpbody,
 body.toplevel_page_bankai-core #wpbody-content {
-  background-color: #f3f3f3 !important;
-  color: #1f2328 !important;
+  background-color: #F5F5F7 !important;
+  color: #1D1D1F !important;
   min-height: 100vh !important;
 }
 
@@ -65,47 +65,35 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
 #bankai-admin-app,
 .bankai-app-wrapper,
 .bankai-admin-wrap {
-  /* GitHub Light / Primer Design Tokens */
-  --bankai-bg-main: #f6f8fa;
-  --bankai-bg-surface: #ffffff;
-  --bankai-card-bg: #ffffff;
-  --bankai-card-border: #d0d7de;
-  --bankai-border-subtle: #d0d7de;
+  /* Premium Minimalism tokens */
+  --bankai-bg-main: #F7F7F8;
+  --bankai-bg-surface: #FFFFFF;
+  --bankai-card-bg: #FFFFFF;
+  --bankai-card-border: #E8E8EA;
+  --bankai-border-subtle: #E8E8EA;
   
-  --bankai-text-main: #1f2328;
-  --bankai-text-muted: #59636e;
-  --bankai-text-subtle: #6e7781;
+  --bankai-text-main: #1A1A1A;
+  --bankai-text-muted: #8A8F98;
+  --bankai-text-subtle: #A0A4AB;
   
-  --bankai-accent: #0969da;
-  --bankai-accent-hover: #0550ae;
-  --bankai-accent-subtle: #ddf4ff;
+  --bankai-accent: #5C6B7A;
+  --bankai-accent-hover: #3D4A57;
+  --bankai-accent-subtle: rgba(92, 107, 122, 0.1);
   
-  --bankai-btn-primary-bg: #1f883d;
-  --bankai-btn-primary-hover: #1a7f37;
-  --bankai-btn-primary-text: #ffffff;
+  --bankai-success: #30D158;
+  --bankai-success-subtle: rgba(48, 209, 88, 0.12);
+  --bankai-danger: #FF453A;
+  --bankai-purple: #BF5AF2;
+  --bankai-purple-subtle: rgba(191, 90, 242, 0.12);
 
-  --bankai-success: #1a7f37;
-  --bankai-success-subtle: #dafbe1;
-  --bankai-success-border: #4ac26b;
-
-  --bankai-warning: #9a6700;
-  --bankai-warning-subtle: #fff8c5;
-  --bankai-warning-border: #d4a72c;
-
-  --bankai-danger: #cf222e;
-  --bankai-danger-subtle: #ffebe9;
-  --bankai-danger-border: #ff8182;
-
-  --bankai-purple: #0969da;
-  --bankai-purple-subtle: #ddf4ff;
-
-  --bankai-radius-sm: 6px;
-  --bankai-radius-md: 8px;
-  --bankai-radius-lg: 12px;
-  --bankai-radius-xl: 14px;
-  --bankai-shadow-1: 0 1px 3px rgba(31,35,40,0.12);
-  --bankai-shadow-2: 0 3px 6px rgba(140,149,159,0.15);
-  --bankai-shadow-3: 0 8px 24px rgba(140,149,159,0.2);
+  --bankai-radius-sm: 12px;
+  --bankai-radius-md: 16px;
+  --bankai-radius-lg: 20px;
+  --bankai-radius-xl: 24px;
+  --bankai-shadow-1: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04);
+  --bankai-shadow-2: 0 4px 16px rgba(0,0,0,.06);
+  --bankai-shadow-3: 0 12px 40px rgba(0,0,0,.1);
+  --bankai-shadow-in: none;
 
   background-color: var(--bankai-bg-main) !important;
   color: var(--bankai-text-main) !important;
@@ -1219,7 +1207,7 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
   -webkit-backdrop-filter: blur(12px);
 }
 
-
+/* انیمیشن ترانزیشن Alpine */
 .bankai-transition-enter { transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 .bankai-transition-leave { transition: all 0.2s cubic-bezier(0.7, 0, 0.84, 0); }
 .bankai-transition-start { opacity: 0; transform: scale(0.96); }
@@ -1390,19 +1378,23 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
 /* ========== Bankai Toast (Win11 / M3) ========== */
 .bankai-toast-container {
   position: fixed;
-  bottom: 28px;
-  inset-inline-end: 28px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 100050;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
   pointer-events: none;
-  max-width: min(420px, calc(100vw - 32px));
+  max-width: min(440px, calc(100vw - 32px));
+  width: max-content;
 }
 .rtl .bankai-toast-container,
 [dir="rtl"] .bankai-toast-container {
+  /* centered — no side offset */
   inset-inline-end: auto;
-  inset-inline-start: 28px;
+  inset-inline-start: auto;
 }
 
 .bankai-toast-card {
@@ -1448,7 +1440,7 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
 
 .bankai-toast-transition-enter { transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
 .bankai-toast-transition-leave { transition: opacity 0.18s cubic-bezier(0.7, 0, 0.84, 0), transform 0.18s cubic-bezier(0.7, 0, 0.84, 0); }
-.bankai-toast-transition-start { opacity: 0; transform: translateY(14px) scale(0.96); }
+.bankai-toast-transition-start { opacity: 0; transform: translateY(10px) scale(0.96); }
 .bankai-toast-transition-end { opacity: 1; transform: translateY(0) scale(1); }
 
 .bankai-toast-icon-badge {
@@ -2188,7 +2180,704 @@ body.toplevel_page_bankai-core #wpbody-content {
 .bankai-nav-icon .solar-icon { width: 22px; height: 22px; }
 .material-symbols-outlined { display: none !important; }
 
-/* Hidden attribute display rule */
-.bankai-admin-wrap [hidden] {
-    display: none !important;
+
+
+
+
+
+/* ==========================================================================
+   PREMIUM MINIMALISM — Admin Panel
+   ========================================================================== */
+
+#bankai-admin-app,
+.bankai-app-wrapper,
+.bankai-admin-wrap {
+  background: #F7F7F8 !important;
+  font-family: "Vazirmatn", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  color: #1A1A1A !important;
+}
+
+#bankai-admin-app .bankai-sidebar,
+.bankai-admin-wrap .bankai-sidebar,
+aside.bankai-sidebar {
+  background: #FFFFFF !important;
+  border: none !important;
+  border-inline-end: 1px solid #E8E8EA !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+#bankai-admin-app .bankai-sidebar a,
+#bankai-admin-app .bankai-nav-item,
+.bankai-menu-item,
+.bankai-sidebar-link {
+  border-radius: 10px !important;
+  margin: 2px 10px !important;
+  padding: 9px 12px !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+#bankai-admin-app .bankai-sidebar a:hover,
+.bankai-menu-item:hover {
+  background: #F4F4F5 !important;
+}
+#bankai-admin-app .bankai-sidebar a.is-active,
+#bankai-admin-app .bankai-nav-item.is-active,
+#bankai-admin-app .bankai-sidebar a.active,
+.bankai-menu-item.active {
+  background: #F0F1F3 !important;
+  color: #3D4A57 !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+}
+
+#bankai-admin-app .bankai-card,
+#bankai-admin-app .card,
+.bankai-panel,
+.bankai-box,
+.bankai-stat-card,
+.bankai-module-card,
+.bankai-ai-card,
+.bankai-seo-card,
+.bankai-widget,
+.bankai-section-card,
+.bankai-provider-card,
+.bankai-engine-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E8E8EA !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+.bankai-provider-card:hover,
+.bankai-module-card:hover,
+.bankai-stat-card:hover {
+  transform: none !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,.04) !important;
+  border-color: #D4D4D8 !important;
+}
+
+#bankai-admin-app .bankai-page-header,
+.bankai-header-bar,
+.bankai-topbar {
+  background: #FFFFFF !important;
+  border: 1px solid #E8E8EA !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+
+#bankai-admin-app .bankai-tabs,
+.bankai-tab-nav,
+.bankai-tabs-nav {
+  background: #F4F4F5 !important;
+  border: 1px solid #E8E8EA !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  padding: 3px !important;
+}
+#bankai-admin-app .bankai-tab.is-active,
+#bankai-admin-app .bankai-tab.active,
+.bankai-tab-btn.is-active {
+  background: #FFFFFF !important;
+  color: #3D4A57 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04) !important;
+  border-radius: 8px !important;
+}
+
+#bankai-admin-app .bankai-btn-primary,
+#bankai-admin-app .button-primary,
+.bankai-btn--primary {
+  background: #3D4A57 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+}
+#bankai-admin-app .bankai-btn-primary:hover,
+.bankai-btn--primary:hover {
+  background: #2C3640 !important;
+}
+#bankai-admin-app .bankai-btn,
+#bankai-admin-app .button,
+.bankai-btn-secondary {
+  background: #F0F0F2 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  color: #1A1A1A !important;
+  box-shadow: none !important;
+}
+
+#bankai-admin-app input[type="text"],
+#bankai-admin-app input[type="search"],
+#bankai-admin-app input[type="email"],
+#bankai-admin-app input[type="url"],
+#bankai-admin-app input[type="number"],
+#bankai-admin-app input[type="password"],
+#bankai-admin-app select,
+#bankai-admin-app textarea,
+.bankai-input {
+  background: #FAFAFA !important;
+  border: 1px solid #E8E8EA !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  min-height: 40px !important;
+}
+#bankai-admin-app input:focus,
+#bankai-admin-app select:focus,
+#bankai-admin-app textarea:focus {
+  border-color: #8B9BB4 !important;
+  box-shadow: 0 0 0 2px rgba(139, 155, 180, 0.22) !important;
+  background: #fff !important;
+  outline: none !important;
+}
+
+#bankai-admin-app table,
+.bankai-table {
+  border: 1px solid #E8E8EA !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+#bankai-admin-app thead th {
+  background: #F7F7F8 !important;
+  color: #8A8F98 !important;
+}
+
+/* Active / selected gray-blue */
+#bankai-admin-app .is-selected,
+#bankai-admin-app .is-active-card,
+.bankai-style-card.is-active {
+  border-color: #8B9BB4 !important;
+  box-shadow: 0 0 0 2px rgba(139, 155, 180, 0.25) !important;
+}
+
+
+/* ===== Import panel: mirror SEO AI modal ===== */
+.bk-import-ai { direction: rtl; }
+.bk-import-ai .bk-ai-assistant-shell {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 28px rgba(15,23,42,.06);
+    margin-bottom: 16px;
+}
+.bk-import-ai .bk-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    background: linear-gradient(135deg, #faf5ff 0%, #eef2ff 100%);
+}
+.bk-import-ai .bk-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.bk-import-ai .bk-ai-logo-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #6b4eff, #818cf8);
+    color: #fff;
+}
+.bk-import-ai .bk-ai-logo-icon .solar-icon { width: 22px; height: 22px; stroke: #fff; }
+.bk-import-ai .bk-modal-title strong { display: block; font-size: 15px; font-weight: 800; color: #1e1b4b; }
+.bk-import-ai .bk-modal-title small { display: block; font-size: 12px; color: #64748b; margin-top: 2px; }
+.bk-import-ai .bk-ai-engine-bar {
+    padding: 10px 14px 12px;
+    background: linear-gradient(180deg, #f8f6ff 0%, #fff 100%);
+    border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.bk-import-ai .bk-ai-engine-label {
+    font-size: 11px; font-weight: 700; color: #605e5c; margin-bottom: 8px;
+}
+.bk-import-ai .bk-ai-engine-scroll {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+    scroll-snap-type: x mandatory;
+}
+.bk-import-ai .bk-ai-engine-scroll::-webkit-scrollbar { height: 4px; }
+.bk-import-ai .bk-ai-engine-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 4px; }
+.bk-import-ai .bk-ai-engine-card {
+    flex: 0 0 auto; min-width: 128px; scroll-snap-align: start;
+    border: 1px solid rgba(0,0,0,.08); background: #fff; border-radius: 14px;
+    padding: 10px 12px; cursor: pointer; text-align: right;
+    transition: all .15s ease; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.bk-import-ai .bk-ai-engine-card:hover {
+    border-color: rgba(107,78,255,.35);
+    box-shadow: 0 4px 12px rgba(107,78,255,.1);
+}
+.bk-import-ai .bk-ai-engine-card.is-active {
+    border-color: #6b4eff;
+    background: linear-gradient(135deg, #f3f0ff, #eef6fc);
+    box-shadow: 0 0 0 2px rgba(107,78,255,.18);
+}
+.bk-import-ai .bk-ai-engine-card.is-disabled { opacity: .55; }
+.bk-import-ai .bk-ai-engine-name { display: block; font-size: 12px; font-weight: 700; color: #1a1a1a; }
+.bk-import-ai .bk-ai-engine-status { display: block; font-size: 10px; color: #8a8886; margin-top: 2px; }
+.bk-import-ai .bk-ai-engine-card.is-active .bk-ai-engine-status { color: #6b4eff; font-weight: 700; }
+.bk-import-ai .bk-import-toolbar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid #F1F5F9;
+}
+.bk-import-ai .bk-post-ai-card {
+    border: 1px solid #E2E8F0; border-radius: 14px; background: #fff;
+    padding: 14px 16px; margin-bottom: 12px;
+    transition: border-color .2s, background .2s;
+}
+.bk-import-ai .bk-post-ai-card.is-running { border-color: #A5B4FC; background: #F8FAFF; }
+.bk-import-ai .bk-post-ai-card.is-review { border-color: #93C5FD; background: #EFF6FF; }
+.bk-import-ai .bk-post-ai-card.is-done { border-color: #86EFAC; background: #F0FDF4; }
+.bk-import-ai .bk-post-ai-card.is-error { border-color: #FCA5A5; background: #FEF2F2; }
+.bk-import-ai .bk-checklist-grid {
+    list-style: none; margin: 12px 0 0; padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px;
+}
+.bk-import-ai .bk-checklist-grid li {
+    font-size: 12px; display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px; border-radius: 10px; background: #F8FAFC; border: 1px solid #F1F5F9;
+}
+.bk-import-ai .bk-progress-track {
+    height: 8px; background: #E5E7EB; border-radius: 999px; overflow: hidden; margin-top: 6px;
+}
+.bk-import-ai .bk-progress-fill {
+    height: 100%; background: linear-gradient(90deg, #6b4eff, #50e6ff); transition: width .25s;
+}
+.bk-import-ai .bk-review-box {
+    background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;
+    padding: 10px 12px; margin-top: 8px; font-size: 13px; line-height: 1.6;
+}
+.bk-import-ai .bk-btn-primary {
+    background: linear-gradient(135deg, #6b4eff, #6366f1); color: #fff; border: none;
+    border-radius: 10px; padding: 8px 14px; font-weight: 700; cursor: pointer;
+}
+.bk-import-ai .bk-btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+.bk-import-ai .bk-btn-ghost {
+    background: #fff; border: 1px solid #E2E8F0; border-radius: 10px;
+    padding: 8px 12px; cursor: pointer; font-weight: 600;
+}
+.bk-import-ai .bk-btn-success {
+    background: #16a34a; color: #fff; border: none; border-radius: 10px;
+    padding: 8px 14px; font-weight: 700; cursor: pointer;
+}
+
+/* ===== ELEMENTSKIT-INSPIRED ADMIN SHELL v1.0.104 ============================
+   Dark gradient sidebar · luminous content stage · animated nav
+   ========================================================================== */
+
+body.toplevel_page_bankai-core,
+body.toplevel_page_bankai-core #wpwrap,
+body.toplevel_page_bankai-core #wpcontent,
+body.toplevel_page_bankai-core #wpbody,
+body.toplevel_page_bankai-core #wpbody-content {
+  background: #f0f2f8 !important;
+}
+
+#bankai-admin-app,
+.bankai-admin-wrap {
+  --ekit-side: #1b1238;
+  --ekit-side-2: #2a1a5e;
+  --ekit-accent: #7c5cff;
+  --ekit-accent-2: #a78bfa;
+  --ekit-glow: rgba(124, 92, 255, 0.45);
+  --ekit-text: #f5f3ff;
+  --ekit-muted: rgba(245, 243, 255, 0.62);
+  --ekit-content-bg: #f4f6fb;
+  --ekit-card: #ffffff;
+  --ekit-radius: 18px;
+  --ekit-side-w: 268px;
+  background: var(--ekit-content-bg) !important;
+  min-height: calc(100vh - 32px);
+}
+
+/* hide old ambient blobs – cleaner stage */
+#bankai-admin-app .bankai-bg-decorations {
+  opacity: 0.35;
+  pointer-events: none;
+}
+#bankai-admin-app .bankai-ambient-orb {
+  filter: blur(60px);
+  opacity: 0.4;
+}
+
+/* ---------- Top header (glass strip over content) ---------- */
+#bankai-admin-header {
+  position: sticky;
+  top: 32px;
+  z-index: 90;
+  margin: 12px 16px 0 calc(var(--ekit-side-w) + 28px) !important;
+  padding: 12px 18px !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 28px rgba(28, 18, 70, 0.06) !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#bankai-admin-app.rtl #bankai-admin-header,
+[dir="rtl"] #bankai-admin-header {
+  margin: 12px calc(var(--ekit-side-w) + 28px) 0 16px !important;
+}
+
+.bankai-header-title-block h1,
+#bankai-admin-header h1,
+#bankai-admin-header .bankai-header-title {
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+  color: #1a1433 !important;
+}
+
+.bankai-btn-action {
+  border-radius: 12px !important;
+  border: 1px solid #e6e8f0 !important;
+  background: #fff !important;
+  color: #3b3558 !important;
+  box-shadow: 0 1px 2px rgba(20, 12, 50, 0.04);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.bankai-btn-action:hover {
+  transform: translateY(-1px);
+  border-color: #cfc6ff !important;
+  box-shadow: 0 6px 16px rgba(124, 92, 255, 0.12);
+  color: #5b3fd6 !important;
+}
+
+/* ---------- Body: sidebar + content ---------- */
+#bankai-admin-app .bankai-body-layout,
+.bankai-app-wrapper .bankai-body-layout {
+  display: flex !important;
+  gap: 0 !important;
+  padding: 14px 16px 28px 16px !important;
+  min-height: calc(100vh - 110px);
+  align-items: stretch !important;
+}
+
+/* ---------- Sidebar: full-height ElementsKit style ---------- */
+#bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar,
+.bankai-app-wrapper .bankai-sidebar {
+  width: var(--ekit-side-w) !important;
+  min-width: var(--ekit-side-w) !important;
+  max-width: var(--ekit-side-w) !important;
+  position: fixed !important;
+  top: 32px !important;
+  bottom: 12px !important;
+  inset-inline-start: 12px !important;
+  inset-inline-end: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 18px 14px 16px !important;
+  border-radius: 22px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(167, 139, 250, 0.28) 0%, transparent 55%),
+    radial-gradient(90% 70% at 100% 100%, rgba(99, 102, 241, 0.22) 0%, transparent 50%),
+    linear-gradient(165deg, #22124a 0%, #1a0f38 45%, #140a2c 100%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow:
+    0 20px 50px rgba(20, 10, 50, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  color: var(--ekit-text) !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 120 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.2) transparent;
+}
+
+#bankai-admin-app.rtl #bankai-admin-sidebar,
+[dir="rtl"] #bankai-admin-sidebar {
+  inset-inline-start: 12px;
+}
+
+/* Brand */
+#bankai-admin-sidebar .bankai-brand-card {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 6px 8px 16px !important;
+  margin-bottom: 14px !important;
+  gap: 12px !important;
+}
+#bankai-admin-sidebar .bankai-brand-logo {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
+  box-shadow: 0 8px 20px rgba(124, 92, 255, 0.4) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #fff !important;
+  font-weight: 800;
+  font-size: 15px;
+  overflow: hidden;
+}
+#bankai-admin-sidebar .bankai-brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#bankai-admin-sidebar .bankai-brand-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+#bankai-admin-sidebar .bankai-brand-name,
+#bankai-admin-sidebar .bankai-brand-title {
+  color: #fff !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+#bankai-admin-sidebar .bankai-brand-sub,
+#bankai-admin-sidebar .bankai-brand-version {
+  color: var(--ekit-muted) !important;
+  font-size: 11px !important;
+}
+
+/* Nav groups */
+#bankai-admin-sidebar .bankai-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+#bankai-admin-sidebar .bankai-nav-group-title {
+  color: rgba(245, 243, 255, 0.4) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 12px 6px !important;
+  margin: 0 !important;
+}
+
+/* Nav buttons */
+#bankai-admin-sidebar .bankai-nav-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 11px 12px !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+  color: var(--ekit-muted) !important;
+  font-size: 13.5px !important;
+  font-weight: 550 !important;
+  text-align: start !important;
+  cursor: pointer;
+  position: relative;
+  transition: background .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease;
+  box-shadow: none !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn span {
+  color: inherit !important;
+  flex: 1;
+  line-height: 1.3;
+}
+#bankai-admin-sidebar .bankai-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
+  transform: translateX(2px);
+}
+#bankai-admin-app.rtl #bankai-admin-sidebar .bankai-nav-btn:hover {
+  transform: translateX(-2px);
+}
+
+#bankai-admin-sidebar .bankai-nav-btn.active {
+  background: linear-gradient(90deg, rgba(124, 92, 255, 0.38), rgba(124, 92, 255, 0.12)) !important;
+  color: #fff !important;
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.28), 0 8px 22px rgba(80, 40, 180, 0.18) !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn.active::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 3px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, #c4b5fd, #7c5cff);
+  box-shadow: 0 0 12px var(--ekit-glow);
+}
+
+#bankai-admin-sidebar .bankai-nav-icon {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 11px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  color: #d8d0ff !important;
+  transition: background .2s ease, color .2s ease, box-shadow .2s ease;
+}
+#bankai-admin-sidebar .bankai-nav-btn:hover .bankai-nav-icon,
+#bankai-admin-sidebar .bankai-nav-btn.active .bankai-nav-icon {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.55), rgba(99, 102, 241, 0.45)) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 14px rgba(124, 92, 255, 0.3);
+}
+#bankai-admin-sidebar .bankai-nav-icon svg {
+  width: 18px !important;
+  height: 18px !important;
+  stroke: currentColor !important;
+}
+
+#bankai-admin-sidebar .bankai-nav-off-badge {
+  font-size: 9px !important;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 6px !important;
+  border-radius: 999px;
+  background: rgba(255, 69, 58, 0.2) !important;
+  color: #ffb4ae !important;
+  border: 1px solid rgba(255, 69, 58, 0.25);
+}
+
+#bankai-admin-sidebar .bankai-nav-btn.is-disabled {
+  opacity: 0.45;
+}
+
+/* Sidebar footer card */
+#bankai-admin-sidebar .bankai-sidebar-footer,
+#bankai-admin-sidebar .bankai-side-foot {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+#bankai-admin-sidebar .bankai-sidebar-footer-card {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 14px !important;
+  padding: 12px !important;
+  color: var(--ekit-muted) !important;
+  font-size: 12px;
+}
+
+/* ---------- Main content stage ---------- */
+#bankai-admin-app #bankai-main-content,
+.bankai-app-wrapper #bankai-main-content,
+#bankai-admin-app .bankai-main-content {
+  flex: 1 !important;
+  min-width: 0 !important;
+  margin-inline-start: calc(var(--ekit-side-w) + 12px) !important;
+  margin-inline-end: 0 !important;
+  padding: 8px 6px 24px !important;
+  position: relative;
+}
+
+#bankai-admin-app.rtl #bankai-main-content,
+[dir="rtl"] #bankai-main-content {
+  margin-inline-start: calc(var(--ekit-side-w) + 12px) !important;
+}
+
+/* Content cards livelier */
+#bankai-admin-app .bk-card,
+#bankai-admin-app .bankai-card,
+#bankai-admin-app .bk-panel,
+#bankai-admin-app .bk-section-card {
+  background: var(--ekit-card) !important;
+  border: 1px solid rgba(230, 232, 240, 0.95) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 30px rgba(24, 16, 60, 0.04) !important;
+  transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease;
+}
+#bankai-admin-app .bk-card:hover,
+#bankai-admin-app .bankai-card:hover {
+  box-shadow: 0 16px 40px rgba(70, 40, 160, 0.08) !important;
+  border-color: #ddd6fe !important;
+}
+
+/* Primary buttons accent */
+#bankai-admin-app .bk-btn-primary,
+#bankai-admin-app .bankai-btn-primary,
+#bankai-admin-app button.bk-btn-primary {
+  background: linear-gradient(135deg, #7c5cff, #6366f1) !important;
+  border: none !important;
+  color: #fff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 20px rgba(124, 92, 255, 0.28) !important;
+}
+#bankai-admin-app .bk-btn-primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+/* Tab entrance */
+#bankai-admin-app [id^="tab-"] {
+  animation: bankaiEkitIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes bankaiEkitIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Page progress bar accent */
+.bankai-page-progress-bar {
+  background: linear-gradient(90deg, #7c5cff, #a78bfa, #6366f1) !important;
+}
+
+/* Mobile */
+@media (max-width: 1024px) {
+  #bankai-admin-header {
+    margin: 12px 12px 0 12px !important;
+  }
+  #bankai-admin-sidebar,
+  #bankai-admin-app .bankai-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    inset-inline-start: 0 !important;
+    border-radius: 0 22px 22px 0 !important;
+    transform: translateX(-110%);
+    transition: transform .28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    z-index: 10050 !important;
+  }
+  #bankai-admin-app.rtl #bankai-admin-sidebar {
+    border-radius: 22px 0 0 22px !important;
+    transform: translateX(110%);
+  }
+  #bankai-admin-app.bankai-mobile-open #bankai-admin-sidebar,
+  #bankai-admin-app .bankai-sidebar.is-open,
+  #bankai-admin-sidebar.mobile-open,
+  #bankai-admin-app .bankai-sidebar.mobile-open,
+  body.bankai-mobile-nav-open #bankai-admin-sidebar {
+    transform: translateX(0) !important;
+  }
+  #bankai-admin-app #bankai-main-content {
+    margin-inline-start: 0 !important;
+  }
+}
+
+/* Soft content canvas edge */
+#bankai-admin-app #bankai-main-content::before {
+  content: "";
+  position: absolute;
+  inset: -8px -4px auto -4px;
+  height: 120px;
+  background: radial-gradient(60% 100% at 50% 0%, rgba(124, 92, 255, 0.07), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+#bankai-admin-app #bankai-main-content > * {
+  position: relative;
+  z-index: 1;
 }

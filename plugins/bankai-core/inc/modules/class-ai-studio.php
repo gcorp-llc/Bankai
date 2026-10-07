@@ -20,6 +20,9 @@ final class Bankai_AI_Studio
     public const OPT_MODULES  = 'bankai_ai_modules';
     public const OPT_CUSTOM   = 'bankai_ai_custom_providers';
     public const OPT_EXTRA_MODELS = 'bankai_ai_extra_models';
+    public const OPT_IMAGE_KEYS    = 'bankai_ai_image_keys';
+    public const OPT_IMAGE_MODELS  = 'bankai_ai_image_models';
+    public const OPT_IMAGE_DEFAULT = 'bankai_ai_image_default';
 
     public static function instance(): self
     {
@@ -44,6 +47,9 @@ final class Bankai_AI_Studio
         add_action('wp_ajax_bankai_generate_ai_prompt', [$this, 'ajax_generate_prompt']);
         add_action('wp_ajax_bankai_toggle_ai_module', [$this, 'ajax_toggle_ai_module']);
         add_action('wp_ajax_bankai_ai_generate_article', [$this, 'ajax_generate_article']);
+        add_action('wp_ajax_bankai_ai_suggest_titles', [$this, 'ajax_suggest_titles']);
+        add_action('wp_ajax_bankai_ai_assign_terms', [$this, 'ajax_assign_terms']);
+        add_action('wp_ajax_bankai_ai_test_connection', [$this, 'ajax_test_connection']);
         add_action('wp_ajax_bankai_ai_remove_queue_item', [$this, 'ajax_remove_queue_item']);
         add_action('bankai_publish_scheduled_ai_post', [$this, 'cron_publish_scheduled'], 10, 1);
         add_action('save_post', [$this, 'on_save_post_modules'], 40, 3);
@@ -53,6 +59,13 @@ final class Bankai_AI_Studio
         add_action('wp_ajax_bankai_delete_custom_provider', [$this, 'ajax_delete_custom_provider']);
         add_action('wp_ajax_bankai_add_provider_model', [$this, 'ajax_add_provider_model']);
         add_action('wp_ajax_bankai_remove_provider_model', [$this, 'ajax_remove_provider_model']);
+        add_action('wp_ajax_bankai_save_image_ai_key', [$this, 'ajax_save_image_ai_key']);
+        add_action('wp_ajax_bankai_clear_image_ai_key', [$this, 'ajax_clear_image_ai_key']);
+        add_action('wp_ajax_bankai_test_image_ai', [$this, 'ajax_test_image_ai']);
+        add_action('wp_ajax_bankai_ai_image_generate', [$this, 'ajax_image_generate']);
+        add_action('wp_ajax_bankai_set_default_image_provider', [$this, 'ajax_set_default_image_provider']);
+        add_action('wp_ajax_bankai_add_image_model', [$this, 'ajax_add_image_model']);
+        add_action('wp_ajax_bankai_remove_image_model', [$this, 'ajax_remove_image_model']);
     }
 
     public static function mask_key(string $key): string
@@ -221,17 +234,26 @@ final class Bankai_AI_Studio
                 'tagline'   => '۱۰٬۰۰۰ Neuron/روز رایگان',
                 'docs'      => 'https://developers.cloudflare.com/workers-ai/',
                 'models'    => [
-                    '@cf/meta/llama-3.1-8b-instruct',
-                    '@cf/meta/llama-3.1-70b-instruct',
-                    '@cf/mistral/mistral-7b-instruct-v0.2',
-                    '@cf/google/gemma-7b-it',
+                    '@cf/openai/gpt-oss-120b',
+                    '@cf/openai/gpt-oss-20b',
+                    '@cf/qwen/qwen3.8-27b',
+                    '@cf/google/gemma-4-26b-a4b-it',
+                    '@cf/moonshotai/kimi-k2.7-code',
+                    '@cf/moonshotai/kimi-k2.6',
+                    '@cf/deepseek-ai/deepseek-v4-flash-0731',
+                    '@cf/zai-org/glm-5.3',
+                    '@cf/zai-org/glm-5.2',
+                    '@cf/swiss-ai/apertus-v1.5-8b',
+                    '@cf/utter-project/eurollm-9b-it',
+                    '@cf/cloudflare/clef',
+                    '@cf/cloudflare/clef-flash',
                 ],
-                'default'   => '@cf/meta/llama-3.1-8b-instruct',
+                'default'   => '@cf/openai/gpt-oss-20b',
                 'key_hint'  => 'AccountID|APIToken',
                 'accent'    => '#F6821F',
                 'glow'      => 'rgba(246,130,31,.22)',
                 'free_tier' => true,
-                'order'     => 80,
+                'order'     => 1,
             ],
         ];
     }
@@ -240,7 +262,226 @@ final class Bankai_AI_Studio
     /**
      * Built-in + user-defined custom providers.
      */
-    public static function all_providers_catalog(): array
+
+
+    /**
+     * Image-generation providers (cover + in-content visuals).
+     */
+    public static function image_providers_catalog(): array
+    {
+        return [
+            'cloudflare_image' => [
+                'id'        => 'cloudflare_image',
+                'name'      => 'Cloudflare Workers AI',
+                'tagline'   => 'Flux 2 · Leonardo · SDXL',
+                'docs'      => 'https://developers.cloudflare.com/workers-ai/models/',
+                'models'    => [
+                    '@cf/black-forest-labs/flux-1-schnell',
+                    '@cf/black-forest-labs/flux-2-klein-9b',
+                    '@cf/black-forest-labs/flux-2-klein-4b',
+                    '@cf/black-forest-labs/flux-2-dev',
+                    '@cf/leonardo/lucid-origin',
+                    '@cf/leonardo/phoenix-1.0',
+                    '@cf/bytedance/stable-diffusion-xl-lightning',
+                    '@cf/lykon/dreamshaper-8-lcm',
+                    '@cf/stabilityai/stable-diffusion-xl-base-1.0',
+                    '@cf/runwayml/stable-diffusion-v1-5-inpainting',
+                ],
+                'default'   => '@cf/black-forest-labs/flux-1-schnell',
+                'key_hint'  => 'AccountID|APIToken',
+                'accent'    => '#F6821F',
+                'free_tier' => true,
+                'order'     => 1,
+                'features'  => ['cover', 'inline'],
+            ],
+            'openai_image' => [
+                'id'        => 'openai_image',
+                'name'      => 'OpenAI Images',
+                'tagline'   => 'GPT Image · DALL·E 3',
+                'docs'      => 'https://platform.openai.com/api-keys',
+                'models'    => [
+                    'gpt-image-1',
+                    'dall-e-3',
+                    'dall-e-2',
+                ],
+                'default'   => 'gpt-image-1',
+                'key_hint'  => 'sk-…',
+                'accent'    => '#10A37F',
+                'free_tier' => false,
+                'order'     => 10,
+                'features'  => ['cover', 'inline'],
+            ],
+            'gemini_image' => [
+                'id'        => 'gemini_image',
+                'name'      => 'Google Gemini / Imagen',
+                'tagline'   => 'Imagen 3 · Flash Image',
+                'docs'      => 'https://aistudio.google.com/apikey',
+                'models'    => [
+                    'imagen-3.0-generate-002',
+                    'imagen-3.0-fast-generate-001',
+                    'gemini-2.0-flash-preview-image-generation',
+                    'gemini-2.5-flash-image-preview',
+                ],
+                'default'   => 'imagen-3.0-generate-002',
+                'key_hint'  => 'AIza…',
+                'accent'    => '#4285F4',
+                'free_tier' => true,
+                'order'     => 20,
+                'features'  => ['cover', 'inline'],
+            ],
+            'huggingface_image' => [
+                'id'        => 'huggingface_image',
+                'name'      => 'Hugging Face',
+                'tagline'   => 'FLUX · SD3.5 · رایگان/کردیت',
+                'docs'      => 'https://huggingface.co/settings/tokens',
+                'models'    => [
+                    'black-forest-labs/FLUX.1-schnell',
+                    'black-forest-labs/FLUX.1-dev',
+                    'stabilityai/stable-diffusion-3.5-large',
+                    'stabilityai/stable-diffusion-xl-base-1.0',
+                ],
+                'default'   => 'black-forest-labs/FLUX.1-schnell',
+                'key_hint'  => 'hf_…',
+                'accent'    => '#FFD21E',
+                'free_tier' => true,
+                'order'     => 30,
+                'features'  => ['cover', 'inline'],
+            ],
+            'stability' => [
+                'id'        => 'stability',
+                'name'      => 'Stability AI',
+                'tagline'   => 'Stable Image Core / Ultra',
+                'docs'      => 'https://platform.stability.ai/account/keys',
+                'models'    => [
+                    'stable-image-core',
+                    'stable-image-ultra',
+                    'sd3.5-large',
+                    'sd3.5-medium',
+                ],
+                'default'   => 'stable-image-core',
+                'key_hint'  => 'sk-…',
+                'accent'    => '#9B59B6',
+                'free_tier' => false,
+                'order'     => 40,
+                'features'  => ['cover', 'inline'],
+            ],
+            'replicate' => [
+                'id'        => 'replicate',
+                'name'      => 'Replicate',
+                'tagline'   => 'FLUX · SD3 · متن‌باز',
+                'docs'      => 'https://replicate.com/account/api-tokens',
+                'models'    => [
+                    'black-forest-labs/flux-schnell',
+                    'black-forest-labs/flux-dev',
+                    'black-forest-labs/flux-1.1-pro',
+                    'stability-ai/stable-diffusion-3.5-large',
+                ],
+                'default'   => 'black-forest-labs/flux-schnell',
+                'key_hint'  => 'r8_…',
+                'accent'    => '#111827',
+                'free_tier' => false,
+                'order'     => 50,
+                'features'  => ['cover', 'inline'],
+            ],
+            'together_image' => [
+                'id'        => 'together_image',
+                'name'      => 'Together AI',
+                'tagline'   => 'FLUX · قیمت مناسب',
+                'docs'      => 'https://api.together.xyz/settings/api-keys',
+                'models'    => [
+                    'black-forest-labs/FLUX.1-schnell',
+                    'black-forest-labs/FLUX.1-dev',
+                    'black-forest-labs/FLUX.1.1-pro',
+                    'stabilityai/stable-diffusion-xl-base-1.0',
+                ],
+                'default'   => 'black-forest-labs/FLUX.1-schnell',
+                'key_hint'  => '…',
+                'accent'    => '#0F6FFF',
+                'free_tier' => true,
+                'order'     => 60,
+                'features'  => ['cover', 'inline'],
+            ],
+            'fal_image' => [
+                'id'        => 'fal_image',
+                'name'      => 'fal.ai',
+                'tagline'   => 'FLUX · سرعت بالا',
+                'docs'      => 'https://fal.ai/dashboard/keys',
+                'models'    => [
+                    'fal-ai/flux/schnell',
+                    'fal-ai/flux/dev',
+                    'fal-ai/flux-pro/v1.1',
+                    'fal-ai/stable-diffusion-v35-large',
+                ],
+                'default'   => 'fal-ai/flux/schnell',
+                'key_hint'  => '…',
+                'accent'    => '#E11D48',
+                'free_tier' => false,
+                'order'     => 70,
+                'features'  => ['cover', 'inline'],
+            ],
+        ];
+    }
+
+
+    /** Built-in + user-added image models for a provider. */
+    public static function get_image_provider_models(string $provider): array
+    {
+        $cat = self::image_providers_catalog();
+        $base = array_values($cat[$provider]['models'] ?? []);
+        $extra = get_option('bankai_ai_image_extra_models', []);
+        if (is_array($extra) && !empty($extra[$provider]) && is_array($extra[$provider])) {
+            foreach ($extra[$provider] as $m) {
+                $m = trim((string) $m);
+                if ($m !== '' && !in_array($m, $base, true)) {
+                    $base[] = $m;
+                }
+            }
+        }
+        return $base;
+    }
+
+    public function get_image_keys(): array
+    {
+        $keys = get_option(self::OPT_IMAGE_KEYS, []);
+        return is_array($keys) ? $keys : [];
+    }
+
+    public function get_image_models(): array
+    {
+        $m = get_option(self::OPT_IMAGE_MODELS, []);
+        return is_array($m) ? $m : [];
+    }
+
+    public function get_default_image_provider(): string
+    {
+        $d = (string) get_option(self::OPT_IMAGE_DEFAULT, 'gemini_image');
+        $cat = self::image_providers_catalog();
+        return isset($cat[$d]) ? $d : (array_key_first($cat) ?: 'gemini_image');
+    }
+
+    public function image_provider_status_list(): array
+    {
+        $keys = $this->get_image_keys();
+        $models = $this->get_image_models();
+        $out = [];
+        foreach (self::image_providers_catalog() as $id => $meta) {
+            $key = isset($keys[$id]) ? (string) $keys[$id] : '';
+            $has = $key !== '';
+            $out[] = [
+                'id'         => $id,
+                'name'       => $meta['name'] ?? $id,
+                'has_key'    => $has,
+                'status'     => $has ? 'ready' : 'missing_key',
+                'label'      => $has ? __('آماده', 'bankai-core') : __('بدون کلید API', 'bankai-core'),
+                'masked_key' => $has ? self::mask_key($key) : '',
+                'model'      => $models[$id] ?? ($meta['default'] ?? ''),
+            ];
+        }
+        return $out;
+    }
+
+
+        public static function all_providers_catalog(): array
     {
         $base = self::providers_catalog();
         $custom = get_option(self::OPT_CUSTOM, []);
@@ -522,7 +763,31 @@ final class Bankai_AI_Studio
             wp_send_json_error(['message' => 'Permission denied'], 403);
         }
 
+        // Long-running AI calls (meta, rewrite, links…)
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(300);
+        }
+        if (function_exists('ignore_user_abort')) {
+            @ignore_user_abort(true);
+        }
+
         $task          = sanitize_key(wp_unslash($_POST['task'] ?? ''));
+
+        // سازگاری با پایپ‌لاین مقالات بدون سئو: task=meta → هر دو عنوان و متا
+        if ($task === 'meta' || $task === 'met') {
+            $title_res = $this->run_seo_task_inline('meta_title', $_POST);
+            $desc_res  = $this->run_seo_task_inline('meta_description', $_POST);
+            wp_send_json_success([
+                'seo_title'   => $title_res['seo_title'] ?? ($title_res['text'] ?? ''),
+                'title'       => $title_res['seo_title'] ?? ($title_res['text'] ?? ''),
+                'description' => $desc_res['description'] ?? ($desc_res['text'] ?? ''),
+                'meta_description' => $desc_res['description'] ?? ($desc_res['text'] ?? ''),
+            ]);
+        }
+        // alias لینک داخلی
+        if ($task === 'internal_links') {
+            $task = 'smart_internal_links';
+        }
         $title         = sanitize_text_field(wp_unslash($_POST['title'] ?? ''));
         $raw_content   = wp_unslash($_POST['content'] ?? '');
         $focus         = sanitize_text_field(wp_unslash($_POST['focus_keyword'] ?? ''));
@@ -550,7 +815,17 @@ final class Bankai_AI_Studio
             $content = wp_strip_all_tags($raw_content);
             $content = mb_substr(preg_replace('/\s+/u', ' ', $content), 0, 8000);
         }
-        $is_fa   = (stripos($locale, 'fa') !== false || stripos($locale, 'persian') !== false);
+        // Prefer article language: Persian script in content/title wins over locale alone
+        $sample_lang = $title . ' ' . mb_substr(wp_strip_all_tags($raw_content), 0, 800);
+        $persian_chars = preg_match_all('/[\x{0600}-\x{06FF}]/u', $sample_lang);
+        $latin_chars = preg_match_all('/[A-Za-z]/', $sample_lang);
+        if ($persian_chars >= 8 && $persian_chars >= $latin_chars) {
+            $is_fa = true;
+        } elseif ($latin_chars >= 20 && $latin_chars > $persian_chars * 2) {
+            $is_fa = false;
+        } else {
+            $is_fa = (stripos($locale, 'fa') !== false || stripos($locale, 'persian') !== false || stripos($locale, 'ar') !== false);
+        }
 
         $extra = [
             'img_context'   => $img_context,
@@ -574,98 +849,252 @@ final class Bankai_AI_Studio
         }
 
         $data = $this->parse_seo_response($task, $raw, $focus, $is_fa);
+
+        if ($is_fa && in_array($task, ['meta_title', 'title', 'meta_description', 'description'], true)) {
+            $check = (string) ($data['seo_title'] ?? $data['description'] ?? $data['text'] ?? '');
+            if ($this->looks_like_instruction_echo($check)) {
+                try {
+                    $retry_user = ($task === 'meta_description' || $task === 'description')
+                        ? "فقط متا دیسکریپشن فارسی (۱۴۰ تا ۱۶۰ کاراکتر) برای «{$title}» با کلمه کلیدی «{$focus}» بنویس. هیچ انگلیسی ننویس."
+                        : "فقط عنوان سئو فارسی (۴۵ تا ۶۰ کاراکتر) برای «{$title}» با کلمه کلیدی «{$focus}» بنویس. هیچ انگلیسی ننویس.";
+                    $raw2 = $this->chat($provider, 'فقط خروجی نهایی فارسی. بدون توضیح.', $retry_user, [
+                        'temperature' => 0.3,
+                        'max_tokens'  => ($task === 'meta_description' || $task === 'description') ? 180 : 90,
+                    ]);
+                    $data = $this->parse_seo_response($task, $raw2, $focus, $is_fa);
+                } catch (Throwable $e) {
+                    // keep first
+                }
+            }
+        }
+
         wp_send_json_success($data);
+    }
+
+    private function looks_like_instruction_echo(string $text): bool
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return true;
+        }
+        if (preg_match('/\b(we need to produce|must include|length between|characters inclusive|output only the|hard limit)\b/i', $text)) {
+            return true;
+        }
+        $fa = preg_match_all('/[\x{0600}-\x{06FF}]/u', $text);
+        $en = preg_match_all('/[A-Za-z]/', $text);
+        if ($en > 20 && $fa < 10) {
+            return true;
+        }
+        return false;
+    }
+
+
+    /**
+     * اجرای یک task سئو از داخل همان درخواست AJAX (بدون wp_send_json).
+     */
+    private function run_seo_task_inline(string $task, array $post): array
+    {
+        $title       = sanitize_text_field(wp_unslash($post['title'] ?? ''));
+        $raw_content = wp_unslash($post['content'] ?? '');
+        $content     = wp_strip_all_tags((string) $raw_content);
+        $focus       = sanitize_text_field(wp_unslash($post['focus_keyword'] ?? ''));
+        $locale      = sanitize_text_field(wp_unslash($post['locale'] ?? 'fa_IR'));
+        $provider    = sanitize_key(wp_unslash($post['provider'] ?? ''));
+        if ($provider === '') {
+            $provider = $this->get_default_provider();
+        }
+        $is_fa = (stripos($locale, 'fa') !== false || $locale === 'fa_IR');
+        $extra = [
+            'img_context'   => sanitize_text_field(wp_unslash($post['image_context'] ?? $post['context'] ?? '')),
+            'img_url'       => esc_url_raw(wp_unslash($post['image_url'] ?? $post['src'] ?? '')),
+            'articles_data' => wp_unslash($post['articles_data'] ?? $post['articles'] ?? ''),
+        ];
+        $prompts = $this->build_seo_prompts($task, $title, $content, $focus, $is_fa, $extra);
+        if (!$prompts) {
+            return [];
+        }
+        try {
+            $raw = $this->chat($provider, $prompts['system'], $prompts['user'], [
+                'temperature' => $prompts['temperature'] ?? 0.55,
+                'max_tokens'  => $prompts['max_tokens'] ?? 800,
+            ]);
+            return $this->parse_seo_response($task, (string) $raw, $focus, $is_fa) ?: [];
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     private function build_seo_prompts(string $task, string $title, string $content, string $focus, bool $is_fa, array $extra = []): ?array
     {
-        $lang = $is_fa ? 'Persian (Farsi)' : 'English';
-        $snip_len = ($task === 'rewrite') ? 12000 : 3500;
-        $snippet = $content !== '' ? mb_substr($content, 0, $snip_len) : '(empty)';
+        $snip_len = ($task === 'rewrite') ? 12000 : 4000;
+        $snippet = $content !== '' ? mb_substr($content, 0, $snip_len) : '(خالی)';
         $style = sanitize_key((string) ($extra['rewrite_style'] ?? 'seo'));
 
-        $base_sys = "You are Bankai SEO Agent — a senior SEO strategist and copywriter for WordPress content. "
-            . "Always respond in {$lang}. Follow search intent, include the focus keyword naturally, avoid keyword stuffing, "
-            . "and never invent facts not supported by the content. Do not use markdown fences unless the task explicitly requires JSON.";
+        if ($is_fa) {
+            $lang_rule = 'زبان خروجی فقط فارسی (پارسی ایران) است. هیچ کلمه انگلیسی، لاتین یا ترجمه انگلیسی ننویس مگر نام برند یا URL. از اعداد فارسی در متن عادی استفاده نکن مگر ضروری.';
+            $base_sys = "تو «دستیار سئوی بنکای» هستی؛ متخصص سئو و نویسندگی برای وردپرس فارسی. {$lang_rule} "
+                . 'بر اساس نیت جستجو بنویس، کلمه کلیدی را طبیعی به کار ببر، پر کردن کلمه کلیدی نکن، و واقعیت خارج از محتوا اختراع نکن. '
+                . 'فقط خروجی خواسته‌شده را بده؛ بدون توضیح اضافه، بدون markdown و بدون ```.';
+        } else {
+            $lang_rule = 'Respond only in English.';
+            $base_sys = "You are Bankai SEO Agent for WordPress. {$lang_rule} "
+                . 'Follow search intent, use the focus keyword naturally, no keyword stuffing, no invented facts. '
+                . 'Output only what is asked. No markdown fences.';
+        }
 
         switch ($task) {
             case 'meta_title':
             case 'title':
+                if ($is_fa) {
+                    return [
+                        'system' => 'نقش تو: نویسنده عنوان سئو فارسی. پاسخ تو باید فقط یک خط عنوان فارسی باشد. هرگز انگلیسی ننویس. هرگز دستورالعمل، توضیح، یا جمله‌ای مثل We need / Must / length ننویس. فقط عنوان نهایی.',
+                        'user'   => "عنوان سئو بنویس.\nقوانین: فقط فارسی | ۴۵ تا ۶۰ کاراکتر | کلمه کلیدی نزدیک ابتدا | بدون گیومه\nکلمه کلیدی: {$focus}\nموضوع/عنوان: {$title}\nخلاصه محتوا: " . mb_substr($snippet, 0, 600) . "\n\nعنوان:",
+                        'temperature' => 0.35,
+                        'max_tokens'  => 90,
+                    ];
+                }
                 return [
-                    'system' => $base_sys . ' Output ONLY the SEO title text, nothing else. Target length: 50–60 Persian characters. Include the focus keyword naturally near the beginning. Do NOT truncate or leave incomplete.',
-                    'user'   => "Write a complete, highly engaging, and standard-compliant SEO meta title (50–60 characters).\nFocus keyword: {$focus}\nArticle title: {$title}\nContent excerpt:\n{$snippet}",
-                    'temperature' => 0.5,
-                    'max_tokens'  => 120,
+                    'system' => 'You write SEO titles. Reply with ONLY the final title line. No instructions, no quotes, no preamble.',
+                    'user'   => "SEO title (45-60 chars), include focus keyword near start.\nFocus: {$focus}\nTitle: {$title}\nExcerpt: " . mb_substr($snippet, 0, 600) . "\n\nTitle:",
+                    'temperature' => 0.4,
+                    'max_tokens'  => 80,
                 ];
 
             case 'meta_description':
             case 'description':
+                if ($is_fa) {
+                    return [
+                        'system' => 'نقش تو: نویسنده متا دیسکریپشن فارسی. پاسخ تو باید فقط همان متن توضیحات باشد. هرگز انگلیسی ننویس. هرگز دستورالعمل یا جمله We need / Must / length ننویس.',
+                        'user'   => "متا دیسکریپشن بنویس.\nقوانین: فقط فارسی | ۱۴۰ تا ۱۶۰ کاراکتر | شامل کلمه کلیدی | دعوت به کلیک | بدون گیومه\nکلمه کلیدی: {$focus}\nعنوان: {$title}\nخلاصه: " . mb_substr($snippet, 0, 800) . "\n\nتوضیحات:",
+                        'temperature' => 0.4,
+                        'max_tokens'  => 180,
+                    ];
+                }
                 return [
-                    'system' => $base_sys . ' Output ONLY the meta description text, nothing else. Target length: 125–155 Persian characters. Include the focus keyword and a clear value call-to-action or summary.',
-                    'user'   => "Write an engaging, complete, and standard-compliant SEO meta description (125–155 characters).\nFocus keyword: {$focus}\nArticle title: {$title}\nContent excerpt:\n{$snippet}",
-                    'temperature' => 0.55,
-                    'max_tokens'  => 180,
+                    'system' => 'You write SEO meta descriptions. Reply with ONLY the final description. No instructions or preamble.',
+                    'user'   => "Meta description (140-160 chars) including focus keyword.\nFocus: {$focus}\nTitle: {$title}\nExcerpt: " . mb_substr($snippet, 0, 800) . "\n\nDescription:",
+                    'temperature' => 0.45,
+                    'max_tokens'  => 160,
                 ];
 
             case 'focus_keyword':
+                if ($is_fa) {
+                    return [
+                        'system' => $base_sys . ' فقط یک عبارت کلیدی اصلی (۲ تا ۵ کلمه فارسی) برگردان. بدون توضیح و بدون گیومه.',
+                        'user'   => "بهترین کلمه/عبارت کلیدی اصلی این مقاله چیست؟\nعنوان: {$title}\nمحتوا:\n{$snippet}",
+                        'temperature' => 0.25,
+                        'max_tokens'  => 40,
+                    ];
+                }
                 return [
-                    'system' => $base_sys . ' Output ONLY one primary focus keyword/phrase (2–5 words). No quotes, no explanation.',
-                    'user'   => "Suggest the best primary focus keyword for this article.\nTitle: {$title}\nContent:\n{$snippet}",
+                    'system' => $base_sys . ' Output ONLY one primary focus keyword (2–5 words).',
+                    'user'   => "Best focus keyword?\nTitle: {$title}\nContent:\n{$snippet}",
                     'temperature' => 0.3,
                     'max_tokens'  => 40,
                 ];
 
             case 'keywords':
+                if ($is_fa) {
+                    return [
+                        'system' => $base_sys . ' فقط یک آرایه JSON از حداقل ۵ و حداکثر ۱۲ کلیدواژه فرعی فارسی (رشته). حداقل ۵ مورد الزامی است. مثال: ["کلمه۱","کلمه۲","کلمه۳","کلمه۴","کلمه۵"]. بدون markdown.',
+                        'user'   => "حداقل ۵ کلیدواژه فرعی سئو پیشنهاد بده.\nکلمه اصلی: {$focus}\nعنوان: {$title}\nمحتوا:\n{$snippet}",
+                        'temperature' => 0.4,
+                        'max_tokens'  => 400,
+                    ];
+                }
                 return [
-                    'system' => $base_sys . ' Output a JSON array of 8–12 secondary keywords (strings only). Example: ["kw1","kw2"]. No markdown fences.',
-                    'user'   => "Suggest secondary SEO keywords related to this article.\nPrimary focus: {$focus}\nTitle: {$title}\nContent:\n{$snippet}",
-                    'temperature' => 0.45,
-                    'max_tokens'  => 300,
+                    'system' => $base_sys . ' Output JSON array of at least 5 and up to 12 secondary keywords only. Minimum 5 required.',
+                    'user'   => "Suggest at least 5 secondary SEO keywords.\nFocus: {$focus}\nTitle: {$title}\nContent:\n{$snippet}",
+                    'temperature' => 0.4,
+                    'max_tokens'  => 350,
                 ];
 
             case 'rewrite':
-                $style_hint = [
-                    'seo'       => 'Optimize for SEO: clear H2/H3 structure, natural focus keyword usage, scannable paragraphs.',
-                    'formal'    => 'Use a formal, professional tone suitable for business or academic readers.',
-                    'simple'    => 'Simplify language for a general audience; short sentences and clear explanations.',
-                    'engaging'  => 'Make it more engaging and persuasive while staying factual.',
-                    'expand'    => 'Expand the content with useful detail while staying on-topic; keep structure.',
-                    'shorten'   => 'Condense the article; keep key points, remove fluff, preserve headings.',
+                $style_hint_fa = [
+                    'seo'      => 'ساختار H2/H3 واضح، کلمه کلیدی طبیعی، پاراگراف‌های کوتاه.',
+                    'formal'   => 'لحن رسمی و حرفه‌ای.',
+                    'simple'   => 'زبان ساده و همه‌فهم؛ جملات کوتاه.',
+                    'engaging' => 'جذاب و روان با حفظ دقت.',
+                    'expand'   => 'گسترش مفید محتوا با حفظ موضوع.',
+                    'shorten'  => 'کوتاه‌سازی با حفظ نکات کلیدی.',
                 ];
-                $hint = $style_hint[$style] ?? $style_hint['seo'];
+                $style_hint_en = [
+                    'seo' => 'Clear H2/H3, natural keyword usage.',
+                    'formal' => 'Formal tone.',
+                    'simple' => 'Simple language.',
+                    'engaging' => 'Engaging tone.',
+                    'expand' => 'Expand usefully.',
+                    'shorten' => 'Condense, keep key points.',
+                ];
+                if ($is_fa) {
+                    $hint = $style_hint_fa[$style] ?? $style_hint_fa['seo'];
+                    return [
+                        'system' => $base_sys . ' کل بدنه مقاله را بازنویسی کن. فقط HTML با تگ‌های p,h2,h3,ul,ol,li,strong,em,a. بدون markdown و بدون تگ html/body. ' . $hint,
+                        'user'   => "بازنویسی کن.\nعنوان: {$title}\nکلمه کلیدی: {$focus}\nسبک: {$style}\n\nمحتوا:\n{$snippet}",
+                        'temperature' => 0.6,
+                        'max_tokens'  => 8000,
+                    ];
+                }
+                $hint = $style_hint_en[$style] ?? $style_hint_en['seo'];
                 return [
-                    'system' => $base_sys . ' You rewrite full article bodies. Output ONLY valid HTML body fragments using <p>, <h2>, <h3>, <ul>, <ol>, <li>, <strong>, <em>, <a>. No markdown, no code fences, no title tag, no html/body wrappers. Preserve meaning and language. Approximate length unless style says expand/shorten. ' . $hint,
-                    'user'   => "Rewrite this article body.\nTitle: {$title}\nFocus keyword: {$focus}\nStyle: {$style}\n\nContent:\n{$snippet}",
+                    'system' => $base_sys . ' Rewrite article body as HTML fragments only. ' . $hint,
+                    'user'   => "Rewrite.\nTitle: {$title}\nFocus: {$focus}\nStyle: {$style}\n\nContent:\n{$snippet}",
                     'temperature' => 0.62,
                     'max_tokens'  => 8000,
                 ];
 
             case 'outline':
+                if ($is_fa) {
+                    return [
+                        'system' => $base_sys . ' فقط فهرست سرفصل‌های H2/H3 به فارسی، هر خط یک سرفصل.',
+                        'user'   => "طرح کلی سئو بساز.\nعنوان: {$title}\nکلمه کلیدی: {$focus}\nمحتوا:\n{$snippet}",
+                        'temperature' => 0.45,
+                        'max_tokens'  => 600,
+                    ];
+                }
                 return [
-                    'system' => $base_sys . ' Output a structured outline with H2/H3 headings only, one per line.',
-                    'user'   => "Create an SEO content outline.\nTitle: {$title}\nFocus: {$focus}\nContent:\n{$snippet}",
+                    'system' => $base_sys . ' H2/H3 outline only, one per line.',
+                    'user'   => "SEO outline.\nTitle: {$title}\nFocus: {$focus}\nContent:\n{$snippet}",
                     'temperature' => 0.5,
                     'max_tokens'  => 600,
                 ];
 
             case 'alt_text':
             case 'image_alt_text':
-                $ctx_str = !empty($extra['img_context']) ? "\nSurrounding context: " . $extra['img_context'] : '';
-                $url_str = !empty($extra['img_url']) ? "\nImage URL: " . $extra['img_url'] : '';
+                $ctx_str = !empty($extra['img_context']) ? "\nبافت اطراف تصویر: " . $extra['img_context'] : '';
+                $url_str = !empty($extra['img_url']) ? "\nآدرس تصویر: " . $extra['img_url'] : '';
+                if ($is_fa) {
+                    return [
+                        'system' => $base_sys . ' فقط یک متن جایگزین (alt) کوتاه و توصیفی فارسی زیر ۱۲۵ کاراکتر. بدون گیومه و بدون پیشوند.',
+                        'user'   => "alt مناسب تصویر داخل مقاله.\nعنوان مقاله: {$title}\nکلمه کلیدی: {$focus}{$ctx_str}{$url_str}\nگزیده:\n{$snippet}",
+                        'temperature' => 0.35,
+                        'max_tokens'  => 90,
+                    ];
+                }
                 return [
-                    'system' => $base_sys . ' Output ONLY a short, descriptive image alt text (under 125 characters). No quotes, no explanation, no markdown.',
-                    'user'   => "Suggest an alt text for an image inside this article.\nArticle Title: {$title}\nFocus Keyword: {$focus}{$ctx_str}{$url_str}\nContent excerpt:\n{$snippet}",
+                    'system' => $base_sys . ' Output ONLY short alt text under 125 chars.',
+                    'user'   => "Alt for image.\nTitle: {$title}\nFocus: {$focus}{$ctx_str}{$url_str}\nExcerpt:\n{$snippet}",
                     'temperature' => 0.4,
                     'max_tokens'  => 80,
                 ];
 
             case 'smart_internal_links':
-                $art_str = !empty($extra['articles_data']) ? (is_string($extra['articles_data']) ? $extra['articles_data'] : wp_json_encode($extra['articles_data'], JSON_UNESCAPED_UNICODE)) : '[]';
+                $art_str = !empty($extra['articles_data'])
+                    ? (is_string($extra['articles_data']) ? $extra['articles_data'] : wp_json_encode($extra['articles_data'], JSON_UNESCAPED_UNICODE))
+                    : '[]';
+                if ($is_fa) {
+                    return [
+                        'system' => $base_sys . ' فقط یک آرایه JSON از پیشنهاد لینک داخلی. هر آیتم: keyword (عبارت لنگر فارسی موجود یا مناسب در متن)، target_post_id (عدد از لیست)، target_title، target_url، reason (یک جمله فارسی). فقط از مقالات همین لیست استفاده کن. بدون markdown.',
+                        'user'   => "برای این مقاله لینک داخلی هوشمند پیشنهاد بده (حداکثر ۸ مورد).\nعنوان: {$title}\nکلمه کلیدی: {$focus}\nگزیده مقاله:\n{$snippet}\n\nمقالات موجود سایت (فقط از این‌ها انتخاب کن):\n{$art_str}",
+                        'temperature' => 0.35,
+                        'max_tokens'  => 1200,
+                    ];
+                }
                 return [
-                    'system' => $base_sys . ' Output ONLY a valid JSON array of objects representing recommended internal link insertions pointing to published site articles. Each object MUST contain: "keyword" (anchor phrase found or relevant to insert in content), "target_post_id" (integer ID), "target_title" (string), "target_url" (permalink string), and "reason" (short 1-sentence explanation in ' . $lang . '). Output ONLY the JSON array without markdown fences.',
-                    'user'   => "Analyze this article and recommend internal links to site articles.\nArticle Title: {$title}\nFocus Keyword: {$focus}\nArticle Snippet:\n{$snippet}\n\nAvailable site articles:\n{$art_str}",
-                    'temperature' => 0.45,
-                    'max_tokens'  => 800,
+                    'system' => $base_sys . ' Output ONLY JSON array of internal link objects with keyword, target_post_id, target_title, target_url, reason. Use only listed articles.',
+                    'user'   => "Recommend internal links.\nTitle: {$title}\nFocus: {$focus}\nSnippet:\n{$snippet}\n\nSite articles:\n{$art_str}",
+                    'temperature' => 0.4,
+                    'max_tokens'  => 1000,
                 ];
 
             default:
@@ -686,14 +1115,14 @@ final class Bankai_AI_Studio
         switch ($task) {
             case 'meta_title':
             case 'title':
-                $title = $this->clean_one_line($text, 70);
+                $title = $this->clean_one_line($text, 60);
                 $out['seo_title'] = $title;
                 $out['text'] = $title;
                 break;
 
             case 'meta_description':
             case 'description':
-                $desc = $this->clean_one_line($text, 170);
+                $desc = $this->clean_one_line($text, 160);
                 $out['description'] = $desc;
                 $out['text'] = $desc;
                 break;
@@ -769,23 +1198,45 @@ final class Bankai_AI_Studio
 
             case 'smart_internal_links':
                 $links = [];
+                $decoded = null;
                 if (preg_match('/\[[\s\S]*\]/u', $text, $m)) {
                     $decoded = json_decode($m[0], true);
-                    if (is_array($decoded)) {
-                        foreach ($decoded as $item) {
-                            if (is_array($item) && !empty($item['keyword']) && !empty($item['target_url'])) {
-                                $links[] = [
-                                    'keyword'        => sanitize_text_field($item['keyword']),
-                                    'target_post_id' => absint($item['target_post_id'] ?? 0),
-                                    'target_title'   => sanitize_text_field($item['target_title'] ?? ''),
-                                    'target_url'     => esc_url_raw($item['target_url']),
-                                    'reason'         => sanitize_text_field($item['reason'] ?? ''),
-                                ];
-                            }
+                }
+                if (!is_array($decoded)) {
+                    $decoded = json_decode($text, true);
+                }
+                if (is_array($decoded)) {
+                    // Handle { "links": [...] }
+                    if (isset($decoded['links']) && is_array($decoded['links'])) {
+                        $decoded = $decoded['links'];
+                    }
+                    foreach ($decoded as $item) {
+                        if (!is_array($item)) {
+                            continue;
                         }
+                        $kw  = sanitize_text_field((string) ($item['keyword'] ?? $item['anchor'] ?? $item['phrase'] ?? ''));
+                        $url = esc_url_raw((string) ($item['target_url'] ?? $item['url'] ?? $item['permalink'] ?? ''));
+                        $pid = absint($item['target_post_id'] ?? $item['post_id'] ?? $item['id'] ?? 0);
+                        $ttl = sanitize_text_field((string) ($item['target_title'] ?? $item['title'] ?? ''));
+                        if ($pid > 0 && $url === '') {
+                            $url = (string) get_permalink($pid);
+                        }
+                        if ($pid > 0 && $ttl === '') {
+                            $ttl = get_the_title($pid);
+                        }
+                        if ($kw === '' || $url === '') {
+                            continue;
+                        }
+                        $links[] = [
+                            'keyword'        => $kw,
+                            'target_post_id' => $pid,
+                            'target_title'   => $ttl,
+                            'target_url'     => $url,
+                            'reason'         => sanitize_text_field((string) ($item['reason'] ?? $item['why'] ?? '')),
+                        ];
                     }
                 }
-                $out['links'] = $links;
+                $out['links'] = array_slice($links, 0, 12);
                 break;
         }
 
@@ -794,14 +1245,50 @@ final class Bankai_AI_Studio
 
     private function clean_one_line(string $text, int $max): string
     {
-        $text = preg_replace('/\s+/u', ' ', $text);
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        $lines = array_values(array_filter(array_map('trim', explode("\n", $text))));
+        if (count($lines) > 1) {
+            $best = '';
+            $bestScore = -1;
+            foreach ($lines as $line) {
+                $line = trim($line, " \t\"'«»");
+                if ($line === '') {
+                    continue;
+                }
+                if (preg_match('/^(we need|must |output only|hard (limit|length)|length between|including spaces|rules?:|قوانین|خروجی فقط)/iu', $line)) {
+                    continue;
+                }
+                if (preg_match('/\b(we need to produce|must include keyword|characters inclusive)\b/iu', $line)) {
+                    continue;
+                }
+                $fa = preg_match_all('/[\x{0600}-\x{06FF}]/u', $line);
+                $score = $fa * 3 + min(60, mb_strlen($line));
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $best = $line;
+                }
+            }
+            if ($best !== '') {
+                $text = $best;
+            }
+        }
+
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
         $text = trim($text, " \t\"'«»\n\r");
-        // Drop leading labels like "Title:" / "عنوان:"
-        $text = preg_replace('/^(title|seo title|meta title|description|meta description|keyword|focus keyword|عنوان|توضیحات|کلمه کلیدی)\s*[:：\-]\s*/iu', '', $text);
+        $text = preg_replace('/^(title|seo title|meta title|description|meta description|keyword|focus keyword|عنوان|توضیحات|کلمه کلیدی|عنوان سئو|متا)\s*[:：\-]\s*/iu', '', $text) ?? $text;
+
+        if (preg_match('/\b(we need to produce|must include|length between|characters inclusive)\b/iu', $text)) {
+            if (preg_match_all('/[\x{0600}-\x{06FF}][^A-Za-z]{0,200}/u', $text, $mm)) {
+                $joined = trim(implode('', $mm[0]));
+                if (mb_strlen($joined) >= 12) {
+                    $text = $joined;
+                }
+            }
+        }
+
         if (mb_strlen($text) > $max) {
             $text = mb_substr($text, 0, $max - 1);
-            // avoid cutting mid-word roughly
-            $text = preg_replace('/\s+\S*$/u', '', $text);
+            $text = preg_replace('/\s+\S*$/u', '', $text) ?? $text;
         }
         return trim($text);
     }
@@ -1253,7 +1740,7 @@ final class Bankai_AI_Studio
     private function http_json(string $url, array $body, array $headers): array
     {
         $args = [
-            'timeout' => 90,
+            'timeout' => 150,
             'headers' => array_merge([
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
@@ -1473,6 +1960,49 @@ final class Bankai_AI_Studio
             'label'  => __('بدون کلید API', 'bankai-core'),
             'message'=> __('کلید حذف شد', 'bankai-core'),
         ]);
+    }
+
+
+
+    public function ajax_test_connection(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts') && !current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
+        if ($provider === '') {
+            $provider = $this->get_default_provider();
+        }
+        $keys = $this->get_keys();
+        if (empty($keys[$provider])) {
+            foreach ($this->provider_status_list() as $row) {
+                if (!empty($row['has_key'])) {
+                    $provider = (string) $row['id'];
+                    break;
+                }
+            }
+        }
+        if (empty($keys[$provider])) {
+            wp_send_json_error(['message' => 'هیچ کلید API معتبری یافت نشد. ابتدا در استودیو هوش مصنوعی کلید را ذخیره کنید.']);
+        }
+        try {
+            $text = $this->chat($provider, 'Reply with exactly the word OK and nothing else.', 'ping', [
+                'max_tokens'  => 16,
+                'temperature' => 0,
+            ]);
+            $ok = is_string($text) && trim($text) !== '';
+            if (!$ok) {
+                wp_send_json_error(['message' => 'پاسخ خالی از موتور AI']);
+            }
+            wp_send_json_success([
+                'message'  => 'اتصال برقرار است',
+                'provider' => $provider,
+                'sample'   => mb_substr(trim($text), 0, 40),
+            ]);
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
     }
 
     public function ajax_test_connections(): void
@@ -1971,6 +2501,76 @@ final class Bankai_AI_Studio
     }
 
 
+
+    /**
+     * Convert classic HTML body into Gutenberg block markup so the editor is editable without "Convert to blocks".
+     */
+    public function html_to_gutenberg_blocks(string $html): string
+    {
+        $html = trim($html);
+        if ($html === '') {
+            return '';
+        }
+        // Already block content
+        if (strpos($html, '<!-- wp:') !== false) {
+            return $html;
+        }
+        // Strip accidental fences / wrappers
+        $html = preg_replace('/^```(?:html)?\s*/i', '', $html);
+        $html = preg_replace('/\s*```$/', '', $html);
+        $html = preg_replace('/<\/?(?:html|body|head)[^>]*>/i', '', $html);
+        $html = trim($html);
+
+        // Normalize line breaks between block elements
+        $html = preg_replace('/\r\n|\r/', "\n", $html);
+
+        $blocks = [];
+        // Match common block-level chunks
+        $pattern = '/<(h[1-6]|p|ul|ol|blockquote|pre|figure|table)(\s[^>]*)?>[\s\S]*?<\/\1>/iu';
+        if (preg_match_all($pattern, $html, $matches)) {
+            foreach ($matches[0] as $i => $chunk) {
+                $tag = strtolower($matches[1][$i]);
+                $chunk = trim($chunk);
+                if ($tag === 'p') {
+                    $blocks[] = "<!-- wp:paragraph -->\n{$chunk}\n<!-- /wp:paragraph -->";
+                } elseif (preg_match('/^h([1-6])$/', $tag, $hm)) {
+                    $level = (int) $hm[1];
+                    $blocks[] = "<!-- wp:heading {\"level\":{$level}} -->\n{$chunk}\n<!-- /wp:heading -->";
+                } elseif ($tag === 'ul') {
+                    $blocks[] = "<!-- wp:list -->\n{$chunk}\n<!-- /wp:list -->";
+                } elseif ($tag === 'ol') {
+                    $blocks[] = "<!-- wp:list {\"ordered\":true} -->\n{$chunk}\n<!-- /wp:list -->";
+                } elseif ($tag === 'blockquote') {
+                    $blocks[] = "<!-- wp:quote -->\n{$chunk}\n<!-- /wp:quote -->";
+                } elseif ($tag === 'pre') {
+                    $blocks[] = "<!-- wp:code -->\n{$chunk}\n<!-- /wp:code -->";
+                } elseif ($tag === 'figure') {
+                    $blocks[] = "<!-- wp:html -->\n{$chunk}\n<!-- /wp:html -->";
+                } elseif ($tag === 'table') {
+                    $blocks[] = "<!-- wp:table -->\n<figure class=\"wp-block-table\">{$chunk}</figure>\n<!-- /wp:table -->";
+                } else {
+                    $blocks[] = "<!-- wp:html -->\n{$chunk}\n<!-- /wp:html -->";
+                }
+            }
+        }
+
+        if (!$blocks) {
+            // Fallback: split by double newlines into paragraphs
+            $plain = wp_strip_all_tags($html, true);
+            $paras = preg_split('/\n{2,}/u', $plain) ?: [$plain];
+            foreach ($paras as $para) {
+                $para = trim($para);
+                if ($para === '') {
+                    continue;
+                }
+                $p = '<p>' . esc_html($para) . '</p>';
+                $blocks[] = "<!-- wp:paragraph -->\n{$p}\n<!-- /wp:paragraph -->";
+            }
+        }
+
+        return implode("\n\n", $blocks);
+    }
+
     public function ajax_generate_article(): void
     {
         check_ajax_referer('bankai_admin_nonce', 'nonce');
@@ -1983,23 +2583,47 @@ final class Bankai_AI_Studio
         $status = sanitize_key($_POST['status'] ?? 'draft');
         $schedule_at = sanitize_text_field(wp_unslash($_POST['schedule_at'] ?? ''));
         $notes = sanitize_textarea_field(wp_unslash($_POST['notes'] ?? ''));
+        $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
+        if ($provider === '') {
+            $provider = $this->get_default_provider();
+        }
+        // Ensure provider has a key when possible
+        $keys = $this->get_keys();
+        if (empty($keys[$provider])) {
+            // fallback to first ready provider
+            foreach ($this->provider_status_list() as $row) {
+                if (!empty($row['has_key'])) {
+                    $provider = $row['id'];
+                    break;
+                }
+            }
+            if (empty($keys[$provider])) {
+                wp_send_json_error(['message' => 'هیچ موتور AI با کلید معتبر فعال نیست. ابتدا در استودیو هوش مصنوعی کلید را ذخیره کنید.']);
+            }
+        }
         if ($topic === '') {
             wp_send_json_error(['message' => 'موضوع خالی است']);
         }
         $length = max(400, min(7000, $length));
-        $system = 'شما نویسنده حرفه‌ای سئو به زبان فارسی هستید. خروجی فقط بدنه مقاله HTML ساده با تگ‌های p, h2, h3, ul, li باشد. بدون markdown و بدون عنوان اصلی تکراری.';
-        $user = "موضوع: {$topic}\nکلمه کلیدی: {$focus}\nطول تقریبی: {$length} کلمه\nدستورالعمل: {$notes}\nیک مقاله کامل، ساختارمند و قابل انتشار بنویس.";
+        $system = 'تو نویسنده ارشد سئو به زبان فارسی هستی. خروجی فقط HTML بدنه مقاله با تگ‌های p, h2, h3, ul, ol, li, strong, a است. بدون markdown، بدون ```، بدون H1، بدون مقدمهٔ انگلیسی. حداقل ' . $length . ' کلمه واقعی. ساختار: مقدمه کوتاه، چند H2، زیرعنوان H3 در صورت نیاز، لیست، جمع‌بندی. پاراگراف‌ها حداکثر ۳–۴ جمله. کلمه کلیدی اصلی را در مقدمه، حداقل یک H2 و جمع‌بندی طبیعی به‌کار ببر.';
+        $user = "عنوان مقاله: {$topic}\nکلمه کلیدی اصلی: {$focus}\nطول هدف: حدود {$length} کلمه\nدستورالعمل اضافه: {$notes}\n\nمقاله کامل، تخصصی، قابل انتشار و بهینه‌شده برای سئو بنویس. از تکرار مصنوعی کلمه کلیدی پرهیز کن (چگالی حدود ۱٪).";
         try {
-            $body = $this->chat($this->get_default_provider(), $system, $user, [
+            $body = $this->chat($provider, $system, $user, [
                 'temperature' => 0.65,
                 'max_tokens'  => min(16000, max(2000, (int) ($length * 2.5))),
             ]);
         } catch (Throwable $e) {
             wp_send_json_error(['message' => $e->getMessage()], 500);
         }
+        // Clean model output then convert to Gutenberg blocks (avoids "Convert to blocks" in editor)
+        $body = preg_replace('/^```(?:html)?\s*/i', '', trim((string) $body));
+        $body = preg_replace('/\s*```$/', '', $body);
+        $body = wp_kses_post($body);
+        $body = $this->html_to_gutenberg_blocks($body);
+
         $postarr = [
             'post_title'   => $topic,
-            'post_content' => wp_kses_post($body),
+            'post_content' => $body,
             'post_status'  => $status === 'future' ? 'future' : 'draft',
             'post_type'    => 'post',
             'post_author'  => get_current_user_id(),
@@ -2055,6 +2679,8 @@ final class Bankai_AI_Studio
                 if (is_array($kws) && $kws) {
                     update_post_meta($post_id, '_bankai_seo_keywords', wp_json_encode(array_values($kws), JSON_UNESCAPED_UNICODE));
                     $seo_done[] = 'keywords';
+                    $this->assign_terms_from_keywords((int) $post_id, $kws, $focus);
+                    $seo_done[] = 'terms';
                 }
             } catch (\Throwable $e) {
                 // keep post even if SEO steps fail
@@ -2116,6 +2742,1005 @@ final class Bankai_AI_Studio
         if ($post && $post->post_status === 'future') {
             wp_publish_post($post_id);
         }
+    }
+
+
+
+    /**
+     * Strip quotes, brackets, HTML entities from AI titles.
+     */
+    private function clean_ai_title(string $title): string
+    {
+        $title = html_entity_decode($title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $title = trim($title);
+        // Unwrap accidental JSON array / quoted wrappers
+        if ((str_starts_with($title, '[') && str_ends_with($title, ']'))
+            || (str_starts_with($title, '"') && str_ends_with($title, '"'))) {
+            $decoded = json_decode($title, true);
+            if (is_array($decoded) && isset($decoded[0]) && is_string($decoded[0])) {
+                $title = $decoded[0];
+            } elseif (is_string($decoded)) {
+                $title = $decoded;
+            }
+        }
+        $title = html_entity_decode((string) $title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $title = preg_replace('/^[\[\(\{\s«"\'‘’“”`]+/u', '', $title) ?? $title;
+        $title = preg_replace('/[\]\)\}\s»"\'‘’“”`]+$/u', '', $title) ?? $title;
+        $title = preg_replace('/\s+/u', ' ', $title) ?? $title;
+        return sanitize_text_field(trim($title));
+    }
+
+    public function ajax_suggest_titles(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $topic = sanitize_text_field(wp_unslash($_POST['topic'] ?? ''));
+        $count = max(3, min(20, absint($_POST['count'] ?? 10)));
+        $category = sanitize_text_field(wp_unslash($_POST['category'] ?? ''));
+        $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
+        if ($provider === '') {
+            $provider = $this->get_default_provider();
+        }
+        if ($topic === '') {
+            wp_send_json_error(['message' => 'موضوع یا کلمه کلیدی را وارد کنید']);
+        }
+        $keys = $this->get_keys();
+        if (empty($keys[$provider])) {
+            foreach ($this->provider_status_list() as $row) {
+                if (!empty($row['has_key'])) {
+                    $provider = (string) $row['id'];
+                    break;
+                }
+            }
+            if (empty($keys[$provider])) {
+                wp_send_json_error(['message' => 'کلید API برای موتور انتخابی تنظیم نشده است']);
+            }
+        }
+
+        // Context from existing site content (titles + keywords)
+        $ctx_lines = [];
+        $recent = get_posts([
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => 25,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'fields' => 'ids',
+        ]);
+        foreach ($recent as $rid) {
+            $rid = (int) $rid;
+            $title = get_the_title($rid);
+            $kws = get_post_meta($rid, '_bankai_seo_keywords', true);
+            $focus = (string) get_post_meta($rid, '_bankai_seo_focus_keyword', true);
+            $kw_list = [];
+            if (is_string($kws) && $kws !== '') {
+                $decoded = json_decode($kws, true);
+                if (is_array($decoded)) {
+                    $kw_list = array_map('strval', $decoded);
+                } else {
+                    $kw_list = preg_split('/[,،]+/u', $kws) ?: [];
+                }
+            }
+            if ($focus !== '') {
+                array_unshift($kw_list, $focus);
+            }
+            $kw_list = array_slice(array_values(array_unique(array_filter(array_map('trim', $kw_list)))), 0, 6);
+            $ctx_lines[] = '- ' . $title . ($kw_list ? ' | KW: ' . implode('، ', $kw_list) : '');
+        }
+        $site_ctx = $ctx_lines ? implode("\n", array_slice($ctx_lines, 0, 25)) : '(no prior posts)';
+
+        $system = 'تو استراتژیست عنوان سئوی فارسی برای وردپرس هستی. فقط یک آرایه JSON از رشته‌های عنوان برگردان. بدون markdown، بدون شماره‌گذاری، بدون گیومه تزئینی داخل رشته‌ها. هر عنوان متن ساده فارسی باشد.';
+        $user = "Suggest {$count} unique, creative, SEO-optimized long article titles in Persian.
+Topic/keyword: {$topic}
+Category hint: {$category}
+Rules:
+- Length: prefer 60–110 characters (longer, descriptive, not spammy)
+- Include the keyword naturally
+- Differentiate angles: how-to, comparison, checklist, mistakes, trends, beginner vs pro
+- Do not repeat or closely paraphrase existing titles
+
+Existing site titles + keywords (inspiration only):
+{$site_ctx}";
+        try {
+            $raw = $this->chat($provider, $system, $user, ['temperature' => 0.7, 'max_tokens' => 1200]);
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage()], 500);
+        }
+        $titles = [];
+        $text = trim((string) $raw);
+        $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
+        $text = preg_replace('/```$/', '', $text);
+        $decoded = json_decode($text, true);
+        if (is_array($decoded)) {
+            foreach ($decoded as $item) {
+                if (is_string($item) && trim($item) !== '') {
+                    $titles[] = $this->clean_ai_title($item);
+                } elseif (is_array($item) && !empty($item['title'])) {
+                    $titles[] = $this->clean_ai_title((string) $item['title']);
+                }
+            }
+        } else {
+            foreach (preg_split('/\r\n|\n|\r/', $text) as $line) {
+                $line = trim(preg_replace('/^[\d\-\.\*\)]+\s*/u', '', $line));
+                if ($line !== '') {
+                    $titles[] = $this->clean_ai_title($line);
+                }
+            }
+        }
+        $titles = array_values(array_unique(array_filter($titles)));
+        $titles = array_slice($titles, 0, $count);
+        if (!$titles) {
+            wp_send_json_error(['message' => 'پیشنهادی دریافت نشد']);
+        }
+        wp_send_json_success(['titles' => $titles, 'provider' => $provider]);
+    }
+
+    /**
+     * Assign categories/tags from keyword list (create if missing).
+     */
+    /**
+     * Find existing term by name/slug (case-insensitive) or create it.
+     * @return int term_id or 0
+     */
+    private function find_or_create_term(string $name, string $taxonomy): int
+    {
+        $name = trim(wp_strip_all_tags($name));
+        if ($name === '') {
+            return 0;
+        }
+        // Exact
+        $found = term_exists($name, $taxonomy);
+        if ($found) {
+            return is_array($found) ? (int) $found['term_id'] : (int) $found;
+        }
+        // Slug match
+        $slug = sanitize_title($name);
+        $by_slug = get_term_by('slug', $slug, $taxonomy);
+        if ($by_slug && !is_wp_error($by_slug)) {
+            return (int) $by_slug->term_id;
+        }
+        // Case-insensitive scan among existing terms (limit)
+        $all = get_terms([
+            'taxonomy'   => $taxonomy,
+            'hide_empty' => false,
+            'number'     => 500,
+        ]);
+        if (!is_wp_error($all) && is_array($all)) {
+            $needle = mb_strtolower($name);
+            foreach ($all as $term) {
+                if (mb_strtolower($term->name) === $needle) {
+                    return (int) $term->term_id;
+                }
+            }
+            // Partial / contains match for categories (prefer existing over proliferating)
+            if ($taxonomy === 'category') {
+                foreach ($all as $term) {
+                    $tn = mb_strtolower($term->name);
+                    if ($tn !== '' && (str_contains($needle, $tn) || str_contains($tn, $needle))) {
+                        return (int) $term->term_id;
+                    }
+                }
+            }
+        }
+        $created = wp_insert_term($name, $taxonomy);
+        if (is_wp_error($created)) {
+            // Maybe race: term created between checks
+            $again = term_exists($name, $taxonomy);
+            if ($again) {
+                return is_array($again) ? (int) $again['term_id'] : (int) $again;
+            }
+            return 0;
+        }
+        return is_array($created) ? (int) $created['term_id'] : (int) $created;
+    }
+
+    /**
+     * Assign categories/tags from keyword list (match existing or create).
+     * Categories behave like tags: reuse similar names when possible.
+     */
+    private function assign_terms_from_keywords(int $post_id, array $keywords, string $focus = ''): array
+    {
+        $pool = [];
+        if ($focus !== '') {
+            $pool[] = $focus;
+        }
+        foreach ($keywords as $kw) {
+            $kw = trim((string) $kw);
+            if ($kw !== '') {
+                $pool[] = $kw;
+            }
+        }
+        $pool = array_values(array_unique($pool));
+        if (!$pool) {
+            return ['category_ids' => [], 'tag_ids' => [], 'categories' => [], 'tags' => []];
+        }
+
+        // Categories: first 1–2 distinct keywords (not pure noise)
+        $cat_ids = [];
+        $cat_candidates = array_slice($pool, 0, 2);
+        foreach ($cat_candidates as $cname) {
+            $id = $this->find_or_create_term($cname, 'category');
+            if ($id > 0) {
+                $cat_ids[] = $id;
+            }
+        }
+        $cat_ids = array_values(array_unique(array_filter($cat_ids)));
+        if ($cat_ids) {
+            // Keep Uncategorized out of exclusive replace only if we have real cats
+            wp_set_post_terms($post_id, $cat_ids, 'category', false);
+        }
+
+        // Tags: remaining keywords (max 10), create if missing (WP handles by name)
+        $tag_names = array_slice($pool, 0, 10);
+        $tag_ids = [];
+        if ($tag_names) {
+            // Ensure each tag exists then set by ID for reliability
+            foreach ($tag_names as $tn) {
+                $tid = $this->find_or_create_term($tn, 'post_tag');
+                if ($tid > 0) {
+                    $tag_ids[] = $tid;
+                }
+            }
+            $tag_ids = array_values(array_unique($tag_ids));
+            if ($tag_ids) {
+                wp_set_post_terms($post_id, $tag_ids, 'post_tag', false);
+            }
+        }
+
+        $cats = wp_get_post_terms($post_id, 'category', ['fields' => 'names']);
+        $tags = wp_get_post_terms($post_id, 'post_tag', ['fields' => 'names']);
+        return [
+            'category_ids' => $cat_ids,
+            'tag_ids'      => $tag_ids,
+            'categories'   => is_wp_error($cats) ? [] : array_values($cats),
+            'tags'         => is_wp_error($tags) ? [] : array_values($tags),
+        ];
+    }
+
+
+
+    public function ajax_assign_terms(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $post_id = absint($_POST['post_id'] ?? 0);
+        if (!$post_id || !get_post($post_id)) {
+            wp_send_json_error(['message' => 'پست نامعتبر']);
+        }
+        $focus = sanitize_text_field(wp_unslash($_POST['focus'] ?? ''));
+        $keywords = [];
+        $raw = wp_unslash($_POST['keywords'] ?? '[]');
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $keywords = $decoded;
+            }
+        } elseif (is_array($raw)) {
+            $keywords = $raw;
+        }
+        $result = $this->assign_terms_from_keywords($post_id, $keywords, $focus);
+        wp_send_json_success([
+            'message' => 'دسته و برچسب ذخیره شد',
+            'categories' => $result['categories'] ?? [],
+            'tags' => $result['tags'] ?? [],
+            'category_ids' => $result['category_ids'] ?? [],
+            'tag_ids' => $result['tag_ids'] ?? [],
+        ]);
+    }
+
+
+
+    public function ajax_save_image_ai_key(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
+        $key = sanitize_text_field(wp_unslash($_POST['api_key'] ?? ''));
+        $model = sanitize_text_field(wp_unslash($_POST['model'] ?? ''));
+        $cat = self::image_providers_catalog();
+        if (!isset($cat[$provider])) {
+            wp_send_json_error(['message' => 'ارائه‌دهنده نامعتبر']);
+        }
+        $keys = $this->get_image_keys();
+        if ($key !== '') {
+            $keys[$provider] = $key;
+        }
+        update_option(self::OPT_IMAGE_KEYS, $keys, false);
+        if ($model !== '') {
+            $models = $this->get_image_models();
+            $models[$provider] = $model;
+            update_option(self::OPT_IMAGE_MODELS, $models, false);
+        }
+        wp_send_json_success(['message' => 'ذخیره شد', 'masked' => self::mask_key($keys[$provider] ?? '')]);
+    }
+
+    public function ajax_clear_image_ai_key(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
+        $keys = $this->get_image_keys();
+        unset($keys[$provider]);
+        update_option(self::OPT_IMAGE_KEYS, $keys, false);
+        wp_send_json_success(['message' => 'کلید حذف شد']);
+    }
+
+    public function ajax_set_default_image_provider(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
+        if (!isset(self::image_providers_catalog()[$provider])) {
+            wp_send_json_error(['message' => 'نامعتبر']);
+        }
+        update_option(self::OPT_IMAGE_DEFAULT, $provider, false);
+        wp_send_json_success(['message' => 'پیش‌فرض ذخیره شد']);
+    }
+
+    public function ajax_test_image_ai(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
+        $keys = $this->get_image_keys();
+        if (empty($keys[$provider])) {
+            wp_send_json_error(['message' => 'کلید API تنظیم نشده']);
+        }
+        // Lightweight: only verify key presence + optional ping for openai/gemini
+        try {
+            $opts = [
+                'width' => 512,
+                'height' => 512,
+                'test_mode' => true,
+            ];
+            // Cloudflare: always test with Flux Schnell JSON (avoids multipart schema models)
+            if ($provider === 'cloudflare_image') {
+                $opts['model'] = '@cf/black-forest-labs/flux-1-schnell';
+            }
+            $result = $this->generate_image_bytes($provider, 'minimal test pattern abstract soft gradient', $opts);
+            if (empty($result['bytes']) && empty($result['url'])) {
+                wp_send_json_error(['message' => $result['error'] ?? 'پاسخ خالی']);
+            }
+            wp_send_json_success(['message' => 'اتصال و تولید آزمایشی موفق بود', 'provider' => $provider]);
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
+    }
+
+    public function ajax_image_generate(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(300);
+        }
+
+        $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
+        $prompt   = sanitize_textarea_field(wp_unslash($_POST['prompt'] ?? ''));
+        $purpose  = sanitize_key(wp_unslash($_POST['purpose'] ?? 'cover')); // cover | inline
+        $post_id  = absint($_POST['post_id'] ?? 0);
+        $model    = sanitize_text_field(wp_unslash($_POST['model'] ?? ''));
+
+        if ($prompt === '') {
+            wp_send_json_error(['message' => 'پرامپت خالی است']);
+        }
+        if ($provider === '') {
+            $provider = $this->get_default_image_provider();
+        }
+        // Fallback to first image provider that has a key
+        $img_keys = $this->get_image_keys();
+        if ($provider === '' || empty($img_keys[$provider])) {
+            foreach ($img_keys as $pid => $k) {
+                if (is_string($k) && trim($k) !== '') {
+                    $provider = $pid;
+                    break;
+                }
+            }
+        }
+        if ($provider === '' || empty($img_keys[$provider])) {
+            wp_send_json_error(['message' => 'هیچ کلید API تصویری تنظیم نشده است. از استودیو هوش مصنوعی → تب تصویر یک موتور را پیکربندی کنید.']);
+        }
+
+        $size = $purpose === 'cover' ? ['width' => 1280, 'height' => 720] : ['width' => 1024, 'height' => 1024];
+        try {
+            $gen = $this->generate_image_bytes($provider, $prompt, array_merge($size, ['model' => $model]));
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage()], 500);
+        }
+
+        $bytes = $gen['bytes'] ?? '';
+        $src_url = $gen['url'] ?? '';
+        if ($bytes === '' && $src_url !== '') {
+            $resp = wp_remote_get($src_url, ['timeout' => 60]);
+            if (!is_wp_error($resp)) {
+                $bytes = (string) wp_remote_retrieve_body($resp);
+            }
+        }
+        if ($bytes === '') {
+            wp_send_json_error(['message' => $gen['error'] ?? 'داده تصویر دریافت نشد']);
+        }
+
+        $filename = 'bankai-' . $purpose . '-' . time() . '.png';
+        $upload = wp_upload_bits($filename, null, $bytes);
+        if (!empty($upload['error'])) {
+            wp_send_json_error(['message' => $upload['error']]);
+        }
+
+        $filetype = wp_check_filetype($filename, null);
+        $attachment = [
+            'post_mime_type' => $filetype['type'] ?: 'image/png',
+            'post_title'     => sanitize_text_field(mb_substr($prompt, 0, 80)),
+            'post_content'   => '',
+            'post_status'    => 'inherit',
+        ];
+        $attach_id = wp_insert_attachment($attachment, $upload['file'], $post_id > 0 ? $post_id : 0);
+        if (is_wp_error($attach_id)) {
+            wp_send_json_error(['message' => $attach_id->get_error_message()]);
+        }
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        $meta = wp_generate_attachment_metadata($attach_id, $upload['file']);
+        wp_update_attachment_metadata($attach_id, $meta);
+        update_post_meta($attach_id, '_wp_attachment_image_alt', sanitize_text_field(mb_substr($prompt, 0, 120)));
+        update_post_meta($attach_id, '_bankai_ai_image', 1);
+        update_post_meta($attach_id, '_bankai_ai_image_provider', $provider);
+        update_post_meta($attach_id, '_bankai_ai_image_prompt', $prompt);
+
+        $url = wp_get_attachment_url($attach_id);
+
+        if ($purpose === 'cover' && $post_id > 0) {
+            set_post_thumbnail($post_id, $attach_id);
+        }
+
+        $title_ctx = sanitize_text_field(wp_unslash($_POST['title'] ?? ''));
+        $section_ctx = sanitize_textarea_field(wp_unslash($_POST['section_context'] ?? ''));
+        $focus_ctx = sanitize_text_field(wp_unslash($_POST['focus_keyword'] ?? ''));
+        $alt_src = $section_ctx !== '' ? $section_ctx : ($title_ctx !== '' ? $title_ctx : $prompt);
+        if ($focus_ctx !== '' && mb_stripos($alt_src, $focus_ctx) === false) {
+            $alt_src = $focus_ctx . ' — ' . $alt_src;
+        }
+        $alt = sanitize_text_field(mb_substr(preg_replace('/\s+/', ' ', $alt_src), 0, 120));
+
+        $html = '';
+        if ($purpose === 'inline') {
+            $html = sprintf(
+                '<figure class="wp-block-image bankai-ai-inline"><img src="%s" alt="%s" loading="lazy" /></figure>',
+                esc_url($url),
+                esc_attr($alt)
+            );
+        }
+
+        wp_send_json_success([
+            'attachment_id' => $attach_id,
+            'url'           => $url,
+            'html'          => $html,
+            'purpose'       => $purpose,
+            'provider'      => $provider,
+            'message'       => $purpose === 'cover' ? 'کاور ساخته و در رسانه ذخیره شد' : 'تصویر محتوا ساخته شد',
+        ]);
+    }
+
+    /**
+     * Provider-specific image generation → ['bytes'=>, 'url'=>, 'error'=>].
+     */
+    public function generate_image_bytes(string $provider, string $prompt, array $opts = []): array
+    {
+        $keys = $this->get_image_keys();
+        $key = (string) ($keys[$provider] ?? '');
+        if ($key === '') {
+            throw new RuntimeException('کلید API برای این موتور تنظیم نشده است');
+        }
+        $models = $this->get_image_models();
+        $cat = self::image_providers_catalog();
+        $model = $opts['model'] ?? ($models[$provider] ?? ($cat[$provider]['default'] ?? ''));
+        $w = (int) ($opts['width'] ?? 1024);
+        $h = (int) ($opts['height'] ?? 1024);
+
+        switch ($provider) {
+            case 'cloudflare_image':
+                return $this->image_gen_cloudflare($key, $model, $prompt, $w, $h);
+            case 'openai_image':
+                return $this->image_gen_openai($key, $model, $prompt, $w, $h);
+            case 'gemini_image':
+                return $this->image_gen_gemini($key, $model, $prompt, $w, $h);
+            case 'huggingface_image':
+                return $this->image_gen_huggingface($key, $model, $prompt);
+            case 'stability':
+                return $this->image_gen_stability($key, $model, $prompt, $w, $h);
+            case 'replicate':
+                return $this->image_gen_replicate($key, $model, $prompt);
+            case 'together_image':
+                return $this->image_gen_together($key, $model, $prompt, $w, $h);
+            case 'fal_image':
+                return $this->image_gen_fal($key, $model, $prompt);
+            default:
+                throw new RuntimeException('ارائه‌دهنده پشتیبانی نمی‌شود: ' . $provider);
+        }
+    }
+
+
+    private function image_gen_cloudflare(string $key, string $model, string $prompt, int $w, int $h): array
+    {
+        // Key format: AccountID|APIToken (same as text CF)
+        $account = '';
+        $token = $key;
+        if (str_contains($key, '|')) {
+            [$account, $token] = array_map('trim', explode('|', $key, 2));
+        }
+        if ($account === '') {
+            $account = (string) get_option('bankai_cloudflare_account_id', '');
+        }
+        if ($account === '' || $token === '') {
+            throw new RuntimeException('کلید Cloudflare باید به صورت AccountID|APIToken باشد');
+        }
+
+        $model = $model ?: '@cf/black-forest-labs/flux-1-schnell';
+
+        // Inpainting needs image+mask (multipart) — not for text-to-image test/cover
+        if (str_contains($model, 'inpainting')) {
+            // Fall back to a pure text-to-image model for generation without mask
+            $model = '@cf/black-forest-labs/flux-1-schnell';
+        }
+
+        $w = max(256, min(1024, $w ?: 1024));
+        $h = max(256, min(1024, $h ?: 1024));
+        // Many CF models require multiples of 8
+        $w = (int) (round($w / 8) * 8);
+        $h = (int) (round($h / 8) * 8);
+
+        $url = 'https://api.cloudflare.com/client/v4/accounts/' . rawurlencode($account) . '/ai/run/' . $model;
+
+        // Payload shapes differ by family (JSON — not multipart for text-to-image)
+        $body = ['prompt' => $prompt];
+        if (str_contains($model, 'flux')) {
+            // Flux / Flux2: prompt + steps (width/height optional on some variants)
+            $body['steps'] = str_contains($model, 'schnell') ? 4 : 20;
+            if (!str_contains($model, 'schnell')) {
+                $body['width'] = $w;
+                $body['height'] = $h;
+            }
+        } elseif (str_contains($model, 'leonardo') || str_contains($model, 'lucid') || str_contains($model, 'phoenix')) {
+            $body['width'] = $w;
+            $body['height'] = $h;
+            $body['num_steps'] = 20;
+        } else {
+            // SDXL / Dreamshaper / Lightning
+            $body['width'] = $w;
+            $body['height'] = $h;
+            $body['num_steps'] = 20;
+            $body['guidance'] = 7.5;
+        }
+
+        $res = wp_remote_post($url, [
+            'timeout' => 150,
+            'headers' => [
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type'  => 'application/json',
+                'Accept'        => '*/*',
+            ],
+            'body' => wp_json_encode($body),
+        ]);
+
+        if (is_wp_error($res)) {
+            throw new RuntimeException($res->get_error_message());
+        }
+
+        $code = (int) wp_remote_retrieve_response_code($res);
+        $raw = (string) wp_remote_retrieve_body($res);
+        $ctype = strtolower((string) wp_remote_retrieve_header($res, 'content-type'));
+
+        // Binary image response (common for CF Workers AI)
+        $looks_json = str_starts_with(ltrim($raw), '{') || str_starts_with(ltrim($raw), '[');
+        if ($code < 400 && (str_contains($ctype, 'image/') || (!$looks_json && strlen($raw) > 200))) {
+            return ['bytes' => $raw, 'url' => ''];
+        }
+
+        $data = json_decode($raw, true);
+        if ($code >= 400) {
+            $msg = '';
+            if (is_array($data)) {
+                $msg = $data['errors'][0]['message']
+                    ?? $data['error']['message']
+                    ?? $data['message']
+                    ?? '';
+                // Surface nested AI schema errors (e.g. multipart)
+                if ($msg === '' && !empty($data['errors'][0])) {
+                    $msg = is_string($data['errors'][0]) ? $data['errors'][0] : wp_json_encode($data['errors'][0]);
+                }
+            }
+            if ($msg === '') {
+                $msg = 'HTTP ' . $code . ' — ' . mb_substr($raw, 0, 240);
+            }
+            // Auto-retry once with minimal Flux payload if schema mismatch
+            if (str_contains((string) $msg, 'multipart') || str_contains((string) $msg, 'Bad input')) {
+                return $this->image_gen_cloudflare_minimal($account, $token, $prompt, $w, $h);
+            }
+            throw new RuntimeException((string) $msg);
+        }
+
+        // JSON with base64 image
+        $b64 = '';
+        if (is_array($data)) {
+            $b64 = $data['result']['image']
+                ?? $data['result'][0]
+                ?? $data['image']
+                ?? '';
+            if (is_array($b64)) {
+                $b64 = $b64['b64_json'] ?? $b64['image'] ?? '';
+            }
+        }
+        if (is_string($b64) && $b64 !== '') {
+            if (str_starts_with($b64, 'data:')) {
+                $b64 = (string) preg_replace('#^data:image/[^;]+;base64,#', '', $b64);
+            }
+            $bin = base64_decode($b64, true);
+            if ($bin !== false && $bin !== '') {
+                return ['bytes' => $bin, 'url' => ''];
+            }
+        }
+
+        throw new RuntimeException('پاسخ تصویر Cloudflare نامعتبر است');
+    }
+
+    /**
+     * Fallback: simplest Flux Schnell JSON body (avoids multipart schema errors).
+     */
+    private function image_gen_cloudflare_minimal(string $account, string $token, string $prompt, int $w, int $h): array
+    {
+        $model = '@cf/black-forest-labs/flux-1-schnell';
+        $url = 'https://api.cloudflare.com/client/v4/accounts/' . rawurlencode($account) . '/ai/run/' . $model;
+        $res = wp_remote_post($url, [
+            'timeout' => 120,
+            'headers' => [
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type'  => 'application/json',
+                'Accept'        => '*/*',
+            ],
+            'body' => wp_json_encode([
+                'prompt' => $prompt,
+                'steps'  => 4,
+            ]),
+        ]);
+        if (is_wp_error($res)) {
+            throw new RuntimeException($res->get_error_message());
+        }
+        $code = (int) wp_remote_retrieve_response_code($res);
+        $raw = (string) wp_remote_retrieve_body($res);
+        $ctype = strtolower((string) wp_remote_retrieve_header($res, 'content-type'));
+        $looks_json = str_starts_with(ltrim($raw), '{');
+        if ($code < 400 && (str_contains($ctype, 'image/') || (!$looks_json && strlen($raw) > 200))) {
+            return ['bytes' => $raw, 'url' => ''];
+        }
+        $data = json_decode($raw, true);
+        if ($code >= 400) {
+            $msg = is_array($data) ? ($data['errors'][0]['message'] ?? $data['message'] ?? ('HTTP ' . $code)) : ('HTTP ' . $code);
+            throw new RuntimeException('Cloudflare Image: ' . (string) $msg);
+        }
+        $b64 = is_array($data) ? ($data['result']['image'] ?? $data['result'][0] ?? '') : '';
+        if (is_string($b64) && $b64 !== '') {
+            $bin = base64_decode($b64, true);
+            if ($bin !== false) {
+                return ['bytes' => $bin, 'url' => ''];
+            }
+        }
+        throw new RuntimeException('Cloudflare Image: پاسخ نامعتبر در حالت ساده');
+    }
+
+    private function image_gen_openai(string $key, string $model, string $prompt, int $w, int $h): array
+    {
+        $size = '1024x1024';
+        if ($w >= 1280 || $h === 720) {
+            $size = '1792x1024'; // landscape-ish for covers on dall-e-3
+        }
+        $body = [
+            'model' => $model ?: 'dall-e-3',
+            'prompt' => $prompt,
+            'n' => 1,
+            'size' => $size,
+            'response_format' => 'b64_json',
+        ];
+        $res = wp_remote_post('https://api.openai.com/v1/images/generations', [
+            'timeout' => 150,
+            'headers' => [
+                'Authorization' => 'Bearer ' . $key,
+                'Content-Type'  => 'application/json',
+            ],
+            'body' => wp_json_encode($body),
+        ]);
+        if (is_wp_error($res)) {
+            throw new RuntimeException($res->get_error_message());
+        }
+        $code = wp_remote_retrieve_response_code($res);
+        $data = json_decode((string) wp_remote_retrieve_body($res), true);
+        if ($code >= 400) {
+            throw new RuntimeException($data['error']['message'] ?? ('OpenAI HTTP ' . $code));
+        }
+        $b64 = $data['data'][0]['b64_json'] ?? '';
+        $url = $data['data'][0]['url'] ?? '';
+        return ['bytes' => $b64 !== '' ? base64_decode($b64) : '', 'url' => $url];
+    }
+
+    private function image_gen_gemini(string $key, string $model, string $prompt, int $w, int $h): array
+    {
+        $model = $model ?: 'imagen-3.0-generate-002';
+        // Imagen predict endpoint
+        if (strpos($model, 'imagen') !== false) {
+            $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':predict?key=' . rawurlencode($key);
+            $body = [
+                'instances' => [['prompt' => $prompt]],
+                'parameters' => [
+                    'sampleCount' => 1,
+                    'aspectRatio' => ($w > $h) ? '16:9' : '1:1',
+                ],
+            ];
+            $res = wp_remote_post($url, [
+                'timeout' => 150,
+                'headers' => ['Content-Type' => 'application/json'],
+                'body' => wp_json_encode($body),
+            ]);
+            if (is_wp_error($res)) {
+                throw new RuntimeException($res->get_error_message());
+            }
+            $code = wp_remote_retrieve_response_code($res);
+            $data = json_decode((string) wp_remote_retrieve_body($res), true);
+            if ($code >= 400) {
+                // Fallback to gemini flash image generation if imagen blocked
+                return $this->image_gen_gemini_flash($key, $prompt);
+            }
+            $b64 = $data['predictions'][0]['bytesBase64Encoded']
+                ?? $data['predictions'][0]['image']['bytesBase64Encoded']
+                ?? '';
+            if ($b64 === '') {
+                return $this->image_gen_gemini_flash($key, $prompt);
+            }
+            return ['bytes' => base64_decode($b64), 'url' => ''];
+        }
+        return $this->image_gen_gemini_flash($key, $prompt);
+    }
+
+    private function image_gen_gemini_flash(string $key, string $prompt): array
+    {
+        $model = 'gemini-2.0-flash-preview-image-generation';
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent?key=' . rawurlencode($key);
+        $body = [
+            'contents' => [['parts' => [['text' => $prompt]]]],
+            'generationConfig' => [
+                'responseModalities' => ['TEXT', 'IMAGE'],
+            ],
+        ];
+        $res = wp_remote_post($url, [
+            'timeout' => 150,
+            'headers' => ['Content-Type' => 'application/json'],
+            'body' => wp_json_encode($body),
+        ]);
+        if (is_wp_error($res)) {
+            throw new RuntimeException($res->get_error_message());
+        }
+        $code = wp_remote_retrieve_response_code($res);
+        $raw = (string) wp_remote_retrieve_body($res);
+        $data = json_decode($raw, true);
+        if ($code >= 400) {
+            throw new RuntimeException($data['error']['message'] ?? ('Gemini HTTP ' . $code));
+        }
+        $parts = $data['candidates'][0]['content']['parts'] ?? [];
+        foreach ($parts as $part) {
+            if (!empty($part['inlineData']['data'])) {
+                return ['bytes' => base64_decode($part['inlineData']['data']), 'url' => ''];
+            }
+            if (!empty($part['inline_data']['data'])) {
+                return ['bytes' => base64_decode($part['inline_data']['data']), 'url' => ''];
+            }
+        }
+        throw new RuntimeException('Gemini تصویری در پاسخ برنگرداند');
+    }
+
+    private function image_gen_huggingface(string $key, string $model, string $prompt): array
+    {
+        $model = $model ?: 'black-forest-labs/FLUX.1-schnell';
+        $url = 'https://api-inference.huggingface.co/models/' . $model;
+        $res = wp_remote_post($url, [
+            'timeout' => 150,
+            'headers' => [
+                'Authorization' => 'Bearer ' . $key,
+                'Content-Type'  => 'application/json',
+                'Accept'        => 'image/png',
+            ],
+            'body' => wp_json_encode(['inputs' => $prompt]),
+        ]);
+        if (is_wp_error($res)) {
+            throw new RuntimeException($res->get_error_message());
+        }
+        $code = wp_remote_retrieve_response_code($res);
+        $body = (string) wp_remote_retrieve_body($res);
+        $ctype = (string) wp_remote_retrieve_header($res, 'content-type');
+        if ($code >= 400) {
+            $j = json_decode($body, true);
+            throw new RuntimeException($j['error'] ?? ('HuggingFace HTTP ' . $code));
+        }
+        if (strpos($ctype, 'application/json') !== false) {
+            $j = json_decode($body, true);
+            throw new RuntimeException($j['error'] ?? 'پاسخ JSON به‌جای تصویر');
+        }
+        return ['bytes' => $body, 'url' => ''];
+    }
+
+    private function image_gen_stability(string $key, string $model, string $prompt, int $w, int $h): array
+    {
+        $endpoint = 'https://api.stability.ai/v2beta/stable-image/generate/core';
+        $res = wp_remote_post($endpoint, [
+            'timeout' => 150,
+            'headers' => [
+                'Authorization' => 'Bearer ' . $key,
+                'Accept'        => 'image/*',
+            ],
+            'body' => [
+                'prompt' => $prompt,
+                'output_format' => 'png',
+                'aspect_ratio' => ($w > $h) ? '16:9' : '1:1',
+            ],
+        ]);
+        if (is_wp_error($res)) {
+            throw new RuntimeException($res->get_error_message());
+        }
+        $code = wp_remote_retrieve_response_code($res);
+        $body = (string) wp_remote_retrieve_body($res);
+        if ($code >= 400) {
+            $j = json_decode($body, true);
+            throw new RuntimeException($j['message'] ?? $j['errors'][0] ?? ('Stability HTTP ' . $code));
+        }
+        return ['bytes' => $body, 'url' => ''];
+    }
+
+    private function image_gen_replicate(string $key, string $model, string $prompt): array
+    {
+        $model = $model ?: 'black-forest-labs/flux-schnell';
+        // Prefer official models API
+        $res = wp_remote_post('https://api.replicate.com/v1/models/' . $model . '/predictions', [
+            'timeout' => 30,
+            'headers' => [
+                'Authorization' => 'Token ' . $key,
+                'Content-Type'  => 'application/json',
+                'Prefer'        => 'wait=60',
+            ],
+            'body' => wp_json_encode(['input' => ['prompt' => $prompt]]),
+        ]);
+        if (is_wp_error($res)) {
+            throw new RuntimeException($res->get_error_message());
+        }
+        $data = json_decode((string) wp_remote_retrieve_body($res), true);
+        $out = $data['output'] ?? null;
+        $url = is_array($out) ? (string) ($out[0] ?? '') : (string) $out;
+        if ($url === '' && !empty($data['urls']['get'])) {
+            // poll once
+            sleep(2);
+            $poll = wp_remote_get($data['urls']['get'], [
+                'timeout' => 60,
+                'headers' => ['Authorization' => 'Token ' . $key],
+            ]);
+            if (!is_wp_error($poll)) {
+                $pdata = json_decode((string) wp_remote_retrieve_body($poll), true);
+                $out = $pdata['output'] ?? null;
+                $url = is_array($out) ? (string) ($out[0] ?? '') : (string) $out;
+            }
+        }
+        if ($url === '') {
+            throw new RuntimeException($data['error'] ?? 'Replicate خروجی نداد');
+        }
+        return ['bytes' => '', 'url' => $url];
+    }
+
+    private function image_gen_together(string $key, string $model, string $prompt, int $w, int $h): array
+    {
+        $res = wp_remote_post('https://api.together.xyz/v1/images/generations', [
+            'timeout' => 150,
+            'headers' => [
+                'Authorization' => 'Bearer ' . $key,
+                'Content-Type'  => 'application/json',
+            ],
+            'body' => wp_json_encode([
+                'model' => $model ?: 'black-forest-labs/FLUX.1-schnell',
+                'prompt' => $prompt,
+                'width' => $w,
+                'height' => $h,
+                'response_format' => 'b64_json',
+            ]),
+        ]);
+        if (is_wp_error($res)) {
+            throw new RuntimeException($res->get_error_message());
+        }
+        $data = json_decode((string) wp_remote_retrieve_body($res), true);
+        $code = wp_remote_retrieve_response_code($res);
+        if ($code >= 400) {
+            throw new RuntimeException($data['error']['message'] ?? ('Together HTTP ' . $code));
+        }
+        $b64 = $data['data'][0]['b64_json'] ?? '';
+        $url = $data['data'][0]['url'] ?? '';
+        return ['bytes' => $b64 !== '' ? base64_decode($b64) : '', 'url' => $url];
+    }
+
+    private function image_gen_fal(string $key, string $model, string $prompt): array
+    {
+        $model = $model ?: 'fal-ai/flux/schnell';
+        $url = 'https://fal.run/' . ltrim($model, '/');
+        $res = wp_remote_post($url, [
+            'timeout' => 150,
+            'headers' => [
+                'Authorization' => 'Key ' . $key,
+                'Content-Type'  => 'application/json',
+            ],
+            'body' => wp_json_encode(['prompt' => $prompt, 'image_size' => 'landscape_16_9']),
+        ]);
+        if (is_wp_error($res)) {
+            throw new RuntimeException($res->get_error_message());
+        }
+        $data = json_decode((string) wp_remote_retrieve_body($res), true);
+        $code = wp_remote_retrieve_response_code($res);
+        if ($code >= 400) {
+            throw new RuntimeException($data['detail'] ?? $data['message'] ?? ('fal HTTP ' . $code));
+        }
+        $img_url = $data['images'][0]['url'] ?? $data['image']['url'] ?? '';
+        if ($img_url === '') {
+            throw new RuntimeException('fal خروجی تصویر نداد');
+        }
+        return ['bytes' => '', 'url' => $img_url];
+    }
+
+
+    public function ajax_add_image_model(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
+        $model = sanitize_text_field(wp_unslash($_POST['model'] ?? ''));
+        if ($provider === '' || $model === '' || !isset(self::image_providers_catalog()[$provider])) {
+            wp_send_json_error(['message' => 'داده نامعتبر']);
+        }
+        $extra = get_option('bankai_ai_image_extra_models', []);
+        if (!is_array($extra)) {
+            $extra = [];
+        }
+        if (!isset($extra[$provider]) || !is_array($extra[$provider])) {
+            $extra[$provider] = [];
+        }
+        if (!in_array($model, $extra[$provider], true)) {
+            $extra[$provider][] = $model;
+        }
+        update_option('bankai_ai_image_extra_models', $extra, false);
+        $models = $this->get_image_models();
+        $models[$provider] = $model;
+        update_option(self::OPT_IMAGE_MODELS, $models, false);
+        wp_send_json_success(['message' => 'مدل اضافه شد', 'model' => $model]);
+    }
+
+    public function ajax_remove_image_model(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
+        $model = sanitize_text_field(wp_unslash($_POST['model'] ?? ''));
+        $extra = get_option('bankai_ai_image_extra_models', []);
+        if (is_array($extra) && isset($extra[$provider]) && is_array($extra[$provider])) {
+            $extra[$provider] = array_values(array_filter($extra[$provider], static fn($m) => $m !== $model));
+            update_option('bankai_ai_image_extra_models', $extra, false);
+        }
+        wp_send_json_success(['message' => 'مدل حذف شد']);
     }
 
 }

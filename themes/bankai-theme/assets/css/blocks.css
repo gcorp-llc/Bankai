@@ -1,0 +1,74 @@
+/* Bankai Gutenberg blocks */
+.bankai-block { margin: 2rem 0; }
+.bankai-block-hero {
+  padding: 3.5rem 1.5rem;
+  background: linear-gradient(145deg, var(--bankai-bg-subtle, #F6F8FA) 0%, var(--bankai-bg, #fff) 100%);
+  border: 1px solid var(--bankai-border, #D0D7DE);
+  border-radius: var(--bankai-radius, 10px);
+}
+.bankai-block-hero--center { text-align: center; }
+.bankai-block-hero--left { text-align: start; }
+.bankai-block-hero--right { text-align: end; }
+.bankai-block-hero__title {
+  margin: 0 0 .75rem;
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  line-height: 1.2;
+  letter-spacing: -.02em;
+  color: var(--bankai-text, #1F2328);
+}
+.bankai-block-hero__sub {
+  margin: 0 0 1.5rem;
+  font-size: 1.1rem;
+  color: var(--bankai-muted, #656D76);
+  max-width: 36em;
+}
+.bankai-block-hero--center .bankai-block-hero__sub { margin-inline: auto; }
+
+.bankai-block-features__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+@media (max-width: 768px) {
+  .bankai-block-features__grid { grid-template-columns: 1fr; }
+}
+.bankai-block-features__item {
+  padding: 1.25rem;
+  background: var(--bankai-bg-subtle, #F6F8FA);
+  border: 1px solid var(--bankai-border, #D0D7DE);
+  border-radius: var(--bankai-radius, 10px);
+}
+.bankai-block-features__item h3 {
+  margin: 0 0 .5rem;
+  font-size: 1.05rem;
+}
+.bankai-block-features__item p {
+  margin: 0;
+  font-size: .9rem;
+  color: var(--bankai-muted, #656D76);
+}
+
+.bankai-block-cta {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  background: var(--bankai-primary, #0969DA);
+  color: #fff;
+  border-radius: var(--bankai-radius, 10px);
+}
+.bankai-block-cta h2 { margin: 0 0 .5rem; color: #fff; }
+.bankai-block-cta p { margin: 0 0 1.25rem; opacity: .92; }
+.bankai-block-cta .bankai-btn--primary {
+  background: #fff;
+  color: var(--bankai-primary, #0969DA);
+}
+.bankai-block-cta .bankai-btn--primary:hover {
+  background: #F6F8FA;
+  color: var(--bankai-primary, #0969DA);
+}
+
+.bankai-block-editor {
+  border: 1px dashed #D0D7DE;
+  border-radius: 8px;
+  padding: 8px;
+  min-height: 80px;
+}

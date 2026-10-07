@@ -30,6 +30,9 @@ class Bankai_Admin_Menu {
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
         add_filter('script_loader_tag', [$this, 'add_defer_attribute'], 10, 3);
         add_action('admin_head', [$this, 'admin_menu_icon_styles']);
+        add_filter('post_row_actions', [$this, 'post_row_ai_generate'], 20, 2);
+        add_action('admin_head-edit.php', [$this, 'posts_list_ai_button_assets']);
+        add_action('admin_footer-edit.php', [$this, 'posts_list_ai_button_inject']);
     }
 
     /**
@@ -37,73 +40,118 @@ class Bankai_Admin_Menu {
      * لوگو با گوشه‌های گرد + جلوگیری از فول‌سایز شدن
      */
     public function admin_menu_icon_styles(): void {
-        $slug = esc_attr($this->menu_slug);
+        // اسلاگ‌های ممکن: bankai (منوی مستقل بدون تم) و bankai-core (زیرمنو)
+        $slugs = array_unique(array_filter([
+            'bankai',
+            $this->menu_slug,
+            'bankai-core',
+        ]));
+        $sel_img = [];
+        $sel_box = [];
+        foreach ($slugs as $s) {
+            $s = esc_attr($s);
+            $sel_img[] = "#adminmenu li#toplevel_page_{$s} .wp-menu-image img";
+            $sel_img[] = "#adminmenu .toplevel_page_{$s} .wp-menu-image img";
+            $sel_img[] = "#adminmenu #toplevel_page_{$s} div.wp-menu-image img";
+            $sel_box[] = "#adminmenu li#toplevel_page_{$s} .wp-menu-image";
+            $sel_box[] = "#adminmenu #toplevel_page_{$s} .wp-menu-image";
+        }
+        $img = implode(",
+            ", $sel_img);
+        $box = implode(",
+            ", $sel_box);
         ?>
         <style id="bankai-admin-menu-icon">
-            /* آیکون با گوشه‌های گرد و اندازه ثابت ۲۰×۲۰ */
-            #adminmenu li#toplevel_page_<?php echo $slug; ?> .wp-menu-image img,
-            #adminmenu .toplevel_page_<?php echo $slug; ?> .wp-menu-image img,
-            #adminmenu #toplevel_page_<?php echo $slug; ?> div.wp-menu-image img {
+            /* اندازه ثابت آیکون منو — جلوگیری از نمایش فول‌سایز لوگو */
+            <?php echo $img; ?> {
                 width: 20px !important;
                 height: 20px !important;
                 max-width: 20px !important;
                 max-height: 20px !important;
-                padding: 7px 0 0 !important;
+                padding: 6px 0 0 !important;
                 margin: 0 auto !important;
                 object-fit: contain !important;
                 object-position: center center !important;
                 background: transparent !important;
                 display: block !important;
-                border-radius: 16px !important; /* گوشه‌های گرد */
+                border-radius: 5px !important;
             }
-
-            /* حالت جمع‌شده (Folded) */
-            .folded #adminmenu li#toplevel_page_<?php echo $slug; ?> .wp-menu-image img,
-            .folded #adminmenu #toplevel_page_<?php echo $slug; ?> .wp-menu-image img {
-                width: 20px !important;
-                height: 20px !important;
-                padding: 7px 0 0 !important;
-                border-radius: 6px !important;
-            }
-
-            /* محدود کردن کانتینر آیکون */
-            #adminmenu li#toplevel_page_<?php echo $slug; ?> .wp-menu-image,
-            #adminmenu #toplevel_page_<?php echo $slug; ?> .wp-menu-image {
+            <?php echo $box; ?> {
                 width: 36px !important;
                 height: 34px !important;
                 overflow: hidden !important;
+                background-size: 20px 20px !important;
             }
-
-            /* جلوگیری از تغییرات ناخواسته در hover و current */
-            #adminmenu li#toplevel_page_<?php echo $slug; ?>:hover .wp-menu-image img,
-            #adminmenu li#toplevel_page_<?php echo $slug; ?>.current .wp-menu-image img,
-            #adminmenu li#toplevel_page_<?php echo $slug; ?>.wp-has-current-submenu .wp-menu-image img,
-            #adminmenu li#toplevel_page_<?php echo $slug; ?>.wp-menu-open .wp-menu-image img {
-                opacity: 1 !important;
-                transform: none !important;
-                filter: none !important;
-                border-radius: 6px !important;
+            /* حالت جمع‌شده */
+            .folded #adminmenu li[id^="toplevel_page_bankai"] .wp-menu-image img {
+                width: 20px !important;
+                height: 20px !important;
+                padding: 6px 0 0 !important;
+            }
+            #adminmenu li[id^="toplevel_page_bankai"] .wp-menu-image img {
+                width: 20px !important;
+                height: 20px !important;
+                max-width: 20px !important;
+                max-height: 20px !important;
             }
         </style>
         <?php
     }
 
     public function register_admin_menu(): void {
-        // فقط یک منوی اصلی بدون هیچ زیرمنو
-        $menu_icon = bankai_asset_url('images/logo.jpg');
+        // آیکون کوچک منو — نه لوگو فول‌سایز (باگ نمایش تمام‌صفحه)
+        $menu_icon = 'dashicons-superhero';
+        $icon_file = BANKAI_CORE_DIR . 'assets/images/menu-icon.svg';
+        if (is_readable($icon_file)) {
+            $menu_icon = bankai_asset_url('images/menu-icon.svg');
+        } elseif (is_readable(BANKAI_CORE_DIR . 'assets/images/logo.jpg')) {
+            // لوگو فقط اگر CSS اندازه را قفل کند؛ ترجیح با dashicon
+            $menu_icon = 'dashicons-superhero';
+        }
+        $parent = 'bankai';
 
-        $this->page_hook = add_menu_page(
-            __('Bankai Platform', 'bankai-core'),
-            __('Bankai Core', 'bankai-core'),
-            'manage_options',
-            $this->menu_slug,
-            [$this, 'render_admin_layout'],
-            $menu_icon,
-            2
-        );
+        // اگر تم Bankai والد Bankai را ساخته، Core زیرمنو می‌شود
+        global $menu;
+        $parent_exists = false;
+        if (is_array($menu)) {
+            foreach ($menu as $item) {
+                if (isset($item[2]) && $item[2] === 'bankai') {
+                    $parent_exists = true;
+                    break;
+                }
+            }
+        }
 
-        // هیچ زیرمنویی ثبت نمی‌شود
-        // ناوبری داخلی از طریق سایدبار داخل صفحه انجام می‌شود
+        if ($parent_exists) {
+            $this->page_hook = add_submenu_page(
+                $parent,
+                __('Bankai Core', 'bankai-core'),
+                __('Bankai Core', 'bankai-core'),
+                'manage_options',
+                $this->menu_slug,
+                [$this, 'render_admin_layout']
+            );
+        } else {
+            // بدون تم: منوی مستقل با عنوان Bankai و زیرمنوی Core
+            add_menu_page(
+                __('Bankai', 'bankai-core'),
+                __('Bankai', 'bankai-core'),
+                'manage_options',
+                $parent,
+                [$this, 'render_admin_layout'],
+                $menu_icon,
+                2
+            );
+            $this->page_hook = add_submenu_page(
+                $parent,
+                __('Bankai Core', 'bankai-core'),
+                __('Bankai Core', 'bankai-core'),
+                'manage_options',
+                $this->menu_slug,
+                [$this, 'render_admin_layout']
+            );
+            remove_submenu_page($parent, $parent);
+        }
     }
 
     public function enqueue_admin_assets(string $hook_suffix): void {
@@ -188,12 +236,23 @@ class Bankai_Admin_Menu {
             );
         }
 
-
+        // Scripts in footer; Alpine deferred after admin app is ready
         $js_ver = static function (string $rel) {
             $path = BANKAI_CORE_DIR . 'assets/js/' . $rel;
             $base = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0';
             return is_file($path) ? $base . '.' . (string) filemtime($path) : $base;
         };
+
+        wp_enqueue_script(
+            'bankai-htmx-js',
+            bankai_asset_url('js/htmx.min.js'),
+            [],
+            $js_ver('htmx.min.js'),
+            true
+        );
+        if (function_exists('wp_script_add_data')) {
+            wp_script_add_data('bankai-htmx-js', 'strategy', 'defer');
+        }
 
         wp_enqueue_media();
 
@@ -229,14 +288,25 @@ class Bankai_Admin_Menu {
         wp_enqueue_script(
             'bankai-admin-js',
             bankai_asset_url('js/bankai-admin.js'),
-            ['jquery'],
+            ['jquery', 'bankai-htmx-js'],
             $js_ver('bankai-admin.js'),
             true
         );
 
+        // Alpine must load after bankai-admin.js (registers Alpine.data)
+        wp_enqueue_script(
+            'bankai-alpine-js',
+            bankai_asset_url('js/alpine.min.js'),
+            ['bankai-admin-js'],
+            $js_ver('alpine.min.js'),
+            true
+        );
+        // Do NOT defer Alpine — it auto-starts and must see prior registrations
+
 
         $core_data = [
             'ajaxUrl'    => admin_url('admin-ajax.php'),
+            'adminUrl'   => trailingslashit(admin_url()),
             'restUrl'    => esc_url_raw(rest_url('bankai/v1/')),
             'nonce'      => wp_create_nonce('wp_rest'),
             'adminNonce' => wp_create_nonce('bankai_admin_nonce'),
@@ -288,26 +358,29 @@ class Bankai_Admin_Menu {
     }
 
     public function add_defer_attribute(string $tag, string $handle, string $src = ''): string {
-        return $tag;
+        if (!in_array($handle, ['bankai-alpine-js', 'bankai-htmx-js'], true)) {
+            return $tag;
+        }
+
+        if (empty($src) || strpos($tag, ' src=') === false) {
+            return $tag;
+        }
+
+        if (strpos($tag, ' defer') !== false) {
+            return $tag;
+        }
+
+        return str_replace(' src=', ' defer="defer" src=', $tag);
     }
 
-    public static function get_allowed_tabs(): array {
-        return [
-            'overview',
-            'seo-engine',
-            'ai-studio',
-            'articles',
-            'speed-cache',
-            'media-watermark',
-            'theme-kits',
-            'settings-license',
-        ];
-    }
-
-    public function get_current_tab(): string {
-        if (!empty($_GET['tab'])) {
-            $allowed = self::get_allowed_tabs();
-            $tab = sanitize_key(wp_unslash($_GET['tab']));
+    private function get_current_tab(): string {
+        if (!empty($_GET['bankai_tab'])) {
+            $tab = sanitize_key(wp_unslash($_GET['bankai_tab']));
+            $allowed = [
+                'overview', 'articles', 'seo-engine', 'ai-studio',
+                'speed-cache', 'media-watermark', 'settings-license',
+                'jalali-calendar', 'theme-kits',
+            ];
             if (in_array($tab, $allowed, true)) {
                 return $tab;
             }
@@ -316,18 +389,10 @@ class Bankai_Admin_Menu {
         return self::TAB_MAP[$page] ?? 'overview';
     }
 
-    public function get_current_subtab(): string {
-        if (!empty($_GET['subtab'])) {
-            return sanitize_key(wp_unslash($_GET['subtab']));
-        }
-        return '';
-    }
-
     public function render_admin_layout(): void {
         $state = array_merge(
             [
                 'activeTab' => $this->get_current_tab(),
-                'activeSubtab' => $this->get_current_subtab(),
                 'isRtl'     => is_rtl(),
             ],
             $this->get_initial_state_data()
@@ -336,7 +401,7 @@ class Bankai_Admin_Menu {
         bankai_render_view('admin/layout.php', ['state' => $state]);
     }
 
-    private function get_initial_state_data(): array {
+    public function get_initial_state_data(): array {
         $system_report = sprintf(
             "=== Bankai Core Diagnostic Telemetry ===\nPHP: %s | WP: %s | Server: %s | Memory Limit: %s\nActive Modules: 7/7 Enabled | Autonomous Engine Status: OPTIMAL",
             phpversion(),
@@ -364,6 +429,9 @@ class Bankai_Admin_Menu {
             'mediaModules' => $this->get_media_modules(),
             'aiModules'    => $this->get_ai_modules(),
             'providers'    => $this->get_ai_providers(),
+            'imageProviders' => class_exists('Bankai_AI_Studio')
+                ? Bankai_AI_Studio::instance()->image_provider_status_list()
+                : [],
             'systemReport' => $system_report,
             'stats'        => $stats,
             'logs404'      => $logs,
@@ -516,19 +584,115 @@ class Bankai_Admin_Menu {
             $list = Bankai_AI_Studio::instance()->provider_status_list();
             $out = [];
             foreach ($list as $p) {
-                $label = $p['label'] ?? $p['name'] ?? ($p['id'] ?? '');
+                // نام واقعی موتور (نه status label مثل «کلید تنظیم شده»)
+                $name = $p['name'] ?? ($p['id'] ?? '');
+                $status_label = $p['label'] ?? '';
                 $out[] = [
                     'id'     => $p['id'] ?? '',
-                    'name'   => $label,
-                    'label'  => $label,
-                    'badge'  => $label,
+                    'name'   => $name,
+                    'label'  => $name,
+                    'badge'  => $name,
+                    'status_label' => $status_label,
                     'color'  => !empty($p['has_key']) ? '#10B981' : '#8C959F',
                     'models' => is_array($p['models'] ?? null) ? implode(' / ', array_slice($p['models'], 0, 3)) : (string) ($p['model'] ?? ''),
                     'has_key'=> !empty($p['has_key']),
+                    'ready'  => !empty($p['has_key']),
                 ];
             }
             return $out;
         }
         return [];
     }
+
+    /**
+     * Link from WP posts list → Bankai Articles AI generate tab.
+     */
+    public function post_row_ai_generate(array $actions, $post): array
+    {
+        if (!$post instanceof WP_Post || $post->post_type !== 'post') {
+            return $actions;
+        }
+        if (!current_user_can('edit_posts')) {
+            return $actions;
+        }
+        $url = admin_url('admin.php?page=bankai-core&bankai_tab=articles&subtab=generate');
+        $actions['bankai_ai_generate'] = sprintf(
+            '<a href="%s">%s</a>',
+            esc_url($url),
+            esc_html__('تولید مقاله با AI', 'bankai-core')
+        );
+        return $actions;
+    }
+
+    public function posts_list_ai_button_assets(): void
+    {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!$screen || $screen->id !== 'edit-post') {
+            return;
+        }
+        ?>
+        <style id="bankai-ai-write-btn">
+            .page-title-action.bankai-ai-write-btn,
+            a.page-title-action.bankai-ai-write-btn {
+                display: inline-flex !important;
+                align-items: center;
+                gap: 6px;
+                margin-inline-start: 8px !important;
+                background: linear-gradient(135deg, #7c3aed 0%, #0969da 100%) !important;
+                border-color: transparent !important;
+                color: #fff !important;
+                box-shadow: 0 1px 2px rgba(9,105,218,.25);
+                font-weight: 600;
+                border-radius: 6px !important;
+                padding: 4px 12px !important;
+                line-height: 2.15384615;
+                text-decoration: none !important;
+            }
+            .page-title-action.bankai-ai-write-btn:hover,
+            a.page-title-action.bankai-ai-write-btn:hover {
+                background: linear-gradient(135deg, #6d28d9 0%, #0550ae 100%) !important;
+                color: #fff !important;
+            }
+            .page-title-action.bankai-ai-write-btn svg {
+                width: 16px; height: 16px; flex-shrink: 0;
+            }
+        </style>
+        <?php
+    }
+
+    public function posts_list_ai_button_inject(): void
+    {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!$screen || $screen->id !== 'edit-post') {
+            return;
+        }
+        if (!current_user_can('edit_posts')) {
+            return;
+        }
+        $url = admin_url('admin.php?page=bankai-core&bankai_tab=articles&subtab=generate');
+        $label = esc_js(__('نوشتن مقاله با AI', 'bankai-core'));
+        $href = esc_url($url);
+        ?>
+        <script>
+        (function(){
+            var wrap = document.querySelector('.wrap .wp-heading-inline') || document.querySelector('.wrap h1');
+            if (!wrap) return;
+            var existing = document.querySelector('.page-title-action.bankai-ai-write-btn');
+            if (existing) return;
+            var a = document.createElement('a');
+            a.href = <?php echo wp_json_encode($href); ?>;
+            a.className = 'page-title-action bankai-ai-write-btn';
+            a.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/><path d="M4 19h7"/></svg> ' + <?php echo wp_json_encode(wp_strip_all_tags(__('نوشتن مقاله با AI', 'bankai-core'))); ?>;
+            // Insert after first .page-title-action (افزودن نوشته) if present
+            var addBtn = document.querySelector('.wrap a.page-title-action:not(.bankai-ai-write-btn)');
+            if (addBtn && addBtn.parentNode) {
+                addBtn.parentNode.insertBefore(a, addBtn.nextSibling);
+            } else {
+                wrap.parentNode.insertBefore(a, wrap.nextSibling);
+            }
+        })();
+        </script>
+        <?php
+    }
+
 }

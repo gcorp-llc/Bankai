@@ -1,52 +1,61 @@
 <?php
 /**
- * The header for Bankai Theme
+ * Header
  *
  * @package Bankai_Theme
  */
 
 defined('ABSPATH') || exit;
-?><!doctype html>
-<html <?php language_attributes(); ?>>
-<head>
-    <meta charset="<?php bloginfo('charset'); ?>">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="profile" href="https://gmpg.org/xfn/11">
-    <?php wp_head(); ?>
-</head>
 
-<body <?php body_class(is_rtl() ? 'rtl' : 'ltr'); ?>>
+$scheme = bankai_theme_mod('color_scheme', 'system');
+?><!doctype html>
+<html <?php language_attributes(); ?> data-theme="<?php echo esc_attr($scheme === 'dark' ? 'dark' : ($scheme === 'light' ? 'light' : 'system')); ?>">
+<head>
+	<meta charset="<?php bloginfo('charset'); ?>">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="profile" href="https://gmpg.org/xfn/11">
+	<script>
+	(function(){try{
+		var s=document.documentElement.getAttribute('data-theme')||'system';
+		var saved=localStorage.getItem('bankai-theme-scheme');
+		if(saved==='light'||saved==='dark'){s=saved;}
+		else if(s==='system'){s=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
+		document.documentElement.setAttribute('data-theme',s);
+	}catch(e){}})();
+	</script>
+	<?php wp_head(); ?>
+</head>
+<body <?php body_class(); ?>>
 <?php wp_body_open(); ?>
 
 <div id="page" class="bankai-site">
-    <a class="skip-link screen-reader-text" href="#primary"><?php esc_html_e('پرش به محتوای اصلی', 'bankai-theme'); ?></a>
+	<a class="skip-link screen-reader-text" href="#primary"><?php esc_html_e('پرش به محتوا', 'bankai-theme'); ?></a>
 
-    <header id="masthead" class="bankai-header">
-        <div class="bankai-header-inner">
-            <div class="bankai-site-logo">
-                <?php
-                if (has_custom_logo()) {
-                    the_custom_logo();
-                } else {
-                    echo '<a href="' . esc_url(home_url('/')) . '" rel="home">' . esc_html(get_bloginfo('name')) . '</a>';
-                }
-                ?>
-            </div>
+<?php
+if (function_exists('bankai_header_render')) {
+	bankai_header_render();
+} else {
+	// Fallback minimal header
+	?>
+	<header id="masthead" class="bankai-header is-sticky">
+		<div class="<?php echo esc_attr(bankai_container_class()); ?> bankai-header__inner">
+			<div class="bankai-brand">
+				<?php if (has_custom_logo()) { the_custom_logo(); } else { ?>
+					<a class="bankai-site-title" href="<?php echo esc_url(home_url('/')); ?>"><?php bloginfo('name'); ?></a>
+				<?php } ?>
+			</div>
+			<nav class="bankai-nav">
+				<?php wp_nav_menu(['theme_location' => 'primary', 'container' => false, 'menu_class' => 'bankai-menu', 'fallback_cb' => 'bankai_fallback_menu', 'depth' => 2]); ?>
+			</nav>
+		</div>
+	</header>
+	<?php
+}
 
-            <nav id="site-navigation" class="bankai-nav" aria-label="<?php esc_attr_e('منوی اصلی', 'bankai-theme'); ?>">
-                <?php
-                wp_nav_menu([
-                    'theme_location' => 'primary',
-                    'menu_id'        => 'primary-menu',
-                    'fallback_cb'    => function() {
-                        echo '<ul>';
-                        echo '<li><a href="' . esc_url(home_url('/')) . '">' . esc_html__('صفحه نخست', 'bankai-theme') . '</a></li>';
-                        echo '<li><a href="' . esc_url(home_url('/blog')) . '">' . esc_html__('وبلاگ', 'bankai-theme') . '</a></li>';
-                        echo '<li><a href="' . esc_url(home_url('/contact')) . '">' . esc_html__('تماس با ما', 'bankai-theme') . '</a></li>';
-                        echo '</ul>';
-                    },
-                ]);
-                ?>
-            </nav>
-        </div>
-    </header>
+if (! function_exists('bankai_fallback_menu')) {
+	function bankai_fallback_menu(): void {
+		echo '<ul class="bankai-menu"><li><a href="' . esc_url(home_url('/')) . '">' . esc_html__('صفحه نخست', 'bankai-theme') . '</a></li></ul>';
+	}
+}
+?>
+	<div id="content" class="bankai-site-content">

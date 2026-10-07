@@ -41,7 +41,7 @@
     background: #f6f8fa;
 }
 
-
+/* Fit Alpine sidebar inside meta box */
 #bankai_seo_engine #bankai-seo-sidebar {
     min-height: 380px;
     max-height: min(78vh, 920px);
@@ -139,4 +139,28 @@
     box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.35);
     margin-left: 8px;
     vertical-align: middle;
+}
+
+
+
+
+/* Bento UI SEO sidebar */
+.bankai-seo-box,
+#bankai-seo-metabox,
+.bankai-seo-sidebar {
+  --bankai-accent: #0071E3;
+}
+.bankai-seo-box .bankai-seo-card,
+.bankai-seo-panel,
+.bankai-seo-tab-panel {
+  border: 1px solid rgba(0,0,0,.06) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,.03) !important;
+  background: #FFFFFF !important;
+}
+.bankai-seo-tabs {
+  background: #F5F5F7 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  border: 1px solid rgba(0,0,0,.06) !important;
 }

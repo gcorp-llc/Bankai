@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Bankai Core
- * Description: Enterprise SEO, Speed, AI & Media suite for WordPress.
- * Version: 1.0.0
+ * Description: هسته Bankai — سئو مقالات، استودیوی هوش مصنوعی متنی/تصویری، تولید و زمان‌بندی محتوا، رسانه و واترمارک، کش و سرعت، آنالیتیکس و ابزارهای یکپارچه مدیریت وردپرس با پنل مدرن Bento.
+ * Version: 1.0.104
  * Author: Bankai
  * Text Domain: bankai-core
  * Requires at least: 6.0
@@ -39,7 +39,7 @@ defined('BANKAI_CORE_VIEWS_DIR') || define(
     BANKAI_CORE_DIR . 'views/'
 );
 
-defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.0.62');
+defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.0.104');
 
 /*
 |--------------------------------------------------------------------------
@@ -74,14 +74,6 @@ final class Bankai_Core
             'inc/class-admin-menu.php',
             'inc/class-rest-api.php',
             'inc/class-dashboard-stats.php',
-            'inc/class-ai-job-schema.php',
-            'inc/queue/interface-ai-queue-driver.php',
-            'inc/queue/class-ai-queue-action-scheduler.php',
-            'inc/queue/class-ai-queue-fallback-cron.php',
-            'inc/queue/class-ai-queue-manager.php',
-            'inc/class-ai-post-generator.php',
-            'inc/class-seo-third-party-adapter.php',
-            'inc/class-ai-generator-wizard.php',
         ];
         foreach ($core as $relative) {
             $filepath = BANKAI_CORE_DIR . $relative;
@@ -108,8 +100,10 @@ final class Bankai_Core
             'class-settings-license.php',
             'class-speed-cache.php',
             'class-seo-engine.php',
+            'class-seo-import.php',
             'class-seo-integrations.php',
             'class-seo-sitewide.php',
+            'class-site-analytics.php',
             'class-media-watermark.php',
             'class-ai-studio.php',
             'class-llms-txt.php',
@@ -147,21 +141,18 @@ final class Bankai_Core
 
         // Map class → module key (empty key = always on)
         $map = [
-            'Bankai_Settings_License'  => 'settings_license',
-            'Bankai_Jalali_Calendar'   => 'jalali_calendar',
-            'Bankai_Speed_Cache'       => 'speed_cache',
-            'Bankai_SEO_Engine'        => 'seo_engine',
-            'Bankai_SEO_Integrations'  => 'seo_engine',
-            'Bankai_SEO_Sitewide'      => 'seo_engine',
-            'Bankai_Media_Watermark'   => 'media_watermark',
-            'Bankai_AI_Studio'         => 'ai_studio',
-            'Bankai_AI_Job_Schema'     => 'ai_studio',
-            'Bankai_AI_Queue_Manager'  => 'ai_studio',
-            'Bankai_AI_Post_Generator' => 'ai_studio',
-            'Bankai_AI_Generator_Wizard' => 'ai_studio',
-            'Bankai_LLMS_Txt'          => 'llms_txt',
-            'Bankai_Editor_SEO'        => 'seo_engine',
-            'Bankai_Post_SEO_Meta'     => 'seo_engine',
+            'Bankai_Settings_License' => 'settings_license',
+            'Bankai_Jalali_Calendar'  => 'jalali_calendar',
+            'Bankai_Speed_Cache'      => 'speed_cache',
+            'Bankai_SEO_Engine'       => 'seo_engine',
+            'Bankai_SEO_Import'       => 'seo_engine',
+            'Bankai_SEO_Integrations' => 'seo_engine',
+            'Bankai_SEO_Sitewide'     => 'seo_engine',
+            'Bankai_Media_Watermark'  => 'media_watermark',
+            'Bankai_AI_Studio'        => 'ai_studio',
+            'Bankai_LLMS_Txt'         => 'llms_txt',
+            'Bankai_Editor_SEO'       => 'seo_engine',
+            'Bankai_Post_SEO_Meta'    => 'seo_engine',
         ];
 
         foreach ($map as $class_name => $module_key) {

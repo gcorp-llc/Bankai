@@ -3,18 +3,73 @@ defined('ABSPATH') || exit;
 
 $state = is_array($state ?? null) ? $state : [];
 
-$active_tab    = sanitize_key($state['activeTab'] ?? 'overview');
-$active_subtab = sanitize_key($state['activeSubtab'] ?? '');
-$is_rtl        = !empty($state['isRtl']) || is_rtl();
+$active_tab = sanitize_key($state['activeTab'] ?? 'overview');
+$is_rtl     = !empty($state['isRtl']) || is_rtl();
 
-$dir_attr   = $is_rtl ? 'rtl' : 'ltr';
-$class_attr = $is_rtl ? 'bankai-admin-wrap rtl' : 'bankai-admin-wrap ltr';
+$bankai_data = [
+    'activeTab'  => $active_tab,
+    'isRtl'      => (bool) $is_rtl,
+    'restUrl'    => esc_url_raw(rest_url('bankai/v1/')),
+    'nonce'      => wp_create_nonce('wp_rest'),
+    'adminNonce' => wp_create_nonce('bankai_admin_nonce'),
+    'ajaxUrl'    => admin_url('admin-ajax.php'),
+    'locale'     => get_user_locale(),
+    'version'    => defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0',
+];
+
+$bankai_state = [
+    'seoModules'      => $state['seoModules'] ?? [],
+    'speedModules'    => $state['speedModules'] ?? [],
+    'speedStats'      => $state['speedStats'] ?? [],
+    'speedSettings'   => $state['speedSettings'] ?? [],
+    'mediaModules'    => $state['mediaModules'] ?? [],
+    'watermarkSettings' => $state['watermarkSettings'] ?? [],
+    'coreModules'     => $state['coreModules'] ?? [],
+    'seoIntegrations' => $state['seoIntegrations'] ?? [],
+    'homeUrl'         => $state['homeUrl'] ?? home_url('/'),
+    'stats'           => $state['stats'] ?? [],
+    'aiModules'       => $state['aiModules'] ?? [],
+    'providers'       => $state['providers'] ?? [],
+        'imageProviders'  => $state['imageProviders'] ?? [],
+    'aiDefaultProvider' => $state['aiDefaultProvider'] ?? 'gemini',
+];
 ?>
 <div id="bankai-admin-app"
-     class="<?php echo esc_attr($class_attr); ?>"
-     dir="<?php echo esc_attr($dir_attr); ?>"
-     data-active-tab="<?php echo esc_attr($active_tab); ?>"
-     data-active-subtab="<?php echo esc_attr($active_subtab); ?>">
+     class="bankai-admin-wrap bankai-ekit-shell"
+     x-data="bankaiAdmin()"
+     :dir="isRtl ? 'rtl' : 'ltr'"
+     :class="{ 'rtl': isRtl, 'ltr': !isRtl }">
+
+    <!-- Bridge PHP → Alpine -->
+    <script>
+        window.bankaiData = <?php echo wp_json_encode($bankai_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        window.bankaiCoreData = window.bankaiData;
+        window.bankaiState = <?php echo wp_json_encode($bankai_state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+
+        window.setTab = function (tab) {
+            if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.setTab === 'function') {
+                return window.bankaiAdminInstance.setTab(tab);
+            }
+            return false;
+        };
+
+        window.showToast = function (message, type) {
+            type = type || 'success';
+            if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.showToast === 'function') {
+                return window.bankaiAdminInstance.showToast(message, type);
+            }
+            return false;
+        };
+
+        window.toggleLanguage = function () {
+            if (window.bankaiAdminInstance && typeof window.bankaiAdminInstance.toggleLanguage === 'function') {
+                return window.bankaiAdminInstance.toggleLanguage();
+            }
+            return false;
+        };
+
+        window.toggleRtl = window.toggleLanguage;
+    </script>
 
     <!-- Ambient Background -->
     <div class="bankai-bg-decorations" aria-hidden="true">
@@ -39,13 +94,14 @@ $class_attr = $is_rtl ? 'bankai-admin-wrap rtl' : 'bankai-admin-wrap ltr';
     }
     ?>
 
-    <!-- Page Progress Track (Hidden by default) -->
+    <!-- Page Progress -->
     <div id="bankai-page-loader"
          class="bankai-page-progress-track"
-         hidden
+         x-show="pageLoading"
+         x-cloak
          role="progressbar"
          aria-live="polite">
-        <div class="bankai-page-progress-bar" id="bankai-page-progress-bar" style="width:0%"></div>
+        <div class="bankai-page-progress-bar" :style="{ width: pageProgress + '%' }"></div>
     </div>
 
     <!-- Header -->
@@ -57,12 +113,26 @@ $class_attr = $is_rtl ? 'bankai-admin-wrap rtl' : 'bankai-admin-wrap ltr';
     ?>
 
     <!-- Body Layout -->
-    <div class="bankai-body-layout">
+    <div class="bankai-body-layout bankai-ekit-body">
 
-        <!-- Mobile Overlay (Hidden by default) -->
-        <div id="bankai-mobile-overlay"
-             class="bankai-mobile-overlay"
-             hidden
+        <!--
+            Mobile Overlay lives INSIDE .bankai-body-layout on purpose:
+            .bankai-body-layout establishes its own stacking context
+            (position:relative + z-index:1), so a fixed-position child of
+            #bankai-admin-app (the old location) could never out-rank a
+            sibling of .bankai-body-layout no matter how high its own
+            z-index was set — .bankai-sidebar (z-index:9999) was trapped
+            below .bankai-mobile-overlay (z-index:9998) and rendered
+            underneath the blur on mobile. Keeping the overlay as a true
+            sibling of the sidebar here lets the existing z-index values
+            (sidebar 9999 > overlay 9998 > main-content 1) resolve as
+            intended.
+        -->
+        <div class="bankai-mobile-overlay"
+             x-show="mobileMenuOpen"
+             x-cloak
+             x-transition.opacity
+             @click="closeMobileMenu()"
              aria-hidden="true"></div>
 
         <!-- Sidebar -->
@@ -75,9 +145,10 @@ $class_attr = $is_rtl ? 'bankai-admin-wrap rtl' : 'bankai-admin-wrap ltr';
 
         <!-- Main Content -->
         <main id="bankai-main-content" class="bankai-main-content">
-            <div id="bankai-tab-loading-overlay"
-                 class="bankai-tab-loading-overlay"
-                 hidden
+            <div class="bankai-tab-loading-overlay"
+                 x-show="pageLoading"
+                 x-cloak
+                 x-transition.opacity
                  role="status"
                  aria-live="polite">
                 <div class="bankai-loading-pill">
@@ -85,25 +156,22 @@ $class_attr = $is_rtl ? 'bankai-admin-wrap rtl' : 'bankai-admin-wrap ltr';
                         <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".2" stroke-width="2.5"/>
                         <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
-                    <span>
-                        <?php esc_html_e('در حال بارگذاری بخش...', 'bankai-core'); ?>
+                    <span x-text="isRtl ? 'در حال بارگذاری بخش...' : 'Loading section...'">
+                        <?php esc_html_e('Loading section...', 'bankai-core'); ?>
                     </span>
                 </div>
             </div>
 
             <?php
-            $tabs = class_exists('Bankai_Admin_Menu')
-                ? Bankai_Admin_Menu::get_allowed_tabs()
-                : [
-                    'overview',
-                    'seo-engine',
-                    'ai-studio',
-                    'articles',
-                    'speed-cache',
-                    'media-watermark',
-                    'theme-kits',
-                    'settings-license',
-                ];
+            $tabs = [
+                'overview',
+                'articles',
+                'seo-engine',
+                'ai-studio',
+                'speed-cache',
+                'media-watermark',
+                'settings-license',
+            ];
 
             foreach ($tabs as $tab) {
                 $tab      = sanitize_key($tab);
@@ -119,5 +187,7 @@ $class_attr = $is_rtl ? 'bankai-admin-wrap rtl' : 'bankai-admin-wrap ltr';
         </main>
 
     </div>
+
+    <!-- Toast UI: views/admin/toast.php (included above) — no duplicate host -->
 
 </div>
