@@ -1,194 +1,209 @@
 <?php
 /**
- * Tab: Speed & Cache Engine
+ * Tab: Speed & Cache — GitHub Light visual system
  */
 defined('ABSPATH') || exit;
 
 /** @var array $state */
-$speed_mods = is_array($state['speedModules'] ?? null) ? $state['speedModules'] : [];
 $stats = is_array($state['speedStats'] ?? null) ? $state['speedStats'] : [];
 if (!$stats && class_exists('Bankai_Speed_Cache')) {
     $stats = Bankai_Speed_Cache::collect_stats();
 }
-$hit   = esc_html($stats['hit_ratio'] ?? '96.4%');
-$ttfb  = esc_html($stats['ttfb'] ?? '32ms');
-$redis = esc_html($stats['redis_latency'] ?? '0.42ms');
-$revs  = (int) ($stats['revisions'] ?? 0);
-$last_purge = esc_html($stats['last_purge'] ?? '');
+$hit   = esc_html($stats['hit_ratio'] ?? '—');
+$ttfb  = esc_html($stats['ttfb'] ?? '—');
+$redis = esc_html($stats['redis_latency'] ?? '—');
+
+$cfg = function_exists('bankai_get_option') ? (bankai_get_option('speed_config', []) ?: []) : [];
+if (!is_array($cfg)) { $cfg = []; }
+$cfg_json = wp_json_encode($cfg, JSON_UNESCAPED_UNICODE);
 ?>
-<div id="tab-speed-cache" class="bankai-tab-pane" style="width:100%;max-width:100%;box-sizing:border-box" x-show="activeTab === 'speed-cache'" x-cloak>
+<div id="tab-speed-cache" class="bankai-tab-pane bk-speed-shell"
+     x-show="activeTab === 'speed-cache'" x-cloak
+     x-data="bankaiSpeedTab(<?php echo htmlspecialchars($cfg_json, ENT_QUOTES, 'UTF-8'); ?>)"
+     x-init="initSpeed && initSpeed()">
 
-    <!-- Header -->
-    <div class="bankai-card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding:20px;flex-wrap:wrap;gap:14px;">
-        <div>
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap;">
-                <h2 style="font-size:18px;font-weight:800;color:#1F2328;margin:0;display:flex;align-items:center;gap:8px;">
-                    <svg class="solar-icon" style="color:#0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                    <span x-text="t('speedEngineTitle')">شتاب‌دهنده کش و سرعت</span>
-                </h2>
-                <span style="background:rgba(31,136,61,.15);border:1px solid rgba(31,136,61,.4);color:#1A7F37;font-size:11px;padding:3px 10px;border-radius:12px;font-weight:700;font-family:monospace;"
-                      x-text="(speedStats.ttfb || '<?php echo $ttfb; ?>') + ' TTFB'">
-                    <?php echo $ttfb; ?> TTFB
-                </span>
+    <div class="bk-lg-header bk-wm-hero bk-page-hero">
+        <div class="bk-wm-hero__main">
+            <div class="bk-wm-hero__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             </div>
-            <p style="font-size:12px;color:#8C959F;margin:0;" x-text="t('speedEngineSubtitle')">
-                کش صفحه، CSS بحرانی، Redis و بهینه‌سازی دیتابیس
-            </p>
-            <?php if ($last_purge): ?>
-                <p style="font-size:11px;color:#8C959F;margin:6px 0 0;">آخرین تخلیه کش: <?php echo $last_purge; ?></p>
-            <?php endif; ?>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button type="button" @click="benchmarkVitals()" :disabled="busy"
-                    style="background:#fff;border:1px solid #D0D7DE;color:#1F2328;padding:10px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;">
-                <svg class="solar-icon solar-icon-sm" style="color:#0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M12 5V2m-2 0h4"/></svg>
-                <span x-text="t('benchmarkVitals')">بنچمارک Core Web Vitals</span>
-            </button>
-            <button type="button" @click="purgeAllCaches()" :disabled="busy"
-                    style="background:#0969DA;border:none;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(9,105,218,.35);">
-                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
-                <span x-text="t('purgeCaches')">تخلیه تمام کش‌ها</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- Live Telemetry -->
-    <div class="bankai-grid-4" style="margin-bottom:24px;">
-        <div class="bankai-card" style="padding:16px;">
-            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">نرخ اصابت کش (Hit)</div>
-            <div style="font-size:24px;font-weight:800;color:#1A7F37;margin-top:4px;font-family:monospace;" x-text="speedStats.hit_ratio || '<?php echo $hit; ?>'"><?php echo $hit; ?></div>
-            <div style="font-size:11px;color:#8C959F;margin-top:2px;">Bankai Page Cache</div>
-        </div>
-        <div class="bankai-card" style="padding:16px;">
-            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">میانگین TTFB</div>
-            <div style="font-size:24px;font-weight:800;color:#0969DA;margin-top:4px;font-family:monospace;" x-text="speedStats.ttfb || '<?php echo $ttfb; ?>'"><?php echo $ttfb; ?></div>
-            <div style="font-size:11px;color:#8C959F;margin-top:2px;">Server response</div>
-        </div>
-        <div class="bankai-card" style="padding:16px;">
-            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">کش آبجکت</div>
-            <div style="font-size:24px;font-weight:800;color:#8250DF;margin-top:4px;font-family:monospace;" x-text="speedStats.redis_latency || '<?php echo $redis; ?>'"><?php echo $redis; ?></div>
-            <div style="font-size:11px;color:#8C959F;margin-top:2px;font-family:monospace;">Redis / Object Cache</div>
-        </div>
-        <div class="bankai-card" style="padding:16px;">
-            <div style="font-size:11px;color:#8C959F;font-weight:700;text-transform:uppercase;">رونوشت‌های دیتابیس</div>
-            <div style="font-size:24px;font-weight:800;color:#BC4C00;margin-top:4px;font-family:monospace;">
-                <span x-text="speedStats.revisions ?? <?php echo $revs; ?>"><?php echo $revs; ?></span>
-                <span style="font-size:12px;color:#8C959F;">مورد</span>
-            </div>
-            <div style="font-size:11px;color:#0969DA;cursor:pointer;font-weight:700;margin-top:2px;" @click="optimizeDatabase()">
-                پاکسازی فوری دیتابیس ←
-            </div>
-        </div>
-    </div>
-
-    <!-- CWV strip -->
-    <div class="bankai-card" style="padding:16px;margin-bottom:24px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;">
-        <div style="font-size:12px;font-weight:800;color:#1F2328;">Core Web Vitals</div>
-        <div style="font-size:12px;"><span style="color:#8C959F;">TTFB</span> <strong x-text="speedVitals.ttfb || '—'">—</strong></div>
-        <div style="font-size:12px;"><span style="color:#8C959F;">LCP</span> <strong x-text="speedVitals.lcp || '—'">—</strong></div>
-        <div style="font-size:12px;"><span style="color:#8C959F;">CLS</span> <strong x-text="speedVitals.cls || '—'">—</strong></div>
-        <div style="font-size:12px;"><span style="color:#8C959F;">FID</span> <strong x-text="speedVitals.fid || '—'">—</strong></div>
-        <div style="font-size:12px;margin-inline-start:auto;"><span style="color:#8C959F;">Score</span> <strong style="color:#1A7F37;" x-text="speedVitals.score || '—'">—</strong></div>
-    </div>
-
-    <!-- Modules -->
-    <div class="bankai-grid-3" style="margin-bottom:32px;">
-        <?php foreach ($speed_mods as $mod):
-            $mod_id   = esc_attr($mod['id'] ?? '');
-            $title_en = esc_js($mod['title'] ?? '');
-            $title_fa = esc_js($mod['title_fa'] ?? ($mod['title'] ?? ''));
-            $desc_en  = esc_js($mod['description'] ?? '');
-            $desc_fa  = esc_js($mod['description_fa'] ?? ($mod['description'] ?? ''));
-            $badge    = esc_html($mod['badge'] ?? '');
-        ?>
-        <div class="bankai-card" style="padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
             <div>
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <div style="width:36px;height:36px;border-radius:8px;background:rgba(9,105,218,.12);display:flex;align-items:center;justify-content:center;color:#0969DA;">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                        </div>
-                        <div>
-                            <div style="font-weight:700;font-size:14px;color:#1F2328;"
-                                 x-text="isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>'">
-                                <?php echo esc_html($mod['title_fa'] ?? $mod['title'] ?? ''); ?>
-                            </div>
-                            <span style="background:rgba(9,105,218,.12);color:#0969DA;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;margin-top:3px;"><?php echo $badge; ?></span>
-                        </div>
-                    </div>
-                    <label class="bankai-switch">
-                        <input type="checkbox"
-                               class="bk-sub-module-toggle"
-                               data-module="<?php echo $mod_id; ?>"
-                               x-model="speedState['<?php echo $mod_id; ?>']"
-                               @change="toggleSpeedModule('<?php echo $mod_id; ?>')">
-                        <span class="bankai-slider"></span>
-                    </label>
+                <div class="bk-wm-hero__title-row">
+                    <h2>کش و سرعت</h2>
+                    <span class="bk-wm-pill">Performance Lab</span>
                 </div>
-                <p style="font-size:12px;color:#656D76;line-height:1.5;margin:0 0 16px;"
-                   x-text="isRtl ? '<?php echo $desc_fa; ?>' : '<?php echo $desc_en; ?>'">
-                    <?php echo esc_html($mod['description_fa'] ?? $mod['description'] ?? ''); ?>
-                </p>
-            </div>
-            <div style="border-top:1px solid #D0D7DE;padding-top:12px;display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:11px;font-weight:700;"
-                      :style="speedState['<?php echo $mod_id; ?>'] ? 'color:#1A7F37' : 'color:#8C959F'"
-                      x-text="speedState['<?php echo $mod_id; ?>'] ? t('active') : t('disabled')">—</span>
-                <button type="button"
-                        @click="openSpeedDrawer('<?php echo $mod_id; ?>', isRtl ? '<?php echo $title_fa; ?>' : '<?php echo $title_en; ?>')"
-                        style="background:#F6F8FA;border:1px solid #D0D7DE;color:#0969DA;font-size:11px;font-weight:700;padding:5px 12px;border-radius:6px;cursor:pointer;">
-                    <span x-text="t('configure')">پیکربندی</span>
-                </button>
+                <p>کش صفحه، بهینه‌سازی CSS/JS، LazyLoad، Redis و پاکسازی دیتابیس</p>
             </div>
         </div>
-        <?php endforeach; ?>
+        <div class="bk-wm-hero__actions">
+            <div class="bk-gh-stats" style="gap:6px">
+                <div class="bk-gh-stat" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);min-width:70px;padding:6px 10px"><span style="color:rgba(255,255,255,.7)">TTFB</span><strong style="color:#fff;font-size:12px" x-text="speedStats.ttfb || '—'">—</strong></div>
+                <div class="bk-gh-stat" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);min-width:70px;padding:6px 10px"><span style="color:rgba(255,255,255,.7)">Hit</span><strong style="color:#fff;font-size:12px" x-text="speedStats.hit_ratio || '—'">—</strong></div>
+            </div>
+        </div>
+    </div>
+    <nav class="bk-art-tabs bk-lg-tabs bk-gh-tabs" role="tablist">
+        <button type="button" class="bk-lg-tab bk-gh-tab" :class="{ 'is-active': speedTab === 'config' }" @click="speedTab = 'config'">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.812l2.02 1.212a.75.75 0 0 1-.75 1.298l-2.5-1.5A.75.75 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0Z"/></svg>
+            پیکربندی کش
+        </button>
+        <button type="button" class="bk-lg-tab bk-gh-tab" :class="{ 'is-active': speedTab === 'redis' }" @click="speedTab = 'redis'; loadRedisSettings && loadRedisSettings(); testRedisQuiet && testRedisQuiet()">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25Z"/><path d="M7.25 8a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 7.25 8ZM4 8a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm0 3a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm6.25-3.25a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5Z"/></svg>
+            Redis
+            <span class="bk-gh-redis-badge" x-show="redisStatus.ok" x-cloak title="Redis فعال">
+                <i></i> فعال
+            </span>
+            <span class="bk-gh-redis-badge is-off" x-show="redisStatus.checked && !redisStatus.ok" x-cloak>
+                <i></i> خاموش
+            </span>
+        </button>
+    </nav>
+
+    
+    <div x-show="speedTab === 'config'" x-cloak class="bk-seo-mod-grid">
+        <template x-for="opt in speedOptions" :key="opt.id">
+            <div class="bk-seo-mod-card" :class="{ 'is-on': isOptOn(opt.id) }">
+                <div>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div class="bk-seo-mod-icon" x-html="opt.svg || ''"></div>
+                            <div>
+                                <div style="font-weight:700;font-size:13px;color:#0F172A;line-height:1.35;" x-text="opt.title"></div>
+                                <span class="bk-seo-badge" :style="opt.badgeStyle || 'background:#10B9811A;color:#10B981'" x-text="opt.badge"></span>
+                            </div>
+                        </div>
+                        <label class="bankai-switch" @click.stop>
+                            <input type="checkbox" :checked="isOptOn(opt.id)" @change="toggleOpt(opt.id, $event.target.checked)">
+                            <span class="bankai-slider"></span>
+                        </label>
+                    </div>
+                    <p style="font-size:12px;color:#64748B;line-height:1.6;margin:0 0 14px;" x-text="opt.desc"></p>
+                </div>
+                <div class="bk-seo-mod-foot">
+                    <span :style="isOptOn(opt.id) ? 'color:#16A34A' : 'color:#94A3B8'" x-text="isOptOn(opt.id) ? 'فعال' : 'غیرفعال'"></span>
+                    <button type="button" class="bk-seo-btn-sm" @click="openOpt = (openOpt === opt.id ? '' : opt.id)"
+                            x-text="openOpt === opt.id ? 'بستن' : 'تنظیمات'"></button>
+                </div>
+                <div class="bk-gh-card__panel" x-show="openOpt === opt.id" x-cloak style="margin:0 -6px;padding-top:8px;border-top:1px solid #f1f5f9">
+                    <template x-if="opt.id === 'page_caching'">
+                        <div class="bk-gh-fields">
+                            <label>عمر کش (ثانیه)<input type="number" min="60" x-model.number="cfg.page_caching.ttl"></label>
+                            <label>کاربران واردشده<select x-model="cfg.page_caching.skip_logged_in"><option value="1">کش نشود</option><option value="0">کش شود</option></select></label>
+                            <label>Query String<select x-model="cfg.page_caching.skip_query"><option value="1">کش نشود</option><option value="0">کش شود</option></select></label>
+                            <label class="full">استثنا URL<textarea rows="2" x-model="cfg.page_caching.exclusions"></textarea></label>
+                            <div class="bk-gh-actions full">
+                                <button type="button" class="bk-gh-btn-primary" :disabled="busySave[opt.id]" @click="saveOpt('page_caching')">ذخیره</button>
+                                <button type="button" class="bk-gh-btn" :disabled="busyPurge" @click="purgePageCache()">پاکسازی</button>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-if="opt.id === 'asset_optimization'">
+                        <div class="bk-gh-fields">
+                            <label class="chk"><input type="checkbox" x-model="cfg.asset_optimization.minify_css"> Minify CSS</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.asset_optimization.minify_js"> Minify JS</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.asset_optimization.combine_css"> ترکیب CSS</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.asset_optimization.defer_js"> Defer JS</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.asset_optimization.delay_js"> Delay JS</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.asset_optimization.remove_unused_css"> Unused CSS</label>
+                            <div class="bk-gh-actions full"><button type="button" class="bk-gh-btn-primary" :disabled="busySave[opt.id]" @click="saveOpt('asset_optimization')">ذخیره</button></div>
+                        </div>
+                    </template>
+                    <template x-if="opt.id === 'media_lazy'">
+                        <div class="bk-gh-fields">
+                            <label class="chk"><input type="checkbox" x-model="cfg.media_lazy.images"> تصاویر</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.media_lazy.iframes"> iframe</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.media_lazy.youtube"> YouTube</label>
+                            <label>آستانه (px)<input type="number" x-model.number="cfg.media_lazy.threshold"></label>
+                            <div class="bk-gh-actions full"><button type="button" class="bk-gh-btn-primary" @click="saveOpt('media_lazy')">ذخیره</button></div>
+                        </div>
+                    </template>
+                    <template x-if="opt.id === 'preload'">
+                        <div class="bk-gh-fields">
+                            <label class="chk"><input type="checkbox" x-model="cfg.preload.fonts"> فونت</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.preload.links"> Prefetch</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.preload.dns"> DNS</label>
+                            <label class="full">Preconnect<textarea rows="2" x-model="cfg.preload.preconnect"></textarea></label>
+                            <div class="bk-gh-actions full"><button type="button" class="bk-gh-btn-primary" @click="saveOpt('preload')">ذخیره</button></div>
+                        </div>
+                    </template>
+                    <template x-if="opt.id === 'browser_cache'">
+                        <div class="bk-gh-fields">
+                            <label>TTL<input type="number" x-model.number="cfg.browser_cache.ttl"></label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.browser_cache.etag"> ETag</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.browser_cache.gzip"> Gzip</label>
+                            <div class="bk-gh-actions full"><button type="button" class="bk-gh-btn-primary" @click="saveOpt('browser_cache')">ذخیره</button></div>
+                        </div>
+                    </template>
+                    <template x-if="opt.id === 'database_optimizer'">
+                        <div class="bk-gh-fields">
+                            <label class="chk"><input type="checkbox" x-model="cfg.database_optimizer.revisions"> رونوشت</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.database_optimizer.auto_drafts"> پیش‌نویس</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.database_optimizer.trashed"> زباله‌دان</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.database_optimizer.spam"> اسپم</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.database_optimizer.transients"> Transient</label>
+                            <div class="bk-gh-actions full">
+                                <button type="button" class="bk-gh-btn-primary" @click="saveOpt('database_optimizer')">ذخیره</button>
+                                <button type="button" class="bk-gh-btn" @click="runDbOptimize()">اجرا</button>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-if="opt.id === 'heartbeat'">
+                        <div class="bk-gh-fields">
+                            <label>ادمین (ثانیه)<input type="number" x-model.number="cfg.heartbeat.admin_interval"></label>
+                            <label>فرانت<input type="number" x-model.number="cfg.heartbeat.front_interval"></label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.heartbeat.disable_front"> غیرفعال فرانت</label>
+                            <div class="bk-gh-actions full"><button type="button" class="bk-gh-btn-primary" @click="saveOpt('heartbeat')">ذخیره</button></div>
+                        </div>
+                    </template>
+                    <template x-if="opt.id === 'object_cache'">
+                        <div class="bk-gh-fields">
+                            <p class="full" style="margin:0;font-size:13px;color:#94a3b8">پیکربندی در تب Redis</p>
+                            <div class="bk-gh-actions full"><button type="button" class="bk-gh-btn" @click="speedTab='redis'; loadRedisSettings()">رفتن به Redis</button></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
     </div>
 
-    <!-- Browser cache status -->
-    <div class="bankai-card" style="padding:18px;margin-bottom:20px;border:1px solid #D0D7DE;border-radius:12px;background:#F6F8FA">
-        <div style="font-weight:800;font-size:13px;margin-bottom:6px;color:#1F2328">کش مرورگر (Browser Cache)</div>
-        <p style="margin:0 0 10px;font-size:12px;color:#656D76;line-height:1.6">
-            با فعال‌سازی ماژول «بهینه‌سازی کش مرورگر»، قوانین <code>.htaccess</code> برای فایل‌های استاتیک
-            (CSS، JS، تصویر، فونت) با <code>max-age=1 سال</code> نوشته می‌شود. روی Nginx باید قطعه زیر را دستی در کانفیگ سرور قرار دهید.
-        </p>
-        <details style="font-size:11px">
-            <summary style="cursor:pointer;font-weight:700;color:#0969DA">نمونه کانفیگ Nginx</summary>
-            <pre style="direction:ltr;text-align:left;background:#0d1117;color:#e6edf3;padding:12px;border-radius:8px;overflow:auto;margin-top:8px;font-size:11px;line-height:1.5"><?php
-                echo esc_html(class_exists('Bankai_Speed_Cache') ? Bankai_Speed_Cache::nginx_browser_cache_snippet() : '');
-            ?></pre>
-        </details>
-    </div>
-
-    <!-- Speed Drawer — modern, no dark overlay -->
-    <div x-show="speedDrawer.show" x-cloak
-         class="bankai-modal-shell"
-         x-transition:enter="bk-modal-enter"
-         x-transition:enter-start="bk-modal-enter-start"
-         x-transition:enter-end="bk-modal-enter-end"
-         x-transition:leave="bk-modal-leave"
-         x-transition:leave-start="bk-modal-leave-start"
-         x-transition:leave-end="bk-modal-leave-end">
-        <div class="bankai-modal-panel" @click.outside="speedDrawer.show = false">
-            <div class="bankai-modal-head">
-                <h3 class="bankai-modal-title" x-text="speedDrawer.title + (isRtl ? ' — تنظیمات کش' : ' — Cache Settings')"></h3>
-                <button type="button" class="bankai-modal-close" @click="speedDrawer.show = false" aria-label="Close">&times;</button>
-            </div>
-            <div class="bankai-modal-body">
-                <div class="bankai-field">
-                    <label>زمان انقضای کش (TTL — ثانیه)</label>
-                    <input type="number" x-model="speedDrawer.ttl" min="60" step="60" class="bankai-input mono">
-                    <span class="bankai-hint">مثلاً 3600 = یک ساعت · 86400 = یک روز</span>
-                </div>
-                <div class="bankai-field">
-                    <label>قوانین استثنا (هر خط یک الگو)</label>
-                    <textarea rows="4" x-model="speedDrawer.exclusions" class="bankai-input mono"></textarea>
-                    <span class="bankai-hint">مسیرهایی که نباید کش شوند؛ مثل /cart/*</span>
-                </div>
-            </div>
-            <div class="bankai-modal-foot">
-                <button type="button" class="bankai-btn-ghost" @click="speedDrawer.show = false" x-text="t('cancel')">انصراف</button>
-                <button type="button" class="bankai-btn-primary" @click="saveSpeedDrawerSettings()" x-text="t('save')">ذخیره</button>
-            </div>
+<div x-show="speedTab === 'redis'" x-cloak class="bk-lg-card bk-gh-redis" style="padding:20px">
+        <div class="bk-gh-redis__status" :class="redisStatus.ok ? 'is-ok' : (redisStatus.checked ? 'is-bad' : '')">
+            <template x-if="redisStatus.ok">
+                <span>✓ Redis روی سرور در دسترس است — <span x-text="redisStatus.message"></span></span>
+            </template>
+            <template x-if="redisStatus.checked && !redisStatus.ok">
+                <span>✗ اتصال Redis برقرار نشد — <span x-text="redisStatus.message"></span></span>
+            </template>
+            <template x-if="!redisStatus.checked">
+                <span>برای بررسی وضعیت، «تست اتصال» را بزنید یا تنظیمات را ذخیره کنید.</span>
+            </template>
+        </div>
+        <div class="bk-gh-fields bk-gh-redis-grid">
+            <label class="chk full"><input type="checkbox" x-model="redisLocal.enabled"> فعال‌سازی Redis Object Cache</label>
+            <label>Host<input type="text" dir="ltr" x-model="redisLocal.host"></label>
+            <label>Port<input type="number" dir="ltr" x-model.number="redisLocal.port"></label>
+            <label>Password<input type="text" autocomplete="new-password" dir="ltr" x-model="redisLocal.password"></label>
+            <label>DB<input type="number" dir="ltr" x-model.number="redisLocal.db"></label>
+            <label>Prefix<input type="text" dir="ltr" x-model="redisLocal.prefix"></label>
+            <label>Timeout<input type="number" step="0.1" x-model.number="redisLocal.timeout"></label>
+        </div>
+        <div class="bk-gh-actions" style="margin-top:14px">
+            <button type="button" class="bk-gh-btn" :disabled="busyRedisTest" @click="testRedisConnection()">
+                <span class="bk-btn-spin" x-show="busyRedisTest" x-cloak></span> تست اتصال
+            </button>
+            <button type="button" class="bk-gh-btn-primary" :disabled="redisSaving || busyRedisSave" @click="saveRedisSettings()">
+                <span class="bk-btn-spin" x-show="redisSaving || busyRedisSave" x-cloak></span>
+                <span x-text="(redisSaving || busyRedisSave) ? '…' : 'ذخیره Redis'"></span>
+            </button>
+        </div>
+        <div class="bk-gh-help">
+            <strong>راهنما</strong>
+            <ol>
+                <li><code>sudo apt install redis-server php-redis</code></li>
+                <li><code>sudo systemctl enable --now redis-server</code></li>
+                <li>Host معمولاً <code>127.0.0.1</code> · Port <code>6379</code></li>
+            </ol>
         </div>
     </div>
 </div>
+<!-- /tab-speed-cache.php close -->

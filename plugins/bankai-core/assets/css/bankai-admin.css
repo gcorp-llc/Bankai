@@ -1041,6 +1041,7 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
 
 #bankai-admin-app .bankai-toast,
 .bankai-app-wrapper .bankai-toast {
+  /* legacy single toast — prefer container */
   position: fixed;
   bottom: 24px;
   right: 24px;
@@ -1379,8 +1380,9 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
 .bankai-toast-container {
   position: fixed;
   left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  bottom: 28px;
+  top: auto;
+  transform: translateX(-50%);
   z-index: 100050;
   display: flex;
   flex-direction: column;
@@ -2063,6 +2065,7 @@ body.toplevel_page_bankai-core #wpbody-content {
 /* Toast */
 #bankai-admin-app .bankai-toast,
 .bankai-app-wrapper .bankai-toast {
+  /* legacy single toast — prefer container */
   border-radius: 999px !important;
   box-shadow: var(--bankai-shadow-2) !important;
   border: none !important;
@@ -2463,8 +2466,8 @@ aside.bankai-sidebar {
     padding: 8px 14px; font-weight: 700; cursor: pointer;
 }
 
-/* ===== ELEMENTSKIT-INSPIRED ADMIN SHELL v1.0.104 ============================
-   Dark gradient sidebar · luminous content stage · animated nav
+/* ===== ELEMENTSKIT-INSPIRED ADMIN SHELL v1.0.105 (RTL-safe) ================
+   Sidebar sticky INSIDE #wpcontent — never under WP admin menu
    ========================================================================== */
 
 body.toplevel_page_bankai-core,
@@ -2477,62 +2480,33 @@ body.toplevel_page_bankai-core #wpbody-content {
 
 #bankai-admin-app,
 .bankai-admin-wrap {
-  --ekit-side: #1b1238;
-  --ekit-side-2: #2a1a5e;
-  --ekit-accent: #7c5cff;
-  --ekit-accent-2: #a78bfa;
-  --ekit-glow: rgba(124, 92, 255, 0.45);
+  --ekit-side-w: 260px;
   --ekit-text: #f5f3ff;
   --ekit-muted: rgba(245, 243, 255, 0.62);
-  --ekit-content-bg: #f4f6fb;
+  --ekit-content-bg: #f0f2f8;
   --ekit-card: #ffffff;
-  --ekit-radius: 18px;
-  --ekit-side-w: 268px;
+  --ekit-accent: #7c5cff;
   background: var(--ekit-content-bg) !important;
   min-height: calc(100vh - 32px);
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
-/* hide old ambient blobs – cleaner stage */
-#bankai-admin-app .bankai-bg-decorations {
-  opacity: 0.35;
-  pointer-events: none;
-}
-#bankai-admin-app .bankai-ambient-orb {
-  filter: blur(60px);
-  opacity: 0.4;
-}
+#bankai-admin-app .bankai-bg-decorations { opacity: 0.25; pointer-events: none; }
 
-/* ---------- Top header (glass strip over content) ---------- */
+/* Header sits in normal flow above body */
 #bankai-admin-header {
   position: sticky;
   top: 32px;
   z-index: 90;
-  margin: 12px 16px 0 calc(var(--ekit-side-w) + 28px) !important;
+  margin: 12px 16px 0 !important;
   padding: 12px 18px !important;
-  background: rgba(255, 255, 255, 0.82) !important;
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
   border-radius: 16px !important;
-  box-shadow: 0 8px 28px rgba(28, 18, 70, 0.06) !important;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-#bankai-admin-app.rtl #bankai-admin-header,
-[dir="rtl"] #bankai-admin-header {
-  margin: 12px calc(var(--ekit-side-w) + 28px) 0 16px !important;
-}
-
-.bankai-header-title-block h1,
-#bankai-admin-header h1,
-#bankai-admin-header .bankai-header-title {
-  font-size: 1.05rem !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.02em;
-  color: #1a1433 !important;
+  box-shadow: 0 8px 24px rgba(28, 18, 70, 0.06) !important;
 }
 
 .bankai-btn-action {
@@ -2540,7 +2514,6 @@ body.toplevel_page_bankai-core #wpbody-content {
   border: 1px solid #e6e8f0 !important;
   background: #fff !important;
   color: #3b3558 !important;
-  box-shadow: 0 1px 2px rgba(20, 12, 50, 0.04);
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
 .bankai-btn-action:hover {
@@ -2550,98 +2523,86 @@ body.toplevel_page_bankai-core #wpbody-content {
   color: #5b3fd6 !important;
 }
 
-/* ---------- Body: sidebar + content ---------- */
+/* Body: flex row — sidebar + content (NOT fixed to viewport) */
 #bankai-admin-app .bankai-body-layout,
 .bankai-app-wrapper .bankai-body-layout {
   display: flex !important;
-  gap: 0 !important;
-  padding: 14px 16px 28px 16px !important;
+  flex-direction: row !important;
+  gap: 16px !important;
+  padding: 14px 16px 28px !important;
   min-height: calc(100vh - 110px);
-  align-items: stretch !important;
+  align-items: flex-start !important;
+  box-sizing: border-box !important;
 }
 
-/* ---------- Sidebar: full-height ElementsKit style ---------- */
+/* Sidebar: sticky inside content column — respects WP admin menu + RTL */
 #bankai-admin-sidebar,
 #bankai-admin-app .bankai-sidebar,
 .bankai-app-wrapper .bankai-sidebar {
+  position: sticky !important;
+  top: 46px !important; /* WP admin bar 32px + 14px gap */
+  bottom: auto !important;
+  inset: auto !important;
+  left: auto !important;
+  right: auto !important;
   width: var(--ekit-side-w) !important;
   min-width: var(--ekit-side-w) !important;
   max-width: var(--ekit-side-w) !important;
-  position: fixed !important;
-  top: 32px !important;
-  bottom: 12px !important;
-  inset-inline-start: 12px !important;
-  inset-inline-end: auto !important;
+  flex: 0 0 var(--ekit-side-w) !important;
   height: auto !important;
-  max-height: none !important;
+  max-height: calc(100vh - 58px) !important; /* stays visible, never fades */
+  align-self: flex-start !important;
   margin: 0 !important;
-  padding: 18px 14px 16px !important;
-  border-radius: 22px !important;
+  padding: 16px 12px !important;
+  border-radius: 20px !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   background:
     radial-gradient(120% 80% at 0% 0%, rgba(167, 139, 250, 0.28) 0%, transparent 55%),
     radial-gradient(90% 70% at 100% 100%, rgba(99, 102, 241, 0.22) 0%, transparent 50%),
     linear-gradient(165deg, #22124a 0%, #1a0f38 45%, #140a2c 100%) !important;
   backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow:
-    0 20px 50px rgba(20, 10, 50, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 16px 40px rgba(20, 10, 50, 0.28), inset 0 1px 0 rgba(255,255,255,.08) !important;
   color: var(--ekit-text) !important;
   overflow-y: auto;
   overflow-x: hidden;
-  z-index: 120 !important;
+  z-index: 20 !important;
   display: flex !important;
   flex-direction: column !important;
-  justify-content: space-between !important;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.2) transparent;
+  justify-content: flex-start !important;
+  align-self: flex-start !important;
+  order: 0;
 }
 
-#bankai-admin-app.rtl #bankai-admin-sidebar,
-[dir="rtl"] #bankai-admin-sidebar {
-  inset-inline-start: 12px;
+/* Explicit RTL/LTR: keep sidebar as first flex item on the START side */
+#bankai-admin-app.rtl .bankai-body-layout,
+[dir="rtl"] #bankai-admin-app .bankai-body-layout {
+  flex-direction: row !important; /* in RTL row still places first item on the right (start) */
 }
 
-/* Brand */
 #bankai-admin-sidebar .bankai-brand-card {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-  padding: 6px 8px 16px !important;
-  margin-bottom: 14px !important;
-  gap: 12px !important;
+  border-bottom: 1px solid rgba(255,255,255,.1) !important;
+  padding: 4px 6px 14px !important;
+  margin-bottom: 12px !important;
+  gap: 10px !important;
+  display: flex;
+  align-items: center;
 }
 #bankai-admin-sidebar .bankai-brand-logo {
-  width: 42px !important;
-  height: 42px !important;
-  border-radius: 14px !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 12px !important;
   background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
-  box-shadow: 0 8px 20px rgba(124, 92, 255, 0.4) !important;
+  box-shadow: 0 8px 18px rgba(124, 92, 255, 0.35) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: #fff !important;
-  font-weight: 800;
-  font-size: 15px;
   overflow: hidden;
-}
-#bankai-admin-sidebar .bankai-brand-logo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-#bankai-admin-sidebar .bankai-brand-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
 }
 #bankai-admin-sidebar .bankai-brand-name,
 #bankai-admin-sidebar .bankai-brand-title {
   color: #fff !important;
   font-weight: 700 !important;
-  font-size: 15px !important;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
+  font-size: 14px !important;
 }
 #bankai-admin-sidebar .bankai-brand-sub,
 #bankai-admin-sidebar .bankai-brand-version {
@@ -2649,61 +2610,43 @@ body.toplevel_page_bankai-core #wpbody-content {
   font-size: 11px !important;
 }
 
-/* Nav groups */
-#bankai-admin-sidebar .bankai-nav-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
-}
+#bankai-admin-sidebar .bankai-nav-group { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
 #bankai-admin-sidebar .bankai-nav-group-title {
-  color: rgba(245, 243, 255, 0.4) !important;
+  color: rgba(245,243,255,.4) !important;
   font-size: 10px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.08em;
+  letter-spacing: .06em;
   text-transform: uppercase;
-  padding: 8px 12px 6px !important;
-  margin: 0 !important;
+  padding: 8px 10px 4px !important;
 }
 
-/* Nav buttons */
 #bankai-admin-sidebar .bankai-nav-btn {
   display: flex !important;
   align-items: center !important;
-  gap: 12px !important;
+  gap: 10px !important;
   width: 100% !important;
-  margin: 0 !important;
-  padding: 11px 12px !important;
+  padding: 10px 10px !important;
   border: 0 !important;
-  border-radius: 14px !important;
+  border-radius: 12px !important;
   background: transparent !important;
   color: var(--ekit-muted) !important;
-  font-size: 13.5px !important;
+  font-size: 13px !important;
   font-weight: 550 !important;
   text-align: start !important;
   cursor: pointer;
   position: relative;
-  transition: background .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease;
+  transition: background .2s ease, color .2s ease;
   box-shadow: none !important;
 }
-#bankai-admin-sidebar .bankai-nav-btn span {
-  color: inherit !important;
-  flex: 1;
-  line-height: 1.3;
-}
+#bankai-admin-sidebar .bankai-nav-btn span { color: inherit !important; flex: 1; }
 #bankai-admin-sidebar .bankai-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255,255,255,.08) !important;
   color: #fff !important;
-  transform: translateX(2px);
 }
-#bankai-admin-app.rtl #bankai-admin-sidebar .bankai-nav-btn:hover {
-  transform: translateX(-2px);
-}
-
 #bankai-admin-sidebar .bankai-nav-btn.active {
-  background: linear-gradient(90deg, rgba(124, 92, 255, 0.38), rgba(124, 92, 255, 0.12)) !important;
+  background: linear-gradient(90deg, rgba(124,92,255,.38), rgba(124,92,255,.12)) !important;
   color: #fff !important;
-  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.28), 0 8px 22px rgba(80, 40, 180, 0.18) !important;
+  box-shadow: inset 0 0 0 1px rgba(167,139,250,.28) !important;
 }
 #bankai-admin-sidebar .bankai-nav-btn.active::before {
   content: "";
@@ -2714,170 +2657,1026 @@ body.toplevel_page_bankai-core #wpbody-content {
   width: 3px;
   border-radius: 99px;
   background: linear-gradient(180deg, #c4b5fd, #7c5cff);
-  box-shadow: 0 0 12px var(--ekit-glow);
 }
-
 #bankai-admin-sidebar .bankai-nav-icon {
-  width: 34px !important;
-  height: 34px !important;
-  min-width: 34px !important;
-  border-radius: 11px !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  border-radius: 10px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background: rgba(255, 255, 255, 0.07) !important;
+  background: rgba(255,255,255,.07) !important;
   color: #d8d0ff !important;
-  transition: background .2s ease, color .2s ease, box-shadow .2s ease;
 }
-#bankai-admin-sidebar .bankai-nav-btn:hover .bankai-nav-icon,
-#bankai-admin-sidebar .bankai-nav-btn.active .bankai-nav-icon {
-  background: linear-gradient(135deg, rgba(167, 139, 250, 0.55), rgba(99, 102, 241, 0.45)) !important;
+#bankai-admin-sidebar .bankai-nav-btn.active .bankai-nav-icon,
+#bankai-admin-sidebar .bankai-nav-btn:hover .bankai-nav-icon {
+  background: linear-gradient(135deg, rgba(167,139,250,.55), rgba(99,102,241,.45)) !important;
   color: #fff !important;
-  box-shadow: 0 6px 14px rgba(124, 92, 255, 0.3);
 }
-#bankai-admin-sidebar .bankai-nav-icon svg {
-  width: 18px !important;
-  height: 18px !important;
-  stroke: currentColor !important;
-}
-
+#bankai-admin-sidebar .bankai-nav-icon svg { width: 17px !important; height: 17px !important; stroke: currentColor !important; }
 #bankai-admin-sidebar .bankai-nav-off-badge {
   font-size: 9px !important;
   font-weight: 700;
-  letter-spacing: 0.04em;
   padding: 2px 6px !important;
   border-radius: 999px;
-  background: rgba(255, 69, 58, 0.2) !important;
+  background: rgba(255,69,58,.2) !important;
   color: #ffb4ae !important;
-  border: 1px solid rgba(255, 69, 58, 0.25);
 }
-
-#bankai-admin-sidebar .bankai-nav-btn.is-disabled {
-  opacity: 0.45;
-}
-
-/* Sidebar footer card */
+#bankai-admin-sidebar .bankai-nav-btn.is-disabled { opacity: .45; }
 #bankai-admin-sidebar .bankai-sidebar-footer,
 #bankai-admin-sidebar .bankai-side-foot {
   margin-top: auto;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-#bankai-admin-sidebar .bankai-sidebar-footer-card {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 14px !important;
-  padding: 12px !important;
-  color: var(--ekit-muted) !important;
-  font-size: 12px;
+  border-top: 1px solid rgba(255,255,255,.1);
 }
 
-/* ---------- Main content stage ---------- */
+/* Main content — no huge offset */
 #bankai-admin-app #bankai-main-content,
 .bankai-app-wrapper #bankai-main-content,
 #bankai-admin-app .bankai-main-content {
-  flex: 1 !important;
+  flex: 1 1 auto !important;
   min-width: 0 !important;
-  margin-inline-start: calc(var(--ekit-side-w) + 12px) !important;
-  margin-inline-end: 0 !important;
-  padding: 8px 6px 24px !important;
+  margin: 0 !important;
+  padding: 0 2px 20px !important;
   position: relative;
 }
 
-#bankai-admin-app.rtl #bankai-main-content,
-[dir="rtl"] #bankai-main-content {
-  margin-inline-start: calc(var(--ekit-side-w) + 12px) !important;
-}
-
-/* Content cards livelier */
+/* Cards */
 #bankai-admin-app .bk-card,
 #bankai-admin-app .bankai-card,
-#bankai-admin-app .bk-panel,
-#bankai-admin-app .bk-section-card {
-  background: var(--ekit-card) !important;
-  border: 1px solid rgba(230, 232, 240, 0.95) !important;
-  border-radius: 18px !important;
-  box-shadow: 0 10px 30px rgba(24, 16, 60, 0.04) !important;
-  transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease;
+#bankai-admin-app .bk-panel {
+  background: #fff !important;
+  border: 1px solid #e8eaf2 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 24px rgba(24, 16, 60, 0.04) !important;
 }
-#bankai-admin-app .bk-card:hover,
-#bankai-admin-app .bankai-card:hover {
-  box-shadow: 0 16px 40px rgba(70, 40, 160, 0.08) !important;
-  border-color: #ddd6fe !important;
-}
-
-/* Primary buttons accent */
 #bankai-admin-app .bk-btn-primary,
-#bankai-admin-app .bankai-btn-primary,
-#bankai-admin-app button.bk-btn-primary {
+#bankai-admin-app .bankai-btn-primary {
   background: linear-gradient(135deg, #7c5cff, #6366f1) !important;
   border: none !important;
   color: #fff !important;
   border-radius: 12px !important;
-  box-shadow: 0 8px 20px rgba(124, 92, 255, 0.28) !important;
-}
-#bankai-admin-app .bk-btn-primary:hover {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(124, 92, 255, 0.25) !important;
 }
 
-/* Tab entrance */
-#bankai-admin-app [id^="tab-"] {
-  animation: bankaiEkitIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+/* Dashboard widgets */
+.bk-dash-hero {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  margin-bottom: 18px;
 }
-@keyframes bankaiEkitIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.985); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+@media (max-width: 1100px) { .bk-dash-hero { grid-template-columns: 1fr; } }
+.bk-dash-hero-main {
+  background: linear-gradient(135deg, #22124a 0%, #3b1d7a 50%, #5b3fd6 100%);
+  color: #fff;
+  border-radius: 20px;
+  padding: 22px 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(70, 40, 160, 0.25);
+}
+.bk-dash-hero-main::after {
+  content: "";
+  position: absolute;
+  width: 220px; height: 220px;
+  right: -40px; top: -60px;
+  background: radial-gradient(circle, rgba(255,255,255,.18), transparent 70%);
+  pointer-events: none;
+}
+.bk-dash-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+@media (max-width: 1100px) { .bk-dash-metrics { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .bk-dash-metrics { grid-template-columns: 1fr; } }
+.bk-dash-metric {
+  background: #fff;
+  border: 1px solid #e8eaf2;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(24,16,60,.04);
+}
+.bk-dash-metric .lab { font-size: 11px; font-weight: 700; color: #8b90a0; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; display:flex; align-items:center; gap:6px; }
+.bk-dash-metric .val { font-size: 26px; font-weight: 800; color: #1a1433; line-height: 1.15; }
+.bk-dash-metric .sub { font-size: 12px; color: #8b90a0; margin-top: 6px; }
+.bk-dash-metric.is-purple .val { color: #6d4aff; }
+.bk-dash-metric.is-green .val { color: #16a34a; }
+.bk-dash-metric.is-blue .val { color: #2563eb; }
+.bk-dash-metric.is-amber .val { color: #d97706; }
+
+/* Settings / license */
+.bk-settings-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
+@media (max-width: 1000px) { .bk-settings-grid { grid-template-columns: 1fr; } }
+.bk-lic-banner {
+  background: linear-gradient(135deg, #ecfdf5, #f5f3ff);
+  border: 1px solid #ddd6fe;
+  border-radius: 18px;
+  padding: 20px;
+}
+.bk-lic-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  letter-spacing: .04em;
+  word-break: break-all;
 }
 
-/* Page progress bar accent */
-.bankai-page-progress-bar {
-  background: linear-gradient(90deg, #7c5cff, #a78bfa, #6366f1) !important;
+/* Site SEO tab visual upgrade */
+#tab-seo-engine .bk-seo-site-hero {
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  gap: 16px;
+  margin-bottom: 18px;
 }
+@media (max-width: 1100px) { #tab-seo-engine .bk-seo-site-hero { grid-template-columns: 1fr; } }
+#tab-seo-engine .bk-seo-score-ring {
+  width: 110px; height: 110px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: conic-gradient(#7c5cff var(--p, 70%), #e9e5ff 0);
+  box-shadow: 0 10px 30px rgba(124,92,255,.2);
+}
+#tab-seo-engine .bk-seo-score-ring > span {
+  width: 84px; height: 84px; border-radius: 50%;
+  background: #fff; display: grid; place-items: center;
+  font-weight: 800; font-size: 22px; color: #1a1433;
+}
+#tab-seo-engine .bk-audit-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; border-radius: 14px;
+  background: #fafbff; border: 1px solid #eceef6;
+  margin-bottom: 8px;
+}
+#tab-seo-engine .bk-audit-item.is-ok { border-color: #bbf7d0; background: #f0fdf4; }
+#tab-seo-engine .bk-audit-item.is-warn { border-color: #fde68a; background: #fffbeb; }
+#tab-seo-engine .bk-audit-item.is-bad { border-color: #fecaca; background: #fef2f2; }
 
-/* Mobile */
+/* Mobile drawer */
 @media (max-width: 1024px) {
-  #bankai-admin-header {
-    margin: 12px 12px 0 12px !important;
-  }
   #bankai-admin-sidebar,
   #bankai-admin-app .bankai-sidebar {
     position: fixed !important;
     top: 0 !important;
     bottom: 0 !important;
     inset-inline-start: 0 !important;
-    border-radius: 0 22px 22px 0 !important;
+    inset-inline-end: auto !important;
+    max-height: none !important;
+    border-radius: 0 20px 20px 0 !important;
     transform: translateX(-110%);
     transition: transform .28s cubic-bezier(0.16, 1, 0.3, 1) !important;
     z-index: 10050 !important;
   }
-  #bankai-admin-app.rtl #bankai-admin-sidebar {
-    border-radius: 22px 0 0 22px !important;
+  #bankai-admin-app.rtl #bankai-admin-sidebar,
+  [dir="rtl"] #bankai-admin-sidebar {
+    border-radius: 20px 0 0 20px !important;
     transform: translateX(110%);
   }
-  #bankai-admin-app.bankai-mobile-open #bankai-admin-sidebar,
-  #bankai-admin-app .bankai-sidebar.is-open,
   #bankai-admin-sidebar.mobile-open,
-  #bankai-admin-app .bankai-sidebar.mobile-open,
-  body.bankai-mobile-nav-open #bankai-admin-sidebar {
+  #bankai-admin-app .bankai-sidebar.mobile-open {
     transform: translateX(0) !important;
   }
-  #bankai-admin-app #bankai-main-content {
-    margin-inline-start: 0 !important;
+  #bankai-admin-app .bankai-body-layout {
+    flex-direction: column !important;
   }
 }
 
-/* Soft content canvas edge */
-#bankai-admin-app #bankai-main-content::before {
-  content: "";
-  position: absolute;
-  inset: -8px -4px auto -4px;
-  height: 120px;
-  background: radial-gradient(60% 100% at 50% 0%, rgba(124, 92, 255, 0.07), transparent 70%);
-  pointer-events: none;
-  z-index: 0;
+
+/* ===== Dashboard module cards + unified purple theme polish v1.0.106 ===== */
+.bk-dash-hero-main h2 { color: #ffffff !important; }
+.bk-core-mod-card {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid #e8eaf2;
+  background: #fafbff;
+  transition: border-color .2s, box-shadow .2s, background .2s;
 }
-#bankai-admin-app #bankai-main-content > * {
+.bk-core-mod-card.is-on {
+  border-color: #ddd6fe;
+  background: linear-gradient(180deg, #faf8ff, #fff);
+  box-shadow: 0 8px 20px rgba(124, 92, 255, 0.08);
+}
+
+/* SEO / AI / Speed / Media / Settings shared section headers */
+.bk-section-hero {
+  background: linear-gradient(135deg, #22124a 0%, #3b1d7a 55%, #5b3fd6 100%);
+  color: #fff;
+  border-radius: 18px;
+  padding: 20px 22px;
+  margin-bottom: 18px;
+  box-shadow: 0 14px 36px rgba(70, 40, 160, 0.22);
   position: relative;
-  z-index: 1;
+  overflow: hidden;
+}
+.bk-section-hero h2 { margin: 0 0 6px; font-size: 18px; font-weight: 800; color: #fff !important; }
+.bk-section-hero p { margin: 0; font-size: 13px; opacity: .9; line-height: 1.6; max-width: 56ch; }
+
+/* noindex visual toggles */
+.bk-vtoggle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+.bk-vtoggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 10px;
+  border-radius: 14px;
+  border: 1px solid #e8eaf2;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  transition: .2s ease;
+}
+.bk-vtoggle input { position: absolute; opacity: 0; pointer-events: none; }
+.bk-vtoggle__art { font-size: 22px; line-height: 1; }
+.bk-vtoggle.is-on {
+  border-color: #c4b5fd;
+  background: linear-gradient(180deg, #f5f3ff, #fff);
+  color: #5b3fd6;
+  box-shadow: 0 8px 18px rgba(124, 92, 255, 0.12);
+}
+.bk-vtoggle.is-on::after {
+  content: "noindex";
+  font-size: 10px;
+  font-weight: 800;
+  color: #7c5cff;
+}
+
+/* Speed rocket cards */
+.bk-speed-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.bk-speed-tool {
+  border: 1px solid #e8eaf2;
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bk-speed-tool.is-on { border-color: #c4b5fd; background: linear-gradient(180deg, #faf8ff, #fff); }
+
+/* Media side-by-side */
+.bk-media-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 800px) { .bk-media-row-2 { grid-template-columns: 1fr; } }
+
+
+/* Watermark studio: position + opacity/quality on one row when consecutive */
+#tab-media-watermark .bk-wm-studio-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  #tab-media-watermark .bk-wm-studio-controls { grid-template-columns: 1fr; }
+}
+
+
+/* Admin bar variants for sticky plugin sidebar */
+body.admin-bar #bankai-admin-sidebar,
+body.admin-bar #bankai-admin-app .bankai-sidebar {
+  top: 46px !important;
+  max-height: calc(100vh - 58px) !important;
+}
+@media screen and (max-width: 782px) {
+  body.admin-bar #bankai-admin-sidebar,
+  body.admin-bar #bankai-admin-app .bankai-sidebar {
+    top: 54px !important;
+    max-height: calc(100vh - 66px) !important;
+  }
+}
+
+
+/* SEO site tab card grid */
+.bk-seo-site-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 8px;
+}
+@media (max-width: 960px) {
+  .bk-seo-site-grid { grid-template-columns: 1fr; }
+}
+.bk-seo-color-card { border: 1px solid #e8eaf2 !important; border-radius: 16px !important; box-shadow: 0 8px 22px rgba(24,16,60,.04) !important; }
+.bk-seo-color-indigo { border-top: 3px solid #6366f1 !important; }
+.bk-seo-color-emerald { border-top: 3px solid #10b981 !important; }
+.bk-seo-color-sky { border-top: 3px solid #0ea5e9 !important; }
+.bk-seo-color-amber { border-top: 3px solid #f59e0b !important; }
+.bk-seo-color-violet { border-top: 3px solid #8b5cf6 !important; }
+#tab-seo-engine .bk-section-hero { margin-bottom: 16px; }
+#tab-seo-engine .bk-vtoggle-grid { margin-top: 4px; }
+
+
+/* === Nav visibility fix: always show all sidebar items === */
+#bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar {
+  max-height: calc(100vh - 48px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+#bankai-admin-sidebar .bankai-sidebar-content {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+#bankai-admin-sidebar .bankai-nav-menu {
+  flex: 1 1 auto !important;
+  overflow: visible !important;
+  display: block !important;
+  max-height: none !important;
+}
+#bankai-admin-sidebar .bankai-nav-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  min-height: 42px !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn.is-disabled {
+  opacity: 0.55 !important;
+  display: flex !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn span {
+  display: inline-block !important;
+  visibility: visible !important;
+  color: inherit !important;
+}
+/* Do NOT force Material Symbols on SVG icons */
+#bankai-admin-sidebar .bankai-nav-icon .solar-icon,
+#bankai-admin-sidebar svg.solar-icon {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  display: block !important;
+  width: 17px !important;
+  height: 17px !important;
+}
+
+
+/* tab-pane-visibility-fix — do NOT force display:none (breaks Alpine x-show) */
+.bankai-tab-pane {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.bankai-tab-pane[x-cloak] {
+  display: none !important;
+}
+#bankai-admin-sidebar .bankai-nav-off-badge { display: none !important; }
+#bankai-admin-sidebar .bankai-nav-btn:disabled {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  filter: none !important;
+}
+#bankai-admin-app #bankai-main-content,
+#bankai-admin-app .bankai-main-content {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+
+
+/* Shared button loader */
+.bk-btn-spin,.bk-spin{
+  width:14px;height:14px;border-radius:50%;display:inline-block;vertical-align:middle;
+  border:2px solid rgba(255,255,255,.35);border-top-color:#fff;
+  animation:bk-spin .7s linear infinite;margin-inline-end:6px;
+}
+.bk-btn-soft .bk-btn-spin,.bk-btn-ghost .bk-btn-spin,.bankai-btn-ghost .bk-btn-spin{
+  border-color:rgba(79,70,229,.25);border-top-color:#4f46e5;
+}
+@keyframes bk-spin{to{transform:rotate(360deg)}}
+.bk-btn,.bk-btn-primary,.bankai-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+
+
+/* Shared pill tab box (AI Studio pattern) — use everywhere */
+.bk-pill-tabs{
+  display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px;padding:4px;
+  background:#f6f8fa;border:1px solid #d0d7de;border-radius:14px;width:fit-content;max-width:100%
+}
+.bk-pill-tab{
+  border:none;background:transparent;cursor:pointer;padding:10px 16px;border-radius:10px;
+  font-size:12px;font-weight:800;color:#656d76;display:inline-flex;align-items:center;gap:8px;
+  font-family:inherit;line-height:1.2
+}
+.bk-pill-tab svg{width:15px;height:15px;flex-shrink:0}
+.bk-pill-tab:hover{color:#1f2328}
+.bk-pill-tab.is-active{
+  background:#fff;color:#0969da;box-shadow:0 1px 3px rgba(0,0,0,.06)
+}
+
+
+/* Module cards — screenshot style (SEO/Speed/Media modules) */
+.bk-mod-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;
+}
+@media(max-width:800px){.bk-mod-grid{grid-template-columns:1fr}}
+.bk-mod-card{
+  background:#fff;border:1px solid #e8ecf1;border-radius:20px;padding:20px 22px;
+  box-shadow:0 4px 20px rgba(15,23,42,.04);display:flex;flex-direction:column;gap:12px;
+  transition:box-shadow .2s,border-color .2s
+}
+.bk-mod-card:hover{box-shadow:0 8px 28px rgba(15,23,42,.07)}
+.bk-mod-card.is-on{border-color:#d1fae5}
+.bk-mod-card__top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.bk-mod-card__heading{display:flex;align-items:center;gap:10px;flex:1;min-width:0;flex-wrap:wrap}
+.bk-mod-card__title{font-size:14px;font-weight:800;color:#0f172a;line-height:1.4}
+.bk-mod-card__icon{
+  width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  background:#f1f5f9;color:#64748b;flex-shrink:0
+}
+.bk-mod-card__icon svg{width:20px;height:20px}
+.bk-mod-badge{
+  display:inline-block;font-size:10px;font-weight:800;letter-spacing:.02em;
+  padding:3px 8px;border-radius:8px;background:#eef2ff;color:#4f46e5
+}
+.bk-mod-badge.is-green{background:#ecfdf5;color:#059669}
+.bk-mod-badge.is-pink{background:#fdf2f8;color:#db2777}
+.bk-mod-badge.is-amber{background:#fffbeb;color:#d97706}
+.bk-mod-badge.is-blue{background:#eff6ff;color:#2563eb}
+.bk-mod-badge.is-violet{background:#f5f3ff;color:#7c3aed}
+.bk-mod-card__desc{margin:0;font-size:12px;line-height:1.7;color:#94a3b8}
+.bk-mod-card__foot{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding-top:12px;border-top:1px solid #f1f5f9;margin-top:auto
+}
+.bk-mod-status{font-size:12px;font-weight:800;color:#16a34a}
+.bk-mod-status.is-off{color:#94a3b8}
+.bk-mod-settings-btn{
+  border:1px solid #e2e8f0;background:#f8fafc;color:#334155;font-size:12px;font-weight:700;
+  padding:7px 14px;border-radius:10px;cursor:pointer;font-family:inherit
+}
+.bk-mod-settings-btn:hover{background:#f1f5f9;border-color:#cbd5e1}
+/* Green toggle matching screenshot */
+.bk-mod-switch{position:relative;width:44px;height:26px;flex-shrink:0}
+.bk-mod-switch input{opacity:0;width:0;height:0}
+.bk-mod-switch span{
+  position:absolute;inset:0;background:#cbd5e1;border-radius:999px;cursor:pointer;transition:.2s
+}
+.bk-mod-switch span:before{
+  content:"";position:absolute;width:20px;height:20px;right:3px;top:3px;background:#fff;
+  border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.15)
+}
+.bk-mod-switch input:checked+span{background:#22c55e}
+.bk-mod-switch input:checked+span:before{transform:translateX(-18px)}
+
+
+/* =========================================================
+   Liquid Glass system — headers + tab bars (all admin tabs)
+   ========================================================= */
+.bk-lg-header{
+  position:relative;overflow:hidden;
+  background:linear-gradient(135deg,rgba(88,28,135,.92) 0%,rgba(109,40,217,.88) 45%,rgba(124,58,237,.85) 100%);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:20px;padding:22px 24px;margin-bottom:14px;
+  box-shadow:0 12px 40px rgba(88,28,135,.28), inset 0 1px 0 rgba(255,255,255,.2);
+  color:#fff;
+}
+.bk-lg-header::before{
+  content:"";position:absolute;inset:-40% auto auto -20%;width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.22),transparent 70%);pointer-events:none
+}
+.bk-lg-header::after{
+  content:"";position:absolute;right:-60px;bottom:-80px;width:220px;height:220px;border-radius:50%;
+  background:radial-gradient(circle,rgba(167,139,250,.35),transparent 70%);pointer-events:none
+}
+.bk-lg-header > *{position:relative;z-index:1}
+.bk-lg-header__row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.bk-lg-header__crumb{font-size:11px;font-weight:700;opacity:.75;margin-bottom:4px;letter-spacing:.04em}
+.bk-lg-header__title{margin:0;font-size:20px;font-weight:800;color:#fff!important;display:flex;align-items:center;gap:10px}
+.bk-lg-header__title svg{width:22px;height:22px;flex-shrink:0}
+.bk-lg-header__sub{margin:6px 0 0;font-size:13px;opacity:.85;line-height:1.5;font-weight:500;max-width:560px}
+.bk-lg-chip{
+  display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:10px;font-weight:800;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);color:#fff;backdrop-filter:blur(8px)
+}
+.bk-lg-header__actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.bk-lg-header .bk-btn,.bk-lg-header button.bk-seo-btn,.bk-lg-header .bk-wm-chip-btn{
+  background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.28)!important;color:#fff!important;
+  backdrop-filter:blur(10px);border-radius:12px;font-weight:700
+}
+.bk-lg-header .bk-btn-primary,.bk-lg-header .bk-seo-btn-wizard{
+  background:rgba(255,255,255,.95)!important;color:#5b21b6!important;border-color:transparent!important
+}
+
+/* Liquid glass tab bar — OUTSIDE header card */
+.bk-lg-tabs{
+  display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;padding:6px;
+  background:rgba(255,255,255,.55);
+  border:1px solid rgba(226,232,240,.9);
+  border-radius:16px;width:fit-content;max-width:100%;
+  backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
+  box-shadow:0 4px 24px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.7)
+}
+.bk-lg-tab{
+  border:none;background:transparent;cursor:pointer;padding:10px 16px;border-radius:12px;
+  font-size:12px;font-weight:800;color:#64748b;display:inline-flex;align-items:center;gap:8px;
+  font-family:inherit;line-height:1.2;transition:all .18s
+}
+.bk-lg-tab svg{width:15px;height:15px;flex-shrink:0}
+.bk-lg-tab:hover{color:#1e293b;background:rgba(255,255,255,.55)}
+.bk-lg-tab.is-active{
+  background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(245,243,255,.9));
+  color:#6d28d9;
+  box-shadow:0 2px 10px rgba(109,40,217,.12), inset 0 0 0 1px rgba(167,139,250,.35)
+}
+
+/* Alias shared pill classes to liquid glass */
+.bk-pill-tabs,.bk-ai-mode-tabs,.bk-seo-tabs,.bk-wm-subtabs,.bk-gh-tabs{
+  display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;padding:6px;
+  background:rgba(255,255,255,.55)!important;
+  border:1px solid rgba(226,232,240,.9)!important;
+  border-radius:16px!important;width:fit-content;max-width:100%;
+  backdrop-filter:blur(18px) saturate(1.4)!important;-webkit-backdrop-filter:blur(18px) saturate(1.4)!important;
+  box-shadow:0 4px 24px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.7);
+  border-bottom:none!important
+}
+.bk-pill-tab,.bk-ai-mode-tab,.bk-seo-tab,.bk-wm-subtab,.bk-gh-tab{
+  border:none!important;background:transparent!important;cursor:pointer;padding:10px 16px!important;
+  border-radius:12px!important;font-size:12px!important;font-weight:800!important;color:#64748b!important;
+  display:inline-flex!important;align-items:center;gap:8px;margin-bottom:0!important
+}
+.bk-pill-tab.is-active,.bk-ai-mode-tab.is-active,.bk-seo-tab.is-active,.bk-wm-subtab.is-active,.bk-gh-tab.is-active,
+.bk-pill-tab.is-on{
+  background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(245,243,255,.9))!important;
+  color:#6d28d9!important;
+  box-shadow:0 2px 10px rgba(109,40,217,.12), inset 0 0 0 1px rgba(167,139,250,.35)!important
+}
+
+/* Purple liquid glass cards — Speed & Cache experiment */
+.bk-lg-card{
+  position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(255,255,255,.72) 0%,rgba(245,243,255,.55) 100%);
+  border:1px solid rgba(167,139,250,.28);
+  border-radius:20px;padding:20px 22px;
+  backdrop-filter:blur(16px) saturate(1.35);-webkit-backdrop-filter:blur(16px) saturate(1.35);
+  box-shadow:0 8px 28px rgba(88,28,135,.08), inset 0 1px 0 rgba(255,255,255,.7);
+  display:flex;flex-direction:column;gap:12px;transition:transform .18s,box-shadow .18s
+}
+.bk-lg-card:hover{transform:translateY(-2px);box-shadow:0 14px 36px rgba(88,28,135,.12)}
+.bk-lg-card.is-on{border-color:rgba(124,58,237,.45);box-shadow:0 0 0 1px rgba(124,58,237,.2),0 10px 30px rgba(88,28,135,.1)}
+.bk-lg-card .bk-mod-card__title{color:#4c1d95}
+.bk-lg-card .bk-mod-card__desc{color:#7c6a9a}
+.bk-lg-card .bk-mod-status{color:#6d28d9}
+.bk-lg-card .bk-mod-status.is-off{color:#94a3b8}
+.bk-lg-card .bk-mod-settings-btn{
+  background:rgba(255,255,255,.7);border:1px solid rgba(167,139,250,.35);color:#5b21b6;border-radius:10px
+}
+.bk-lg-card .bk-mod-switch input:checked+span{background:linear-gradient(135deg,#7c3aed,#a78bfa)}
+.bk-lg-card .bk-mod-badge{background:rgba(237,233,254,.9);color:#6d28d9;border:1px solid rgba(167,139,250,.3)}
+.bk-lg-card .bk-mod-card__icon{background:rgba(237,233,254,.7);color:#7c3aed;border:1px solid rgba(167,139,250,.25)}
+
+/* Override section hero to purple glass when marked */
+.bk-section-hero.bk-lg-header,
+.bk-wm-hero.bk-lg-header,
+.bk-ai-topbar.bk-lg-header,
+.bk-seo-header.bk-lg-header{
+  /* inherits .bk-lg-header */
+}
+.bk-seo-header.bk-lg-header .bk-seo-h2,
+.bk-seo-header.bk-lg-header .bk-seo-subtext{color:#fff!important}
+.bk-seo-header.bk-lg-header .bk-seo-chip{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.25)}
+.bk-wm-hero.bk-lg-header h2,
+.bk-wm-hero.bk-lg-header p{color:#fff!important}
+.bk-wm-hero.bk-lg-header .bk-wm-pill{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.25)}
+.bk-ai-topbar.bk-lg-header .bk-ai-title,
+.bk-ai-topbar.bk-lg-header .bk-ai-breadcrumb{color:#fff!important}
+.bk-ai-topbar.bk-lg-header p{color:rgba(255,255,255,.85)!important}
+
+
+/* Unified page hero (media template) */
+.bk-lg-header.bk-wm-hero,
+.bk-page-hero{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.bk-page-hero .bk-wm-hero__main,
+.bk-lg-header .bk-wm-hero__main{display:flex;align-items:center;gap:14px;min-width:0}
+.bk-page-hero .bk-wm-hero__icon,
+.bk-lg-header .bk-wm-hero__icon{
+  width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);flex-shrink:0;color:#fff
+}
+.bk-page-hero .bk-wm-hero__icon svg,
+.bk-lg-header .bk-wm-hero__icon svg{width:24px;height:24px}
+.bk-page-hero .bk-wm-hero__title-row,
+.bk-lg-header .bk-wm-hero__title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bk-page-hero h2,
+.bk-lg-header.bk-wm-hero h2,
+.bk-lg-header .bk-wm-hero__title-row h2{margin:0;font-size:20px;font-weight:800;color:#fff!important}
+.bk-page-hero p,
+.bk-lg-header.bk-wm-hero p{margin:4px 0 0;font-size:13px;color:rgba(255,255,255,.85)!important;line-height:1.5}
+.bk-wm-pill,.bk-page-hero .bk-wm-pill{
+  display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:800;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);color:#fff
+}
+.bk-wm-hero__actions,.bk-page-hero__actions{display:flex;gap:8px;flex-wrap:wrap}
+.bk-wm-chip-btn{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;
+  background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.28)!important;
+  color:#fff!important;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit
+}
+.bk-wm-chip-btn svg{width:15px;height:15px}
+
+/* SEO-style module cards (shared) */
+.bk-seo-mod-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media(max-width:900px){.bk-seo-mod-grid{grid-template-columns:1fr}}
+.bk-seo-mod-card{
+  padding:18px;display:flex;flex-direction:column;justify-content:space-between;
+  border:1px solid #E2E8F0;border-radius:14px;background:#fff;
+  box-shadow:0 4px 16px rgba(15,23,42,.04)
+}
+.bk-seo-mod-card.is-on{border-color:#bbf7d0}
+.bk-seo-mod-icon{
+  width:36px;height:36px;border-radius:10px;background:#F1F5F9;display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;color:#64748b
+}
+.bk-seo-mod-icon svg{width:18px;height:18px}
+.bk-seo-badge{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:4px}
+.bk-seo-mod-foot{
+  display:flex;justify-content:space-between;align-items:center;padding-top:12px;
+  border-top:1px solid #F1F5F9;font-size:12px;font-weight:700
+}
+.bk-seo-btn-sm{
+  border:1px solid #E2E8F0;background:#F8FAFC;color:#334155;font-size:12px;font-weight:700;
+  padding:6px 12px;border-radius:8px;cursor:pointer;font-family:inherit
+}
+.bk-seo-btn-sm:hover{background:#F1F5F9}
+
+
+/* Art tabs global — shared network tab bar */
+.bk-art-tabs{
+  display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px;padding:6px;
+  background:rgba(255,255,255,.65);
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:16px;width:fit-content;max-width:100%;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 4px 20px rgba(15,23,42,.05), inset 0 1px 0 rgba(255,255,255,.8)
+}
+.bk-art-tabs .bk-pill-tab,
+.bk-art-tabs .bk-art-tab,
+.bk-art-tabs .bk-lg-tab,
+.bk-art-tabs .bk-seo-tab,
+.bk-art-tabs .bk-wm-subtab,
+.bk-art-tabs .bk-gh-tab{
+  border:none!important;background:transparent!important;cursor:pointer;
+  padding:10px 16px!important;border-radius:12px!important;
+  font-size:12px!important;font-weight:800!important;color:#64748b!important;
+  display:inline-flex!important;align-items:center;gap:8px;font-family:inherit
+}
+.bk-art-tabs .bk-pill-tab.is-active,
+.bk-art-tabs .bk-art-tab.is-active,
+.bk-art-tabs .bk-lg-tab.is-active,
+.bk-art-tabs .is-active{
+  background:linear-gradient(135deg,#fff,rgba(245,243,255,.95))!important;
+  color:#6d28d9!important;
+  box-shadow:0 2px 10px rgba(109,40,217,.12), inset 0 0 0 1px rgba(167,139,250,.35)!important
+}
+
+
+/* === v135 layout + tabs + compress fix === */
+#bankai-admin-app .bankai-body-layout,
+.bankai-admin-wrap .bankai-body-layout {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 24px !important;
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+#bankai-admin-app #bankai-main-content,
+#bankai-admin-app .bankai-main-content,
+.bankai-admin-wrap #bankai-main-content {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  position: relative !important;
+  z-index: 1 !important;
+  margin: 0 !important;
+  padding-inline-start: 0 !important;
+}
+#bankai-admin-app .bankai-sidebar,
+#bankai-admin-sidebar {
+  flex: 0 0 280px !important;
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  position: sticky !important;
+  top: 46px !important;
+  max-height: calc(100vh - 56px) !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  z-index: 20 !important;
+  align-self: flex-start !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  padding-bottom: 20px !important;
+}
+#bankai-admin-sidebar .bankai-sidebar-content,
+.bankai-sidebar .bankai-sidebar-content {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+#bankai-admin-sidebar .bankai-telemetry-card {
+  flex: 0 0 auto !important;
+  margin-top: 8px !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+#bankai-admin-sidebar .bankai-nav-menu {
+  flex: 0 0 auto !important;
+  margin-bottom: 8px !important;
+}
+
+/* Tab bar: buttons only, no outer box */
+.bk-art-tabs,
+.bk-lg-tabs,
+.bk-pill-tabs,
+.bk-seo-tabs,
+.bk-wm-subtabs,
+.bk-ai-mode-tabs,
+.bk-gh-tabs {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  margin: 0 0 16px !important;
+  width: auto !important;
+  gap: 8px !important;
+}
+.bk-art-tabs .bk-pill-tab,
+.bk-art-tabs .bk-art-tab,
+.bk-lg-tab,
+.bk-pill-tab {
+  background: rgba(248,250,252,.95) !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #64748b !important;
+  border-radius: 10px !important;
+  padding: 9px 14px !important;
+}
+.bk-art-tabs .is-active,
+.bk-lg-tab.is-active,
+.bk-pill-tab.is-active,
+.bk-art-tab.is-active {
+  background: #fff !important;
+  color: #6d28d9 !important;
+  border-color: #c4b5fd !important;
+  box-shadow: 0 1px 4px rgba(109,40,217,.12) !important;
+}
+
+/* Compress cards: no border until selected — green when selected */
+.bk-c-card {
+  border: 2px solid transparent !important;
+  box-shadow: 0 4px 16px rgba(15,23,42,.08) !important;
+}
+.bk-c-card.is-selected {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 3px rgba(34,197,94,.22) !important;
+}
+
+
+/* === v137 layout nuclear: sidebar + main side by side === */
+body.toplevel_page_bankai-core #wpcontent {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+#bankai-admin-app.bankai-admin-wrap {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+#bankai-admin-app .bankai-body-layout.bankai-ekit-body,
+#bankai-admin-app .bankai-body-layout {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  gap: 20px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 16px 20px 32px !important;
+  position: relative !important;
+  clear: both !important;
+}
+#bankai-admin-app #bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar,
+#bankai-admin-sidebar {
+  flex: 0 0 270px !important;
+  width: 270px !important;
+  min-width: 270px !important;
+  max-width: 270px !important;
+  float: none !important;
+  position: sticky !important;
+  top: 48px !important;
+  max-height: calc(100vh - 60px) !important;
+  overflow-y: auto !important;
+  align-self: flex-start !important;
+  z-index: 30 !important;
+  margin: 0 !important;
+}
+#bankai-admin-app #bankai-main-content,
+#bankai-admin-app .bankai-main-content {
+  flex: 1 1 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  float: none !important;
+  position: relative !important;
+  z-index: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+/* Hide inactive tabs firmly */
+#bankai-admin-app .bankai-tab-pane[x-cloak],
+#bankai-admin-app .bankai-tab-pane[style*="display: none"] {
+  display: none !important;
+}
+#bankai-admin-app .bankai-tab-pane:not(.is-active-tab) {
+  /* alpine x-show handles; fallback when cloak present */
+}
+/* Telemetry status text blue-gray */
+#bankai-admin-sidebar .status-title,
+.bankai-telemetry-card .status-title {
+  color: #64748b !important;
+}
+.bankai-telemetry-card .telemetry-status {
+  color: #64748b !important;
+}
+
+@media screen and (max-width: 960px) {
+  #bankai-admin-app .bankai-body-layout {
+    flex-direction: column !important;
+  }
+  #bankai-admin-app #bankai-admin-sidebar,
+  #bankai-admin-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    position: relative !important;
+    max-height: none !important;
+  }
+}
+
+
+/* === v138: body-layout children = aside + main only === */
+#bankai-admin-app .bankai-body-layout {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-start !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+#bankai-admin-app .bankai-body-layout > aside#bankai-admin-sidebar,
+#bankai-admin-app .bankai-body-layout > .bankai-sidebar {
+  flex: 0 0 270px !important;
+  width: 270px !important;
+  min-width: 270px !important;
+  max-width: 270px !important;
+  order: 1;
+}
+#bankai-admin-app .bankai-body-layout > #bankai-main-content,
+#bankai-admin-app .bankai-body-layout > main.bankai-main-content {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  width: auto !important;
+  order: 2;
+}
+#bankai-admin-app.rtl .bankai-body-layout > aside#bankai-admin-sidebar {
+  order: 1;
+}
+#bankai-admin-app.rtl .bankai-body-layout > #bankai-main-content {
+  order: 2;
+}
+
+
+/* === v139: sidebar fit-content, no scrollbar, sticky top 45px === */
+#bankai-admin-app .bankai-body-layout > aside#bankai-admin-sidebar,
+#bankai-admin-app .bankai-body-layout > .bankai-sidebar,
+#bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar,
+body.admin-bar #bankai-admin-sidebar,
+body.admin-bar #bankai-admin-app .bankai-sidebar {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  overflow-y: visible !important;
+  overflow-x: visible !important;
+  position: sticky !important;
+  top: 45px !important;
+  align-self: flex-start !important;
+  flex: 0 0 270px !important;
+  width: 270px !important;
+  min-width: 270px !important;
+  max-width: 270px !important;
+  z-index: 40 !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+#bankai-admin-sidebar::-webkit-scrollbar,
+#bankai-admin-app .bankai-sidebar::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+#bankai-admin-sidebar .bankai-sidebar-content,
+#bankai-admin-sidebar .bankai-nav-menu,
+#bankai-admin-sidebar .bankai-nav-group,
+#bankai-admin-sidebar .bankai-telemetry-card {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* System telemetry: darker labels + darker values */
+#bankai-admin-sidebar .bankai-telemetry-card .tel-item > span,
+.bankai-telemetry-card .tel-item > span {
+  color: #475569 !important;
+  font-weight: 700 !important;
+  font-size: 10px !important;
+  margin-bottom: 2px !important;
+}
+#bankai-admin-sidebar .bankai-telemetry-card .tel-item > strong,
+.bankai-telemetry-card .tel-item > strong {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+}
+#bankai-admin-sidebar .status-title,
+.bankai-telemetry-card .status-title {
+  color: #334155 !important;
+  font-weight: 800 !important;
+}
+.bankai-telemetry-card .telemetry-status {
+  color: #334155 !important;
+}
+.bankai-telemetry-card .php-badge {
+  color: #1e293b !important;
+  font-weight: 800 !important;
+}
+
+/* WP admin bar: still stick 45px under viewport top (user request),
+   admin bar floats above; 45px is measured from viewport */
+body.admin-bar #bankai-admin-sidebar,
+body.admin-bar #bankai-admin-app .bankai-sidebar {
+  top: 45px !important;
+}
+
+@media screen and (max-width: 960px) {
+  #bankai-admin-sidebar,
+  #bankai-admin-app .bankai-sidebar {
+    position: relative !important;
+    top: auto !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
 }

@@ -138,15 +138,18 @@ final class Bankai_AI_Studio
                 'tagline'   => 'GPT-5 · GPT-4o · o4-mini',
                 'docs'      => 'https://platform.openai.com/api-keys',
                 'models'    => [
+                    'gpt-5',
+                    'gpt-5-mini',
+                    'gpt-5-nano',
                     'gpt-5.4-mini',
-                    'gpt-5.4',
                     'gpt-4.1',
                     'gpt-4.1-mini',
                     'gpt-4o',
                     'gpt-4o-mini',
                     'o4-mini',
+                    'o3-mini',
                 ],
-                'default'   => 'gpt-4o-mini',
+                'default'   => 'gpt-5-mini',
                 'key_hint'  => 'sk-…',
                 'accent'    => '#10A37F',
                 'glow'      => 'rgba(16,163,127,.22)',
@@ -160,12 +163,15 @@ final class Bankai_AI_Studio
                 'tagline'   => 'Sonnet 4 · Haiku 4.5 · Opus',
                 'docs'      => 'https://console.anthropic.com/settings/keys',
                 'models'    => [
-                    'claude-sonnet-4-20250514',
-                    'claude-3-5-haiku-latest',
-                    'claude-3-5-sonnet-latest',
-                    'claude-3-haiku-20240307',
+                    'claude-sonnet-5-5',
+                    'claude-haiku-5-5',
+                    'claude-opus-5-5',
+                    'claude-fable-5-1',
+                    'claude-haiku-4-5',
+                    'claude-sonnet-4-5',
+                    'claude-opus-4-6',
                 ],
-                'default'   => 'claude-3-5-haiku-latest',
+                'default'   => 'claude-sonnet-5-5',
                 'key_hint'  => 'sk-ant-…',
                 'accent'    => '#D97706',
                 'glow'      => 'rgba(217,119,6,.22)',
@@ -229,31 +235,36 @@ final class Bankai_AI_Studio
             ],
             'cloudflare' => [
                 'id'        => 'cloudflare',
-                'name'      => 'Cloudflare Workers AI',
-                'label'     => 'Cloudflare Workers AI',
-                'tagline'   => '۱۰٬۰۰۰ Neuron/روز رایگان',
-                'docs'      => 'https://developers.cloudflare.com/workers-ai/',
+                'name'      => 'Cloudflare AI',
+                'label'     => 'Cloudflare AI',
+                'tagline'   => 'Workers AI + Unified REST · Responses / Chat',
+                'docs'      => 'https://developers.cloudflare.com/workers-ai/configuration/open-ai-compatibility/',
                 'models'    => [
-                    '@cf/openai/gpt-oss-120b',
+                    // Workers AI (hosted on CF) — free-plan friendly first
+                    '@cf/meta/llama-3.1-8b-instruct',
+                    '@cf/meta/llama-3.2-3b-instruct',
+                    '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+                    '@cf/google/gemma-2-9b-it',
+                    '@cf/qwen/qwen1.5-7b-chat-awq',
+                    '@cf/mistral/mistral-7b-instruct-v0.2',
                     '@cf/openai/gpt-oss-20b',
-                    '@cf/qwen/qwen3.8-27b',
-                    '@cf/google/gemma-4-26b-a4b-it',
-                    '@cf/moonshotai/kimi-k2.7-code',
+                    '@cf/openai/gpt-oss-120b',
                     '@cf/moonshotai/kimi-k2.6',
-                    '@cf/deepseek-ai/deepseek-v4-flash-0731',
-                    '@cf/zai-org/glm-5.3',
-                    '@cf/zai-org/glm-5.2',
-                    '@cf/swiss-ai/apertus-v1.5-8b',
-                    '@cf/utter-project/eurollm-9b-it',
-                    '@cf/cloudflare/clef',
-                    '@cf/cloudflare/clef-flash',
+                    '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
+                    // Unified API (third-party via CF account token)
+                    'openai/gpt-4.1',
+                    'openai/gpt-4.1-mini',
+                    'openai/gpt-5-mini',
+                    'openai/gpt-5',
+                    'google/gemini-2.5-flash',
+                    'anthropic/claude-sonnet-4-5',
                 ],
-                'default'   => '@cf/openai/gpt-oss-20b',
-                'key_hint'  => 'AccountID|APIToken',
+                'default'   => '@cf/meta/llama-3.1-8b-instruct',
+                'key_hint'  => 'AccountID|API_Token',
                 'accent'    => '#F6821F',
                 'glow'      => 'rgba(246,130,31,.22)',
                 'free_tier' => true,
-                'order'     => 1,
+                'order'     => 80,
             ],
         ];
     }
@@ -1364,7 +1375,7 @@ final class Bankai_AI_Studio
         if (!is_string($raw) || $raw === '') {
             return [];
         }
-        $parts = preg_split('/[,،\n]+/u', $raw);
+        $parts = preg_split('/[،\n]+/u', $raw);
         $out = [];
         foreach ($parts as $p) {
             $p = trim($p);
@@ -1388,13 +1399,19 @@ final class Bankai_AI_Studio
         $models = $this->get_selected_models();
         $key    = trim((string) ($keys[$provider] ?? ''));
         $model  = trim((string) ($models[$provider] ?? ''));
+        // Explicit model from caller (e.g. UI active model) wins
+        if (!empty($opts['model']) && is_string($opts['model'])) {
+            $model = trim($opts['model']);
+        }
 
         if ($key === '') {
             foreach ($keys as $pid => $k) {
                 if (is_string($k) && trim($k) !== '') {
                     $provider = $pid;
                     $key      = trim($k);
-                    $model    = trim((string) ($models[$pid] ?? ''));
+                    if (empty($opts['model'])) {
+                        $model = trim((string) ($models[$pid] ?? ''));
+                    }
                     break;
                 }
             }
@@ -1408,14 +1425,27 @@ final class Bankai_AI_Studio
         $max_tokens  = isset($opts['max_tokens']) ? (int) $opts['max_tokens'] : 1200;
 
         $catalog = self::all_providers_catalog();
+        $no_fallback = !empty($opts['no_fallback']) || !empty($opts['strict_model']);
         $fallback_models = [];
-        if (isset($catalog[$provider]['models']) && is_array($catalog[$provider]['models'])) {
-            $fallback_models = $catalog[$provider]['models'];
-        }
-        if ($model !== '') {
-            array_unshift($fallback_models, $model);
+        if ($no_fallback) {
+            // تست اتصال / پینگ: فقط مدل فعال
+            if ($model !== '') {
+                $fallback_models = [$model];
+            } elseif (isset($catalog[$provider]['default'])) {
+                $fallback_models = [(string) $catalog[$provider]['default']];
+            }
+        } else {
+            if (isset($catalog[$provider]['models']) && is_array($catalog[$provider]['models'])) {
+                $fallback_models = $catalog[$provider]['models'];
+            }
+            if ($model !== '') {
+                array_unshift($fallback_models, $model);
+            }
         }
         $fallback_models = array_values(array_unique(array_filter($fallback_models)));
+        if ($fallback_models === []) {
+            throw new Exception('هیچ مدل فعالی برای این ارائه‌دهنده انتخاب نشده است.');
+        }
 
         $last_error = null;
         foreach ($fallback_models as $try_model) {
@@ -1678,35 +1708,172 @@ final class Bankai_AI_Studio
     private function call_cloudflare(string $key, string $model, string $system, string $user, float $temp, int $max): string
     {
         $account = '';
-        $token = $key;
+        $token   = $key;
         if (str_contains($key, '|')) {
             [$account, $token] = array_map('trim', explode('|', $key, 2));
         } else {
             $account = (string) get_option('bankai_cloudflare_account_id', '');
+            // Also try provider meta storage
+            if ($account === '' && function_exists('bankai_get_option')) {
+                $account = (string) (bankai_get_option('cloudflare_account_id', '') ?: '');
+            }
         }
         if ($account === '' || $token === '') {
             throw new Exception('Cloudflare نیاز به Account ID و API Token دارد (فرمت: AccountID|Token).');
         }
-        $url = 'https://api.cloudflare.com/client/v4/accounts/' . rawurlencode($account) . '/ai/run/' . $model;
-        $body = [
-            'messages' => [
-                ['role' => 'system', 'content' => $system],
-                ['role' => 'user', 'content' => $user],
-            ],
-            'max_tokens' => $max,
-        ];
-        $res = $this->http_json($url, $body, [
-            'Authorization' => 'Bearer ' . $token,
-        ]);
-        $text = $res['result']['response'] ?? ($res['result']['output'] ?? '');
-        if (is_array($text)) {
-            $text = wp_json_encode($text, JSON_UNESCAPED_UNICODE);
+
+        $model = trim($model) !== '' ? trim($model) : '@cf/meta/llama-3.1-8b-instruct';
+        $is_workers = str_starts_with($model, '@cf/');
+        $is_gpt_oss = str_contains($model, 'gpt-oss');
+        $base = 'https://api.cloudflare.com/client/v4/accounts/' . rawurlencode($account);
+
+        // 1) Responses API — preferred for gpt-oss and unified third-party models (user curl shape)
+        if ($is_gpt_oss || !$is_workers) {
+            try {
+                $url = $base . '/ai/v1/responses';
+                $body = [
+                    'model'             => $model,
+                    'input'             => trim($system) !== ''
+                        ? ("System: " . $system . "\n\nUser: " . $user)
+                        : $user,
+                    'max_output_tokens' => max(64, $max),
+                ];
+                // reasoning effort only when model likely supports it
+                if ($is_gpt_oss || str_contains($model, 'gpt-') || str_contains($model, 'o3') || str_contains($model, 'o4')) {
+                    $body['reasoning'] = ['effort' => 'medium'];
+                }
+                $res = $this->http_json($url, $body, [
+                    'Authorization' => 'Bearer ' . $token,
+                ]);
+                $text = $this->extract_cf_response_text($res);
+                if ($text !== '') {
+                    return $text;
+                }
+            } catch (Exception $e) {
+                // fall through to chat completions / run
+            }
         }
-        if ($text === '' || $text === null) {
-            $err = $res['errors'][0]['message'] ?? 'Empty Cloudflare response';
+
+        // 2) OpenAI-compatible Chat Completions (Workers AI + Unified)
+        try {
+            $url = $base . '/ai/v1/chat/completions';
+            $messages = [];
+            if (trim($system) !== '') {
+                $messages[] = ['role' => 'system', 'content' => $system];
+            }
+            $messages[] = ['role' => 'user', 'content' => $user];
+            $body = [
+                'model'       => $model,
+                'messages'    => $messages,
+                'max_tokens'  => max(64, $max),
+                'temperature' => $temp,
+            ];
+            $res = $this->http_json($url, $body, [
+                'Authorization' => 'Bearer ' . $token,
+            ]);
+            $text = $res['choices'][0]['message']['content']
+                ?? ($res['result']['choices'][0]['message']['content'] ?? '');
+            if (is_array($text)) {
+                $text = wp_json_encode($text, JSON_UNESCAPED_UNICODE);
+            }
+            if (is_string($text) && $text !== '') {
+                return $text;
+            }
+            // CF envelope errors
+            $err = $res['errors'][0]['message'] ?? ($res['error']['message'] ?? '');
+            if ($err !== '') {
+                // continue to legacy run for @cf models
+                if (!$is_workers) {
+                    throw new Exception(is_string($err) ? $err : 'Cloudflare chat error');
+                }
+            }
+        } catch (Exception $e) {
+            if (!$is_workers) {
+                throw $e;
+            }
+        }
+
+        // 3) Legacy Workers AI run endpoint — most reliable for @cf/* models
+        if ($is_workers) {
+            $url = $base . '/ai/run/' . $model;
+            $body = [
+                'messages' => array_values(array_filter([
+                    trim($system) !== '' ? ['role' => 'system', 'content' => $system] : null,
+                    ['role' => 'user', 'content' => $user],
+                ])),
+                'max_tokens' => max(64, $max),
+            ];
+            $res = $this->http_json($url, $body, [
+                'Authorization' => 'Bearer ' . $token,
+            ]);
+            $text = $res['result']['response'] ?? ($res['result']['output'] ?? '');
+            if (is_array($text)) {
+                $text = $text['response'] ?? ($text['text'] ?? wp_json_encode($text, JSON_UNESCAPED_UNICODE));
+            }
+            if (is_string($text) && $text !== '') {
+                return $text;
+            }
+            $err = $res['errors'][0]['message'] ?? ($res['error']['message'] ?? 'Empty Cloudflare response');
             throw new Exception(is_string($err) ? $err : 'Cloudflare AI error');
         }
-        return (string) $text;
+
+        throw new Exception('Cloudflare AI: پاسخ خالی یا مدل پشتیبانی نمی‌شود.');
+    }
+
+    /**
+     * Parse OpenAI Responses API / CF unified envelope into plain text.
+     */
+    private function extract_cf_response_text(array $res): string
+    {
+        // Standard Responses API: output[].content[].text
+        if (!empty($res['output']) && is_array($res['output'])) {
+            $parts = [];
+            foreach ($res['output'] as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                if (($item['type'] ?? '') === 'message' && !empty($item['content']) && is_array($item['content'])) {
+                    foreach ($item['content'] as $c) {
+                        if (is_array($c) && isset($c['text']) && is_string($c['text'])) {
+                            $parts[] = $c['text'];
+                        } elseif (is_string($c)) {
+                            $parts[] = $c;
+                        }
+                    }
+                }
+                if (isset($item['text']) && is_string($item['text'])) {
+                    $parts[] = $item['text'];
+                }
+            }
+            if ($parts) {
+                return implode("\n", $parts);
+            }
+        }
+        // Flat fields
+        foreach (['output_text', 'response', 'text'] as $k) {
+            if (!empty($res[$k]) && is_string($res[$k])) {
+                return $res[$k];
+            }
+        }
+        if (!empty($res['result'])) {
+            $r = $res['result'];
+            if (is_string($r)) {
+                return $r;
+            }
+            if (is_array($r)) {
+                if (!empty($r['response']) && is_string($r['response'])) {
+                    return $r['response'];
+                }
+                if (!empty($r['output_text']) && is_string($r['output_text'])) {
+                    return $r['output_text'];
+                }
+            }
+        }
+        if (!empty($res['choices'][0]['message']['content'])) {
+            $c = $res['choices'][0]['message']['content'];
+            return is_string($c) ? $c : '';
+        }
+        return '';
     }
 
     private function call_anthropic(string $key, string $model, string $system, string $user, float $temp, int $max): string
@@ -1791,6 +1958,18 @@ final class Bankai_AI_Studio
                 throw new Exception(is_string($msg) ? $msg : 'خطای سرویس هوش مصنوعی');
             }
 
+            // Cloudflare envelope: HTTP 200 but success=false
+            if (array_key_exists('success', $data) && $data['success'] === false) {
+                $msg = $data['errors'][0]['message']
+                    ?? ($data['error']['message'] ?? null)
+                    ?? ($data['messages'][0] ?? null)
+                    ?? 'Cloudflare AI request failed';
+                if (is_array($msg)) {
+                    $msg = wp_json_encode($msg, JSON_UNESCAPED_UNICODE);
+                }
+                throw new Exception(is_string($msg) ? $msg : 'Cloudflare AI error');
+            }
+
             return $data;
         }
 
@@ -1808,9 +1987,22 @@ final class Bankai_AI_Studio
             wp_send_json_error(['message' => 'Permission denied'], 403);
         }
         $provider = sanitize_key(wp_unslash($_POST['provider'] ?? $this->get_default_provider()));
+        $model = sanitize_text_field(wp_unslash($_POST['model'] ?? ''));
         try {
-            $text = $this->chat($provider, 'Reply with exactly: OK', 'ping', ['max_tokens' => 10, 'temperature' => 0]);
-            wp_send_json_success(['message' => 'OK', 'preview' => mb_substr($text, 0, 80)]);
+            $text = $this->chat($provider, 'Reply with exactly: OK', 'ping', [
+                'max_tokens'   => 10,
+                'temperature'  => 0,
+                'no_fallback'  => true,
+                'strict_model' => true,
+                'model'        => $model,
+            ]);
+            $used = $model !== '' ? $model : ($this->get_selected_models()[$provider] ?? '');
+            wp_send_json_success([
+                'message'  => 'OK',
+                'preview'  => mb_substr($text, 0, 80),
+                'provider' => $provider,
+                'model'    => $used,
+            ]);
         } catch (Throwable $e) {
             wp_send_json_error(['message' => $e->getMessage()]);
         }
@@ -1986,18 +2178,24 @@ final class Bankai_AI_Studio
         if (empty($keys[$provider])) {
             wp_send_json_error(['message' => 'هیچ کلید API معتبری یافت نشد. ابتدا در استودیو هوش مصنوعی کلید را ذخیره کنید.']);
         }
+        $model = sanitize_text_field(wp_unslash($_POST['model'] ?? ''));
         try {
             $text = $this->chat($provider, 'Reply with exactly the word OK and nothing else.', 'ping', [
-                'max_tokens'  => 16,
-                'temperature' => 0,
+                'max_tokens'   => 16,
+                'temperature'  => 0,
+                'no_fallback'  => true,
+                'strict_model' => true,
+                'model'        => $model,
             ]);
             $ok = is_string($text) && trim($text) !== '';
             if (!$ok) {
                 wp_send_json_error(['message' => 'پاسخ خالی از موتور AI']);
             }
+            $used = $model !== '' ? $model : ($this->get_selected_models()[$provider] ?? '');
             wp_send_json_success([
-                'message'  => 'اتصال برقرار است',
+                'message'  => 'اتصال برقرار است — مدل: ' . $used,
                 'provider' => $provider,
+                'model'    => $used,
                 'sample'   => mb_substr(trim($text), 0, 40),
             ]);
         } catch (Throwable $e) {
@@ -2033,9 +2231,14 @@ final class Bankai_AI_Studio
                 continue;
             }
             try {
+                $selected = $this->get_selected_models();
+                $active_model = (string) ($selected[$pid] ?? '');
                 $text = $this->chat($pid, 'Reply with exactly the word OK and nothing else.', 'ping', [
-                    'max_tokens'  => 16,
-                    'temperature' => 0,
+                    'max_tokens'   => 16,
+                    'temperature'  => 0,
+                    'no_fallback'  => true,
+                    'strict_model' => true,
+                    'model'        => $active_model,
                 ]);
                 $ok = (stripos($text, 'OK') !== false) || (trim($text) !== '');
                 $results[] = [
@@ -2820,7 +3023,7 @@ final class Bankai_AI_Studio
                 if (is_array($decoded)) {
                     $kw_list = array_map('strval', $decoded);
                 } else {
-                    $kw_list = preg_split('/[,،]+/u', $kws) ?: [];
+                    $kw_list = preg_split('/[،]+/u', $kws) ?: [];
                 }
             }
             if ($focus !== '') {

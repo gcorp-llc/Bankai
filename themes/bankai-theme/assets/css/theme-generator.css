@@ -1143,7 +1143,7 @@
 }
 .btg-presets { grid-template-columns: repeat(2, 1fr) !important; }
 .btg-layout-grid { grid-template-columns: repeat(2, 1fr) !important; }
-.btg-font-grid { grid-template-columns: repeat(3, 1fr) !important; }
+.btg-font-grid { grid-template-columns: repeat(2, 1fr) !important; }
 .btg-typo-cards { grid-template-columns: 1fr !important; }
 
 .btg-preset,
@@ -1380,3 +1380,466 @@
 
 .btg-style-card__art--kinetic-editorial { background: #0f172a; }
 .btg-style-card__art--kinetic-editorial .btg-style-card__shape { background: linear-gradient(90deg,#38bdf8,#a78bfa); border-radius: 2px; height: 25%; }
+
+
+.btg-font-grid,
+.btg-font-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+.btg-font-live-demo {
+  margin: 12px 0 16px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px dashed rgba(167,139,250,.45);
+  background: rgba(124,92,255,.08);
+}
+.btg-font-live-demo__label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #c4b5fd;
+  margin-bottom: 8px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.btg-font-live-demo__sample {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #f5f3ff;
+}
+.btg-font-live-demo__heading {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.3;
+}
+.btg-demo--compact { display: none !important; }
+
+/* ——— Fix: طرح کلی tabs (صفحه / فونت must show) ——— */
+.btg-tabs-nav {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 4px !important;
+  margin-bottom: 14px !important;
+  padding: 4px !important;
+  background: #F5F5F7 !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(0,0,0,.06) !important;
+}
+.btg-tab-btn {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  padding: 10px 8px !important;
+  border: none !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  color: #6E6E73 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  font-family: inherit !important;
+}
+.btg-tab-btn.is-active {
+  background: #fff !important;
+  color: #0071E3 !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06) !important;
+}
+.btg-tab-panel {
+  display: none !important;
+}
+.btg-tab-panel.is-active {
+  display: block !important;
+}
+
+/* Page tab boxed cards */
+.btg-panel--boxed {
+  border: 1px solid rgba(0,0,0,.07) !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+  box-shadow: 0 2px 10px rgba(15,23,42,.04) !important;
+}
+
+/* Font library: always 2 columns */
+.btg-font-grid,
+.btg-font-grid--2 {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+/* Astra-like size + color controls */
+.btg-astra-row {
+  display: grid !important;
+  grid-template-columns: 1.2fr 0.7fr 0.7fr !important;
+  gap: 10px !important;
+  align-items: end !important;
+  margin-top: 10px !important;
+}
+.btg-size-box {
+  display: flex !important;
+  align-items: center !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  overflow: hidden !important;
+  height: 36px !important;
+}
+.btg-size-box .btg-size-input,
+.btg-size-box input[type="number"] {
+  flex: 1 !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 0 10px !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #0F172A !important;
+  box-shadow: none !important;
+  outline: none !important;
+  -moz-appearance: textfield !important;
+}
+.btg-size-box input[type="number"]::-webkit-outer-spin-button,
+.btg-size-box input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+.btg-size-unit {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 10px !important;
+  height: 100% !important;
+  background: #F1F5F9 !important;
+  border-inline-start: 1px solid #E2E8F0 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #64748B !important;
+  min-width: 34px !important;
+}
+.btg-color-circle {
+  position: relative !important;
+  display: inline-flex !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  border: 2px solid #E2E8F0 !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+  background: #fff !important;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.04) !important;
+}
+.btg-color-circle input[type="color"] {
+  position: absolute !important;
+  inset: 0 !important;
+  opacity: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  cursor: pointer !important;
+  border: none !important;
+  padding: 0 !important;
+}
+.btg-color-swatch {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
+  pointer-events: none !important;
+}
+
+/* Per-card live typography preview */
+.btg-typo-live-sep {
+  height: 1px !important;
+  background: #E8EAF2 !important;
+  margin: 12px 0 10px !important;
+}
+.btg-typo-live {
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  background: #F8FAFC !important;
+  border: 1px dashed #CBD5E1 !important;
+}
+.btg-typo-live__label {
+  display: block !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+  color: #94A3B8 !important;
+  margin-bottom: 6px !important;
+}
+.btg-typo-live__sample {
+  margin: 0 !important;
+  line-height: 1.55 !important;
+  word-break: break-word !important;
+}
+.btg-typo-card {
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  padding: 14px !important;
+  margin-bottom: 12px !important;
+  box-shadow: 0 1px 3px rgba(15,23,42,.04) !important;
+}
+.btg-typo-card__head {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  color: #0F172A !important;
+  margin-bottom: 10px !important;
+}
+.btg-mini-label {
+  display: block !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #64748B !important;
+  margin-bottom: 5px !important;
+}
+.btg-font-select {
+  width: 100% !important;
+  height: 36px !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 8px !important;
+  padding: 0 10px !important;
+  font-size: 13px !important;
+  background: #fff !important;
+}
+
+/* ——— Dark customizer shell (match side menu) ——— */
+.btg--customizer {
+  --btg-surface: rgba(255,255,255,.06);
+  --btg-soft: rgba(255,255,255,.04);
+  --btg-text: #f5f3ff;
+  --btg-muted: rgba(245,243,255,.62);
+  --btg-border: rgba(255,255,255,.12);
+  --btg-primary: #a78bfa;
+  --bento-card: rgba(255,255,255,.06);
+  --bento-soft: rgba(255,255,255,.04);
+  --bento-line: rgba(255,255,255,.12);
+  --bento-accent: #c4b5fd;
+  color: #f5f3ff !important;
+}
+
+.btg--customizer .btg-panel,
+.btg--customizer .btg-panel--boxed {
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: #f5f3ff !important;
+  box-shadow: none !important;
+}
+.btg--customizer .btg-panel h3,
+.btg--customizer .btg-mini-label,
+.btg--customizer .btg-hint,
+.btg--customizer .btg-dir-label,
+.btg--customizer .btg-typo-card__head {
+  color: rgba(245,243,255,.75) !important;
+}
+.btg--customizer .btg-tabs-nav {
+  background: rgba(0,0,0,.2) !important;
+  border-color: rgba(255,255,255,.1) !important;
+}
+.btg--customizer .btg-tab-btn {
+  color: rgba(245,243,255,.65) !important;
+}
+.btg--customizer .btg-tab-btn.is-active {
+  background: rgba(124,92,255,.35) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 1px rgba(196,181,253,.35) inset !important;
+}
+
+.btg--customizer .btg-preset,
+.btg--customizer .btg-layout-card,
+.btg--customizer .btg-font-card,
+.btg--customizer .btg-style-card {
+  background: rgba(255,255,255,.05) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: #f5f3ff !important;
+}
+.btg--customizer .btg-preset.is-active,
+.btg--customizer .btg-layout-card.is-active,
+.btg--customizer .btg-font-card.is-active,
+.btg--customizer .btg-style-card.is-active {
+  border-color: #a78bfa !important;
+  background: rgba(124,92,255,.22) !important;
+  box-shadow: 0 0 0 1px rgba(167,139,250,.35) inset !important;
+}
+.btg--customizer .btg-font-aa,
+.btg--customizer .btg-font-name,
+.btg--customizer .btg-layout-label,
+.btg--customizer .btg-preset-name,
+.btg--customizer .btg-style-card__name {
+  color: #f5f3ff !important;
+}
+.btg--customizer .btg-style-card__desc {
+  color: rgba(245,243,255,.55) !important;
+}
+
+/* Inputs / selects dark */
+.btg--customizer input[type="text"],
+.btg--customizer input[type="number"],
+.btg--customizer input[type="search"],
+.btg--customizer select,
+.btg--customizer textarea,
+.btg--customizer .btg-input-text,
+.btg--customizer .btg-font-select,
+.btg--customizer .btg-size-box,
+.btg--customizer .btg-size-input {
+  background: rgba(0,0,0,.28) !important;
+  border-color: rgba(255,255,255,.14) !important;
+  color: #f5f3ff !important;
+  box-shadow: none !important;
+}
+.btg--customizer .btg-size-unit {
+  background: rgba(255,255,255,.08) !important;
+  border-color: rgba(255,255,255,.12) !important;
+  color: rgba(245,243,255,.7) !important;
+}
+.btg--customizer .btg-color-circle {
+  border-color: rgba(255,255,255,.2) !important;
+  background: rgba(0,0,0,.2) !important;
+}
+.btg--customizer .btg-typo-card {
+  background: rgba(255,255,255,.05) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: #f5f3ff !important;
+}
+.btg--customizer .btg-typo-live {
+  background: rgba(0,0,0,.22) !important;
+  border-color: rgba(167,139,250,.35) !important;
+}
+.btg--customizer .btg-typo-live__label {
+  color: #c4b5fd !important;
+}
+.btg--customizer .btg-typo-live__sample {
+  color: #f5f3ff !important;
+}
+.btg--customizer .btg-typo-live-sep {
+  background: rgba(255,255,255,.1) !important;
+}
+.btg--customizer .btg-mode-btn {
+  background: rgba(255,255,255,.05) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: #f5f3ff !important;
+}
+.btg--customizer .btg-mode-btn span,
+.btg--customizer .btg-mode-btn small {
+  color: inherit !important;
+}
+.btg--customizer .btg-mode-btn small {
+  color: rgba(245,243,255,.55) !important;
+}
+.btg--customizer .btg-mode-btn.is-active {
+  background: rgba(124,92,255,.28) !important;
+  border-color: rgba(167,139,250,.55) !important;
+  box-shadow: 0 0 0 1px rgba(167,139,250,.25) inset !important;
+}
+.btg--customizer .btg-dir-toggle {
+  background: rgba(0,0,0,.25) !important;
+}
+.btg--customizer .btg-dir-btn {
+  color: rgba(245,243,255,.65) !important;
+}
+.btg--customizer .btg-dir-btn.is-active {
+  background: rgba(124,92,255,.35) !important;
+  color: #fff !important;
+}
+.btg--customizer .btg-btn,
+.btg--customizer .btg-btn-ghost {
+  background: rgba(255,255,255,.08) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  color: #f5f3ff !important;
+}
+.btg--customizer .btg-btn-primary {
+  background: linear-gradient(135deg, #7c5cff, #6366f1) !important;
+  border: none !important;
+  color: #fff !important;
+}
+.btg--customizer .btg-color-row label,
+.btg--customizer .btg-radius label,
+.btg--customizer .btg-radius-val {
+  color: rgba(245,243,255,.8) !important;
+}
+.btg--customizer .btg-color-row input[type="text"] {
+  background: rgba(0,0,0,.28) !important;
+  color: #f5f3ff !important;
+  border-color: rgba(255,255,255,.14) !important;
+}
+.btg--customizer .btg-layout-wire {
+  background: rgba(255,255,255,.08) !important;
+  border-color: rgba(255,255,255,.15) !important;
+}
+
+/* Glass select / dropdown lists inside customizer font tab */
+.btg--customizer select,
+.btg--customizer .btg-font-select,
+#customize-controls .btg-font-select,
+#customize-controls select {
+  background: rgba(20, 10, 44, 0.72) !important;
+  color: #f5f3ff !important;
+  border: 1px solid rgba(167, 139, 250, 0.35) !important;
+  border-radius: 10px !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(10, 4, 30, 0.35) !important;
+}
+.btg--customizer select:focus,
+.btg--customizer .btg-font-select:focus,
+#customize-controls select:focus {
+  outline: none !important;
+  border-color: rgba(196, 181, 253, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.25) !important;
+}
+.btg--customizer select option,
+.btg--customizer .btg-font-select option,
+#customize-controls select option {
+  background: #1a0f38 !important;
+  color: #f5f3ff !important;
+}
+/* Firefox dropdown */
+@-moz-document url-prefix() {
+  .btg--customizer select,
+  #customize-controls select {
+    background-color: #1a0f38 !important;
+    color: #f5f3ff !important;
+  }
+}
+
+/* Visual inherit/custom in font tab */
+.btg--customizer .btg-mode-toggle--visual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.btg--customizer .btg-mode-toggle--visual .btg-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05);
+  color: rgba(245,243,255,.85);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+}
+.btg--customizer .btg-mode-toggle--visual .btg-mode-btn.is-active {
+  background: linear-gradient(145deg, rgba(124,92,255,.5), rgba(99,102,241,.3));
+  border-color: rgba(196,181,253,.55);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(167,139,250,.3) inset;
+}
+.btg--customizer .btg-mode-toggle--visual .btg-mode-btn span:not(.btg-mode-btn__art) {
+  font-size: 12px;
+  font-weight: 800;
+}
+.btg--customizer .btg-mode-toggle--visual .btg-mode-btn small {
+  font-size: 10px;
+  opacity: .7;
+  font-weight: 600;
+}

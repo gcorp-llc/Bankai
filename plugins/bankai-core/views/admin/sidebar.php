@@ -1,6 +1,47 @@
 <?php
 defined('ABSPATH') || exit;
 
+
+/** Server telemetry for sidebar */
+if (!function_exists('bankai_sidebar_telemetry')) {
+    function bankai_sidebar_telemetry(): array {
+        global $wpdb;
+        $mem_limit = ini_get('memory_limit');
+        $mem_usage = function_exists('memory_get_usage') ? size_format(memory_get_usage(true)) : '—';
+        $mysql = '—';
+        if (isset($wpdb) && $wpdb instanceof wpdb) {
+            $mysql = $wpdb->db_server_info() ?: ($wpdb->db_version() ?: '—');
+        }
+        $cpu = function_exists('sys_getloadavg') ? sys_getloadavg() : false;
+        $load = is_array($cpu) ? number_format((float) $cpu[0], 2) : '—';
+        $disk_free = function_exists('disk_free_space') ? @disk_free_space(ABSPATH) : false;
+        $disk_total = function_exists('disk_total_space') ? @disk_total_space(ABSPATH) : false;
+        $disk = ($disk_free && $disk_total)
+            ? size_format($disk_free) . ' / ' . size_format($disk_total)
+            : '—';
+        $host = wp_parse_url(home_url(), PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? '—');
+        $max_exec = ini_get('max_execution_time') ?: '—';
+        $upload = size_format(wp_max_upload_size());
+        return [
+            'php' => PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . '.' . PHP_RELEASE_VERSION,
+            'mysql' => is_string($mysql) ? $mysql : '—',
+            'memory_limit' => $mem_limit ?: '—',
+            'memory_usage' => $mem_usage,
+            'load' => $load,
+            'disk' => $disk,
+            'domain' => $host,
+            'wp' => get_bloginfo('version'),
+            'upload_max' => $upload,
+            'max_exec' => $max_exec . (is_numeric($max_exec) ? 's' : ''),
+            'os' => PHP_OS_FAMILY ?: PHP_OS,
+            'sapi' => PHP_SAPI,
+        ];
+    }
+}
+$bk_tel = bankai_sidebar_telemetry();
+
+
+
 /** @var array $state */
 $core = is_array($state['coreModules'] ?? null) ? $state['coreModules'] : [];
 $active_map = [];
@@ -64,46 +105,34 @@ $is_on = static function (string $key) use ($active_map): bool {
 
                 <!-- 3. موتور سئو و اسکیما -->
                 <button type="button" id="nav-tab-seo" class="bankai-nav-btn"
-                        :class="{ 'active': activeTab === 'seo-engine', 'is-disabled': !isModuleNavEnabled('seo-engine') }"
-                        :disabled="!isModuleNavEnabled('seo-engine')"
-                        :title="!isModuleNavEnabled('seo-engine') ? t('moduleDisabled') : ''"
-                        @click="setTab('seo-engine')">
+                        :class="{ 'active': activeTab === 'seo-engine', 'is-off': !isModuleNavEnabled('seo-engine') }"
+                        @click="isModuleNavEnabled('seo-engine') ? setTab('seo-engine') : showToast(isRtl ? 'ماژول سئو غیرفعال است — از پیشخوان فعال کنید' : 'SEO module is off', 'warning')">
                     <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
                     <span><?php echo esc_html__('موتور سئو و اسکیما', 'bankai-core'); ?></span>
-                    <span class="bankai-nav-off-badge" x-show="!isModuleNavEnabled('seo-engine')" x-cloak>OFF</span>
                 </button>
 
                 <!-- 4. استودیو هوش مصنوعی -->
                 <button type="button" id="nav-tab-ai" class="bankai-nav-btn"
-                        :class="{ 'active': activeTab === 'ai-studio', 'is-disabled': !isModuleNavEnabled('ai-studio') }"
-                        :disabled="!isModuleNavEnabled('ai-studio')"
-                        :title="!isModuleNavEnabled('ai-studio') ? t('moduleDisabled') : ''"
-                        @click="setTab('ai-studio')">
+                        :class="{ 'active': activeTab === 'ai-studio', 'is-off': !isModuleNavEnabled('ai-studio') }"
+                        @click="isModuleNavEnabled('ai-studio') ? setTab('ai-studio') : showToast(isRtl ? 'استودیو AI غیرفعال است — از پیشخوان فعال کنید' : 'AI Studio is off', 'warning')">
                     <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V5M9 12h.01M15 12h.01M9 16h6"/></svg></div>
                     <span><?php echo esc_html__('استودیو هوش مصنوعی', 'bankai-core'); ?></span>
-                    <span class="bankai-nav-off-badge" x-show="!isModuleNavEnabled('ai-studio')" x-cloak>OFF</span>
                 </button>
 
                 <!-- 5. کش و سرعت -->
                 <button type="button" id="nav-tab-speed" class="bankai-nav-btn"
-                        :class="{ 'active': activeTab === 'speed-cache', 'is-disabled': !isModuleNavEnabled('speed-cache') }"
-                        :disabled="!isModuleNavEnabled('speed-cache')"
-                        :title="!isModuleNavEnabled('speed-cache') ? t('moduleDisabled') : ''"
-                        @click="setTab('speed-cache')">
+                        :class="{ 'active': activeTab === 'speed-cache', 'is-off': !isModuleNavEnabled('speed-cache') }"
+                        @click="isModuleNavEnabled('speed-cache') ? setTab('speed-cache') : showToast(isRtl ? 'ماژول کش غیرفعال است' : 'Speed module is off', 'warning')">
                     <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
                     <span><?php echo esc_html__('کش و سرعت', 'bankai-core'); ?></span>
-                    <span class="bankai-nav-off-badge" x-show="!isModuleNavEnabled('speed-cache')" x-cloak>OFF</span>
                 </button>
 
                 <!-- 6. رسانه و واترمارک -->
                 <button type="button" id="nav-tab-media" class="bankai-nav-btn"
-                        :class="{ 'active': activeTab === 'media-watermark', 'is-disabled': !isModuleNavEnabled('media-watermark') }"
-                        :disabled="!isModuleNavEnabled('media-watermark')"
-                        :title="!isModuleNavEnabled('media-watermark') ? t('moduleDisabled') : ''"
-                        @click="setTab('media-watermark')">
+                        :class="{ 'active': activeTab === 'media-watermark', 'is-off': !isModuleNavEnabled('media-watermark') }"
+                        @click="isModuleNavEnabled('media-watermark') ? setTab('media-watermark') : showToast(isRtl ? 'ماژول رسانه غیرفعال است' : 'Media module is off', 'warning')">
                     <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M21 9v10a2 2 0 0 1-2 2H7"/><circle cx="9" cy="11" r="1.5"/><path d="M3 15l4-3 3 2 4-4 3 3"/></svg></div>
                     <span><?php echo esc_html__('رسانه و واترمارک', 'bankai-core'); ?></span>
-                    <span class="bankai-nav-off-badge" x-show="!isModuleNavEnabled('media-watermark')" x-cloak>OFF</span>
                 </button>
 
                 <!-- 7. تنظیمات و لایسنس -->
@@ -117,53 +146,38 @@ $is_on = static function (string $key) use ($active_map): bool {
         </nav>
     </div>
 
+    
     <div class="bankai-telemetry-card">
         <div class="telemetry-header">
             <div class="telemetry-status">
                 <span class="ping-container"><span class="ping-pulse"></span><span class="ping-dot"></span></span>
-                <span class="status-title" x-text="t('allSystemsNormal')">All Systems Normal</span>
+                <span class="status-title" style="color:#334155;font-weight:800"><?php echo esc_html__('همه سیستم‌ها عادی', 'bankai-core'); ?></span>
             </div>
-            <span class="php-badge">PHP <?php echo esc_html(PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION); ?></span>
+            <span class="php-badge">PHP <?php echo esc_html($bk_tel['php']); ?></span>
         </div>
-        <div class="telemetry-progress-wrapper">
-            <div class="telemetry-progress-label">
-                <span x-text="t('memoryLimit')">Memory</span>
-                <span class="memory-value">
-                    <?php
-                    $memory_used  = function_exists('memory_get_usage') ? size_format((int) memory_get_usage(true)) : '—';
-                    $memory_limit = (string) ini_get('memory_limit');
-                    echo esc_html($memory_used . ' / ' . ($memory_limit !== '' ? $memory_limit : '—'));
-                    ?>
-                </span>
-            </div>
+        <div class="telemetry-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:10px;line-height:1.4;">
+            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">MySQL</span><strong style="color:#0f172a;font-weight:800" font-size:11px;word-break:break-all"><?php echo esc_html(wp_html_excerpt($bk_tel['mysql'], 24, '…')); ?></strong></div>
+            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">حافظه PHP</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['memory_usage']); ?> / <?php echo esc_html($bk_tel['memory_limit']); ?></strong></div>
+            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">بار پردازنده</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['load']); ?></strong></div>
+            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">دیسک آزاد</span><strong style="color:#0f172a;font-weight:800" font-size:10px"><?php echo esc_html($bk_tel['disk']); ?></strong></div>
+            <div class="tel-item" style="grid-column:1/-1"><span style="color:#475569;display:block;font-weight:700">دامنه</span><strong style="color:#0f172a;font-weight:800" dir="ltr" font-size:11px"><?php echo esc_html($bk_tel['domain']); ?></strong></div>
+            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">وردپرس</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['wp']); ?></strong></div>
+            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">آپلود</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['upload_max']); ?></strong></div>
+            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">max_exec</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['max_exec']); ?></strong></div>
+            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">سیستم</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['os'] . ' / ' . $bk_tel['sapi']); ?></strong></div>
         </div>
     </div>
 </aside>
 
 <style>
-.bankai-nav-btn.is-disabled,
-.bankai-nav-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed !important;
-    filter: grayscale(0.6);
+/* nav always clickable */
+/* off badge removed */
+#bankai-admin-sidebar .bankai-nav-icon svg.solar-icon {
+    width: 17px; height: 17px; display: block;
 }
-.bankai-nav-off-badge {
-    margin-inline-start: auto;
-    font-size: 9px;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: rgba(166, 18, 45, 0.12);
-    color: #A6122D;
-    border: 1px solid rgba(166, 18, 45, 0.25);
-}
-#bankai-admin-sidebar .bankai-nav-icon .solar-icon,
-#bankai-admin-sidebar .solar-icon {
-    font-family: 'Material Symbols Outlined' !important;
-    font-size: 20px;
-    line-height: 1;
-    display: inline-block;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-}
+</style>
+
+<style>
+#bankai-admin-sidebar .bankai-nav-btn.is-off{opacity:.45;filter:grayscale(.4)}
+#bankai-admin-sidebar .bankai-nav-btn.is-off::after{content:'OFF';font-size:9px;font-weight:900;margin-inline-start:auto;background:#fee2e2;color:#b91c1c;padding:2px 6px;border-radius:999px}
 </style>

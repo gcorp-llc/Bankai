@@ -7,7 +7,7 @@
 
 defined('ABSPATH') || exit;
 
-define('BANKAI_THEME_VERSION', '1.10.4');
+define('BANKAI_THEME_VERSION', '1.10.17');
 define('BANKAI_THEME_DIR', get_template_directory());
 define('BANKAI_THEME_URI', get_template_directory_uri());
 

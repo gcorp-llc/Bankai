@@ -54,16 +54,22 @@ class Bankai_Media_Watermark
         }
 
         add_action('wp_ajax_bankai_bulk_convert_media', [$this, 'ajax_bulk_convert']);
+        add_action('wp_ajax_bankai_bulk_watermark_ids', [$this, 'ajax_bulk_watermark_ids']);
+        add_action('wp_ajax_bankai_upload_wm_font', [$this, 'ajax_upload_wm_font']);
         add_action('wp_ajax_bankai_save_watermark_settings', [$this, 'ajax_save_watermark_settings']);
         add_action('wp_ajax_bankai_regenerate_thumbs', [$this, 'ajax_regenerate_thumbs']);
         add_action('wp_ajax_bankai_media_env', [$this, 'ajax_media_env']);
         add_action('wp_ajax_bankai_strip_exif_bulk', [$this, 'ajax_strip_exif_bulk']);
+        add_action('rest_api_init', [$this, 'register_cdn_routes']);
+        add_filter('wp_get_attachment_url', [$this, 'maybe_cdn_url'], 20, 2);
+        add_filter('wp_calculate_image_srcset', [$this, 'maybe_cdn_srcset'], 20, 5);
         add_action('wp_ajax_bankai_optimize_post_images', [$this, 'ajax_optimize_post_images']);
         add_action('wp_ajax_bankai_scan_post_images', [$this, 'ajax_scan_post_images']);
         add_action('wp_ajax_bankai_update_image_alt', [$this, 'ajax_update_image_alt']);
         add_action('wp_ajax_bankai_remove_image_watermark', [$this, 'ajax_remove_image_watermark']);
         add_action('wp_ajax_bankai_list_media_library', [$this, 'ajax_list_media_library']);
         add_action('wp_ajax_bankai_compress_attachment', [$this, 'ajax_compress_attachment']);
+        add_action('wp_ajax_bankai_bulk_compress_media', [$this, 'ajax_bulk_compress_media']);
     }
 
     private function is_sub_active(string $id): bool
@@ -93,10 +99,25 @@ class Bankai_Media_Watermark
             'position'        => 'bottom-right',
             'opacity'         => 75,
             'text'            => '© BANKAI MEDIA',
+            'text_size'       => 18,
+            'text_color'      => '#FFFFFF',
+            'text_font'       => 'default',
+            'box_enabled'     => true,
+            'box_padding'     => 8,
+            'box_radius'      => 6,
+            'box_color'       => '#000000',
+            'box_opacity'     => 45,
             'image_id'        => 0,
             'image_url'       => '',
+            'image_scale'     => 20,
             'quality'         => 82,
             'min_dimension'   => 300,
+            'exclude_patterns'=> "logo
+banner
+icon
+sprite
+favicon
+watermark",
             'apply_upload'    => true,
             'apply_content'   => false,
             'lazy_load'       => true,
@@ -191,7 +212,21 @@ class Bankai_Media_Watermark
      */
     public function apply_watermark(string $file_path, ?array $settings = null): bool
     {
+        // Backup original once for restore
+        if (!empty(($settings ?? $this->get_settings())['keep_original'] ?? true)) {
+            $bak = $file_path . '.bk-orig';
+            if (!file_exists($bak) && file_exists($file_path)) {
+                @copy($file_path, $bak);
+            }
+        }
+        return $this->apply_watermark_inner($file_path, $settings);
+    }
+
+    private function apply_watermark_inner(string $file_path, ?array $settings = null): bool
+    {
         $s = $settings ?? $this->get_settings();
+        $text_cover = $s['text_cover'] ?? 'none';
+        $box_style = $s['box_style'] ?? 'solid';
         $info = @getimagesize($file_path);
         if (!$info || empty($info['mime'])) {
             return false;
@@ -199,6 +234,11 @@ class Bankai_Media_Watermark
 
         $min = (int) ($s['min_dimension'] ?? 0);
         if ($min > 0 && ($info[0] < $min || $info[1] < $min)) {
+            return false;
+        }
+
+        // Skip files matching exclude patterns (logo, banner, …)
+        if ($this->path_is_excluded($file_path, $s)) {
             return false;
         }
 
@@ -226,7 +266,8 @@ class Bankai_Media_Watermark
                         $ww = imagesx($wm);
                         $wh = imagesy($wm);
                         // Scale watermark to ~20% of host width
-                        $target_w = max(40, (int) ($width * 0.2));
+                        $pct = max(5, min(50, (int) ($s['image_scale'] ?? 20)));
+                        $target_w = max(40, (int) ($width * ($pct / 100)));
                         $scale    = $target_w / max(1, $ww);
                         $nw       = (int) ($ww * $scale);
                         $nh       = (int) ($wh * $scale);
@@ -245,16 +286,7 @@ class Bankai_Media_Watermark
                 }
             }
         } else {
-            $text = (string) ($s['text'] ?? 'BANKAI');
-            $font_size = 5;
-            $font_w = imagefontwidth($font_size) * strlen($text);
-            $font_h = imagefontheight($font_size);
-            [$x, $y] = $this->calc_position($s['position'] ?? 'bottom-right', $width, $height, $font_w, $font_h, 15);
-            $color = imagecolorallocatealpha($image, 255, 255, 255, $alpha);
-            if ($color === false) {
-                $color = imagecolorallocate($image, 255, 255, 255);
-            }
-            imagestring($image, $font_size, (int) $x, (int) $y, $text, $color);
+            $this->draw_text_watermark($image, $width, $height, $s, $alpha);
         }
 
         $ok = $this->save_image($image, $file_path, $mime, (int) ($s['quality'] ?? 88));
@@ -265,6 +297,121 @@ class Bankai_Media_Watermark
     /**
      * @return array{0:int,1:int}
      */
+
+    private function path_is_excluded(string $file_path, array $s): bool
+    {
+        $raw = (string) ($s['exclude_patterns'] ?? '');
+        if ($raw === '') {
+            return false;
+        }
+        $name = strtolower(basename($file_path));
+        $parts = preg_split('/[\r\n,]+/', $raw) ?: [];
+        foreach ($parts as $pat) {
+            $pat = strtolower(trim($pat));
+            if ($pat !== '' && str_contains($name, $pat)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function resolve_font_path(string $font_key): string
+    {
+        $map = [
+            'default' => '',
+            'dejavu'  => '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            'dejavu-bold' => '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+            'liberation' => '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+            'free-sans' => '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
+        ];
+        $path = $map[$font_key] ?? '';
+        if ($path && is_readable($path)) {
+            return $path;
+        }
+        // fallback scan
+        foreach ($map as $p) {
+            if ($p && is_readable($p)) {
+                return $p;
+            }
+        }
+        return '';
+    }
+
+    private function parse_hex_color(string $hex): array
+    {
+        $hex = ltrim(trim($hex), '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+        if (strlen($hex) !== 6) {
+            return [255, 255, 255];
+        }
+        return [
+            hexdec(substr($hex, 0, 2)),
+            hexdec(substr($hex, 2, 2)),
+            hexdec(substr($hex, 4, 2)),
+        ];
+    }
+
+    private function draw_text_watermark($image, int $width, int $height, array $s, int $alpha): void
+    {
+        $text = (string) ($s['text'] ?? 'BANKAI');
+        if ($text === '') {
+            return;
+        }
+        $size = max(10, min(72, (int) ($s['text_size'] ?? 18)));
+        $font_key = (string) ($s['text_font'] ?? 'default');
+        $font_path = $this->resolve_font_path($font_key);
+        [$tr, $tg, $tb] = $this->parse_hex_color((string) ($s['text_color'] ?? '#FFFFFF'));
+        $pad = max(2, min(40, (int) ($s['box_padding'] ?? 8)));
+        $box_on = !empty($s['box_enabled']);
+        $box_op = max(0, min(100, (int) ($s['box_opacity'] ?? 45)));
+        [$br, $bg, $bb] = $this->parse_hex_color((string) ($s['box_color'] ?? '#000000'));
+
+        $tw = $th = 0;
+        $bbox = null;
+        if ($font_path && function_exists('imagettfbbox')) {
+            $bbox = @imagettfbbox($size, 0, $font_path, $text);
+            if (is_array($bbox)) {
+                $tw = abs($bbox[2] - $bbox[0]);
+                $th = abs($bbox[7] - $bbox[1]);
+            }
+        }
+        if ($tw <= 0) {
+            $gd = min(5, max(1, (int) round($size / 6)));
+            $tw = imagefontwidth($gd) * strlen($text);
+            $th = imagefontheight($gd);
+        }
+
+        $box_w = $tw + ($box_on ? $pad * 2 : 0);
+        $box_h = $th + ($box_on ? $pad * 2 : 0);
+        [$x, $y] = $this->calc_position($s['position'] ?? 'bottom-right', $width, $height, $box_w, $box_h, 15);
+
+        if ($box_on) {
+            $box_alpha = (int) round((100 - $box_op) / 100 * 127);
+            $box_col = imagecolorallocatealpha($image, $br, $bg, $bb, $box_alpha);
+            if ($box_col !== false) {
+                imagefilledrectangle($image, (int) $x, (int) $y, (int) ($x + $box_w), (int) ($y + $box_h), $box_col);
+            }
+        }
+
+        $tx = (int) ($x + ($box_on ? $pad : 0));
+        $ty = (int) ($y + ($box_on ? $pad : 0));
+        $text_col = imagecolorallocatealpha($image, $tr, $tg, $tb, $alpha);
+        if ($text_col === false) {
+            $text_col = imagecolorallocate($image, $tr, $tg, $tb);
+        }
+
+        if ($font_path && $bbox && function_exists('imagettftext')) {
+            // imagettftext uses baseline
+            $baseline = $ty + $th;
+            @imagettftext($image, $size, 0, $tx, $baseline, $text_col, $font_path, $text);
+        } else {
+            $gd = min(5, max(1, (int) round($size / 6)));
+            imagestring($image, $gd, $tx, $ty, $text, $text_col);
+        }
+    }
+
     private function calc_position(string $pos, int $w, int $h, int $ew, int $eh, int $margin): array
     {
         $x = $margin;
@@ -534,6 +681,18 @@ class Bankai_Media_Watermark
         $image_id = isset($_POST['image_id']) ? absint($_POST['image_id']) : 0;
         $image_url = $image_id ? (string) wp_get_attachment_url($image_id) : '';
 
+        $text_size = max(10, min(72, absint($_POST['text_size'] ?? 18)));
+        $text_color = sanitize_hex_color(wp_unslash($_POST['text_color'] ?? '#FFFFFF')) ?: '#FFFFFF';
+        $text_font = sanitize_key(wp_unslash($_POST['text_font'] ?? 'default'));
+        $box_enabled = !empty($_POST['box_enabled']);
+        $box_padding = max(2, min(40, absint($_POST['box_padding'] ?? 8)));
+        $box_radius = max(0, min(24, absint($_POST['box_radius'] ?? 6)));
+        $box_color = sanitize_hex_color(wp_unslash($_POST['box_color'] ?? '#000000')) ?: '#000000';
+        $box_opacity = max(0, min(100, absint($_POST['box_opacity'] ?? 45)));
+        $image_scale = max(5, min(50, absint($_POST['image_scale'] ?? 20)));
+        $exclude_patterns = sanitize_textarea_field(wp_unslash($_POST['exclude_patterns'] ?? ''));
+
+
         $settings = [
             'enabled'       => !empty($_POST['enabled']),
             'type'          => $type,
@@ -542,6 +701,16 @@ class Bankai_Media_Watermark
             'text'          => $text,
             'image_id'      => $image_id,
             'image_url'     => $image_url,
+            'image_scale'   => $image_scale,
+            'text_size'     => $text_size,
+            'text_color'    => $text_color,
+            'text_font'     => $text_font,
+            'box_enabled'   => $box_enabled,
+            'box_padding'   => $box_padding,
+            'box_radius'    => $box_radius,
+            'box_color'     => $box_color,
+            'box_opacity'   => $box_opacity,
+            'exclude_patterns' => $exclude_patterns,
             'quality'       => $quality,
             'min_dimension' => $min_dim,
             'apply_upload'  => !empty($_POST['apply_upload']),
@@ -784,6 +953,7 @@ class Bankai_Media_Watermark
         $do_watermark = !empty($_POST['watermark']);
         $do_alt       = !empty($_POST['fill_alt']);
         $max_width    = max(320, min(2560, absint($_POST['max_width'] ?? 1600)));
+        $max_height   = max(0, min(3000, absint($_POST['max_height'] ?? 0)));
         $quality      = max(40, min(95, absint($_POST['quality'] ?? 82)));
         $default_alt  = sanitize_text_field(wp_unslash($_POST['default_alt'] ?? ''));
 
@@ -797,8 +967,19 @@ class Bankai_Media_Watermark
 
         $report = [];
         $updated_html = $html;
+        $matches = [];
+        if (preg_match_all('/<img\b([^>]*?)>/i', $html, $m_all, PREG_SET_ORDER)) {
+            $matches = $m_all;
+        }
 
-        if (!preg_match_all('/<img\b([^>]*?)>/i', $html, $matches, PREG_SET_ORDER)) {
+        // Always include featured/cover image even if not in content
+        $cover_id = $post_id > 0 ? (int) get_post_thumbnail_id($post_id) : 0;
+        $cover_src = '';
+        if ($cover_id) {
+            $cover_src = (string) (wp_get_attachment_image_url($cover_id, 'full') ?: wp_get_attachment_url($cover_id));
+        }
+
+        if (!$matches && !$cover_src) {
             wp_send_json_success(['images' => [], 'report' => [], 'content' => $html, 'message' => 'تصویری یافت نشد.']);
         }
 
@@ -931,11 +1112,106 @@ class Bankai_Media_Watermark
             $report[] = $item;
         }
 
+
+        // Process featured/cover separately (not in post content)
+        if ($cover_id && $cover_src) {
+            $already = false;
+            foreach ($report as $r) {
+                if (!empty($r['is_cover']) || (int) ($r['attachment_id'] ?? 0) === $cover_id) {
+                    $already = true;
+                    break;
+                }
+                if (!empty($r['original_src']) && $r['original_src'] === $cover_src) {
+                    $already = true;
+                    break;
+                }
+            }
+            if (!$already) {
+                $citem = [
+                    'src'            => $cover_src,
+                    'original_src'   => $cover_src,
+                    'alt'            => (string) get_post_meta($cover_id, '_wp_attachment_image_alt', true),
+                    'new_alt'        => '',
+                    'format_before'  => '',
+                    'format_after'   => '',
+                    'size_before'    => 0,
+                    'size_after'     => 0,
+                    'resized'        => false,
+                    'watermarked'    => false,
+                    'converted'      => false,
+                    'attachment_id'  => $cover_id,
+                    'is_cover'       => true,
+                    'actions'        => [],
+                    'ok'             => true,
+                    'message'        => '',
+                ];
+                $path = get_attached_file($cover_id);
+                if ($path && is_file($path) && !$this->path_is_excluded($path, $this->get_settings())) {
+                    $citem['size_before'] = (int) @filesize($path);
+                    $info = @getimagesize($path);
+                    $mime = $info['mime'] ?? '';
+                    $citem['format_before'] = $this->mime_to_ext($mime);
+                    $citem['format_after'] = $citem['format_before'];
+
+                    if ($do_resize && $info && !empty($info[0]) && $info[0] > $max_width) {
+                        if ($this->resize_image_file($path, $max_width, $quality)) {
+                            $citem['resized'] = true;
+                            $citem['actions'][] = 'resize';
+                        }
+                    }
+                    if ($do_webp && $mime && $mime !== 'image/webp') {
+                        // For cover: convert sidecar WebP but KEEP original attachment file/URL
+                        // so featured image is never deleted or unlinked.
+                        $webp_path = preg_replace('/\.(jpe?g|png)$/i', '.webp', $path);
+                        if ($webp_path && $webp_path !== $path) {
+                            $converted = $this->convert_to_webp_file($path, $webp_path, $quality);
+                            if ($converted && file_exists($webp_path)) {
+                                update_post_meta($cover_id, '_bankai_webp_path', $webp_path);
+                                $citem['converted'] = true;
+                                $citem['actions'][] = 'webp';
+                                $citem['format_after'] = 'webp';
+                                // do not change attachment URL / featured media
+                            }
+                        }
+                    }
+                    if ($do_watermark) {
+                        $this->apply_watermark($path);
+                        $citem['watermarked'] = true;
+                        $citem['actions'][] = 'watermark';
+                    }
+                    if ($do_alt && trim($citem['alt']) === '') {
+                        $new_alt = $default_alt !== '' ? $default_alt : $this->guess_alt_from_src($cover_src, $post_id);
+                        if ($new_alt !== '') {
+                            update_post_meta($cover_id, '_wp_attachment_image_alt', $new_alt);
+                            $citem['new_alt'] = $new_alt;
+                            $citem['alt'] = $new_alt;
+                            $citem['actions'][] = 'alt';
+                        }
+                    }
+                    $citem['size_after'] = is_file($path) ? (int) @filesize($path) : $citem['size_before'];
+                    $citem['src'] = $cover_src; // keep stable URL for UI
+                } else {
+                    $citem['message'] = 'کاور: فایل در دسترس نیست یا در استثناهاست';
+                }
+                array_unshift($report, $citem);
+            }
+        }
+
+        // Never clear featured image
+        if ($post_id > 0 && $cover_id) {
+            $still = (int) get_post_thumbnail_id($post_id);
+            if ($still !== $cover_id) {
+                set_post_thumbnail($post_id, $cover_id);
+            }
+        }
+
         wp_send_json_success([
             'report'  => $report,
             'content' => $updated_html,
             'count'   => count($report),
             'message' => sprintf('%d تصویر پردازش شد.', count($report)),
+            'cover_id'=> $cover_id,
+            'cover_src'=> $cover_src,
         ]);
     }
 
@@ -1209,7 +1485,7 @@ class Bankai_Media_Watermark
      */
     public function ajax_compress_attachment(): void
     {
-        if (!current_user_can('upload_files')) {
+        if (!current_user_can('manage_options') && !current_user_can('upload_files')) {
             wp_send_json_error(['message' => __('دسترسی مجاز نیست.', 'bankai-core')], 403);
         }
         check_ajax_referer('bankai_admin_nonce', 'nonce');
@@ -1348,4 +1624,315 @@ class Bankai_Media_Watermark
             ),
         ];
     }
+
+
+    
+    public function register_cdn_routes(): void {
+        register_rest_route('bankai/v1', '/media/cdn', [
+            'methods' => 'GET',
+            'callback' => [$this, 'api_get_cdn'],
+            'permission_callback' => static function () { return current_user_can('manage_options'); },
+        ]);
+        register_rest_route('bankai/v1', '/media/cdn', [
+            'methods' => 'POST',
+            'callback' => [$this, 'api_save_cdn'],
+            'permission_callback' => static function () { return current_user_can('manage_options'); },
+        ]);
+    }
+
+    public static function get_cdn_settings(): array {
+        $defaults = [
+            'provider' => 'custom',
+            'base_url' => '',
+            'path_prefix' => '',
+            'access_key' => '',
+            'secret_key' => '',
+            'bucket' => '',
+            'rewrite_urls' => true,
+        ];
+        $opt = function_exists('bankai_get_option') ? bankai_get_option('cdn_settings', []) : get_option('bankai_cdn_settings', []);
+        if (!is_array($opt)) {
+            $opt = [];
+        }
+        return array_merge($defaults, $opt);
+    }
+
+    public function api_get_cdn(): \WP_REST_Response {
+        $s = self::get_cdn_settings();
+        if (!empty($s['secret_key'])) {
+            $s['secret_key'] = '********';
+        }
+        return new \WP_REST_Response($s, 200);
+    }
+
+    public function api_save_cdn(\WP_REST_Request $req): \WP_REST_Response {
+        $body = $req->get_json_params();
+        if (!is_array($body)) {
+            $body = [];
+        }
+        $prev = self::get_cdn_settings();
+        $s = [
+            'provider' => sanitize_text_field($body['provider'] ?? 'custom'),
+            'base_url' => esc_url_raw($body['base_url'] ?? ''),
+            'path_prefix' => trim(sanitize_text_field($body['path_prefix'] ?? ''), '/'),
+            'access_key' => sanitize_text_field($body['access_key'] ?? ''),
+            'secret_key' => sanitize_text_field($body['secret_key'] ?? ''),
+            'bucket' => sanitize_text_field($body['bucket'] ?? ''),
+            'rewrite_urls' => !empty($body['rewrite_urls']),
+        ];
+        if ($s['secret_key'] === '********' || $s['secret_key'] === '') {
+            $s['secret_key'] = $prev['secret_key'] ?? '';
+        }
+        if (function_exists('bankai_update_option')) {
+            bankai_update_option('cdn_settings', $s);
+        } else {
+            update_option('bankai_cdn_settings', $s, false);
+        }
+        return new \WP_REST_Response([
+            'success' => true,
+            'data' => array_merge($s, ['secret_key' => $s['secret_key'] ? '********' : '']),
+        ], 200);
+    }
+
+    public function maybe_cdn_url(string $url, int $post_id = 0): string {
+        $s = self::get_cdn_settings();
+        if (empty($s['rewrite_urls']) || empty($s['base_url'])) {
+            return $url;
+        }
+        $uploads = wp_get_upload_dir();
+        $base = trailingslashit($uploads['baseurl']);
+        if (strpos($url, $base) !== 0) {
+            return $url;
+        }
+        $rel = ltrim(substr($url, strlen($base)), '/');
+        $prefix = !empty($s['path_prefix']) ? trailingslashit($s['path_prefix']) : '';
+        return trailingslashit($s['base_url']) . $prefix . $rel;
+    }
+
+    public function maybe_cdn_srcset($sources, $size_array, $image_src, $image_meta, $attachment_id) {
+        if (!is_array($sources)) {
+            return $sources;
+        }
+        foreach ($sources as $w => $src) {
+            if (!empty($src['url'])) {
+                $sources[$w]['url'] = $this->maybe_cdn_url($src['url'], (int) $attachment_id);
+            }
+        }
+        return $sources;
+    }
+
+    /**
+     * Apply or remove watermark on selected attachment IDs.
+     */
+    public function ajax_bulk_watermark_ids(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('دسترسی مجاز نیست.', 'bankai-core')], 403);
+        }
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+
+        $ids_raw = $_POST['ids'] ?? [];
+        if (is_string($ids_raw)) {
+            $decoded = json_decode(wp_unslash($ids_raw), true);
+            $ids_raw = is_array($decoded) ? $decoded : preg_split('/[,\s]+/', $ids_raw);
+        }
+        if (!is_array($ids_raw)) {
+            $ids_raw = [];
+        }
+        $ids = array_values(array_filter(array_map('absint', $ids_raw)));
+        $apply = !empty($_POST['apply']) && ($_POST['apply'] === '1' || $_POST['apply'] === 'true' || $_POST['apply'] === true);
+
+        if (!$ids) {
+            wp_send_json_error(['message' => __('هیچ تصویری انتخاب نشده است.', 'bankai-core')]);
+        }
+
+        $s = $this->get_settings();
+        if ($apply && empty($s['enabled'])) {
+            wp_send_json_error(['message' => __('سرویس واترمارک غیرفعال است. ابتدا فعال و ذخیره کنید.', 'bankai-core')]);
+        }
+        if ($apply && !extension_loaded('gd')) {
+            wp_send_json_error(['message' => __('افزونه GD روی سرور فعال نیست.', 'bankai-core')]);
+        }
+
+        $ok = 0;
+        $skip = 0;
+        $fail = 0;
+        foreach ($ids as $id) {
+            $path = get_attached_file($id);
+            if (!$path || !file_exists($path)) {
+                $fail++;
+                continue;
+            }
+            $file = basename($path);
+            if ($apply && $this->should_exclude_file($file, $s)) {
+                $skip++;
+                continue;
+            }
+            if ($apply) {
+                if ($this->apply_watermark($path, $s)) {
+                    $ok++;
+                    // regenerate metadata so sizes refresh
+                    if (function_exists('wp_generate_attachment_metadata')) {
+                        require_once ABSPATH . 'wp-admin/includes/image.php';
+                        $meta = wp_generate_attachment_metadata($id, $path);
+                        if ($meta) {
+                            wp_update_attachment_metadata($id, $meta);
+                        }
+                    }
+                } else {
+                    $fail++;
+                }
+            } else {
+                // restore original if we kept backup
+                $backup = $path . '.bk-orig';
+                if (file_exists($backup)) {
+                    @copy($backup, $path);
+                    $ok++;
+                } else {
+                    $skip++;
+                }
+            }
+        }
+
+        if ($apply) {
+            $msg = sprintf(
+                /* translators: %d counts */
+                __('واترمارک: %1$d موفق · %2$d رد (استثنا) · %3$d ناموفق', 'bankai-core'),
+                $ok, $skip, $fail
+            );
+        } else {
+            $msg = sprintf(
+                __('حذف واترمارک: %1$d بازگردانی · %2$d بدون نسخه اصلی', 'bankai-core'),
+                $ok, $skip
+            );
+        }
+
+        wp_send_json_success([
+            'message' => $msg,
+            'ok'      => $ok,
+            'skip'    => $skip,
+            'fail'    => $fail,
+        ]);
+    }
+
+
+    private function should_exclude_file(string $filename, array $s): bool
+    {
+        $patterns = $s['exclude_patterns'] ?? '';
+        if (is_array($patterns)) {
+            $lines = $patterns;
+        } else {
+            $lines = preg_split('/\r\n|\r|\n/', (string) $patterns);
+        }
+        $name = strtolower($filename);
+        foreach ($lines as $line) {
+            $line = trim(strtolower((string) $line));
+            if ($line !== '' && strpos($name, $line) !== false) {
+                return true;
+            }
+        }
+        $min = (int) ($s['min_dimension'] ?? 0);
+        if ($min > 0 && function_exists('getimagesize')) {
+            $info = @getimagesize($filename);
+            // filename only — skip dim check here
+        }
+        return false;
+    }
+
+
+    public function ajax_upload_wm_font(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('دسترسی مجاز نیست.', 'bankai-core')], 403);
+        }
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (empty($_FILES['font'])) {
+            wp_send_json_error(['message' => __('فایلی ارسال نشد.', 'bankai-core')]);
+        }
+        $file = $_FILES['font'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['ttf', 'otf', 'woff', 'woff2'], true)) {
+            wp_send_json_error(['message' => __('فقط ttf/otf/woff مجاز است.', 'bankai-core')]);
+        }
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        $overrides = ['test_form' => false, 'mimes' => [
+            'ttf' => 'font/ttf', 'otf' => 'font/otf', 'woff' => 'font/woff', 'woff2' => 'font/woff2',
+        ]];
+        // WP may reject font mimes — store manually in uploads/bankai-fonts
+        $upload = wp_upload_dir();
+        $dir = trailingslashit($upload['basedir']) . 'bankai-fonts';
+        if (!is_dir($dir)) {
+            wp_mkdir_p($dir);
+        }
+        $safe = sanitize_file_name(pathinfo($file['name'], PATHINFO_FILENAME)) . '.' . $ext;
+        $dest = $dir . '/' . $safe;
+        $ok = false;
+        if (!empty($file['tmp_name']) && is_uploaded_file($file['tmp_name'])) {
+            $ok = @move_uploaded_file($file['tmp_name'], $dest);
+        }
+        if (!$ok && !empty($file['tmp_name']) && file_exists($file['tmp_name'])) {
+            $ok = @copy($file['tmp_name'], $dest);
+            @unlink($file['tmp_name']);
+        }
+        if (!$ok || !file_exists($dest)) {
+            wp_send_json_error(['message' => __('آپلود ناموفق بود. مجوز پوشه uploads را بررسی کنید.', 'bankai-core')]);
+        }
+        $url = trailingslashit($upload['baseurl']) . 'bankai-fonts/' . $safe;
+        $s = $this->get_settings();
+        $s['custom_font_url'] = $url;
+        $s['custom_font_name'] = $safe;
+        $s['text_font'] = 'custom';
+        $this->save_settings($s);
+        wp_send_json_success(['url' => $url, 'name' => $safe]);
+    }
+
+
+    public function ajax_bulk_compress_media(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Forbidden'], 403);
+        }
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        $ids_raw = $_POST['ids'] ?? [];
+        if (is_string($ids_raw)) {
+            $decoded = json_decode(wp_unslash($ids_raw), true);
+            $ids_raw = is_array($decoded) ? $decoded : preg_split('/[,\s]+/', $ids_raw);
+        }
+        $ids = array_values(array_filter(array_map('absint', (array) $ids_raw)));
+        $quality = max(40, min(95, (int) ($_POST['quality'] ?? 82)));
+        $max_w = max(400, min(4000, (int) ($_POST['max_width'] ?? 1600)));
+        $format = sanitize_key($_POST['format'] ?? 'webp');
+        $done = 0;
+        foreach ($ids as $id) {
+            $path = get_attached_file($id);
+            if (!$path || !file_exists($path)) {
+                continue;
+            }
+            $mime = get_post_mime_type($id) ?: '';
+            if ($format === 'webp' && method_exists($this, 'maybe_create_webp')) {
+                $this->maybe_create_webp($path, $mime, $quality);
+            }
+            $info = @getimagesize($path);
+            if ($info && !empty($info[0]) && $info[0] > $max_w && extension_loaded('gd') && method_exists($this, 'resize_image_file')) {
+                $this->resize_image_file($path, $mime, $max_w, $quality);
+            } elseif ($info && !empty($info[0]) && $info[0] > $max_w && extension_loaded('gd')) {
+                // inline resize
+                $img = $this->load_image($path, $mime);
+                if ($img) {
+                    $w = imagesx($img); $h = imagesy($img);
+                    $nw = $max_w; $nh = (int) round($h * ($max_w / max(1,$w)));
+                    $dst = imagecreatetruecolor($nw, $nh);
+                    imagecopyresampled($dst, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+                    $this->save_image($dst, $path, $mime, $quality);
+                    imagedestroy($img); imagedestroy($dst);
+                }
+            }
+            $done++;
+        }
+        wp_send_json_success([
+            'message' => sprintf(__('%d تصویر پردازش شد.', 'bankai-core'), $done),
+            'done' => $done,
+        ]);
+    }
+
 }

@@ -1,5 +1,27 @@
 <!-- Tab: Settings & License Management -->
 <div id="tab-settings-license" class="bankai-tab-pane" style="width:100%;max-width:100%;box-sizing:border-box" x-show="activeTab === 'settings-license'" x-cloak>
+    <div class="bk-lg-header bk-wm-hero bk-page-hero">
+        <div class="bk-wm-hero__main">
+            <div class="bk-wm-hero__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+            </div>
+            <div>
+                <div class="bk-wm-hero__title-row">
+                    <h2>تنظیمات و لایسنس</h2>
+                    <span class="bk-wm-pill">Core Config</span>
+                </div>
+                <p>لایسنس، کلیدهای سراسری ماژول‌ها، بازنشانی کارخانه و گزارش عیب‌یابی</p>
+            </div>
+        </div>
+    </div>
+<div class="bankai-card" style="padding:18px;">
+            <div style="font-weight:800;margin-bottom:8px;" x-text="isRtl ? 'وضعیت لایسنس' : 'License status'">وضعیت لایسنس</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                <span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
+                <strong style="color:#15803d;" x-text="isRtl ? 'فعال و تأیید شده' : 'Active & verified'">فعال و تأیید شده</strong>
+            </div>
+            <div style="font-size:12px;color:#94a3b8;" x-text="isRtl ? 'دسترسی کامل به ماژول‌های سئو، AI و کش' : 'Full access to SEO, AI and cache modules'">دسترسی کامل به ماژول‌های سئو، AI و کش</div>
+        </div>
 
     <!-- Header -->
     <div class="bankai-card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; flex-wrap: wrap; gap: 14px;">
@@ -51,7 +73,7 @@
                     <line x1="12" y1="9" x2="12" y2="13" />
                     <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
-                <span x-text="t('factoryReset')">Factory Reset</span>
+                <span x-text="isRtl ? 'بازنشانی کارخانه' : 'Factory Reset'">بازنشانی کارخانه</span>
             </button>
         </div>
     </div>
@@ -91,7 +113,7 @@
             <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M19.95 11a8 8 0 1 0-.5 4m.5-4h-5m5 0V6" />
             </svg>
-            <span x-text="isRtl ? 'اعتبارسنجی مجدد لایسنس' : 'Revalidate License'">Revalidate License</span>
+            <span x-text="isRtl ? 'اعتبارسنجی مجدد لایسنس' : 'Revalidate License'">اعتبارسنجی مجدد لایسنس</span>
         </button>
     </div>
 
@@ -104,7 +126,7 @@
                 <line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
                 <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" />
             </svg>
-            <span x-text="isRtl ? 'کلیدهای سراسری مدیریت ماژول‌ها' : 'Modular Global Architecture Switcher'">Modular Global Architecture Switcher</span>
+            <span x-text="isRtl ? 'کلیدهای سراسری مدیریت ماژول‌ها' : 'Modular Global Architecture Switcher'">کلیدهای سراسری مدیریت ماژول‌ها</span>
         </h3>
 
         <div class="bankai-grid-2">
@@ -248,7 +270,7 @@
                     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
                     <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
                 </svg>
-                <span x-text="isRtl ? 'گزارش عیب‌یابی سیستم' : 'System Diagnostic Log Report'">System Diagnostic Log Report</span>
+                <span x-text="isRtl ? 'گزارش عیب‌یابی سیستم' : 'System Diagnostic Log Report'">گزارش عیب‌یابی سیستم</span>
             </h3>
             <button type="button"
                     @click="copySystemReport()"
@@ -261,4 +283,5 @@
         <textarea readonly rows="8"
                   style="width: 100%; background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #656D76; font-family: monospace; font-size: 12px; padding: 12px; border-radius: 8px; line-height: 1.6; resize: none; direction: ltr; text-align: left;"><?php echo esc_textarea($state['systemReport'] ?? ''); ?></textarea>
     </div>
-</div>
+
+<!-- /tab-settings-license.php close -->

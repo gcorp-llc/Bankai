@@ -26,44 +26,70 @@ final class Bankai_SEO_Import
         add_action('wp_ajax_bankai_seo_sync_post_from_plugins', [$this, 'ajax_sync_post']);
         add_action('wp_ajax_bankai_seo_ai_post_context', [$this, 'ajax_post_context']);
         add_action('wp_ajax_bankai_seo_ai_apply_draft', [$this, 'ajax_apply_ai_draft']);
+        add_action('wp_ajax_bankai_seo_sync_list', [$this, 'ajax_sync_list']);
+        add_action('wp_ajax_bankai_seo_sync_process_one', [$this, 'ajax_sync_process_one']);
+        add_action('wp_ajax_bankai_seo_export_list', [$this, 'ajax_export_list']);
+        add_action('wp_ajax_bankai_seo_export_process_one', [$this, 'ajax_export_process_one']);
+        add_action('activated_plugin', [__CLASS__, 'bust_detect_cache']);
+        add_action('deactivated_plugin', [__CLASS__, 'bust_detect_cache']);
     }
 
-    public static function detect_sources(): array
+    public static function detect_sources(bool $with_counts = false): array
     {
-        global $wpdb;
+        $cache_key = 'bankai_seo_detect_sources_v2';
+        $cached = get_transient($cache_key);
+        if (is_array($cached) && !$with_counts) {
+            return $cached;
+        }
+
+        // Instant plugin presence (no DB) — both shown as selectable when active OR always listed
+        $rm_active = defined('RANK_MATH_VERSION') || class_exists('RankMath') || function_exists('rank_math');
+        $yo_active = defined('WPSEO_VERSION') || class_exists('WPSEO_Options');
+
         $sources = [
             'rankmath' => [
                 'id' => 'rankmath',
                 'label' => 'Rank Math',
-                'active' => defined('RANK_MATH_VERSION') || class_exists('RankMath') || function_exists('rank_math'),
-                'posts' => 0,
+                'active' => true, // always selectable; real presence flagged below
+                'plugin_active' => $rm_active,
+                'posts' => is_array($cached) ? (int) ($cached['rankmath']['posts'] ?? 0) : 0,
             ],
             'yoast' => [
                 'id' => 'yoast',
                 'label' => 'Yoast SEO',
-                'active' => defined('WPSEO_VERSION') || class_exists('WPSEO_Options'),
-                'posts' => 0,
+                'active' => true,
+                'plugin_active' => $yo_active,
+                'posts' => is_array($cached) ? (int) ($cached['yoast']['posts'] ?? 0) : 0,
             ],
         ];
 
-        // Count posts that have source meta even if plugin is deactivated
-        $rm = (int) $wpdb->get_var(
-            "SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('rank_math_title','rank_math_description','rank_math_focus_keyword')"
-        );
-        $yo = (int) $wpdb->get_var(
-            "SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_title','_yoast_wpseo_metadesc','_yoast_wpseo_focuskw')"
-        );
-        $sources['rankmath']['posts'] = $rm;
-        $sources['yoast']['posts'] = $yo;
-        // Treat as available if meta exists in DB (plugin may be removed)
-        if ($rm > 0) {
-            $sources['rankmath']['active'] = true;
-        }
-        if ($yo > 0) {
-            $sources['yoast']['active'] = true;
+        // Heavy COUNT only when requested (after user picks a source) or cache empty
+        if ($with_counts || !is_array($cached)) {
+            global $wpdb;
+            $rm = (int) $wpdb->get_var(
+                "SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('rank_math_title','rank_math_description','rank_math_focus_keyword')"
+            );
+            $yo = (int) $wpdb->get_var(
+                "SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_title','_yoast_wpseo_metadesc','_yoast_wpseo_focuskw')"
+            );
+            $sources['rankmath']['posts'] = $rm;
+            $sources['yoast']['posts'] = $yo;
+            if ($rm > 0) {
+                $sources['rankmath']['plugin_active'] = true;
+            }
+            if ($yo > 0) {
+                $sources['yoast']['plugin_active'] = true;
+            }
+            set_transient($cache_key, $sources, 12 * HOUR_IN_SECONDS);
         }
 
         return $sources;
+    }
+
+    /** Clear detect cache when plugins change. */
+    public static function bust_detect_cache(): void
+    {
+        delete_transient('bankai_seo_detect_sources_v2');
     }
 
     /**
@@ -409,14 +435,15 @@ final class Bankai_SEO_Import
     public function ajax_detect(): void
     {
         check_ajax_referer('bankai_admin_nonce', 'nonce');
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('manage_options') && !current_user_can('edit_posts')) {
             wp_send_json_error(['message' => 'Permission denied'], 403);
         }
-        $sources = self::detect_sources();
-        $batch = $this->get_source_post_ids(1, 1);
+        $with_counts = !empty($_POST['with_counts']);
+        $sources = self::detect_sources($with_counts);
+        $total = (int) ($sources['rankmath']['posts'] ?? 0) + (int) ($sources['yoast']['posts'] ?? 0);
         wp_send_json_success([
             'sources' => $sources,
-            'importable_total' => $batch['total'],
+            'importable_total' => $total,
         ]);
     }
 
@@ -723,5 +750,468 @@ final class Bankai_SEO_Import
         if ($tags) {
             wp_set_post_terms($post_id, $tags, 'post_tag', false);
         }
+    }
+
+    /**
+     * List posts that have SEO meta from a given source (rankmath|yoast).
+     */
+    public function ajax_sync_list(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options') && !current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $source = sanitize_key($_POST['source'] ?? 'rankmath');
+        if (!in_array($source, ['rankmath', 'yoast'], true)) {
+            $source = 'rankmath';
+        }
+        $page = max(1, absint($_POST['page'] ?? 1));
+        $per_page = max(1, min(50, absint($_POST['per_page'] ?? 15)));
+        $result = $this->get_source_post_ids_for($source, $page, $per_page);
+        $items = [];
+        foreach ($result['ids'] as $pid) {
+            $post = get_post($pid);
+            if (!$post) {
+                continue;
+            }
+            $data = $source === 'yoast' ? $this->read_yoast($pid) : $this->read_rankmath($pid);
+            $fields = [];
+            foreach (['seo_title', 'description', 'focus_keyword', 'canonical', 'og_title', 'og_description', 'og_image', 'x_title', 'x_description', 'score'] as $fk) {
+                $val = $data[$fk] ?? '';
+                $has = is_array($val) ? !empty($val) : (string) $val !== '';
+                $fields[] = [
+                    'id' => $fk,
+                    'label' => $this->field_label($fk),
+                    'has' => $has,
+                    'preview' => is_string($val) ? mb_substr($val, 0, 80) : '',
+                ];
+            }
+            if (!empty($data['keywords']) && is_array($data['keywords'])) {
+                $fields[] = [
+                    'id' => 'keywords',
+                    'label' => $this->field_label('keywords'),
+                    'has' => true,
+                    'preview' => implode('، ', array_slice($data['keywords'], 0, 5)),
+                ];
+            }
+            $items[] = [
+                'id' => $pid,
+                'title' => get_the_title($pid) ?: ('#' . $pid),
+                'edit_link' => get_edit_post_link($pid, 'raw') ?: '',
+                'type' => $post->post_type,
+                'status' => $post->post_status,
+                'fields' => $fields,
+                'source' => $source,
+            ];
+        }
+        wp_send_json_success([
+            'items' => $items,
+            'total' => $result['total'],
+            'page' => $result['page'],
+            'per_page' => $result['per_page'],
+            'total_pages' => $result['total_pages'],
+            'source' => $source,
+        ]);
+    }
+
+    /**
+     * Import one post from Rank Math / Yoast → Bankai with field checklist result.
+     */
+    public function ajax_sync_process_one(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $post_id = absint($_POST['post_id'] ?? 0);
+        $source = sanitize_key($_POST['source'] ?? 'rankmath');
+        $overwrite = !empty($_POST['overwrite']);
+        if ($post_id <= 0) {
+            wp_send_json_error(['message' => 'Invalid post'], 400);
+        }
+        $prefer = in_array($source, ['rankmath', 'yoast'], true) ? $source : 'auto';
+        $result = $this->import_post($post_id, [
+            'overwrite' => $overwrite,
+            'prefer' => $prefer,
+        ]);
+        $checklist = [];
+        $all_fields = ['seo_title', 'description', 'focus_keyword', 'keywords', 'canonical', 'og_title', 'og_description', 'og_image', 'x_title', 'x_description', 'robots', 'score'];
+        $mapped = $result['fields'] ?? [];
+        foreach ($all_fields as $fk) {
+            $checklist[] = [
+                'id' => $fk,
+                'label' => $this->field_label($fk),
+                'status' => in_array($fk, $mapped, true) ? 'done' : 'skip',
+            ];
+        }
+        wp_send_json_success([
+            'post_id' => $post_id,
+            'title' => get_the_title($post_id),
+            'imported' => !empty($result['imported']),
+            'source' => $result['source'] ?? $source,
+            'fields' => $mapped,
+            'checklist' => $checklist,
+            'message' => $result['message'] ?? '',
+        ]);
+    }
+
+    /**
+     * List posts that have Bankai SEO meta (for export to Rank Math / Yoast).
+     */
+    public function ajax_export_list(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $target = sanitize_key($_POST['target'] ?? 'rankmath');
+        if (!in_array($target, ['rankmath', 'yoast'], true)) {
+            $target = 'rankmath';
+        }
+        $page = max(1, absint($_POST['page'] ?? 1));
+        $per_page = max(1, min(50, absint($_POST['per_page'] ?? 15)));
+        $result = $this->get_bankai_post_ids($page, $per_page);
+        $items = [];
+        foreach ($result['ids'] as $pid) {
+            $post = get_post($pid);
+            if (!$post) {
+                continue;
+            }
+            $data = $this->read_bankai($pid);
+            $fields = [];
+            foreach (['seo_title', 'description', 'focus_keyword', 'canonical', 'og_title', 'og_description', 'score'] as $fk) {
+                $val = $data[$fk] ?? '';
+                $has = (string) $val !== '';
+                $fields[] = [
+                    'id' => $fk,
+                    'label' => $this->field_label($fk),
+                    'has' => $has,
+                    'preview' => is_string($val) ? mb_substr($val, 0, 80) : '',
+                ];
+            }
+            $items[] = [
+                'id' => $pid,
+                'title' => get_the_title($pid) ?: ('#' . $pid),
+                'edit_link' => get_edit_post_link($pid, 'raw') ?: '',
+                'type' => $post->post_type,
+                'fields' => $fields,
+                'target' => $target,
+            ];
+        }
+        wp_send_json_success([
+            'items' => $items,
+            'total' => $result['total'],
+            'page' => $result['page'],
+            'per_page' => $result['per_page'],
+            'total_pages' => $result['total_pages'],
+            'target' => $target,
+        ]);
+    }
+
+    /**
+     * Export one post from Bankai → Rank Math or Yoast.
+     */
+    public function ajax_export_process_one(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $post_id = absint($_POST['post_id'] ?? 0);
+        $target = sanitize_key($_POST['target'] ?? 'rankmath');
+        $overwrite = !empty($_POST['overwrite']);
+        if ($post_id <= 0) {
+            wp_send_json_error(['message' => 'Invalid post'], 400);
+        }
+        if (!in_array($target, ['rankmath', 'yoast'], true)) {
+            $target = 'rankmath';
+        }
+        $result = $this->export_post($post_id, $target, $overwrite);
+        $checklist = [];
+        foreach ($result['fields'] ?? [] as $fk) {
+            $checklist[] = [
+                'id' => $fk,
+                'label' => $this->field_label($fk),
+                'status' => 'done',
+            ];
+        }
+        // Mark skipped known fields
+        $all = ['seo_title', 'description', 'focus_keyword', 'keywords', 'canonical', 'og_title', 'og_description', 'og_image', 'x_title', 'x_description', 'robots', 'score'];
+        $mapped = $result['fields'] ?? [];
+        $checklist = [];
+        foreach ($all as $fk) {
+            $checklist[] = [
+                'id' => $fk,
+                'label' => $this->field_label($fk),
+                'status' => in_array($fk, $mapped, true) ? 'done' : 'skip',
+            ];
+        }
+        wp_send_json_success([
+            'post_id' => $post_id,
+            'title' => get_the_title($post_id),
+            'exported' => !empty($result['exported']),
+            'target' => $target,
+            'fields' => $mapped,
+            'checklist' => $checklist,
+            'message' => $result['message'] ?? '',
+        ]);
+    }
+
+    private function field_label(string $key): string
+    {
+        $map = [
+            'seo_title' => 'عنوان سئو',
+            'description' => 'متا دیسکریپشن',
+            'focus_keyword' => 'کلمه کلیدی اصلی',
+            'keywords' => 'کلمات کلیدی فرعی',
+            'canonical' => 'Canonical',
+            'og_title' => 'عنوان Open Graph',
+            'og_description' => 'توضیح Open Graph',
+            'og_image' => 'تصویر Open Graph',
+            'x_title' => 'عنوان X / Twitter',
+            'x_description' => 'توضیح X / Twitter',
+            'x_image' => 'تصویر X / Twitter',
+            'robots' => 'Robots',
+            'score' => 'امتیاز سئو',
+        ];
+        return $map[$key] ?? $key;
+    }
+
+    /** Post IDs with meta from a specific source. */
+    public function get_source_post_ids_for(string $source, int $page = 1, int $per_page = 20): array
+    {
+        global $wpdb;
+        $page = max(1, $page);
+        $per_page = max(1, min(50, $per_page));
+        $offset = ($page - 1) * $per_page;
+
+        if ($source === 'yoast') {
+            $keys = "'_yoast_wpseo_title','_yoast_wpseo_metadesc','_yoast_wpseo_focuskw'";
+        } else {
+            $keys = "'rank_math_title','rank_math_description','rank_math_focus_keyword'";
+        }
+
+        $total = (int) $wpdb->get_var(
+            "SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ($keys)"
+        );
+        $ids = $wpdb->get_col($wpdb->prepare(
+            "SELECT DISTINCT post_id FROM {$wpdb->postmeta}
+             WHERE meta_key IN ($keys)
+             ORDER BY post_id ASC
+             LIMIT %d OFFSET %d",
+            $per_page,
+            $offset
+        ));
+
+        return [
+            'ids' => array_map('intval', $ids ?: []),
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $per_page,
+            'total_pages' => $total > 0 ? (int) ceil($total / $per_page) : 0,
+        ];
+    }
+
+    /** Posts with Bankai SEO meta. */
+    public function get_bankai_post_ids(int $page = 1, int $per_page = 20): array
+    {
+        global $wpdb;
+        $page = max(1, $page);
+        $per_page = max(1, min(50, $per_page));
+        $offset = ($page - 1) * $per_page;
+        $keys = "'_bankai_seo_title','_bankai_seo_description','_bankai_seo_focus_keyword'";
+        if (class_exists('Bankai_SEO_Engine')) {
+            $keys = sprintf(
+                "'%s','%s','%s'",
+                esc_sql(Bankai_SEO_Engine::META_TITLE),
+                esc_sql(Bankai_SEO_Engine::META_DESCRIPTION),
+                esc_sql(Bankai_SEO_Engine::META_KEYWORD)
+            );
+        }
+        $total = (int) $wpdb->get_var(
+            "SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ($keys)"
+        );
+        $ids = $wpdb->get_col($wpdb->prepare(
+            "SELECT DISTINCT post_id FROM {$wpdb->postmeta}
+             WHERE meta_key IN ($keys)
+             ORDER BY post_id ASC
+             LIMIT %d OFFSET %d",
+            $per_page,
+            $offset
+        ));
+        return [
+            'ids' => array_map('intval', $ids ?: []),
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $per_page,
+            'total_pages' => $total > 0 ? (int) ceil($total / $per_page) : 0,
+        ];
+    }
+
+    public function read_bankai(int $post_id): array
+    {
+        if (!class_exists('Bankai_SEO_Engine')) {
+            return [];
+        }
+        $kw_json = (string) get_post_meta($post_id, Bankai_SEO_Engine::META_KEYWORDS, true);
+        $keywords = [];
+        if ($kw_json !== '') {
+            $decoded = json_decode($kw_json, true);
+            if (is_array($decoded)) {
+                $keywords = $decoded;
+            }
+        }
+        $robots = get_post_meta($post_id, Bankai_SEO_Engine::META_ROBOTS, true);
+        if (!is_array($robots)) {
+            $robots = [];
+        }
+        return [
+            'seo_title' => (string) get_post_meta($post_id, Bankai_SEO_Engine::META_TITLE, true),
+            'description' => (string) get_post_meta($post_id, Bankai_SEO_Engine::META_DESCRIPTION, true),
+            'focus_keyword' => (string) get_post_meta($post_id, Bankai_SEO_Engine::META_KEYWORD, true),
+            'keywords' => $keywords,
+            'canonical' => (string) get_post_meta($post_id, Bankai_SEO_Engine::META_CANONICAL, true),
+            'og_title' => (string) get_post_meta($post_id, Bankai_SEO_Engine::META_OG_TITLE, true),
+            'og_description' => (string) get_post_meta($post_id, Bankai_SEO_Engine::META_OG_DESC, true),
+            'og_image' => (string) get_post_meta($post_id, Bankai_SEO_Engine::META_OG_IMAGE, true),
+            'x_title' => (string) get_post_meta($post_id, Bankai_SEO_Engine::META_X_TITLE, true),
+            'x_description' => (string) get_post_meta($post_id, Bankai_SEO_Engine::META_X_DESC, true),
+            'x_image' => (string) get_post_meta($post_id, Bankai_SEO_Engine::META_X_IMAGE, true),
+            'robots' => $robots,
+            'score' => get_post_meta($post_id, Bankai_SEO_Engine::META_SCORE, true),
+        ];
+    }
+
+    /**
+     * Export Bankai SEO meta → Rank Math or Yoast meta keys.
+     */
+    public function export_post(int $post_id, string $target, bool $overwrite = false): array
+    {
+        $data = $this->read_bankai($post_id);
+        if (!$this->has_any($data)) {
+            return [
+                'post_id' => $post_id,
+                'exported' => false,
+                'fields' => [],
+                'message' => 'no_bankai_meta',
+            ];
+        }
+        $mapped = [];
+        if ($target === 'yoast') {
+            $map = [
+                'seo_title' => '_yoast_wpseo_title',
+                'description' => '_yoast_wpseo_metadesc',
+                'focus_keyword' => '_yoast_wpseo_focuskw',
+                'canonical' => '_yoast_wpseo_canonical',
+                'og_title' => '_yoast_wpseo_opengraph-title',
+                'og_description' => '_yoast_wpseo_opengraph-description',
+                'og_image' => '_yoast_wpseo_opengraph-image',
+                'x_title' => '_yoast_wpseo_twitter-title',
+                'x_description' => '_yoast_wpseo_twitter-description',
+                'x_image' => '_yoast_wpseo_twitter-image',
+            ];
+            foreach ($map as $key => $meta_key) {
+                $val = isset($data[$key]) ? trim((string) $data[$key]) : '';
+                if ($val === '') {
+                    continue;
+                }
+                $existing = (string) get_post_meta($post_id, $meta_key, true);
+                if ($existing !== '' && !$overwrite) {
+                    continue;
+                }
+                update_post_meta($post_id, $meta_key, $val);
+                $mapped[] = $key;
+            }
+            if (!empty($data['keywords']) && is_array($data['keywords'])) {
+                $syn = wp_json_encode(array_map(static function ($k) {
+                    return ['keyword' => $k];
+                }, $data['keywords']), JSON_UNESCAPED_UNICODE);
+                $existing = (string) get_post_meta($post_id, '_yoast_wpseo_focuskeywords', true);
+                if ($overwrite || $existing === '') {
+                    update_post_meta($post_id, '_yoast_wpseo_focuskeywords', $syn);
+                    $mapped[] = 'keywords';
+                }
+            }
+            if (isset($data['score']) && $data['score'] !== '' && $data['score'] !== null) {
+                $existing = get_post_meta($post_id, '_yoast_wpseo_linkdex', true);
+                if ($overwrite || $existing === '' || (int) $existing === 0) {
+                    update_post_meta($post_id, '_yoast_wpseo_linkdex', max(0, min(100, (int) $data['score'])));
+                    $mapped[] = 'score';
+                }
+            }
+            if (!empty($data['robots']) && is_array($data['robots'])) {
+                $noindex = !empty($data['robots']['noindex']) ? '1' : '0';
+                update_post_meta($post_id, '_yoast_wpseo_meta-robots-noindex', $noindex);
+                $mapped[] = 'robots';
+            }
+        } else {
+            // Rank Math
+            $map = [
+                'seo_title' => 'rank_math_title',
+                'description' => 'rank_math_description',
+                'canonical' => 'rank_math_canonical_url',
+                'og_title' => 'rank_math_facebook_title',
+                'og_description' => 'rank_math_facebook_description',
+                'og_image' => 'rank_math_facebook_image',
+                'x_title' => 'rank_math_twitter_title',
+                'x_description' => 'rank_math_twitter_description',
+                'x_image' => 'rank_math_twitter_image',
+            ];
+            foreach ($map as $key => $meta_key) {
+                $val = isset($data[$key]) ? trim((string) $data[$key]) : '';
+                if ($val === '') {
+                    continue;
+                }
+                $existing = (string) get_post_meta($post_id, $meta_key, true);
+                if ($existing !== '' && !$overwrite) {
+                    continue;
+                }
+                update_post_meta($post_id, $meta_key, $val);
+                $mapped[] = $key;
+            }
+            // Focus keywords: primary + secondary as comma list
+            $kw_parts = [];
+            if (!empty($data['focus_keyword'])) {
+                $kw_parts[] = $data['focus_keyword'];
+            }
+            if (!empty($data['keywords']) && is_array($data['keywords'])) {
+                $kw_parts = array_merge($kw_parts, $data['keywords']);
+            }
+            $kw_parts = array_values(array_unique(array_filter(array_map('trim', $kw_parts))));
+            if ($kw_parts) {
+                $existing = (string) get_post_meta($post_id, 'rank_math_focus_keyword', true);
+                if ($overwrite || $existing === '') {
+                    update_post_meta($post_id, 'rank_math_focus_keyword', implode(', ', $kw_parts));
+                    $mapped[] = 'focus_keyword';
+                    if (count($kw_parts) > 1) {
+                        $mapped[] = 'keywords';
+                    }
+                }
+            }
+            if (isset($data['score']) && $data['score'] !== '' && $data['score'] !== null) {
+                $existing = get_post_meta($post_id, 'rank_math_seo_score', true);
+                if ($overwrite || $existing === '' || (int) $existing === 0) {
+                    update_post_meta($post_id, 'rank_math_seo_score', max(0, min(100, (int) $data['score'])));
+                    $mapped[] = 'score';
+                }
+            }
+            if (!empty($data['robots']) && is_array($data['robots'])) {
+                $existing = get_post_meta($post_id, 'rank_math_robots', true);
+                if ($overwrite || empty($existing)) {
+                    update_post_meta($post_id, 'rank_math_robots', $data['robots']);
+                    $mapped[] = 'robots';
+                }
+            }
+        }
+
+        update_post_meta($post_id, '_bankai_seo_exported_to', $target);
+        update_post_meta($post_id, '_bankai_seo_exported_at', time());
+
+        return [
+            'post_id' => $post_id,
+            'exported' => !empty($mapped),
+            'fields' => array_values(array_unique($mapped)),
+            'message' => empty($mapped) ? 'nothing_written' : 'ok',
+        ];
     }
 }

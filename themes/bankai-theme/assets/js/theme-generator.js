@@ -25,21 +25,16 @@
     try {
       if (typeof wp === 'undefined' || !wp.customize) return false;
       var setting = wp.customize(id);
-      if (!setting) {
-        // Create ephemeral binding if missing (should be registered in PHP)
-        return false;
-      }
+      if (!setting) return false;
       setting.set(value);
-      // Force Customizer "Publish" to enable
-      if (typeof setting._dirty !== 'undefined') {
-        setting._dirty = true;
-      }
-      if (wp.customize.state && wp.customize.state('saved')) {
-        wp.customize.state('saved').set(false);
-      }
+      try {
+        if (typeof setting._dirty !== 'undefined') setting._dirty = true;
+        if (wp.customize.state && wp.customize.state('saved')) {
+          wp.customize.state('saved').set(false);
+        }
+      } catch (e2) {}
       return true;
-    } catch (e) { /* ignore */ }
-    return false;
+    } catch (e) { return false; }
   }
 
   function pushLiveToPreview(design) {
@@ -48,6 +43,22 @@
         wp.customize.previewer.send('bankai-design-live', design);
       }
     } catch (e) { /* ignore */ }
+  }
+
+  function pushLayoutLive(payload) {
+    try {
+      if (typeof wp !== 'undefined' && wp.customize && wp.customize.previewer) {
+        wp.customize.previewer.send('bankai-layout-live', payload);
+      }
+    } catch (e) {}
+  }
+
+  function pushDirLive(dir) {
+    try {
+      if (typeof wp !== 'undefined' && wp.customize && wp.customize.previewer) {
+        wp.customize.previewer.send('bankai-dir-live', dir);
+      }
+    } catch (e) {}
   }
 
   function bindGenerator(root) {
@@ -69,21 +80,25 @@
     }
 
     function applyDemo() {
-      if (!demo || !design.colors) return;
-      var c = design.colors;
-      var r = design.radius || {};
-      var map = {
-        '--p': c.primary, '--s': c.secondary, '--a': c.accent, '--n': c.neutral,
-        '--b1': c.base, '--bc': c.base_content, '--in': c.info, '--su': c.success,
-        '--wa': c.warning, '--er': c.error,
-        '--rbox': r.box || '1rem', '--rfield': r.field || '.5rem'
-      };
-      Object.keys(map).forEach(function (k) {
-        if (map[k]) demo.style.setProperty(k, map[k]);
-      });
-      if (c.base) demo.style.background = c.base;
-      if (c.base_content) demo.style.color = c.base_content;
-      syncDesignSetting();
+      // Always push design to Customizer + live preview (demo box is optional)
+      if (design && design.colors) {
+        if (demo) {
+          var c = design.colors;
+          var r = design.radius || {};
+          var map = {
+            '--p': c.primary, '--s': c.secondary, '--a': c.accent, '--n': c.neutral,
+            '--b1': c.base, '--bc': c.base_content, '--in': c.info, '--su': c.success,
+            '--wa': c.warning, '--er': c.error,
+            '--rbox': r.box || '1rem', '--rfield': r.field || '.5rem'
+          };
+          Object.keys(map).forEach(function (k) {
+            if (map[k]) demo.style.setProperty(k, map[k]);
+          });
+          if (c.base) demo.style.background = c.base;
+          if (c.base_content) demo.style.color = c.base_content;
+        }
+        syncDesignSetting();
+      }
     }
 
     function syncColorInputs() {
@@ -132,46 +147,70 @@
           preset: id,
           style: design.style || 'premium-minimalism',
           scheme: p.scheme || 'light',
-          colors: Object.assign({}, p.colors),
-          radius: Object.assign({}, p.radius)
+          colors: Object.assign({}, p.colors || {}),
+          radius: Object.assign({}, p.radius || design.radius || {})
         };
         syncColorInputs();
+        syncDesignSetting();
+        pushLiveToPreview(design);
       });
     });
 
     $all('[data-color]', root).forEach(function (el) {
       el.addEventListener('input', function () {
+        if (!design.colors) design.colors = {};
         var key = el.getAttribute('data-color');
         design.colors[key] = el.value;
         design.preset = 'custom';
-        var text = root.querySelector('[data-color-text="' + key + '"]');
-        if (text) text.value = el.value;
+        var textEl = root.querySelector('[data-color-text="' + key + '"]');
+        if (textEl) textEl.value = el.value;
         $all('.btg-preset', root).forEach(function (b) { b.classList.remove('is-active'); });
         applyDemo();
+        syncDesignSetting();
+        pushLiveToPreview(design);
       });
     });
 
     $all('[data-color-text]', root).forEach(function (el) {
-      el.addEventListener('change', function () {
+      el.addEventListener('input', function () {
         var key = el.getAttribute('data-color-text');
         var val = el.value;
         if (!/^#[0-9A-Fa-f]{6}$/.test(val)) return;
+        if (!design.colors) design.colors = {};
         design.colors[key] = val;
         design.preset = 'custom';
         var color = root.querySelector('[data-color="' + key + '"]');
         if (color) color.value = val;
         applyDemo();
+        syncDesignSetting();
+        pushLiveToPreview(design);
+      });
+      el.addEventListener('change', function () {
+        var key = el.getAttribute('data-color-text');
+        var val = el.value;
+        if (!/^#[0-9A-Fa-f]{6}$/.test(val)) return;
+        if (!design.colors) design.colors = {};
+        design.colors[key] = val;
+        design.preset = 'custom';
+        var color = root.querySelector('[data-color="' + key + '"]');
+        if (color) color.value = val;
+        applyDemo();
+        syncDesignSetting();
+        pushLiveToPreview(design);
       });
     });
 
     $all('[data-radius]', root).forEach(function (el) {
       el.addEventListener('input', function () {
+        if (!design.radius) design.radius = {};
         var key = el.getAttribute('data-radius');
         design.radius[key] = remFromRange(el.value);
         design.preset = 'custom';
         var lab = el.parentNode.querySelector('.btg-radius-val');
         if (lab) lab.textContent = design.radius[key];
         applyDemo();
+        syncDesignSetting();
+        pushLiveToPreview(design);
       });
     });
 
@@ -182,7 +221,11 @@
         card.addEventListener('click', function () {
           $all('.btg-layout-card', grid).forEach(function (c) { c.classList.remove('is-active'); });
           card.classList.add('is-active');
-          setMod(setting, card.getAttribute('data-value'));
+          var val = card.getAttribute('data-value');
+          setMod(setting, val);
+          var payload = {};
+          payload[setting] = val;
+          pushLayoutLive(payload);
         });
       });
     });
@@ -194,7 +237,9 @@
         btn.addEventListener('click', function () {
           $all('.btg-dir-btn', dirWrap).forEach(function (b) { b.classList.remove('is-active'); });
           btn.classList.add('is-active');
-          setMod('text_direction', btn.getAttribute('data-value'));
+          var dir = btn.getAttribute('data-value');
+          setMod('text_direction', dir);
+          pushDirLive(dir);
         });
       });
     }
@@ -317,24 +362,55 @@
         design.style = sid;
         $all('.btg-style-card', root).forEach(function (b) { b.classList.remove('is-active'); });
         btn.classList.add('is-active');
-        // Apply style radius hints if available from cfg
+        // Apply style radius hints when available
         var styles = cfg.styles || {};
+        var meta = styles[sid] || {};
+        if (meta.radius && typeof meta.radius === 'object') {
+          design.radius = Object.assign({}, design.radius || {}, meta.radius);
+          $all('[data-radius]', root).forEach(function (el) {
+            var key = el.getAttribute('data-radius');
+            if (design.radius[key] !== undefined) {
+              el.value = rangeFromRem(design.radius[key]);
+              var lab = el.parentNode.querySelector('.btg-radius-val');
+              if (lab) lab.textContent = design.radius[key];
+            }
+          });
+        }
         syncDesignSetting();
         applyDemo();
+        pushLiveToPreview(design);
       });
     });
 
-    /* Font color mode inherit / custom */
+    /* Font color mode inherit / custom + live demo */
+    function updateTypoLive(card) {
+      if (!card) return;
+      var sample = card.querySelector('.btg-typo-live__sample');
+      if (!sample) return;
+      var sel = card.querySelector('.btg-font-select');
+      var sizeInp = card.querySelector('.btg-size-input, input[type="number"][data-mod]');
+      var colorInp = card.querySelector('.btg-astra-color input[type="color"], .btg-color-circle input[type="color"]');
+      if (sel && sel.value) sample.style.fontFamily = sel.value;
+      if (sizeInp && sizeInp.value) sample.style.fontSize = parseInt(sizeInp.value, 10) + 'px';
+      if (colorInp && colorInp.value) sample.style.color = colorInp.value;
+    }
+
     $all('.btg-mode-toggle', root).forEach(function (wrap) {
       var setting = wrap.getAttribute('data-setting') || 'font_color_mode';
       $all('.btg-mode-btn', wrap).forEach(function (btn) {
         btn.addEventListener('click', function () {
           $all('.btg-mode-btn', wrap).forEach(function (b) { b.classList.remove('is-active'); });
           btn.classList.add('is-active');
-          var val = btn.getAttribute('data-value');
+          var val = btn.getAttribute('data-value') || btn.getAttribute('data-font-mode') || '';
           setMod(setting, val);
-          var cards = $('.btg-typo-cards', root);
-          if (cards) cards.setAttribute('data-color-mode', val);
+          var cards = $('.btg-typo-cards', root) || document.getElementById('btg-typo-cards');
+          if (cards) {
+            cards.setAttribute('data-color-mode', val);
+            cards.style.display = val === 'custom' ? '' : 'none';
+          }
+          if (val === 'custom') {
+            $all('.btg-typo-card', root).forEach(updateTypoLive);
+          }
           pushLiveToPreview(design);
         });
       });
@@ -347,14 +423,31 @@
         if (sw) sw.style.background = el.value;
         var id = el.getAttribute('data-mod');
         if (id) setMod(id, el.value);
+        updateTypoLive(el.closest('.btg-typo-card'));
       });
     });
     $all('.btg-font-select', root).forEach(function (el) {
       el.addEventListener('change', function () {
         var id = el.getAttribute('data-mod');
         if (id) setMod(id, el.value);
+        updateTypoLive(el.closest('.btg-typo-card'));
       });
     });
+    $all('.btg-size-input, input[type="number"][data-mod]', root).forEach(function (el) {
+      el.addEventListener('input', function () {
+        var id = el.getAttribute('data-mod');
+        if (id) setMod(id, el.value);
+        updateTypoLive(el.closest('.btg-typo-card'));
+      });
+    });
+
+    /* Init custom cards visibility */
+    var initCards = $('.btg-typo-cards', root) || document.getElementById('btg-typo-cards');
+    if (initCards) {
+      var mode = initCards.getAttribute('data-color-mode') || 'inherit';
+      initCards.style.display = mode === 'custom' ? '' : 'none';
+      if (mode === 'custom') $all('.btg-typo-card', root).forEach(updateTypoLive);
+    }
 
     syncColorInputs();
   }
@@ -374,4 +467,143 @@
       setTimeout(initAll, 250);
     });
   }
+})();
+
+
+/* Font custom live demo */
+(function () {
+  function $(sel, ctx) { return (ctx || document).querySelector(sel); }
+  function updateFontLiveDemo() {
+    var demo = $('#btg-font-live-demo');
+    if (!demo) return;
+    var bodyStack = '';
+    var bodySize = 16;
+    var headStack = '';
+    var headSize = 28;
+    var bodySel = document.querySelector('[data-setting="font_body"], select[name="font_body"], [data-font-role="body"] select');
+    var sizeInp = document.querySelector('[data-mod="font_body_size"], input[data-setting="font_body_size"]');
+    var headSel = document.querySelector('[data-setting="font_heading"], [data-font-role="h1"] select, [data-font-role="heading"] select');
+    var headSizeInp = document.querySelector('[data-mod="font_h1_size"], input[data-setting="font_h1_size"]');
+    // try active font card
+    var activeCard = document.querySelector('.btg-font-card.is-active');
+    if (activeCard) bodyStack = activeCard.getAttribute('data-stack') || '';
+    if (bodySel && bodySel.value) bodyStack = bodySel.value;
+    if (sizeInp && sizeInp.value) bodySize = parseInt(sizeInp.value, 10) || 16;
+    if (headSel && headSel.value) headStack = headSel.value;
+    if (headSizeInp && headSizeInp.value) headSize = parseInt(headSizeInp.value, 10) || 28;
+    if (!headStack) headStack = bodyStack;
+    var sample = $('#btg-font-live-sample');
+    var heading = $('#btg-font-live-heading');
+    if (sample) {
+      sample.style.fontFamily = bodyStack || 'inherit';
+      sample.style.fontSize = bodySize + 'px';
+    }
+    if (heading) {
+      heading.style.fontFamily = headStack || bodyStack || 'inherit';
+      heading.style.fontSize = headSize + 'px';
+    }
+  }
+  document.addEventListener('click', function (e) {
+    var modeBtn = e.target.closest('[data-font-mode], .btg-mode-btn, .btg-font-mode-btn');
+    if (modeBtn) {
+      var mode = modeBtn.getAttribute('data-font-mode') || modeBtn.getAttribute('data-value') || modeBtn.getAttribute('data-mode') || '';
+      var isCustom = mode === 'custom' || modeBtn.classList.contains('is-custom') || (modeBtn.textContent || '').indexOf('سفارشی') !== -1;
+      var cards = document.getElementById('btg-typo-cards');
+      if (cards) {
+        cards.style.display = isCustom ? '' : 'none';
+        cards.setAttribute('data-color-mode', isCustom ? 'custom' : 'inherit');
+      }
+      setTimeout(updateFontLiveDemo, 50);
+    }
+    if (e.target.closest('.btg-font-card')) setTimeout(updateFontLiveDemo, 30);
+  });
+  document.addEventListener('input', function (e) {
+    if (e.target.matches('input[type="range"], select, input[type="number"]')) updateFontLiveDemo();
+  });
+  document.addEventListener('change', function (e) {
+    if (e.target.matches('select, input')) updateFontLiveDemo();
+  });
+
+  /* Global tab switcher for طرح کلی (robust in Customizer) */
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.btg-tab-btn[data-btg-tab]');
+    if (!btn) return;
+    var root = btn.closest('.btg');
+    if (!root) return;
+    var id = btn.getAttribute('data-btg-tab');
+    root.querySelectorAll('.btg-tab-btn').forEach(function (b) {
+      b.classList.toggle('is-active', b === btn);
+    });
+    root.querySelectorAll('.btg-tab-panel').forEach(function (p) {
+      var on = p.getAttribute('data-btg-panel') === id;
+      p.classList.toggle('is-active', on);
+      p.style.display = on ? 'block' : 'none';
+    });
+  });
+})();
+
+
+/* Keep color swatches in sync with inputs */
+(function () {
+  document.addEventListener('input', function (e) {
+    var inp = e.target;
+    if (!inp || inp.type !== 'color') return;
+    var wrap = inp.closest('.btg-color-circle, .bhb-color-circle, .bk-swatch, .btg-color-row');
+    if (!wrap) return;
+    var fill = wrap.querySelector('.btg-color-swatch, .bhb-color-circle__swatch, .bk-swatch__fill');
+    if (fill) fill.style.background = inp.value;
+    var text = wrap.parentNode && wrap.parentNode.querySelector('[data-color-text="' + (inp.getAttribute('data-color') || '') + '"]');
+    if (text) text.value = inp.value;
+  }, true);
+})();
+
+
+/* Global: color/size from Astra picker → Customizer + live card demo */
+(function () {
+  'use strict';
+  function setModSafe(id, value) {
+    try {
+      if (typeof wp === 'undefined' || !wp.customize || !wp.customize(id)) return false;
+      wp.customize(id).set(value);
+      if (wp.customize.state && wp.customize.state('saved')) wp.customize.state('saved').set(false);
+      return true;
+    } catch (e) { return false; }
+  }
+  function updateTypoLive(inp) {
+    var card = inp.closest('.btg-typo-card');
+    if (!card) return;
+    var sample = card.querySelector('.btg-typo-live__sample');
+    if (!sample) return;
+    if (inp.type === 'color' || (inp.getAttribute('data-mod') || '').indexOf('_color') !== -1) {
+      sample.style.color = inp.value;
+    }
+    if (inp.type === 'number' || (inp.getAttribute('data-mod') || '').indexOf('_size') !== -1) {
+      sample.style.fontSize = (parseInt(inp.value, 10) || 16) + 'px';
+    }
+    if (inp.tagName === 'SELECT') {
+      sample.style.fontFamily = inp.value;
+    }
+  }
+  document.addEventListener('input', function (e) {
+    var inp = e.target;
+    if (!inp || !inp.getAttribute) return;
+    var id = inp.getAttribute('data-mod');
+    if (!id) return;
+    setModSafe(id, inp.type === 'number' ? (parseInt(inp.value, 10) || 0) : inp.value);
+    updateTypoLive(inp);
+    // Keep swatch fill in sync
+    var wrap = inp.closest('.btg-color-circle, .bk-swatch, .btg-color-row');
+    if (wrap) {
+      var fill = wrap.querySelector('.btg-color-swatch, .bk-swatch__fill');
+      if (fill && inp.type === 'color') fill.style.background = inp.value;
+    }
+  }, true);
+  document.addEventListener('change', function (e) {
+    var inp = e.target;
+    if (!inp || !inp.getAttribute) return;
+    var id = inp.getAttribute('data-mod');
+    if (!id) return;
+    setModSafe(id, inp.type === 'number' ? (parseInt(inp.value, 10) || 0) : inp.value);
+    updateTypoLive(inp);
+  }, true);
 })();

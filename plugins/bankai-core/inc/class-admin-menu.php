@@ -293,11 +293,95 @@ class Bankai_Admin_Menu {
             true
         );
 
-        // Alpine must load after bankai-admin.js (registers Alpine.data)
+        // Articles hub module (Alpine.data) — must register before Alpine boots
+        if (is_file(BANKAI_CORE_DIR . 'assets/js/articles-hub.js')) {
+            wp_enqueue_script(
+                'bankai-articles-hub',
+                bankai_asset_url('js/articles-hub.js'),
+                ['bankai-admin-js'],
+                $js_ver('articles-hub.js'),
+                true
+            );
+        }
+        if (is_file(BANKAI_CORE_DIR . 'assets/js/seo-engine-tab.js')) {
+            wp_enqueue_script(
+                'bankai-seo-engine-tab',
+                bankai_asset_url('js/seo-engine-tab.js'),
+                ['bankai-admin-js'],
+                $js_ver('seo-engine-tab.js'),
+                true
+            );
+        }
+        if (is_file(BANKAI_CORE_DIR . 'assets/css/seo-engine-tab.css')) {
+            wp_enqueue_style(
+                'bankai-seo-engine-tab-css',
+                bankai_asset_url('css/seo-engine-tab.css'),
+                ['bankai-admin-css'],
+                $js_ver('seo-engine-tab.js')
+            );
+        }
+        if (is_file(BANKAI_CORE_DIR . 'assets/js/ai-studio-tab.js')) {
+            wp_enqueue_script(
+                'bankai-ai-studio-tab',
+                bankai_asset_url('js/ai-studio-tab.js'),
+                ['bankai-admin-js'],
+                $js_ver('ai-studio-tab.js'),
+                true
+            );
+        }
+        if (is_file(BANKAI_CORE_DIR . 'assets/css/ai-studio-tab.css')) {
+            wp_enqueue_style(
+                'bankai-ai-studio-tab-css',
+                bankai_asset_url('css/ai-studio-tab.css'),
+                ['bankai-admin-css'],
+                $js_ver('ai-studio-tab.js')
+            );
+        }
+        if (is_file(BANKAI_CORE_DIR . 'assets/js/speed-cache-tab.js')) {
+            wp_enqueue_script(
+                'bankai-speed-cache-tab',
+                bankai_asset_url('js/speed-cache-tab.js'),
+                ['bankai-admin-js'],
+                $js_ver('speed-cache-tab.js'),
+                true
+            );
+        }
+        if (is_file(BANKAI_CORE_DIR . 'assets/css/speed-cache-tab.css')) {
+            wp_enqueue_style(
+                'bankai-speed-cache-tab-css',
+                bankai_asset_url('css/speed-cache-tab.css'),
+                ['bankai-admin-css'],
+                $js_ver('speed-cache-tab.js')
+            );
+        }
+        if (is_file(BANKAI_CORE_DIR . 'assets/css/media-watermark-tab.css')) {
+            wp_enqueue_style(
+                'bankai-media-watermark-tab-css',
+                bankai_asset_url('css/media-watermark-tab.css'),
+                ['bankai-admin-css'],
+                $js_ver('speed-cache-tab.js')
+            );
+        }
+        if (is_file(BANKAI_CORE_DIR . 'assets/css/articles-hub.css')) {
+            wp_enqueue_style(
+                'bankai-articles-hub-css',
+                bankai_asset_url('css/articles-hub.css'),
+                ['bankai-admin-css'],
+                (defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0') . '.' . (string) filemtime(BANKAI_CORE_DIR . 'assets/css/articles-hub.css')
+            );
+        }
+
+        // Alpine must load after component registrations
         wp_enqueue_script(
             'bankai-alpine-js',
             bankai_asset_url('js/alpine.min.js'),
-            ['bankai-admin-js'],
+            array_values(array_filter([
+                'bankai-admin-js',
+                is_file(BANKAI_CORE_DIR . 'assets/js/articles-hub.js') ? 'bankai-articles-hub' : null,
+                is_file(BANKAI_CORE_DIR . 'assets/js/seo-engine-tab.js') ? 'bankai-seo-engine-tab' : null,
+                is_file(BANKAI_CORE_DIR . 'assets/js/ai-studio-tab.js') ? 'bankai-ai-studio-tab' : null,
+                is_file(BANKAI_CORE_DIR . 'assets/js/speed-cache-tab.js') ? 'bankai-speed-cache-tab' : null,
+            ])),
             $js_ver('alpine.min.js'),
             true
         );

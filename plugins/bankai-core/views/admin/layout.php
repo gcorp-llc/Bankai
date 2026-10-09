@@ -34,7 +34,7 @@ $bankai_state = [
     'aiDefaultProvider' => $state['aiDefaultProvider'] ?? 'gemini',
 ];
 ?>
-<div id="bankai-admin-app"
+<div id="bankai-admin-app" autocomplete="off" data-lpignore="true"
      class="bankai-admin-wrap bankai-ekit-shell"
      x-data="bankaiAdmin()"
      :dir="isRtl ? 'rtl' : 'ltr'"

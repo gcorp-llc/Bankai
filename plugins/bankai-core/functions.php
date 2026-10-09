@@ -149,6 +149,8 @@ if (!function_exists('bankai_core_module_keys')) {
 if (!function_exists('bankai_is_module_active')) {
     function bankai_is_module_active(string $module_key): bool
     {
+        // Core product modules stay available in admin navigation by default.
+        // Explicit disable only via bankai_set_module_active(..., false).
         $active = bankai_get_option('active_modules', []);
 
         if (!is_array($active) || $active === []) {
@@ -159,7 +161,12 @@ if (!function_exists('bankai_is_module_active')) {
             return true;
         }
 
-        return (bool) $active[$module_key];
+        // If key exists but is empty string / null, treat as active
+        $val = $active[$module_key];
+        if ($val === '' || $val === null) {
+            return true;
+        }
+        return (bool) $val;
     }
 }
 
@@ -301,3 +308,26 @@ if (!function_exists('bankai_icon')) {
     }
 }
 
+
+
+/**
+ * Feature gate used by editor SEO, theme customizer AI, and admin nav.
+ */
+if (!function_exists('bankai_feature_enabled')) {
+    function bankai_feature_enabled(string $feature): bool
+    {
+        $map = [
+            'seo'      => 'seo_engine',
+            'seo_ai'   => 'ai_studio',
+            'ai'       => 'ai_studio',
+            'speed'    => 'speed_cache',
+            'cache'    => 'speed_cache',
+            'media'    => 'media_watermark',
+            'watermark'=> 'media_watermark',
+            'jalali'   => 'jalali_calendar',
+            'llms'     => 'llms_txt',
+        ];
+        $key = $map[$feature] ?? sanitize_key($feature);
+        return function_exists('bankai_is_module_active') ? bankai_is_module_active($key) : true;
+    }
+}

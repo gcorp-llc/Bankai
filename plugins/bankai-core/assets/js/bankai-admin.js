@@ -29,6 +29,12 @@
         });
     }
 
+    function selfHexRgba(hex, alpha) {
+        hex = (hex || '#000000').replace('#','');
+        if (hex.length === 3) hex = hex.split('').map(function(c){return c+c;}).join('');
+        var r = parseInt(hex.slice(0,2),16)||0, g = parseInt(hex.slice(2,4),16)||0, b = parseInt(hex.slice(4,6),16)||0;
+        return 'rgba('+r+','+g+','+b+','+alpha+')';
+    }
     function ajax(action, data, timeoutMs) {
         var c = cfg();
         var body = new FormData();
@@ -184,10 +190,26 @@
             position: wmSaved.position || 'bottom-right',
             opacity: wmSaved.opacity || 75,
             text: wmSaved.text || '© BANKAI MEDIA',
+            text_size: wmSaved.text_size || 18,
+            text_color: wmSaved.text_color || '#FFFFFF',
+            text_font: wmSaved.text_font || 'default',
+            box_enabled: wmSaved.box_enabled !== false,
+            box_padding: wmSaved.box_padding || 8,
+            box_radius: wmSaved.box_radius || 6,
+            box_color: wmSaved.box_color || '#000000',
+            box_opacity: wmSaved.box_opacity != null ? wmSaved.box_opacity : 45,
+            box_style: wmSaved.box_style || 'solid',
+            text_cover: wmSaved.text_cover || 'none',
+            custom_font_url: wmSaved.custom_font_url || '',
+            custom_font_name: wmSaved.custom_font_name || '',
+            preview_url: wmSaved.preview_url || '',
+            _preview: 0,
             image_id: wmSaved.image_id || 0,
             image_url: wmSaved.image_url || '',
+            image_scale: wmSaved.image_scale || 20,
             quality: wmSaved.quality || 82,
             min_dimension: wmSaved.min_dimension || 300,
+            exclude_patterns: wmSaved.exclude_patterns || "logo\nbanner\nicon\nsprite\nfavicon",
             apply_upload: wmSaved.apply_upload !== false,
             apply_content: !!wmSaved.apply_content,
             lazy_load: wmSaved.lazy_load !== false,
@@ -196,17 +218,21 @@
             keep_original: wmSaved.keep_original !== false
         };
 
-        var moduleActive = {};
+        var moduleActive = {
+            seo_engine: true,
+            ai_studio: true,
+            speed_cache: true,
+            media_watermark: true,
+            jalali_calendar: true,
+            pwa: true,
+            llms_txt: true
+        };
         (st.coreModules || []).forEach(function (m) {
-            moduleActive[m.key] = m.active !== false;
+            if (m && m.key) {
+                // Respect server active flag (do not force everything ON)
+                moduleActive[m.key] = m.active !== false && m.active !== 0 && m.active !== '0';
+            }
         });
-
-        // Defaults if empty
-        if (!Object.keys(moduleActive).length) {
-            ['seo_engine', 'speed_cache', 'media_watermark', 'ai_studio', 'llms_txt', 'jalali_calendar'].forEach(function (k) {
-                moduleActive[k] = true;
-            });
-        }
 
         return {
             activeTab: initial.activeTab || 'overview',
@@ -224,8 +250,12 @@
             watermarkStudio: watermarkStudio,
             mediaDrawer: { show: false, id: '', title: '' },
             mediaSubTab: 'watermark',
+            wmFontBusy: false,
+            wmBulkModal: { show: false, running: false, progress: 0, progressText: '', items: [], title: '' },
+
             compressOpts: { format: 'webp', quality: 82, maxWidth: 1600 },
             mediaLib: {
+                mode: 'compress',
                 items: [],
                 page: 1,
                 hasMore: false,
@@ -238,6 +268,22 @@
                 savedBytes: 0
             },
             moduleActive: moduleActive,
+            dashVisitsLoading: false,
+            cdnModal: { show: false, saving: false },
+            cdnSettings: { provider: 'custom', base_url: '', path_prefix: '', access_key: '', secret_key: '', bucket: '', rewrite_urls: true },
+            redisSettings: { enabled: false, host: '127.0.0.1', port: 6379, password: '', db: 0, prefix: 'bankai:' },
+            redisStatus: { checked: false, ok: false, message: '' },
+            redisSaving: false,
+
+            dashVisits: { total: 0, change: 0, desktop: 0, mobile: 0, tablet: 0, error: '' },
+            coreModuleCards: [
+                { key: 'seo_engine', title: 'SEO Engine', title_fa: 'موتور سئو و اسکیما', desc: 'Meta, schema, sitemap, canonical', desc_fa: 'متا، اسکیما، نقشه سایت، کانونیکال و ممیزی سئو' },
+                { key: 'ai_studio', title: 'AI Studio', title_fa: 'استودیو هوش مصنوعی', desc: 'Text & image AI providers', desc_fa: 'اتصال موتورهای متنی و تصویری برای تولید محتوا و سئو' },
+                { key: 'speed_cache', title: 'Cache & Speed', title_fa: 'کش و سرعت', desc: 'Page cache, assets, DB optimize', desc_fa: 'کش صفحه، بهینه‌سازی فایل‌ها و پایگاه‌داده' },
+                { key: 'media_watermark', title: 'Media & Watermark', title_fa: 'رسانه و واترمارک', desc: 'Compress, WebP, watermark', desc_fa: 'فشرده‌سازی، WebP، واترمارک و حذف EXIF' },
+                { key: 'jalali_calendar', title: 'Jalali Calendar', title_fa: 'تقویم جلالی', desc: 'Persian dates across admin', desc_fa: 'نمایش و انتخاب تاریخ شمسی در کل وردپرس' },
+                { key: 'pwa', title: 'Progressive Web App', title_fa: 'اپلیکیشن وب پیشرفته (PWA)', desc: 'Installable app, offline, manifest', desc_fa: 'نصب‌پذیر، آفلاین، مانیفست و Service Worker — تنظیمات در سئوی سایت' }
+            ],
 
             seoDrawer: { show: false, id: '', title: '' },
             seoAudit: { show: false, running: false, score: 0, items: [] },
@@ -253,6 +299,19 @@
             orderby: 'modified',
             order: 'DESC',
             seoPanel: 'tools',
+            pageAudit: {
+                q: '',
+                url: '',
+                postId: 0,
+                posts: [],
+                running: false,
+                result: null,
+                summary: null,
+                engines: [],
+                score: 0,
+                tab: 'seo',
+                error: ''
+            },
             seoImport: {
                 sources: {},
                 importableTotal: 0,
@@ -278,7 +337,17 @@
                 textProvider: '',
                 imageProvider: '',
                 textProviders: [],
-                imageProviders: []
+                imageProviders: [],
+                direction: 'import',
+                phase: 'pick',
+                selectedSource: '',
+                cards: [],
+                queue: [],
+                queueTotal: 0,
+                processed: 0,
+                done: false,
+                doneTitle: '',
+                doneMessage: ''
             },
             wizardBusy: false,
             loading: false,
@@ -315,32 +384,53 @@
                 this.mobileMenuOpen = false;
             },
 
-            setTab: function (tab) {
-                var map = {
-                    'seo-engine': 'seo_engine',
-                    'speed-cache': 'speed_cache',
-                    'media-watermark': 'media_watermark',
-                    'ai-studio': 'ai_studio',
-                    'jalali-calendar': 'jalali_calendar'
-                };
-                var modKey = map[tab];
-                if (modKey && this.moduleActive[modKey] === false) {
-                    this.showToast(this.t('moduleDisabled'), 'error');
-                    return;
-                }
+            loadRedisSettings: function () {
                 var self = this;
+                var cfg = window.bankaiData || window.bankaiCoreData || {};
+                var base = (cfg.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
+                fetch(base + 'speed/redis', { credentials: 'same-origin', headers: { 'X-WP-Nonce': cfg.nonce || '' } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        var d = j.data || j;
+                        if (d && typeof d === 'object') {
+                            self.redisSettings = Object.assign({}, self.redisSettings, {
+                                enabled: !!d.enabled,
+                                host: d.host || '127.0.0.1',
+                                port: d.port || 6379,
+                                password: d.password || '',
+                                db: d.db || 0,
+                                prefix: d.prefix || 'bankai:'
+                            });
+                        }
+                    }).catch(function () {});
+            },
+            setTab: function (tab) {
+                if (!tab) return;
+                var self = this;
+                // Ensure modules appear enabled in UI
+                // keep moduleActive as-is (respect dashboard toggles)
+                if (tab === 'speed-cache' && typeof this.loadRedisSettings === 'function') {
+                    try { this.loadRedisSettings(); } catch (e) {}
+                }
                 this.pageLoading = true;
                 this.pageProgress = 40;
+                // Set tab immediately so content shows even if timeout fails
+                this.activeTab = tab;
                 setTimeout(function () {
                     self.activeTab = tab;
                     self.pageProgress = 100;
                     self.pageLoading = false;
-                    self.closeMobileMenu();
+                    if (typeof self.closeMobileMenu === 'function') self.closeMobileMenu();
                     if (tab === 'seo-engine') {
-                        if (typeof self.runSeoAuditInline === 'function') self.runSeoAuditInline();
-                        if (self.seoPanel === 'articles' && typeof self.loadArticles === 'function') self.loadArticles();
+                        try {
+                            if (typeof self.runSeoAuditInline === 'function') self.runSeoAuditInline();
+                            if (self.seoPanel === 'articles' && typeof self.loadArticles === 'function') self.loadArticles();
+                        } catch (e) {}
                     }
-                }, 160);
+                    if (tab === 'media-watermark' && typeof self.loadMediaLibrary === 'function') {
+                        try { self.loadMediaLibrary(true); } catch (e) {}
+                    }
+                }, 80);
             },
 
             isModuleNavEnabled: function (tab) {
@@ -371,37 +461,165 @@
             },
 
             /* ---- Core modules (dashboard switches) ---- */
-            toggleCoreModule: function (key, enabled) {
+            
+            
+            openCdnSettings: function () {
                 var self = this;
+                self.cdnModal.show = true;
+                var cfg = window.bankaiData || window.bankaiCoreData || {};
+                var base = (cfg.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
+                fetch(base + 'media/cdn', { credentials: 'same-origin', headers: { 'X-WP-Nonce': cfg.nonce || '' } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        var d = j.data || j;
+                        if (d && typeof d === 'object') {
+                            self.cdnSettings = Object.assign({}, self.cdnSettings, d);
+                        }
+                    }).catch(function () {});
+            },
+            saveCdnSettings: function () {
+                var self = this;
+                self.cdnModal.saving = true;
+                var cfg = window.bankaiData || window.bankaiCoreData || {};
+                var base = (cfg.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
+                fetch(base + 'media/cdn', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce || '' },
+                    body: JSON.stringify(self.cdnSettings)
+                }).then(function (r) { return r.json(); })
+                .then(function (j) {
+                    self.cdnModal.saving = false;
+                    if (j.success === false) {
+                        self.showToast((j.message || 'خطا در ذخیره CDN'), 'error');
+                    } else {
+                        self.showToast(self.isRtl ? 'تنظیمات CDN ذخیره شد' : 'CDN settings saved', 'success');
+                        self.cdnModal.show = false;
+                    }
+                }).catch(function () {
+                    self.cdnModal.saving = false;
+                    self.showToast('خطا در ارتباط', 'error');
+                });
+            },
+            testRedisConnection: function () {
+                var self = this;
+                self.redisStatus = { checked: false, ok: false, message: self.isRtl ? 'در حال تست…' : 'Testing…' };
+                var cfg = window.bankaiData || window.bankaiCoreData || {};
+                var base = (cfg.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
+                fetch(base + 'speed/redis/test', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce || '' },
+                    body: JSON.stringify(self.redisSettings)
+                }).then(function (r) { return r.json(); })
+                .then(function (j) {
+                    var d = j.data || j;
+                    self.redisStatus = {
+                        checked: true,
+                        ok: !!(d.ok || j.success),
+                        message: d.message || j.message || (d.ok ? 'OK' : 'Failed')
+                    };
+                }).catch(function () {
+                    self.redisStatus = { checked: true, ok: false, message: 'Connection error' };
+                });
+            },
+            saveRedisSettings: function () {
+                var self = this;
+                self.redisSaving = true;
+                var cfg = window.bankaiData || window.bankaiCoreData || {};
+                var base = (cfg.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
+                fetch(base + 'speed/redis', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce || '' },
+                    body: JSON.stringify(self.redisSettings)
+                }).then(function (r) { return r.json(); })
+                .then(function (j) {
+                    self.redisSaving = false;
+                    if (j.success === false) {
+                        self.showToast(j.message || 'خطا', 'error');
+                    } else {
+                        self.showToast(self.isRtl ? 'تنظیمات Redis ذخیره شد' : 'Redis settings saved', 'success');
+                        if (j.data && j.data.message) self.redisStatus = { checked: true, ok: !!j.data.ok, message: j.data.message };
+                    }
+                }).catch(function () {
+                    self.redisSaving = false;
+                    self.showToast('خطا در ارتباط', 'error');
+                });
+            },
+initDashboard: function () {
+                this.loadDashboardVisits();
+            },
+            formatDashNum: function (n) {
+                n = parseInt(n, 10) || 0;
+                try { return n.toLocaleString(this.isRtl ? 'fa-IR' : 'en-US'); } catch (e) { return String(n); }
+            },
+            loadDashboardVisits: function () {
+                var self = this;
+                self.dashVisitsLoading = true;
+                self.dashVisits.error = '';
+                var cfg = window.bankaiData || window.bankaiCoreData || {};
+                var base = (cfg.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
+                fetch(base + 'analytics/report?days=7', {
+                    credentials: 'same-origin',
+                    headers: { 'X-WP-Nonce': cfg.nonce || '' }
+                }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                    var d = (res.j && res.j.data) ? res.j.data : (res.j || {});
+                    self.dashVisits.total = d.visits || d.total || 0;
+                    self.dashVisits.change = d.visits_change || d.change || 0;
+                    var devices = d.devices || d.by_device || {};
+                    function hitsOf(key) {
+                        var v = devices[key] || devices[key.charAt(0).toUpperCase() + key.slice(1)];
+                        if (v && typeof v === 'object') return parseInt(v.hits != null ? v.hits : v.h, 10) || 0;
+                        return parseInt(v, 10) || 0;
+                    }
+                    self.dashVisits.desktop = hitsOf('desktop');
+                    self.dashVisits.mobile = hitsOf('mobile');
+                    self.dashVisits.tablet = hitsOf('tablet');
+                    if (!res.ok) self.dashVisits.error = d.message || (self.isRtl ? 'گزارش در دسترس نیست' : 'Report unavailable');
+                }).catch(function () {
+                    self.dashVisits.error = self.isRtl ? 'ماژول آنالیتیکس را فعال کنید یا کمی بعد دوباره تلاش کنید' : 'Enable analytics module or try again';
+                }).finally(function () { self.dashVisitsLoading = false; });
+            },
+toggleCoreModule: function (key, enabled) {
+                var self = this;
+                var prev = self.moduleActive[key];
+                // Optimistic UI — instant feedback
+                self.moduleActive[key] = !!enabled;
+                self.moduleActive = Object.assign({}, self.moduleActive);
+
+                var reverse = {
+                    seo_engine: 'seo-engine',
+                    speed_cache: 'speed-cache',
+                    media_watermark: 'media-watermark',
+                    ai_studio: 'ai-studio',
+                    jalali_calendar: 'jalali-calendar'
+                };
+                if (!enabled && reverse[key] && self.activeTab === reverse[key]) {
+                    self.setTab('overview');
+                }
+
                 return rest('/core-module/' + encodeURIComponent(key), {
                     method: 'POST',
                     body: JSON.stringify({ enabled: !!enabled })
                 }).then(function (data) {
                     if (data && data.success) {
                         self.moduleActive[key] = !!enabled;
-                        self.showToast(data.message || self.t('saved'), 'success');
-                        var reverse = {
-                            seo_engine: 'seo-engine',
-                            speed_cache: 'speed-cache',
-                            media_watermark: 'media-watermark',
-                            ai_studio: 'ai-studio',
-                            jalali_calendar: 'jalali-calendar'
-                        };
-                        if (!enabled && reverse[key] && self.activeTab === reverse[key]) {
-                            self.setTab('overview');
-                        }
+                        self.showToast(data.message || self.t('saved'), 'success', 2200);
                         var chip = document.getElementById('bk-core-mod-count');
                         if (chip && typeof data.active_count === 'number') {
                             chip.innerHTML = data.active_count + ' / 6 <span>فعال</span>';
                         }
                     } else {
-                        self.moduleActive[key] = !enabled;
+                        self.moduleActive[key] = prev;
+                        self.moduleActive = Object.assign({}, self.moduleActive);
                         self.showToast((data && data.message) || self.t('error'), 'error');
                     }
-                    return data;
                 }).catch(function () {
-                    self.moduleActive[key] = !enabled;
-                    self.showToast(self.t('error'), 'error');
+                    self.moduleActive[key] = prev;
+                    self.moduleActive = Object.assign({}, self.moduleActive);
+                    self.showToast(self.t('error') || 'خطا', 'error');
                 });
             },
 
@@ -538,7 +756,57 @@
 
 
             /* ---- SEO Import from Rank Math / Yoast ---- */
-            initSeoImport: function () {
+            
+            searchAuditPosts: function () {
+                var self = this;
+                var c = cfg();
+                var fd = new FormData();
+                fd.append('action', 'bankai_seo_page_audit_posts');
+                fd.append('nonce', c.adminNonce || c.nonce || '');
+                fd.append('q', this.pageAudit.q || '');
+                fetch(c.ajaxUrl || window.ajaxurl || '/wp-admin/admin-ajax.php', {
+                    method: 'POST', credentials: 'same-origin', body: fd
+                }).then(function (r) { return r.json(); }).then(function (j) {
+                    if (j && j.success) self.pageAudit.posts = j.data.items || [];
+                }).catch(function () {});
+            },
+            runPageAudit: function () {
+                var self = this;
+                if (this.pageAudit.running) return;
+                if (!this.pageAudit.url && !this.pageAudit.postId) {
+                    this.pageAudit.error = 'لینک یا مقاله را مشخص کنید';
+                    return;
+                }
+                this.pageAudit.running = true;
+                this.pageAudit.error = '';
+                this.pageAudit.result = null;
+                var c = cfg();
+                var fd = new FormData();
+                fd.append('action', 'bankai_seo_page_audit');
+                fd.append('nonce', c.adminNonce || c.nonce || '');
+                if (this.pageAudit.postId) fd.append('post_id', String(this.pageAudit.postId));
+                if (this.pageAudit.url) fd.append('url', this.pageAudit.url);
+                fetch(c.ajaxUrl || window.ajaxurl || '/wp-admin/admin-ajax.php', {
+                    method: 'POST', credentials: 'same-origin', body: fd
+                }).then(function (r) { return r.json(); }).then(function (j) {
+                    self.pageAudit.running = false;
+                    if (!j || !j.success) {
+                        self.pageAudit.error = (j && j.data && j.data.message) || 'خطا در ممیزی';
+                        return;
+                    }
+                    var d = j.data || {};
+                    self.pageAudit.result = { seo: d.seo || [], aeo: d.aeo || [], geo: d.geo || [] };
+                    self.pageAudit.summary = d.summary || {};
+                    self.pageAudit.engines = d.engines || [];
+                    self.pageAudit.score = d.score || 0;
+                    self.pageAudit.tab = 'seo';
+                    if (d.error) self.pageAudit.error = d.error;
+                }).catch(function (e) {
+                    self.pageAudit.running = false;
+                    self.pageAudit.error = (e && e.message) || 'خطای شبکه';
+                });
+            },
+initSeoImport: function () {
                 var self = this;
                 if (!this.seoImport) return;
                 var c = cfg();
@@ -615,63 +883,184 @@
                 }
             },
             startSeoImport: function () {
+                // legacy entry → start with auto preferred source
+                var src = 'rankmath';
+                if (this.seoImport.sources && this.seoImport.sources.rankmath && this.seoImport.sources.rankmath.active) {
+                    src = 'rankmath';
+                } else if (this.seoImport.sources && this.seoImport.sources.yoast && this.seoImport.sources.yoast.active) {
+                    src = 'yoast';
+                }
+                this.selectSeoSource(src);
+            },
+
+            selectSeoSource: function (source) {
                 var self = this;
+                if (!source) return;
                 if (this.seoImport.running) return;
-                this.seoImport.running = true;
-                this.seoImport.progress = 0;
-                this.seoImport.page = 0;
-                this.seoImport.totalPages = 0;
+                this.seoImport.selectedSource = source;
+                this.seoImport.prefer = source;
+                this.seoImport.phase = 'list';
+                this.seoImport.cards = [];
+                this.seoImport.queue = [];
+                this.seoImport.queueTotal = 0;
+                this.seoImport.processed = 0;
                 this.seoImport.importedCount = 0;
                 this.seoImport.skippedCount = 0;
-                this.seoImport.report = false;
-                this.seoImport.stepText = 'شروع همگام‌سازی…';
-                this.showToast('همگام‌سازی Rank Math / Yoast آغاز شد', 'info');
+                this.seoImport.progress = 0;
+                this.seoImport.done = false;
+                this.seoImport.running = true;
+                this.seoImport.stepText = this.seoImport.direction === 'export'
+                    ? 'در حال فهرست مقالات دارای سئوی Bankai…'
+                    : ('در حال فهرست مقالات ' + (source === 'yoast' ? 'Yoast' : 'Rank Math') + '…');
 
-                function runPage(page) {
-                    var c = cfg();
+                var c = cfg();
+                var allItems = [];
+                var page = 1;
+                var totalPages = 1;
+                var action = this.seoImport.direction === 'export' ? 'bankai_seo_export_list' : 'bankai_seo_sync_list';
+
+                function fetchPage() {
                     var fd = new FormData();
-                    fd.append('action', 'bankai_seo_import_run');
+                    fd.append('action', action);
                     fd.append('nonce', c.adminNonce || c.nonce || '');
                     fd.append('page', String(page));
-                    fd.append('per_page', '15');
-                    fd.append('overwrite', self.seoImport.overwrite ? '1' : '0');
-                    fd.append('prefer', self.seoImport.prefer || 'auto');
-                    self.seoImport.stepText = 'در حال استخراج صفحه ' + page + '…';
+                    fd.append('per_page', '20');
+                    if (self.seoImport.direction === 'export') {
+                        fd.append('target', source);
+                    } else {
+                        fd.append('source', source);
+                    }
                     return fetch(c.ajaxUrl || window.ajaxurl || '/wp-admin/admin-ajax.php', {
                         method: 'POST', credentials: 'same-origin', body: fd
                     }).then(function (r) { return r.json(); }).then(function (j) {
-                        if (!j || !j.success) {
-                            throw new Error((j && j.data && j.data.message) || 'خطا در همگام‌سازی');
+                        if (!j || !j.success || !j.data) throw new Error((j && j.data && j.data.message) || 'list failed');
+                        totalPages = j.data.total_pages || 1;
+                        var items = j.data.items || [];
+                        items.forEach(function (it) {
+                            it.status = 'pending';
+                            it.statusLabel = 'در صف';
+                            it.progress = 0;
+                            it.checklist = [];
+                            allItems.push(it);
+                        });
+                        self.seoImport.cards = allItems.slice();
+                        self.seoImport.queueTotal = j.data.total || allItems.length;
+                        self.seoImport.progress = Math.min(30, Math.round((page / Math.max(1, totalPages)) * 30));
+                        self.seoImport.stepText = 'لیست مقالات: صفحه ' + page + ' از ' + totalPages;
+                        if (page < totalPages) {
+                            page++;
+                            return fetchPage();
                         }
-                        var d = j.data || {};
-                        self.seoImport.page = d.page || page;
-                        self.seoImport.totalPages = d.total_pages || 0;
-                        self.seoImport.importedCount += (d.imported || 0);
-                        self.seoImport.skippedCount += (d.skipped || 0);
-                        var tp = d.total_pages || 1;
-                        self.seoImport.progress = Math.min(100, Math.round(((d.page || page) / tp) * 100));
-                        self.showToast('صفحه ' + (d.page || page) + ': ' + (d.imported || 0) + ' مقاله وارد شد', 'success');
-                        if (d.done || (d.page || page) >= tp) {
-                            return null;
-                        }
-                        return runPage((d.page || page) + 1);
+                        return allItems;
                     });
                 }
 
-                runPage(1).then(function () {
-                    self.seoImport.running = false;
-                    self.seoImport.progress = 100;
-                    self.seoImport.stepText = 'همگام‌سازی کامل شد';
-                    self.seoImport.report = true;
-                    self.showToast('✓ همگام‌سازی تمام شد — ' + self.seoImport.importedCount + ' مقاله', 'success');
-                    self.loadMissingSeo();
+                fetchPage().then(function (items) {
+                    if (!items.length) {
+                        self.seoImport.running = false;
+                        self.seoImport.phase = 'done';
+                        self.seoImport.done = true;
+                        self.seoImport.progress = 100;
+                        self.seoImport.doneTitle = 'مقاله‌ای یافت نشد';
+                        self.seoImport.doneMessage = self.seoImport.direction === 'export'
+                            ? 'هیچ مقاله‌ای با متای سئوی Bankai پیدا نشد.'
+                            : 'هیچ مقاله‌ای با متای ' + (source === 'yoast' ? 'Yoast' : 'Rank Math') + ' پیدا نشد.';
+                        self.seoImport.stepText = 'پایان';
+                        return;
+                    }
+                    self.seoImport.queue = items.map(function (it) { return it.id; });
+                    self.seoImport.phase = 'run';
+                    self.seoImport.stepText = 'شروع پردازش مقالات…';
+                    return self.processSeoSyncQueue();
                 }).catch(function (e) {
                     self.seoImport.running = false;
                     self.seoImport.stepText = 'خطا: ' + ((e && e.message) || 'نامشخص');
-                    self.showToast((e && e.message) || 'خطا', 'error');
+                    if (self.showToast) self.showToast(self.seoImport.stepText, 'error');
                 });
             },
-            loadMissingSeo: function () {
+
+            processSeoSyncQueue: function () {
+                var self = this;
+                var c = cfg();
+                var queue = (this.seoImport.queue || []).slice();
+                var total = queue.length || 1;
+                var idx = 0;
+                var isExport = this.seoImport.direction === 'export';
+                var source = this.seoImport.selectedSource || 'rankmath';
+
+                function next() {
+                    if (idx >= queue.length) {
+                        self.seoImport.running = false;
+                        self.seoImport.phase = 'done';
+                        self.seoImport.done = true;
+                        self.seoImport.progress = 100;
+                        self.seoImport.stepText = 'همگام‌سازی کامل شد';
+                        self.seoImport.doneTitle = isExport ? 'خروجی با موفقیت انجام شد' : 'ورود اطلاعات با موفقیت انجام شد';
+                        self.seoImport.doneMessage = (self.seoImport.importedCount || 0) + ' مقاله پردازش شد، ' + (self.seoImport.skippedCount || 0) + ' مورد رد یا بدون تغییر.';
+                        if (self.showToast) self.showToast(self.seoImport.doneTitle, 'success');
+                        return Promise.resolve();
+                    }
+                    var postId = queue[idx];
+                    var card = (self.seoImport.cards || []).find(function (x) { return x.id === postId; });
+                    if (card) {
+                        card.status = 'running';
+                        card.statusLabel = 'در حال استخراج…';
+                        card.progress = 15;
+                    }
+                    self.seoImport.stepText = (isExport ? 'ارسال مقاله ' : 'استخراج مقاله ') + (idx + 1) + ' از ' + queue.length;
+
+                    var fd = new FormData();
+                    fd.append('action', isExport ? 'bankai_seo_export_process_one' : 'bankai_seo_sync_process_one');
+                    fd.append('nonce', c.adminNonce || c.nonce || '');
+                    fd.append('post_id', String(postId));
+                    fd.append('overwrite', self.seoImport.overwrite ? '1' : '0');
+                    if (isExport) fd.append('target', source);
+                    else fd.append('source', source);
+
+                    return fetch(c.ajaxUrl || window.ajaxurl || '/wp-admin/admin-ajax.php', {
+                        method: 'POST', credentials: 'same-origin', body: fd
+                    }).then(function (r) { return r.json(); }).then(function (j) {
+                        var ok = j && j.success && j.data;
+                        var data = ok ? j.data : {};
+                        if (card) {
+                            card.progress = 100;
+                            card.checklist = data.checklist || [];
+                            if (ok && (data.imported || data.exported)) {
+                                card.status = 'done';
+                                card.statusLabel = isExport ? 'ارسال شد' : 'وارد شد';
+                                self.seoImport.importedCount = (self.seoImport.importedCount || 0) + 1;
+                            } else {
+                                card.status = 'skip';
+                                card.statusLabel = 'بدون تغییر';
+                                self.seoImport.skippedCount = (self.seoImport.skippedCount || 0) + 1;
+                            }
+                        } else if (ok && (data.imported || data.exported)) {
+                            self.seoImport.importedCount = (self.seoImport.importedCount || 0) + 1;
+                        } else {
+                            self.seoImport.skippedCount = (self.seoImport.skippedCount || 0) + 1;
+                        }
+                        idx++;
+                        self.seoImport.processed = idx;
+                        self.seoImport.progress = Math.round(30 + (idx / total) * 70);
+                        return next();
+                    }).catch(function () {
+                        if (card) {
+                            card.status = 'error';
+                            card.statusLabel = 'خطا';
+                            card.progress = 100;
+                        }
+                        self.seoImport.skippedCount = (self.seoImport.skippedCount || 0) + 1;
+                        idx++;
+                        self.seoImport.processed = idx;
+                        self.seoImport.progress = Math.round(30 + (idx / total) * 70);
+                        return next();
+                    });
+                }
+
+                return next();
+            },
+
+            loadMissingSeoAfterImport: function () {
                 var self = this;
                 var c = cfg();
                 var fd = new FormData();
@@ -696,6 +1085,7 @@
                     }
                 }).catch(function () {});
             },
+
             selectedMissingCount: function () {
                 return (this.seoImport.selected || []).length;
             },
@@ -1602,22 +1992,345 @@
             },
 
 
-            getWatermarkPositionStyle: function () {
-                var map = {
-                    'top-left': { top: '12px', left: '12px', right: 'auto', bottom: 'auto' },
-                    'top-center': { top: '12px', left: '50%', transform: 'translateX(-50%)', right: 'auto', bottom: 'auto' },
-                    'top-right': { top: '12px', right: '12px', left: 'auto', bottom: 'auto' },
-                    'center-left': { top: '50%', left: '12px', transform: 'translateY(-50%)', right: 'auto', bottom: 'auto' },
-                    'center': { top: '50%', left: '50%', transform: 'translate(-50%,-50%)', right: 'auto', bottom: 'auto' },
-                    'center-right': { top: '50%', right: '12px', transform: 'translateY(-50%)', left: 'auto', bottom: 'auto' },
-                    'bottom-left': { bottom: '12px', left: '12px', top: 'auto', right: 'auto' },
-                    'bottom-center': { bottom: '12px', left: '50%', transform: 'translateX(-50%)', top: 'auto', right: 'auto' },
-                    'bottom-right': { bottom: '12px', right: '12px', top: 'auto', left: 'auto' }
+            
+            
+            wmFontList: function () {
+                var list = [
+                    { id: 'default', name: 'Vazirmatn', sample: 'Aa آب', style: "font-family:Vazirmatn,Tahoma,sans-serif" },
+                    { id: 'vazirmatn-bold', name: 'Vazir Bold', sample: 'Aa آب', style: "font-family:Vazirmatn,Tahoma,sans-serif;font-weight:800" },
+                    { id: 'tahoma', name: 'Tahoma', sample: 'Aa آب', style: "font-family:Tahoma,sans-serif" },
+                    { id: 'arial', name: 'Arial', sample: 'Aa Bb', style: "font-family:Arial,sans-serif" },
+                    { id: 'georgia', name: 'Georgia', sample: 'Aa Bb', style: "font-family:Georgia,serif" },
+                    { id: 'roboto', name: 'Roboto', sample: 'Aa Bb', style: "font-family:Roboto,sans-serif" },
+                    { id: 'inter', name: 'Inter', sample: 'Aa Bb', style: "font-family:Inter,sans-serif" }
+                ];
+                var w = this.watermarkStudio || {};
+                if (w.custom_font_url) {
+                    list.unshift({
+                        id: 'custom',
+                        name: w.custom_font_name || 'سفارشی',
+                        sample: 'Aa آب',
+                        style: "font-family:'" + (w.custom_font_name || 'Custom') + "',sans-serif"
+                    });
+                }
+                return list;
+            },
+            wmColorSwatches: function () {
+                return ['#FFFFFF', '#F8FAFC', '#E2E8F0', '#94A3B8', '#0F172A', '#000000',
+                    '#EF4444', '#F97316', '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6',
+                    'rgba(255,255,255,0.7)', 'rgba(0,0,0,0.55)', 'rgba(124,58,237,0.65)', 'transparent'];
+            },
+            wmBgSwatches: function () {
+                return ['#000000', '#0F172A', '#1E293B', '#7C3AED', '#FFFFFF',
+                    'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.35)', 'rgba(124,58,237,0.5)', 'rgba(255,255,255,0.35)'];
+            },
+            selectWmFont: function (f) {
+                if (!f || !this.watermarkStudio) return;
+                this.watermarkStudio.text_font = f.id;
+                if (f.id === 'custom' && this.watermarkStudio.custom_font_url) {
+                    this.ensureWmFontFace();
+                }
+            },
+            ensureWmFontFace: function () {
+                var w = this.watermarkStudio || {};
+                if (!w.custom_font_url) return;
+                var name = w.custom_font_name || 'BankaiCustomFont';
+                var id = 'bk-wm-font-' + name.replace(/[^a-z0-9]/gi, '');
+                if (document.getElementById(id)) return;
+                var style = document.createElement('style');
+                style.id = id;
+                style.textContent = "@font-face{font-family:'" + name + "';src:url('" + w.custom_font_url + "');font-display:swap;}";
+                document.head.appendChild(style);
+            },
+            startBulkCompress: function (selectedOnly) {
+                var self = this;
+                var items = (this.mediaLib && this.mediaLib.items) || [];
+                var targets = selectedOnly ? items.filter(function (i) { return i.selected; }) : items.slice();
+                if (!targets.length) {
+                    this.showToast(this.isRtl ? 'تصویری برای فشرده‌سازی نیست' : 'No images', 'warning');
+                    return;
+                }
+                this.mediaLib.busy = true;
+                this.mediaLib.selectedOnly = !!selectedOnly;
+                this.mediaLib.mode = 'compress';
+                this.mediaLib.progress = 0;
+                this.mediaLib.progressText = this.isRtl ? 'شروع فشرده‌سازی…' : 'Starting…';
+                var i = 0, ok = 0, fail = 0;
+                function next() {
+                    if (i >= targets.length) {
+                        self.mediaLib.busy = false;
+                        self.mediaLib.progress = 100;
+                        self.mediaLib.progressText = self.isRtl
+                            ? (ok + ' موفق · ' + fail + ' ناموفق')
+                            : (ok + ' ok · ' + fail + ' fail');
+                        self.showToast(self.mediaLib.progressText, fail ? 'warning' : 'success');
+                        setTimeout(function () { self.mediaLib.progress = 0; }, 1500);
+                        if (self.loadMediaLibrary) self.loadMediaLibrary(true);
+                        return;
+                    }
+                    var img = targets[i];
+                    self.mediaLib.progress = Math.round((i / targets.length) * 100);
+                    self.mediaLib.progressText = (i + 1) + ' / ' + targets.length + ' — ' + (img.title || img.id);
+                    ajax('bankai_compress_attachment', {
+                        id: img.id,
+                        format: (self.compressOpts && self.compressOpts.format) || 'webp',
+                        quality: (self.compressOpts && self.compressOpts.quality) || 82,
+                        max_width: (self.compressOpts && self.compressOpts.maxWidth) || 1600
+                    }, 60000).then(function (res) {
+                        if (res && res.success) ok++; else fail++;
+                    }).catch(function () { fail++; }).finally(function () {
+                        i++;
+                        setTimeout(next, 80);
+                    });
+                }
+                next();
+            },
+            selectedMediaCount: function () {
+                return ((this.mediaLib && this.mediaLib.items) || []).filter(function (i) { return i.selected; }).length;
+            },
+            openWmBulkApply: function () {
+                var self = this;
+                this.wmBulkModal = {
+                    show: true, running: false, progress: 0,
+                    progressText: this.isRtl ? 'در حال آماده‌سازی…' : 'Preparing…',
+                    items: [], title: this.isRtl ? 'اعمال گروهی واترمارک' : 'Bulk watermark'
                 };
-                var s = map[this.watermarkStudio.position] || map['bottom-right'];
-                return Object.keys(s).map(function (k) { return k + ':' + s[k]; }).join(';');
+                // load library then process
+                var prev = this.mediaSubTab;
+                this.mediaLib.loading = true;
+                ajax('bankai_list_media', { page: 1, per_page: 40 }).then(function (res) {
+                    var d = res.data || res;
+                    var items = (d.items || d.media || []).map(function (it) {
+                        return {
+                            id: it.id, title: it.title || ('#' + it.id),
+                            thumb: it.thumb || it.url, url: it.url,
+                            status: 'pending', statusText: self.isRtl ? 'در صف' : 'Queued'
+                        };
+                    });
+                    self.wmBulkModal.items = items;
+                    self.mediaLib.loading = false;
+                    if (!items.length) {
+                        self.wmBulkModal.progressText = self.isRtl ? 'تصویری یافت نشد' : 'No images';
+                        return;
+                    }
+                    self.runWmBulkQueue(true);
+                }).catch(function () {
+                    self.mediaLib.loading = false;
+                    self.wmBulkModal.progressText = self.t('error');
+                });
+            },
+            runWmBulkQueue: function (apply) {
+                var self = this;
+                var items = (this.wmBulkModal.items || []).slice();
+                if (!items.length) return;
+                this.wmBulkModal.running = true;
+                var i = 0;
+                var ok = 0, fail = 0;
+                function next() {
+                    if (i >= items.length) {
+                        self.wmBulkModal.running = false;
+                        self.wmBulkModal.progress = 100;
+                        self.wmBulkModal.progressText = self.isRtl
+                            ? ('تمام شد: ' + ok + ' موفق · ' + fail + ' ناموفق')
+                            : ('Done: ' + ok + ' ok · ' + fail + ' fail');
+                        self.showToast(self.wmBulkModal.progressText, fail ? 'warning' : 'success');
+                        return;
+                    }
+                    var row = items[i];
+                    row.status = 'work';
+                    row.statusText = self.isRtl ? 'در حال اعمال…' : 'Applying…';
+                    self.wmBulkModal.items = items.slice();
+                    self.wmBulkModal.progress = Math.round((i / items.length) * 100);
+                    self.wmBulkModal.progressText = (i + 1) + ' / ' + items.length + ' — ' + (row.title || '');
+                    ajax('bankai_bulk_watermark_ids', {
+                        ids: [row.id],
+                        apply: apply ? '1' : '0',
+                        replace: '1'
+                    }).then(function (res) {
+                        if (res.success) {
+                            row.status = 'done';
+                            row.statusText = self.isRtl ? 'انجام شد' : 'Done';
+                            ok++;
+                        } else {
+                            row.status = 'fail';
+                            row.statusText = (res.data && res.data.message) || 'Error';
+                            fail++;
+                        }
+                    }).catch(function () {
+                        row.status = 'fail';
+                        row.statusText = 'Error';
+                        fail++;
+                    }).finally(function () {
+                        self.wmBulkModal.items = items.slice();
+                        i++;
+                        setTimeout(next, 120);
+                    });
+                }
+                next();
             },
 
+            wmPreviewSamples: function () {
+                return [
+                    (typeof bankaiAdmin !== 'undefined' && bankaiAdmin.pluginUrl ? bankaiAdmin.pluginUrl + 'assets/img/wm-preview.jpg' : ''),
+                    'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#312e81"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><text x="50%" y="48%" fill="white" font-size="42" text-anchor="middle" font-family="sans-serif">Bankai Preview</text><text x="50%" y="58%" fill="rgba(255,255,255,.7)" font-size="20" text-anchor="middle">نمونه پیش‌نمایش واترمارک</text></svg>')
+                ];
+            },
+            wmPreviewSrc: function () {
+                var w = this.watermarkStudio || {};
+                if (w.preview_url) return w.preview_url;
+                var samples = this.wmPreviewSamples();
+                var i = (w._preview || 0) % samples.length;
+                return samples[i] || samples[1];
+            },
+            onWmPreviewError: function (e) {
+                try {
+                    if (e && e.target) e.target.src = this.wmPreviewSamples()[1];
+                } catch (err) {}
+            },
+            cycleWmPreview: function () {
+                if (!this.watermarkStudio) return;
+                this.watermarkStudio.preview_url = '';
+                this.watermarkStudio._preview = (this.watermarkStudio._preview || 0) + 1;
+            },
+            pickWmPreviewImage: function () {
+                var self = this;
+                if (typeof wp === 'undefined' || !wp.media) {
+                    self.showToast('کتابخانه رسانه در دسترس نیست', 'error');
+                    return;
+                }
+                var frame = wp.media({ title: 'تصویر پیش‌نمایش واترمارک', multiple: false, library: { type: 'image' } });
+                frame.on('select', function () {
+                    var att = frame.state().get('selection').first().toJSON();
+                    self.watermarkStudio.preview_url = (att.sizes && att.sizes.large ? att.sizes.large.url : att.url) || att.url;
+                });
+                frame.open();
+            },
+            uploadWmFont: function (ev) {
+                var self = this;
+                var file = ev.target && ev.target.files && ev.target.files[0];
+                if (!file) return;
+                var c = (typeof cfg === 'function') ? cfg() : (window.bankaiData || {});
+                var fd = new FormData();
+                fd.append('action', 'bankai_upload_wm_font');
+                fd.append('nonce', c.adminNonce || c.nonce || '');
+                fd.append('font', file);
+                self.wmFontBusy = true;
+                fetch(c.ajaxUrl || window.ajaxurl || '', { method: 'POST', body: fd, credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (res && res.success && res.data) {
+                            self.watermarkStudio.custom_font_url = res.data.url || '';
+                            self.watermarkStudio.custom_font_name = res.data.name || file.name;
+                            self.watermarkStudio.text_font = 'custom';
+                            if (typeof self.ensureWmFontFace === 'function') self.ensureWmFontFace();
+                            self.showToast(self.isRtl ? 'فونت آپلود و اعمال شد' : 'Font uploaded', 'success');
+                        } else {
+                            var msg = (res && res.data && res.data.message) ? res.data.message : self.t('error');
+                            self.showToast(msg, 'error');
+                        }
+                    })
+                    .catch(function () { self.showToast(self.t('error'), 'error'); })
+                    .finally(function () {
+                        self.wmFontBusy = false;
+                        if (ev.target) ev.target.value = '';
+                    });
+            },
+            wmBadgeStyle: function () {
+                var w = this.watermarkStudio || {};
+                var style = { opacity: ((w.opacity || 75) / 100) };
+                var cover = w.text_cover || 'none';
+                if (cover === 'width') { style.left = '0'; style.right = '0'; style.width = '100%'; style.maxWidth = '100%'; style.transform = 'none'; }
+                if (cover === 'height') { style.top = '0'; style.bottom = '0'; style.height = '100%'; style.transform = 'none'; }
+                if (cover === 'banner') {
+                    style.left = '0'; style.right = '0'; style.bottom = '0'; style.top = 'auto';
+                    style.width = '100%'; style.transform = 'none';
+                    style.background = 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)';
+                    style.borderRadius = '0';
+                }
+                if (w.box_enabled && w.box_style === 'solid' && cover !== 'banner') {
+                    var hex = w.box_color || '#000000';
+                    var op = (w.box_opacity != null ? w.box_opacity : 45) / 100;
+                    style.background = selfHexRgba(hex, op);
+                    style.borderRadius = (w.box_radius || 6) + 'px';
+                    style.padding = (w.box_padding || 8) + 'px';
+                }
+                if (w.box_style === 'gradient' && cover !== 'banner') {
+                    var hex2 = w.box_color || '#000000';
+                    style.background = 'linear-gradient(to top, ' + selfHexRgba(hex2, 0.75) + ', transparent)';
+                    style.padding = (w.box_padding || 8) + 'px';
+                }
+                var fontMap = {
+                    'default': 'Vazirmatn, Tahoma, sans-serif',
+                    'vazirmatn-bold': 'Vazirmatn, Tahoma, sans-serif',
+                    'tahoma': 'Tahoma, sans-serif',
+                    'arial': 'Arial, sans-serif',
+                    'georgia': 'Georgia, serif',
+                    'roboto': 'Roboto, sans-serif',
+                    'inter': 'Inter, sans-serif',
+                    'custom': (w.custom_font_name ? ("'" + w.custom_font_name + "'") : 'Vazirmatn') + ', sans-serif'
+                };
+                style.fontFamily = fontMap[w.text_font] || fontMap.default;
+                if (w.text_font === 'vazirmatn-bold') style.fontWeight = '800';
+                if (w.text_color && w.text_color !== 'transparent') style.color = w.text_color;
+                if (w.text_cover === 'banner') {
+                    style.left = '0'; style.right = '0'; style.bottom = '0'; style.top = 'auto';
+                    style.width = '100%'; style.maxWidth = 'none'; style.margin = '0';
+                    style.borderRadius = '0'; style.transform = 'none';
+                }
+                return style;
+            },
+
+            setWmPosition: function (pos) {
+                var map = {
+                    'top-left':'top-left','top-center':'top-center','top-right':'top-right',
+                    'center-left':'center-left','middle-left':'center-left','mid-left':'center-left',
+                    'center':'center',
+                    'center-right':'center-right','middle-right':'center-right','mid-right':'center-right',
+                    'bottom-left':'bottom-left','bottom-center':'bottom-center','btm-center':'bottom-center',
+                    'bottom-right':'bottom-right','btm-right':'bottom-right'
+                };
+                if (!this.watermarkStudio) return;
+                this.watermarkStudio.position = map[pos] || pos;
+            },
+            getWatermarkPositionStyle: function () {
+                var map = {
+                    'top-left': { top: '12px', left: '12px', right: 'auto', bottom: 'auto', transform: 'none' },
+                    'top-center': { top: '12px', left: '50%', right: 'auto', bottom: 'auto', transform: 'translateX(-50%)' },
+                    'top-right': { top: '12px', right: '12px', left: 'auto', bottom: 'auto', transform: 'none' },
+                    'center-left': { top: '50%', left: '12px', right: 'auto', bottom: 'auto', transform: 'translateY(-50%)' },
+                    'middle-left': { top: '50%', left: '12px', right: 'auto', bottom: 'auto', transform: 'translateY(-50%)' },
+                    'center': { top: '50%', left: '50%', right: 'auto', bottom: 'auto', transform: 'translate(-50%,-50%)' },
+                    'center-right': { top: '50%', right: '12px', left: 'auto', bottom: 'auto', transform: 'translateY(-50%)' },
+                    'middle-right': { top: '50%', right: '12px', left: 'auto', bottom: 'auto', transform: 'translateY(-50%)' },
+                    'bottom-left': { bottom: '12px', left: '12px', top: 'auto', right: 'auto', transform: 'none' },
+                    'bottom-center': { bottom: '12px', left: '50%', top: 'auto', right: 'auto', transform: 'translateX(-50%)' },
+                    'bottom-right': { bottom: '12px', right: '12px', top: 'auto', left: 'auto', transform: 'none' }
+                };
+                var pos = this.watermarkStudio && this.watermarkStudio.position;
+                return map[pos] || map['bottom-right'];
+            },
+            wmPreviewStyle: function () {
+                var pos = this.getWatermarkPositionStyle();
+                var o = (this.watermarkStudio && this.watermarkStudio.opacity != null) ? this.watermarkStudio.opacity : 75;
+                return Object.assign({}, pos, {
+                    opacity: String(Number(o) / 100),
+                    position: 'absolute',
+                    zIndex: '3',
+                    pointerEvents: 'none'
+                });
+            },
+
+            isCdnModuleOn: function () {
+                var s = this.mediaState || {};
+                var keys = Object.keys(s);
+                for (var i = 0; i < keys.length; i++) {
+                    var k = keys[i];
+                    if (/cdn|cloud|r2|bunny|s3|arvan|abr|liara|pars/i.test(k) && s[k]) return true;
+                }
+                // also show if base_url already configured
+                if (this.cdnSettings && this.cdnSettings.base_url) return true;
+                return false;
+            },
             toggleMediaModule: function (id) {
                 var self = this;
                 var enabled = !!this.mediaState[id];
@@ -1666,6 +2379,79 @@
                 frame.open();
             },
 
+            
+            toggleSelectAllMedia: function () {
+                var items = (this.mediaLib && this.mediaLib.items) || [];
+                if (!items.length) return;
+                var all = items.every(function (i) { return i.selected; });
+                items.forEach(function (i) { i.selected = !all; });
+                this.mediaLib.items = items.slice();
+            },
+            selectedMediaIds: function () {
+                return ((this.mediaLib && this.mediaLib.items) || []).filter(function (i) { return i.selected; }).map(function (i) { return i.id; });
+            },
+            runBulkWatermark: function (apply) {
+                var self = this;
+                var ids = this.selectedMediaIds();
+                if (!ids.length) {
+                    this.showToast(this.isRtl ? 'حداقل یک تصویر را انتخاب کنید.' : 'Select at least one image.', 'warning');
+                    return;
+                }
+                if (apply && this.watermarkStudio && !this.watermarkStudio.enabled) {
+                    this.showToast(this.isRtl ? 'ابتدا سرویس واترمارک را فعال و ذخیره کنید.' : 'Enable and save watermark service first.', 'warning');
+                    return;
+                }
+                this.mediaLib.busy = true;
+                this.mediaLib.mode = 'wm';
+                this.mediaLib.progress = 5;
+                this.mediaLib.progressText = apply
+                    ? (this.isRtl ? 'اعمال واترمارک…' : 'Applying watermark…')
+                    : (this.isRtl ? 'حذف واترمارک…' : 'Removing watermark…');
+                ajax('bankai_bulk_watermark_ids', {
+                    ids: ids,
+                    apply: apply ? '1' : '0'
+                }).then(function (res) {
+                    var d = res.data || res;
+                    if (res.success) {
+                        self.showToast((d && d.message) || self.t('saved'), 'success');
+                        self.mediaLib.progress = 100;
+                        if (self.loadMediaLibrary) self.loadMediaLibrary(true);
+                    } else {
+                        self.showToast((d && d.message) || self.t('error'), 'error');
+                    }
+                }).catch(function () {
+                    self.showToast(self.t('error'), 'error');
+                }).finally(function () {
+                    self.mediaLib.busy = false;
+                    setTimeout(function () { self.mediaLib.progress = 0; }, 1200);
+                });
+            },
+            watermarkSingle: function (img, apply) {
+                if (!img || !img.id) return;
+                var self = this;
+                img.working = true;
+                ajax('bankai_bulk_watermark_ids', {
+                    ids: [img.id],
+                    apply: apply ? '1' : '0'
+                }).then(function (res) {
+                    var d = res.data || res;
+                    if (res.success) {
+                        img.done = true;
+                        self.showToast((d && d.message) || self.t('saved'), 'success');
+                        if (self.loadMediaLibrary) self.loadMediaLibrary(false);
+                    } else {
+                        self.showToast((d && d.message) || self.t('error'), 'error');
+                    }
+                }).finally(function () { img.working = false; });
+            },
+openBulkWatermark: function () {
+                this.mediaSubTab = 'compress';
+                if (this.loadMediaLibrary) this.loadMediaLibrary(true);
+                this.showToast(this.isRtl
+                    ? 'تصاویر را انتخاب کنید و «اعمال واترمارک روی انتخاب» را بزنید.'
+                    : 'Select images then apply watermark.',
+                    'info');
+            },
             saveWatermarkStudio: function () {
                 var self = this;
                 if (this.busy) return;
@@ -1677,7 +2463,22 @@
                     position: w.position,
                     opacity: w.opacity,
                     text: w.text,
+                    text_size: w.text_size || 18,
+                    text_color: w.text_color || '#FFFFFF',
+                    text_font: w.text_font || 'default',
+                    box_enabled: w.box_enabled ? '1' : '0',
+                    box_padding: w.box_padding || 8,
+                    box_radius: w.box_radius || 6,
+                    box_color: w.box_color || '#000000',
+                    box_opacity: w.box_opacity != null ? w.box_opacity : 45,
+                    box_style: w.box_style || 'solid',
+                    text_cover: w.text_cover || 'none',
+                    custom_font_url: w.custom_font_url || '',
+                    custom_font_name: w.custom_font_name || '',
+                    preview_url: w.preview_url || '',
                     image_id: w.image_id || 0,
+                    image_scale: w.image_scale || 20,
+                    exclude_patterns: w.exclude_patterns || '',
                     quality: w.quality,
                     min_dimension: w.min_dimension,
                     apply_upload: w.apply_upload ? '1' : '0',

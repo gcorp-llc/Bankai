@@ -2748,3 +2748,35 @@ body.bankai-404-hide-footer #colophon { display: none !important; }
 .bankai-error-404--lost .bankai-404-hero {
   animation: bankai-404-in .75s cubic-bezier(.22,1,.36,1) both;
 }
+
+/* Header coordinated with design tokens (طرح کلی) */
+.bankai-header,
+.bankai-header--builder {
+  background: var(--bankai-header-bg, var(--bankai-bg, var(--b1, #ffffff)));
+  color: var(--bankai-header-color, var(--bankai-text, var(--bc, #1a1a1a)));
+  border-color: var(--bankai-border, color-mix(in srgb, var(--bankai-primary, #7c5cff) 18%, transparent));
+  transition: background .28s ease, color .28s ease, box-shadow .28s ease, border-color .28s ease;
+}
+.bankai-header a,
+.bankai-header .bankai-menu a,
+.bankai-header .bankai-nav a {
+  color: var(--bankai-header-link, var(--bankai-header-color, var(--bankai-text, inherit)));
+}
+.bankai-header .current-menu-item > a,
+.bankai-header .current_page_item > a {
+  color: var(--bankai-header-link-active, var(--bankai-primary, #7c5cff)) !important;
+}
+.bankai-header-row {
+  background: var(--bankai-header-row-bg, transparent);
+}
+.bankai-mobile-bar {
+  background: var(--bankai-header-bg, var(--bankai-bg, #fff));
+  color: var(--bankai-header-color, var(--bankai-text, #1a1a1a));
+  transition: background .28s ease, color .28s ease;
+}
+html[data-theme="dark"] .bankai-header,
+html[data-theme="dark"] .bankai-header--builder,
+html[data-theme="dark"] .bankai-mobile-bar {
+  background: var(--bankai-header-bg, var(--bankai-bg, #0f172a));
+  color: var(--bankai-header-color, var(--bankai-text, #f8fafc));
+}

@@ -33,38 +33,36 @@ $page_count  = (int) wp_count_posts('page')->publish;
 ?>
 
 <div id="tab-seo-engine" class="bankai-tab-pane" x-show="activeTab === 'seo-engine'" x-cloak
-     x-data="bankaiSeoEngineData()"
+     x-data="bankaiSeoEngineData"
      x-init="initEngine()">
 
-    <!-- Header Card -->
-    <div class="bankai-card bk-seo-header">
-        <div class="bk-seo-header-main">
-            <div class="bk-seo-title-group">
-                <div class="bk-seo-title-flex">
-                    <h2 class="bk-seo-h2">
-                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>
-                        </svg>
-                        <span>موتور سئو و اسکیما (SEO Engine)</span>
-                    </h2>
-                    <span class="bk-seo-chip">JSON-LD · OG · Sitemap</span>
-                </div>
-                <p class="bk-seo-subtext">مدیریت ماژول‌های سئو، اسکیما، ساختار متا و تحلیل هوشمند مقالات سایت</p>
+    <!-- Unified hero header -->
+    <div class="bk-lg-header bk-wm-hero bk-page-hero">
+        <div class="bk-wm-hero__main">
+            <div class="bk-wm-hero__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             </div>
-            <button type="button" class="bk-seo-btn bk-seo-btn-wizard" @click="runAutoWizard()" :disabled="wizardBusy">
+            <div>
+                <div class="bk-wm-hero__title-row">
+                    <h2>موتور سئو و اسکیما</h2>
+                    <span class="bk-wm-pill">JSON-LD · OG · Sitemap</span>
+                </div>
+                <p>مدیریت ماژول‌های سئو، اسکیما، ساختار متا و تحلیل هوشمند مقالات سایت</p>
+            </div>
+        </div>
+        <div class="bk-wm-hero__actions">
+            <button type="button" class="bk-wm-chip-btn" @click="runAutoWizard()" :disabled="wizardBusy">
                 <span class="bk-wizard-spin" x-show="wizardBusy" x-cloak></span>
-                <svg x-show="!wizardBusy" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 <span x-text="wizardBusy ? 'در حال راه‌اندازی…' : 'ویزارد راه‌اندازی سئو'"></span>
             </button>
         </div>
-        
-        <nav class="bk-seo-tabs" role="tablist">
-            <button type="button" role="tab" class="bk-seo-tab" :class="{ 'is-active': seoPanel === 'tools' }" @click="seoPanel = 'tools'; if (!an._loaded) loadAnalyticsReport()"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg> ماژول‌های سئو</button>
-            <button type="button" role="tab" class="bk-seo-tab" :class="{ 'is-active': seoPanel === 'analytics' }" @click="seoPanel = 'analytics'"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg> گوگل آنالیتیکس</button>
-            <button type="button" role="tab" class="bk-seo-tab" :class="{ 'is-active': seoPanel === 'import' }" @click="seoPanel = 'import'; initSeoImport()"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 19h16"/></svg> همگام‌سازی Rank Math / Yoast</button>
-            <button type="button" role="tab" class="bk-seo-tab" :class="{ 'is-active': seoPanel === 'sitewide' }" @click="seoPanel = 'sitewide'; loadSitewide()"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg> سئوی سایت</button>
-        </nav>
     </div>
+    <nav class="bk-art-tabs bk-lg-tabs bk-seo-tabs" role="tablist">
+        <button type="button" role="tab" class="bk-lg-tab bk-seo-tab" :class="{ 'is-active': seoPanel === 'tools' }" @click="seoPanel = 'tools'; if (!an._loaded) loadAnalyticsReport()">ماژول‌های سئو</button>
+        <button type="button" role="tab" class="bk-lg-tab bk-seo-tab" :class="{ 'is-active': seoPanel === 'analytics' }" @click="seoPanel = 'analytics'">گوگل آنالیتیکس</button>
+        <button type="button" role="tab" class="bk-lg-tab bk-seo-tab" :class="{ 'is-active': seoPanel === 'import' }" @click="seoPanel = 'import'; initSeoImport()">همگام‌سازی Rank Math / Yoast</button>
+        <button type="button" role="tab" class="bk-lg-tab bk-seo-tab" :class="{ 'is-active': seoPanel === 'sitewide' }" @click="seoPanel = 'sitewide'; loadSitewide()">سئوی سایت</button>
+    </nav>
 
     <!-- Site Analytics inside SEO modules -->
     <div x-show="seoPanel === 'tools'" x-cloak class="bk-analytics-dash bankai-card"
@@ -203,7 +201,13 @@ $page_count  = (int) wp_count_posts('page')->publish;
                     <span class="bk-score-num" x-text="(seoAudit && seoAudit.running) ? '…' : ((seoAudit && seoAudit.score) || 0)">0</span>
                 </div>
                 <div>
-                    <div style="font-weight:800;font-size:16px;color:#0F172A;">وضعیت کل سئوی سایت</div>
+                    <div class="bk-seo-site-hero" style="grid-column:1/-1;">
+                    <div>
+                        <div style="font-weight:800;font-size:18px;color:#0F172A;margin-bottom:6px;">وضعیت کل سئوی سایت</div>
+                        <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">ممیزی فنی، نقشه سایت، robots و اتصال ابزارهای وب‌مستر را از اینجا کنترل کنید.</p>
+                    </div>
+                </div>
+                <div style="font-weight:800;font-size:16px;color:#0F172A;display:none;">وضعیت کل سئوی سایت</div>
                     <div style="font-size:12px;color:#64748B;margin-top:3px;" x-text="(seoAudit && seoAudit.running) ? 'در حال تحلیل بخش‌های مختلف…' : (((seoAudit && seoAudit.items) || []).filter(i => i.pass).length + ' از ' + (((seoAudit && seoAudit.items) || []).length) + ' استاندارد رعایت شده است.')">—</div>
                 </div>
             </div>
@@ -363,103 +367,115 @@ $page_count  = (int) wp_count_posts('page')->publish;
     <!-- Google Analytics Panel (real settings) -->
     <!-- Google Analytics connection tab -->
 
-    <!-- Import Wizard Rank Math / Yoast -->
-    <div x-show="seoPanel === 'import'" x-cloak class="bankai-card" style="padding:0;margin-bottom:20px;overflow:hidden;border-radius:16px;border:1px solid #E2E8F0;">
-        <div style="padding:18px 20px;background:linear-gradient(135deg,#faf5ff 0%,#eef2ff 100%);border-bottom:1px solid #E5E7EB;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
-            <div>
-                <h3 class="bk-section-title" style="margin:0 0 6px;font-size:16px;font-weight:800;">ویزارد همگام‌سازی سئو</h3>
-                <p style="margin:0;font-size:13px;color:#64748B;line-height:1.65;max-width:640px;">
-                    اطلاعات متا، کلیدواژه، canonical و شبکه‌های اجتماعی از <strong>Rank Math</strong> و <strong>Yoast SEO</strong>
-                    به فیلدهای Bankai منتقل می‌شود — حتی اگر آن پلاگین‌ها حذف شده باشند (تا وقتی متا در دیتابیس باشد).
-                </p>
+    <!-- Sync Wizard Rank Math / Yoast — centered flow -->
+    <div x-show="seoPanel === 'import'" x-cloak class="bk-sync-wizard">
+        <div class="bk-sync-shell">
+            <div class="bk-sync-hero">
+                <h3>همگام‌سازی سئو با Rank Math / Yoast</h3>
+                <p>ابتدا افزونه مبدأ/مقصد را انتخاب کنید، سپس درون‌ریزی یا برون‌ریزی را شروع کنید.</p>
             </div>
-            <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="startSeoImport()" :disabled="seoImport.running" style="border-radius:10px;">
-                <span x-text="seoImport.running ? 'در حال همگام‌سازی…' : 'شروع همگام‌سازی'"></span>
-            </button>
-        </div>
-        <div style="padding:20px;">
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px;">
-            <template x-for="src in Object.values(seoImport.sources || {})" :key="src.id">
-                <div class="bankai-card" style="padding:14px;border:1px solid #E5E7EB;border-radius:12px;">
-                    <div style="font-weight:700;margin-bottom:4px;" x-text="src.label"></div>
-                    <div style="font-size:12px;color:#64748B;" x-text="src.active ? ('فعال / داده: ' + (src.posts||0) + ' مقاله') : 'یافت نشد'"></div>
-                </div>
-            </template>
-            <div class="bankai-card" style="padding:14px;border:1px solid #E5E7EB;border-radius:12px;">
-                <div style="font-weight:700;margin-bottom:4px;">قابل استخراج</div>
-                <div style="font-size:20px;font-weight:800;color:#0078d4;" x-text="seoImport.importableTotal || 0"></div>
-            </div>
-        </div>
-
-        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px;">
-            <label style="display:flex;align-items:center;gap:6px;font-size:13px;">
-                <input type="checkbox" x-model="seoImport.overwrite">
-                بازنویسی فیلدهای موجود Bankai
-            </label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
-                اولویت منبع:
-                <select x-model="seoImport.prefer" class="bk-seo-input" style="width:auto;">
-                    <option value="auto">خودکار (Rank Math سپس Yoast)</option>
-                    <option value="rankmath">فقط Rank Math</option>
-                    <option value="yoast">فقط Yoast</option>
-                </select>
-            </label>
-        </div>
-
-        <!-- Progress -->
-        <div x-show="seoImport.running || seoImport.progress > 0" style="margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;color:#475569;">
-                <span x-text="seoImport.stepText || 'آماده'"></span>
-                <span x-text="(seoImport.progress || 0) + '%'"></span>
-            </div>
-            <div style="height:10px;background:#E5E7EB;border-radius:999px;overflow:hidden;">
-                <div style="height:100%;background:linear-gradient(90deg,#0078d4,#50e6ff);transition:width .3s;"
-                     :style="'width:' + (seoImport.progress || 0) + '%'"></div>
-            </div>
-            <div style="font-size:12px;color:#64748B;margin-top:6px;"
-                 x-text="'صفحه ' + (seoImport.page || 0) + ' / ' + (seoImport.totalPages || 0) + ' — وارد شده در این اجرا: ' + (seoImport.importedCount || 0)"></div>
-        </div>
-
-        <!-- Report -->
-        <div x-show="seoImport.report" class="bankai-card" style="padding:16px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;margin-bottom:16px;">
-            <h4 style="margin:0 0 8px;">گزارش همگام‌سازی</h4>
-            <ul style="margin:0;padding-inline-start:18px;font-size:13px;line-height:1.8;color:#334155;">
-                <li x-text="'تعداد مقالات استخراج‌شده: ' + (seoImport.importedCount || 0)"></li>
-                <li x-text="'رد شده / بدون متا جدید: ' + (seoImport.skippedCount || 0)"></li>
-                <li x-text="'مقالات بدون سئوی Bankai: ' + (seoImport.missingTotal || 0)"></li>
-            </ul>
-            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" class="bk-seo-btn bk-seo-btn-ghost" @click="loadMissingSeo()">نمایش مقالات سئونشده</button>
-            </div>
-        </div>
-
-
-        </div><!-- /import body padding -->
-
-        <!-- CTA: missing SEO moved to Articles -->
-        <div class="bankai-card" style="margin-top:16px;padding:18px 20px;border:1px solid #E2E8F0;border-radius:14px;background:linear-gradient(135deg,#f8fafc,#eef6fc);">
-            <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;">
-                <div>
-                    <h4 style="margin:0 0 6px;font-size:15px;font-weight:800;color:#0f172a;">مقالات بدون سئوی Bankai</h4>
-                    <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">
-                        سئوی خودکار با دستیار هوشمند (متا، کلیدواژه، لینک، تصویر، اسکیما…) اکنون در
-                        <strong>مدیریت مقالات</strong> در تب جداگانه قرار دارد.
-                        <span x-show="seoImport.missingTotal"> تعداد فعلی بدون سئو: <strong x-text="seoImport.missingTotal || 0"></strong></span>
-                    </p>
-                </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button type="button" class="bk-seo-btn bk-seo-btn-ghost" @click="loadMissingSeo()">بروزرسانی شمارش</button>
-                    <button type="button" class="bk-seo-btn bk-seo-btn-primary"
-                        @click="activeTab='articles'; $nextTick(() => { window.dispatchEvent(new CustomEvent('bankai-open-missing-seo')); })">
-                        رفتن به تب مقالات بدون سئو
+            <!-- Step 1: provider -->
+            <div x-show="seoImport.phase === 'pick' || !seoImport.selectedSource" class="bk-sync-step">
+                <div class="bk-sync-step__label">۱ — انتخاب افزونه</div>
+                <div class="bk-sync-providers bk-sync-providers--center">
+                    <button type="button" class="bk-sync-provider" :class="{ 'is-on': seoImport.sources.rankmath && seoImport.sources.rankmath.active, 'is-selected': seoImport.selectedSource === 'rankmath' }"
+                        @click="seoImport.selectedSource = 'rankmath'; seoImport.direction = ''; seoImport.phase = 'direction'"
+                        >
+                        <span class="bk-sync-provider__badge" :class="(seoImport.sources.rankmath && (seoImport.sources.rankmath.plugin_active || seoImport.sources.rankmath.posts)) ? 'is-ok' : 'is-off'"
+                              x-text="(seoImport.sources.rankmath && (seoImport.sources.rankmath.plugin_active || seoImport.sources.rankmath.posts)) ? '✓ فعال' : 'آماده انتخاب'"></span>
+                        <div class="bk-sync-provider__logo bk-sync-provider__logo--rm">RM</div>
+                        <strong>Rank Math</strong>
+                        <small x-text="(seoImport.sources.rankmath && seoImport.sources.rankmath.posts) ? (seoImport.sources.rankmath.posts + ' مقاله دارای متا') : 'افزونه شناسایی نشد'"></small>
+                    </button>
+                    <button type="button" class="bk-sync-provider" :class="{ 'is-on': seoImport.sources.yoast && seoImport.sources.yoast.active, 'is-selected': seoImport.selectedSource === 'yoast' }"
+                        @click="seoImport.selectedSource = 'yoast'; seoImport.direction = ''; seoImport.phase = 'direction'"
+                        >
+                        <span class="bk-sync-provider__badge" :class="(seoImport.sources.yoast && (seoImport.sources.yoast.plugin_active || seoImport.sources.yoast.posts)) ? 'is-ok' : 'is-off'"
+                              x-text="(seoImport.sources.yoast && (seoImport.sources.yoast.plugin_active || seoImport.sources.yoast.posts)) ? '✓ فعال' : 'آماده انتخاب'"></span>
+                        <div class="bk-sync-provider__logo bk-sync-provider__logo--yo">Y</div>
+                        <strong>Yoast SEO</strong>
+                        <small x-text="(seoImport.sources.yoast && seoImport.sources.yoast.posts) ? (seoImport.sources.yoast.posts + ' مقاله دارای متا') : 'افزونه شناسایی نشد'"></small>
                     </button>
                 </div>
             </div>
+
+            <!-- Step 2: import / export -->
+            <div x-show="seoImport.phase === 'direction' && seoImport.selectedSource" class="bk-sync-step" x-cloak>
+                <div class="bk-sync-step__label">۲ — جهت همگام‌سازی
+                    <button type="button" class="bk-sync-back" @click="seoImport.phase = 'pick'; seoImport.selectedSource = ''">← تغییر افزونه</button>
+                </div>
+                <div class="bk-sync-dir-row">
+                    <button type="button" class="bk-sync-dir-card" @click="seoImport.direction = 'import'; selectSeoSource(seoImport.selectedSource)">
+                        <div class="bk-sync-dir-card__art bk-sync-dir-card__art--in" aria-hidden="true">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <strong>درون‌ریزی</strong>
+                        <small x-text="(seoImport.selectedSource === 'yoast' ? 'Yoast' : 'Rank Math') + ' → Bankai'"></small>
+                        <span class="bk-sync-dir-card__cta">شروع استخراج</span>
+                    </button>
+                    <button type="button" class="bk-sync-dir-card" @click="seoImport.direction = 'export'; selectSeoSource(seoImport.selectedSource)">
+                        <div class="bk-sync-dir-card__art bk-sync-dir-card__art--out" aria-hidden="true">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <strong>برون‌ریزی</strong>
+                        <small x-text="'Bankai → ' + (seoImport.selectedSource === 'yoast' ? 'Yoast' : 'Rank Math')"></small>
+                        <span class="bk-sync-dir-card__cta">شروع ارسال</span>
+                    </button>
+                </div>
+                <label class="bk-sync-overwrite">
+                    <input type="checkbox" x-model="seoImport.overwrite">
+                    در صورت وجود، فیلدهای قبلی بازنویسی شوند
+                </label>
+            </div>
+
+            <!-- Progress + cards -->
+            <div x-show="seoImport.phase === 'list' || seoImport.phase === 'run' || seoImport.phase === 'done'" class="bk-sync-run" x-cloak>
+                <div class="bk-sync-loader" x-show="seoImport.running">
+                    <div class="bk-sync-spinner"></div>
+                    <div>
+                        <strong x-text="seoImport.stepText || 'در حال پردازش…'"></strong>
+                        <div class="bk-sync-bar" style="margin-top:10px;"><div class="bk-sync-bar__fill" :style="'width:' + (seoImport.progress || 0) + '%'"></div></div>
+                        <small x-text="(seoImport.processed || 0) + ' / ' + (seoImport.queueTotal || 0) + ' — موفق ' + (seoImport.importedCount || 0) + ' | رد شده ' + (seoImport.skippedCount || 0)"></small>
+                    </div>
+                </div>
+                <div class="bk-sync-cards">
+                    <template x-for="card in seoImport.cards" :key="card.id">
+                        <div class="bk-sync-card" :class="'is-' + (card.status || 'pending')">
+                            <div class="bk-sync-card__head">
+                                <div>
+                                    <strong x-text="card.title"></strong>
+                                    <div class="bk-sync-card__meta" x-text="'#' + card.id + (card.type ? ' · ' + card.type : '')"></div>
+                                </div>
+                                <span class="bk-sync-card__status" x-text="card.statusLabel || 'در صف'"></span>
+                            </div>
+                            <div class="bk-sync-bar bk-sync-bar--sm" x-show="card.status === 'running' || card.progress > 0">
+                                <div class="bk-sync-bar__fill" :style="'width:' + (card.progress || 0) + '%'"></div>
+                            </div>
+                            <ul class="bk-sync-check" x-show="card.checklist && card.checklist.length">
+                                <template x-for="item in card.checklist" :key="item.id">
+                                    <li :class="'is-' + item.status">
+                                        <span x-text="item.status === 'done' ? '✓' : (item.status === 'skip' ? '–' : '…')"></span>
+                                        <span x-text="item.label"></span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+                </div>
+                <div class="bk-sync-done" x-show="seoImport.done || seoImport.phase === 'done'">
+                    <div class="bk-sync-done__ico">✓</div>
+                    <strong x-text="seoImport.doneTitle || 'همگام‌سازی کامل شد'"></strong>
+                    <p x-text="seoImport.doneMessage || ''"></p>
+                    <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="seoImport.phase='pick'; seoImport.selectedSource=''; seoImport.direction=''; seoImport.done=false; seoImport.cards=[]; seoImport.progress=0;">شروع مجدد</button>
+                </div>
+            </div>
         </div>
+
+        
     </div>
 
-    <div x-show="seoPanel === 'analytics'" x-cloak class="bk-ga-panel">
+<div x-show="seoPanel === 'analytics'" x-cloak class="bk-ga-panel">
         <div class="bk-conn-hero bankai-card">
             <div class="bk-conn-hero__icon">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/></svg>
@@ -652,6 +668,11 @@ $page_count  = (int) wp_count_posts('page')->publish;
 
 <!-- Site-wide SEO -->
     <div x-show="seoPanel === 'sitewide'" class="bk-sitewide-panel" style="display:none" :style="seoPanel === 'sitewide' ? 'display:block' : 'display:none'">
+
+                <div class="bk-section-hero">
+            <h2>سئوی سایت</h2>
+            <p>سازمان، آرشیوها، noindex، نقشه سایت، hreflang و اتصال Search Console — همه در یک نمای مدرن.</p>
+        </div>
         <h3 class="bk-section-title">سئوی سراسری سایت</h3>
 
         <div class="bk-site-conn-strip">
@@ -776,898 +797,182 @@ $page_count  = (int) wp_count_posts('page')->publish;
         </div>
 
         <!-- Visual noindex toggles -->
-        <div class="bk-visual-toggles" style="margin-bottom:16px;">
-            <h4 class="bk-vsec-title">noindex آرشیوها</h4>
+        <div class="bk-noindex-panel bankai-card" style="padding:18px;margin-bottom:16px;border-radius:16px;border:1px solid #E2E8F0;background:linear-gradient(180deg,#fff,#F8FAFC);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+                <div>
+                    <h4 style="margin:0 0 6px;font-size:15px;font-weight:900;color:#0F172A;">noindex آرشیوها</h4>
+                    <p style="margin:0;font-size:12px;color:#64748B;line-height:1.55;">صفحات آرشیوی که نباید در گوگل ایندکس شوند را روشن کنید. هر کارت فعال = <code>noindex</code>.</p>
+                </div>
+                <span class="bk-seo-chip is-ok" style="font-size:11px;">robots</span>
+            </div>
             <div class="bk-vtoggle-grid">
-                <label class="bk-vtoggle" :class="{ 'is-on': sw.settings.noindex_author }"><input type="checkbox" x-model="sw.settings.noindex_author"><span class="bk-vtoggle__art">👤</span><span>نویسنده</span></label>
-                <label class="bk-vtoggle" :class="{ 'is-on': sw.settings.noindex_date }"><input type="checkbox" x-model="sw.settings.noindex_date"><span class="bk-vtoggle__art">📅</span><span>تاریخ</span></label>
-                <label class="bk-vtoggle" :class="{ 'is-on': sw.settings.noindex_tag }"><input type="checkbox" x-model="sw.settings.noindex_tag"><span class="bk-vtoggle__art">🏷</span><span>برچسب</span></label>
-                <label class="bk-vtoggle" :class="{ 'is-on': sw.settings.noindex_search }"><input type="checkbox" x-model="sw.settings.noindex_search"><span class="bk-vtoggle__art">🔍</span><span>جستجو</span></label>
-                <label class="bk-vtoggle" :class="{ 'is-on': sw.settings.noindex_attach }"><input type="checkbox" x-model="sw.settings.noindex_attach"><span class="bk-vtoggle__art">📎</span><span>پیوست</span></label>
+                <label class="bk-vtoggle" :class="{ 'is-on': !!sw.settings.noindex_author }"><input type="checkbox" x-model="sw.settings.noindex_author" @change="saveSitewide()"><span class="bk-vtoggle__art bk-vtoggle__art--user" aria-hidden="true"></span><span>نویسنده</span><small>Author archive</small></label>
+                <label class="bk-vtoggle" :class="{ 'is-on': !!sw.settings.noindex_date }"><input type="checkbox" x-model="sw.settings.noindex_date" @change="saveSitewide()"><span class="bk-vtoggle__art bk-vtoggle__art--date" aria-hidden="true"></span><span>تاریخ</span><small>Date archive</small></label>
+                <label class="bk-vtoggle" :class="{ 'is-on': !!sw.settings.noindex_tag }"><input type="checkbox" x-model="sw.settings.noindex_tag" @change="saveSitewide()"><span class="bk-vtoggle__art bk-vtoggle__art--tag" aria-hidden="true"></span><span>برچسب</span><small>Tag archive</small></label>
+                <label class="bk-vtoggle" :class="{ 'is-on': !!sw.settings.noindex_search }"><input type="checkbox" x-model="sw.settings.noindex_search" @change="saveSitewide()"><span class="bk-vtoggle__art bk-vtoggle__art--search" aria-hidden="true"></span><span>جستجو</span><small>Search results</small></label>
+                <label class="bk-vtoggle" :class="{ 'is-on': !!sw.settings.noindex_attach }"><input type="checkbox" x-model="sw.settings.noindex_attach" @change="saveSitewide()"><span class="bk-vtoggle__art bk-vtoggle__art--attach" aria-hidden="true"></span><span>پیوست</span><small>Attachments</small></label>
             </div>
         </div>
 
-        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
-            <h4 style="margin:0 0 12px;font-size:13px;">Organization / WebSite Schema</h4>
+<div class="bk-seo-site-grid">
+        <div class="bankai-card bk-seo-color-card bk-seo-color-indigo" style="padding:16px;margin-bottom:0;">
+            <h4 style="margin:0 0 12px;font-size:13px;font-weight:800;color:#312e81;">Organization / WebSite Schema · PWA</h4>
+            <div style="width:100%;">
             <div class="bk-field"><label>نام سازمان</label><input type="text" x-model="sw.settings.org_name"></div>
-            <div class="bk-field"><label>لوگو (URL)</label><input type="url" dir="ltr" x-model="sw.settings.org_logo"></div>
+            <div class="bk-field">
+                <label>لوگو سازمان</label>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <div x-show="sw.settings.org_logo" style="width:64px;height:64px;border-radius:12px;overflow:hidden;border:1px solid #E2E8F0;background:#F8FAFC;">
+                        <img :src="sw.settings.org_logo" alt="" style="width:100%;height:100%;object-fit:contain;">
+                    </div>
+                    <div style="flex:1;min-width:180px;">
+                        <input type="url" dir="ltr" x-model="sw.settings.org_logo" placeholder="https://…/logo.png" style="width:100%;margin-bottom:8px;">
+                        <div style="display:flex;gap:8px;">
+                            <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="pickOrgLogo()">انتخاب از رسانه</button>
+                            <button type="button" class="bk-seo-btn bk-seo-btn-ghost" x-show="sw.settings.org_logo" @click="sw.settings.org_logo=''">حذف</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="bk-field"><label>sameAs (هر خط یک شبکه اجتماعی)</label><textarea rows="3" dir="ltr" x-model="sw.settings.org_same_as"></textarea></div>
+            
             <label class="bk-switch-row"><span>SearchAction در اسکیمای سایت</span><input type="checkbox" x-model="sw.settings.website_search"></label>
         </div>
 
-
-        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
-            <h4 style="margin:0 0 12px;font-size:13px;">نقشه سایت</h4>
-            <p class="bk-fk-desc">ایندکس: <a :href="sw.sitemapIndex" target="_blank" dir="ltr" x-text="sw.sitemapIndex"></a></p>
-            <div class="bk-field"><label>شناسه پست‌های exclude (با کاما)</label><input type="text" dir="ltr" x-model="sw.settings.sitemap_exclude_ids" placeholder="12, 45, 90"></div>
-        </div>
-
-        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
-            <h4 style="margin:0 0 12px;font-size:13px;">hreflang / چندزبانه</h4>
-            <label class="bk-switch-row"><span>فعال (یا تشخیص خودکار Polylang/WPML)</span><input type="checkbox" x-model="sw.settings.hreflang_enabled"></label>
-            <div class="bk-field"><label>زبان پیش‌فرض</label><input type="text" dir="ltr" x-model="sw.settings.hreflang_default" placeholder="fa"></div>
-        </div>
-
-        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
-            <h4 style="margin:0 0 12px;font-size:13px;">Search Console</h4>
-            <div class="bk-field"><label>Property URL</label><input type="url" dir="ltr" x-model="sw.settings.gsc_property" placeholder="https://example.com/"></div>
-            <p class="bk-fk-desc">تأیید مالکیت از تب یکپارچه‌سازی؛ این فیلد برای لینک سریع و گزارش‌هاست.</p>
-        </div>
-
-        <div style="margin-bottom:20px;">
-            <button type="button" class="button button-primary" @click="saveSitewide()" :disabled="sw.saving">
-                <span x-text="sw.saving ? 'در حال ذخیره…' : 'ذخیره تنظیمات سئوی سایت'"></span>
-            </button>
-        </div>
-
-        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <h4 style="margin:0;font-size:13px;">ریدایرکت سراسری</h4>
-                <button type="button" class="button" @click="sw.redirects.push({id:'',from:'',to:'',code:301})">+ ردیف</button>
-            </div>
-            <template x-for="(r,i) in sw.redirects" :key="'rd'+i">
-                <div style="display:grid;grid-template-columns:1fr 1fr 90px 36px;gap:8px;margin-bottom:8px;">
-                    <input type="text" dir="ltr" placeholder="/old-path" x-model="r.from">
-                    <input type="url" dir="ltr" placeholder="https://…" x-model="r.to">
-                    <select x-model.number="r.code"><option :value="301">301</option><option :value="302">302</option><option :value="410">410</option></select>
-                    <button type="button" class="button" @click="sw.redirects.splice(i,1)">×</button>
+        <!-- PWA full-width card -->
+        <div class="bankai-card" style="padding:20px;margin:16px 0;grid-column:1/-1;width:100%;" x-show="moduleActive.pwa !== false" x-cloak>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+                <div>
+                    <h4 style="margin:0 0 6px;font-size:14px;font-weight:800;color:#312e81;">PWA — اپلیکیشن وب پیشرفته</h4>
+                    <p style="margin:0;font-size:12px;color:#64748b;line-height:1.6">مانیفست، آیکون‌ها، رنگ تم، Service Worker و حالت نمایش. ماژول PWA را از پیشخوان فعال کنید.</p>
                 </div>
-            </template>
-            <button type="button" class="button button-primary" @click="saveRedirects()" :disabled="sw.savingRd">ذخیره ریدایرکت‌ها</button>
-        </div>
-
-        <div class="bankai-card" style="padding:16px;margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <h4 style="margin:0;font-size:13px;">لاگ ۴۰۴</h4>
-                <button type="button" class="button" @click="clear404()">پاک کردن</button>
+                <label class="bk-switch-row" style="margin:0">
+                    <span style="font-size:12px;font-weight:700">فعال‌سازی PWA</span>
+                    <input type="checkbox" x-model="sw.settings.pwa_enabled">
+                </label>
             </div>
-            <template x-if="!sw.log404.length"><p class="bk-fk-desc">موردی ثبت نشده.</p></template>
-            <table class="bk-seo-table" x-show="sw.log404.length">
-                <thead><tr><th>URI</th><th>تعداد</th><th>آخرین</th></tr></thead>
-                <tbody>
-                    <template x-for="row in sw.log404" :key="row.uri">
-                        <tr>
-                            <td dir="ltr" x-text="row.uri"></td>
-                            <td x-text="row.count"></td>
-                            <td x-text="row.last ? new Date(row.last*1000).toLocaleString() : ''"></td>
-                        </tr>
-                    </template>
-                </tbody>
-            </table>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;" x-show="sw.settings.pwa_enabled">
+                <div class="bk-field"><label>نام اپ (Name)</label><input type="text" x-model="sw.settings.pwa_name" :placeholder="sw.settings.org_name || ''"></div>
+                <div class="bk-field"><label>نام کوتاه (Short name)</label><input type="text" x-model="sw.settings.pwa_short_name" maxlength="12"></div>
+                <div class="bk-field"><label>توضیح</label><input type="text" x-model="sw.settings.pwa_description"></div>
+                <div class="bk-field"><label>شروع (Start URL)</label><input type="text" dir="ltr" x-model="sw.settings.pwa_start_url" placeholder="/"></div>
+                <div class="bk-field"><label>Scope</label><input type="text" dir="ltr" x-model="sw.settings.pwa_scope" placeholder="/"></div>
+                <div class="bk-field"><label>حالت نمایش</label>
+                    <select x-model="sw.settings.pwa_display">
+                        <option value="standalone">Standalone</option>
+                        <option value="fullscreen">Fullscreen</option>
+                        <option value="minimal-ui">Minimal UI</option>
+                        <option value="browser">Browser</option>
+                    </select>
+                </div>
+                <div class="bk-field"><label>جهت صفحه</label>
+                    <select x-model="sw.settings.pwa_orientation">
+                        <option value="any">Any</option>
+                        <option value="portrait">Portrait</option>
+                        <option value="landscape">Landscape</option>
+                    </select>
+                </div>
+                <div class="bk-field"><label>رنگ تم (Theme)</label><input type="color" x-model="sw.settings.pwa_theme_color"></div>
+                <div class="bk-field"><label>رنگ پس‌زمینه</label><input type="color" x-model="sw.settings.pwa_bg_color"></div>
+                <div class="bk-field" style="grid-column:1/-1"><label>آیکون ۱۹۲×۱۹۲</label>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <input type="url" dir="ltr" x-model="sw.settings.pwa_icon_192" placeholder="https://…/icon-192.png" style="flex:1;min-width:180px">
+                        <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="pickPwaIcon('192')">رسانه</button>
+                    </div>
+                </div>
+                <div class="bk-field" style="grid-column:1/-1"><label>آیکون ۵۱۲×۵۱۲</label>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <input type="url" dir="ltr" x-model="sw.settings.pwa_icon_512" placeholder="https://…/icon-512.png" style="flex:1;min-width:180px">
+                        <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="pickPwaIcon('512')">رسانه</button>
+                    </div>
+                </div>
+                <label class="bk-switch-row"><span>Service Worker (کش آفلاین پایه)</span><input type="checkbox" x-model="sw.settings.pwa_sw"></label>
+                <label class="bk-switch-row"><span>نمایش دکمه «نصب اپ» در فرانت</span><input type="checkbox" x-model="sw.settings.pwa_install_prompt"></label>
+            </div>
+            <p style="margin:12px 0 0;font-size:11px;color:#94a3b8" x-show="sw.settings.pwa_enabled">مانیفست در <code dir="ltr">/manifest.webmanifest</code> تولید می‌شود. برای HTTPS و آیکون‌های مربع PNG الزامی است.</p>
         </div>
-    </div>
 
+        <div class="bk-seo-site-grid-rest" style="display:none">
+        </div>
 </div>
-<style>
 
-.bk-site-hero{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:20px;margin-bottom:24px;align-items:start}
-@media(max-width:900px){.bk-site-hero{grid-template-columns:1fr;justify-items:center}}
-.bk-tablet-frame{position:relative;border:12px solid #1e293b;border-radius:2rem;background:#1e293b;max-width:320px;margin:0 auto;box-shadow:0 20px 50px rgba(15,23,42,.2)}
-.bk-tablet-btn{position:absolute;width:3px;background:#334155;border-radius:2px}
-.bk-tablet-btn--1{height:28px;inset-inline-start:-14px;top:64px}
-.bk-tablet-btn--2{height:40px;inset-inline-start:-14px;top:110px}
-.bk-tablet-btn--3{height:40px;inset-inline-start:-14px;top:158px}
-.bk-tablet-btn--4{height:56px;inset-inline-end:-14px;top:128px}
-.bk-tablet-screen{border-radius:1.35rem;overflow:hidden;background:#f8fafc;height:420px;position:relative}
-.bk-tablet-chrome{display:flex;align-items:center;gap:6px;padding:8px 10px;background:#fff;border-bottom:1px solid #e2e8f0;font-size:11px;color:#64748b}
-.bk-tablet-dot{width:7px;height:7px;border-radius:50%;background:#cbd5e1}
-.bk-tablet-dot:nth-child(1){background:#f87171}
-.bk-tablet-dot:nth-child(2){background:#fbbf24}
-.bk-tablet-dot:nth-child(3){background:#34d399}
-.bk-tablet-url{flex:1;margin-inline-start:6px;background:#f1f5f9;border-radius:6px;padding:3px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bk-tablet-iframe{border:0;background:#fff;pointer-events:none;transform:scale(.85);transform-origin:top center;width:117.6%;height:calc(100% - 36px);margin-left:-8.8%}
-.bk-tablet-overlay{position:absolute;left:0;right:0;bottom:0;padding:12px;background:linear-gradient(to top,rgba(15,23,42,.88),transparent);display:flex;justify-content:space-between;align-items:flex-end;gap:8px;color:#fff;pointer-events:none}
-.bk-tablet-site{display:flex;gap:8px;align-items:center;min-width:0}
-.bk-tablet-site strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bk-tablet-site p{margin:2px 0 0;font-size:11px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
-.bk-tablet-favicon{border-radius:8px;background:#fff}
-.bk-tablet-score{text-align:center;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border-radius:12px;padding:8px 12px;flex-shrink:0}
-.bk-tablet-score__num{display:block;font-size:22px;font-weight:800;line-height:1}
-.bk-tablet-score__lab{font-size:10px;opacity:.9}
-.bk-site-metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
-.bk-metric-card{display:flex;gap:12px;align-items:center;padding:14px;border-radius:14px;border:1px solid #E2E8F0;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.04)}
-.bk-metric-card--wide{grid-column:1/-1}
-.bk-metric-card__ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.bk-metric-card__val{font-size:20px;font-weight:800;color:#0F172A;line-height:1.1}
-.bk-metric-card__lab{font-size:12px;color:#64748B;font-weight:600;margin-top:2px}
-.bk-vsec-title{margin:0 0 10px;font-size:13px;font-weight:800;color:#0F172A}
-.bk-vtoggle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
-.bk-vtoggle{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;border-radius:14px;border:1.5px solid #E2E8F0;background:#fff;cursor:pointer;font-size:12px;font-weight:700;color:#334155;text-align:center}
-.bk-vtoggle input{position:absolute;opacity:0;pointer-events:none}
-.bk-vtoggle.is-on,.bk-vtoggle:has(input:checked){border-color:#8B9BB4;box-shadow:0 0 0 2px rgba(139,155,180,.2);background:#F8FAFC}
-.bk-vtoggle__art{font-size:20px;line-height:1}
+        <!-- /.bk-seo-site-grid -->
 
-
-
-/* Analytics — aligned with Bankai admin theme */
-.bk-analytics-dash {
-  background: var(--bankai-card-bg, #fff);
-  border: 1px solid var(--bankai-card-border, #E8E8EA);
-  border-radius: var(--bankai-radius-lg, 20px);
-  padding: 18px 20px 20px;
-  margin-bottom: 18px;
-  box-shadow: var(--bankai-shadow-1);
-  color: var(--bankai-text-main, #1A1A1A);
-}
-.bk-an-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-.bk-an-brand {
-  font-size: 11px;
-  color: var(--bankai-text-muted, #8A8F98);
-  font-weight: 650;
-  letter-spacing: .02em;
-}
-.bk-an-title {
-  margin: 4px 0;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--bankai-text-main);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.bk-an-badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 999px;
-}
-.bk-an-badge.is-up, .bk-an-chip.is-up {
-  background: var(--bankai-success-subtle, rgba(48,209,88,.12));
-  color: #1a7f37;
-}
-.bk-an-badge.is-down, .bk-an-chip.is-down {
-  background: rgba(255,69,58,.12);
-  color: var(--bankai-danger, #FF453A);
-}
-.bk-an-sub {
-  margin: 0;
-  font-size: 12px;
-  color: var(--bankai-text-muted);
-}
-.bk-an-ranges {
-  display: flex;
-  gap: 4px;
-  background: #F4F4F5;
-  padding: 4px;
-  border-radius: 12px;
-}
-.bk-an-range {
-  border: none;
-  background: transparent;
-  color: var(--bankai-text-muted);
-  font-size: 12px;
-  font-weight: 650;
-  padding: 6px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-family: inherit;
-}
-.bk-an-range.is-active {
-  background: #fff;
-  color: var(--bankai-text-main);
-  box-shadow: var(--bankai-shadow-1);
-}
-.bk-an-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-@media (max-width: 960px) {
-  .bk-an-grid { grid-template-columns: 1fr 1fr; }
-}
-@media (max-width: 640px) {
-  .bk-an-grid { grid-template-columns: 1fr; }
-}
-.bk-an-card {
-  background: #FAFBFC;
-  border: 1px solid var(--bankai-border-subtle, #E8E8EA);
-  border-radius: var(--bankai-radius-md, 16px);
-  padding: 14px 16px;
-}
-.bk-an-card__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: var(--bankai-text-muted);
-  font-weight: 650;
-  margin-bottom: 6px;
-}
-.bk-an-chip {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-weight: 700;
-}
-.bk-an-card__val {
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--bankai-text-main);
-  letter-spacing: -.02em;
-}
-.bk-an-spark {
-  width: 100%;
-  height: 44px;
-  margin-top: 8px;
-  display: block;
-}
-.bk-an-hint {
-  font-size: 12px;
-  color: var(--bankai-text-muted);
-  margin: 8px 0 0;
-}
-.bk-an-devices {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.bk-an-dev-label { font-size: 11px; color: var(--bankai-text-muted); font-weight: 650; }
-.bk-an-dev-pct { font-size: 20px; font-weight: 800; color: var(--bankai-text-main); }
-.bk-an-dev-hits { font-size: 11px; color: var(--bankai-text-subtle); }
-.bk-an-bar {
-  display: flex;
-  height: 10px;
-  border-radius: 99px;
-  overflow: hidden;
-  background: #E8E8EA;
-}
-.bk-an-bar__seg.is-desk, .bk-an-legend i.is-desk { background: #5C6B7A; }
-.bk-an-bar__seg.is-mob, .bk-an-legend i.is-mob { background: #8B9BB4; }
-.bk-an-bar__seg.is-tab, .bk-an-legend i.is-tab { background: #C5CBD3; }
-.bk-an-legend {
-  display: flex;
-  gap: 14px;
-  margin-top: 10px;
-  font-size: 11px;
-  color: var(--bankai-text-muted);
-}
-.bk-an-legend i {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  margin-inline-end: 4px;
-}
-.bk-an-countries { max-height: 180px; overflow: auto; }
-.bk-an-co-row {
-  display: grid;
-  grid-template-columns: 36px 1fr 48px;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 8px;
-  font-size: 12px;
-}
-.bk-an-co-code {
-  font-weight: 800;
-  font-family: ui-monospace, monospace;
-  color: var(--bankai-accent);
-}
-.bk-an-co-track {
-  height: 8px;
-  background: #E8E8EA;
-  border-radius: 99px;
-  overflow: hidden;
-}
-.bk-an-co-track span {
-  display: block;
-  height: 100%;
-  background: var(--bankai-accent);
-  border-radius: 99px;
-}
-.bk-an-co-hits { text-align: end; color: var(--bankai-text-muted); font-weight: 700; }
-.bk-an-card--donut {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 160px;
-}
-.bk-an-donut {
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.bk-an-donut__inner {
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  background: #fff;
-  border: 1px solid var(--bankai-border-subtle);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.bk-an-donut__inner strong { font-size: 18px; color: var(--bankai-text-main); }
-.bk-an-donut__inner span { font-size: 11px; color: var(--bankai-text-muted); }
-
-/* GA connection panel */
-.bk-ga-panel { margin-bottom: 20px; }
-.bk-conn-hero {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 18px 20px;
-  margin-bottom: 14px;
-}
-.bk-conn-hero__icon {
-  width: 48px; height: 48px;
-  border-radius: 14px;
-  background: var(--bankai-accent-subtle);
-  color: var(--bankai-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.bk-conn-hero__text { flex: 1; min-width: 0; }
-.bk-conn-hero__text h3 { margin: 0 0 6px; font-size: 16px; font-weight: 800; }
-.bk-conn-hero__text p { margin: 0; font-size: 12px; color: var(--bankai-text-muted); line-height: 1.6; }
-.bk-seo-chip.is-ok { background: var(--bankai-success-subtle); color: #1a7f37; }
-.bk-seo-chip.is-warn { background: rgba(255,69,58,.1); color: var(--bankai-danger); }
-.bk-conn-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 14px;
-}
-@media (max-width: 900px) {
-  .bk-conn-grid { grid-template-columns: 1fr; }
-}
-.bk-conn-card { padding: 16px; }
-.bk-conn-card__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
-.bk-conn-card__head strong { font-size: 13px; }
-.bk-guide-link {
-  font-size: 11px;
-  font-weight: 650;
-  color: var(--bankai-accent);
-  text-decoration: none;
-}
-.bk-guide-link:hover { text-decoration: underline; }
-.bk-conn-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-.bk-conn-status { padding: 16px 18px; }
-.bk-conn-status h4 { margin: 0 0 10px; font-size: 13px; }
-.bk-conn-status ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: 13px;
-  color: var(--bankai-text-muted);
-  line-height: 1.9;
-}
-.bk-dot {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  margin-inline-end: 6px;
-  background: #C5CBD3;
-}
-.bk-dot.ok { background: var(--bankai-success); }
-.bk-dot.off { background: #E8E8EA; }
-
-/* Site SEO connection strip */
-.bk-site-conn-strip {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin: 16px 0 20px;
-}
-@media (max-width: 960px) {
-  .bk-site-conn-strip { grid-template-columns: 1fr 1fr; }
-}
-.bk-site-conn-card {
-  display: flex;
-  gap: 12px;
-  padding: 14px 16px;
-  align-items: flex-start;
-}
-.bk-site-conn-card__ico {
-  width: 40px; height: 40px;
-  border-radius: 12px;
-  background: var(--bankai-accent-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-.bk-site-conn-card strong {
-  display: block;
-  font-size: 13px;
-  margin-bottom: 2px;
-}
-.bk-site-conn-card p {
-  margin: 0 0 6px;
-  font-size: 11px;
-  color: var(--bankai-text-muted);
-}
-
-.bk-sitewide-panel .bk-field { margin-bottom: 12px; }
-.bk-sitewide-panel .bk-field label { display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; }
-.bk-sitewide-panel .bk-field input,
-.bk-sitewide-panel .bk-field textarea,
-.bk-sitewide-panel .bk-field select {
-  width: 100%; max-width: 100%; box-sizing: border-box;
-  border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 10px; font-size: 13px;
-}
-.bk-sitewide-panel .bk-switch-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px; color: #334155;
-}
-.bk-sitewide-panel .bankai-card { background:#fff; border:1px solid #E2E8F0; border-radius:12px; }
-
-/* CSS Styling System for Bankai SEO Engine */
-#tab-seo-engine { font-family: inherit; color: #0F172A; }
-#tab-seo-engine [x-cloak] { display: none !important; }
-
-.bk-section-title { font-size: 15px; font-weight: 800; color: #0F172A; margin: 0 0 14px; }
-.bk-seo-header { border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; background: #fff; margin-bottom: 20px; }
-.bk-seo-header-main { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
-.bk-seo-title-flex { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.bk-seo-h2 { font-size: 18px; font-weight: 800; color: #0F172A; margin: 0; display: flex; align-items: center; gap: 8px; }
-.bk-seo-h2 svg { width: 22px; height: 22px; color: #0969DA; }
-.bk-seo-subtext { font-size: 12px; color: #64748B; margin: 4px 0 0; }
-.bk-seo-chip { font-size: 10px; font-weight: 800; background: #F1F5F9; color: #475569; padding: 3px 8px; border-radius: 6px; }
-
-/* Tabs */
-.bk-seo-tabs { display: flex; gap: 8px; border-top: 1px solid #F1F5F9; padding-top: 14px; }
-.bk-seo-tab { background: transparent; border: none; font-size: 13px; font-weight: 700; color: #64748B; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-.bk-seo-tab:hover { background: #F8FAFC; color: #0F172A; }
-.bk-seo-tab.is-active { background: #EFF6FF; color: #2563EB; }
-
-/* Buttons */
-.bk-seo-btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border: 1px solid transparent; transition: all .15s ease; }
-.bk-seo-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.bk-seo-btn-primary { background: #2563EB; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.25); }
-.bk-seo-btn-primary:hover { background: #1D4ED8; }
-.bk-seo-btn-ghost { background: #fff; border-color: #CBD5E1; color: #334155; }
-.bk-seo-btn-ghost:hover { background: #F8FAFC; }
-.bk-seo-btn-sm { background: #F1F5F9; border: 1px solid #CBD5E1; color: #2563EB; font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
-.bk-seo-btn-sm:hover { background: #E2E8F0; }
-
-/* Grids */
-.bk-seo-grid-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-.bk-seo-grid-2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
-
-.bk-seo-mod-card { padding: 18px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #E2E8F0; border-radius: 12px; background: #fff; }
-.bk-seo-mod-icon { width: 36px; height: 36px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-.bk-seo-badge { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 3px; }
-.bk-seo-mod-foot { border-top: 1px solid #F1F5F9; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; }
-
-/* Form inputs */
-.bk-seo-label { font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px; }
-.bk-seo-input { width: 100%; padding: 8px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 12px; box-sizing: border-box; outline: none; transition: border-color .15s; }
-.bk-seo-input:focus { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-.bk-seo-input.mono { font-family: ui-monospace, monospace; font-size: 11px; }
-
-/* Audit Banner */
-.bk-seo-audit-card { padding: 20px; border: 1px solid #E2E8F0; border-radius: 12px; background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%); margin-bottom: 24px; }
-.bk-seo-audit-head { display: flex; justify-content: space-between; align-items: center; }
-.bk-seo-audit-list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
-.bk-seo-audit-list li { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; padding: 8px 12px; border-radius: 8px; background: #fff; border: 1px solid #F1F5F9; }
-.bk-seo-audit-list li.is-pass .bk-audit-icon { color: #16A34A; }
-.bk-seo-audit-list li.is-fail .bk-audit-icon { color: #DC2626; }
-
-/* Score Ring */
-.bk-score-ring-sm, .bk-score-ring-lg { position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
-.bk-score-ring-lg { width: 64px; height: 64px; }
-.bk-score-ring-sm svg, .bk-score-ring-lg svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
-.bk-score-ring-sm .bk-track, .bk-score-ring-lg .bk-track { fill: none; stroke: #E2E8F0; stroke-width: 3.5; }
-.bk-score-ring-sm .bk-progress, .bk-score-ring-lg .bk-progress { fill: none; stroke-width: 3.5; stroke-linecap: round; transition: stroke-dashoffset .4s ease; }
-.bk-score-ring-sm .bk-score-num { font-size: 10px; font-weight: 800; }
-.bk-score-ring-lg .bk-score-num { font-size: 15px; font-weight: 800; }
-
-/* Tags */
-.bk-seo-tag { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 10px; font-weight: 700; }
-.bk-seo-tag.focus { background: #EFF6FF; color: #1D4ED8; }
-.bk-seo-tag.muted { background: #F1F5F9; color: #64748B; }
-
-/* Table */
-.bk-seo-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.bk-seo-table th { text-align: right; padding: 10px 12px; background: #F8FAFC; color: #475569; font-weight: 700; border-bottom: 1px solid #E2E8F0; }
-.bk-seo-table td { padding: 10px 12px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
-.bk-seo-cover { width: 40px; height: 40px; border-radius: 6px; background: #F1F5F9; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-.bk-seo-cover img { width: 40px; height: 40px; object-fit: cover; }
-.bk-seo-link { font-size: 11px; color: #2563EB; text-decoration: none; font-weight: 600; }
-.bk-seo-pager { padding: 12px 16px; display: flex; gap: 8px; align-items: center; justify-content: center; border-top: 1px solid #F1F5F9; font-size: 12px; color: #64748B; }
-
-/* Fixed Keywords */
-.bk-fk-section { padding: 20px; border: 1px solid #E2E8F0; border-radius: 12px; background: #fff; margin-bottom: 24px; }
-.bk-fk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-.bk-fk-title { margin: 0; font-size: 14px; font-weight: 800; color: #0F172A; }
-.bk-fk-desc { margin: 4px 0 0; font-size: 12px; color: #64748B; }
-.bk-fk-count { font-size: 11px; font-weight: 800; background: #EFF6FF; color: #1D4ED8; padding: 3px 10px; border-radius: 999px; }
-.bk-fk-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.bk-fk-chip { display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; color: #334155; border: 1px solid #CBD5E1; border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
-.bk-fk-remove { border: none; background: transparent; color: #94A3B8; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
-.bk-fk-remove:hover { color: #DC2626; }
-.bk-fk-empty { font-size: 12px; color: #94A3B8; padding: 12px; background: #F8FAFC; border-radius: 8px; text-align: center; margin-bottom: 12px; }
-.bk-fk-add-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.bk-fk-input { flex: 1; min-width: 200px; }
-
-/* Modals */
-.bk-seo-modal-bg { position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 16px; }
-.bk-seo-modal { width: min(480px, 100%); padding: 0; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); background: #fff; overflow: hidden; }
-.bk-seo-modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #F1F5F9; font-size: 13px; }
-.bk-seo-modal-x { border: none; background: transparent; font-size: 18px; cursor: pointer; color: #94A3B8; }
-.bk-seo-modal-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-.bk-seo-modal-foot { padding: 12px 16px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #F1F5F9; background: #F8FAFC; }
-</style>
-
-<script>
-function bankaiSeoEngineData() {
-    return {
-        seoPanel: 'tools',
-        sw: {
-            settings: {
-                org_name: '', org_logo: '', org_same_as: '', website_search: true,
-                noindex_author: true, noindex_date: true, noindex_tag: false, noindex_search: true, noindex_attach: true,
-                sitemap_exclude_ids: '', hreflang_enabled: false, hreflang_default: '', gsc_property: ''
-            },
-            redirects: [],
-            log404: [],
-            sitemapIndex: '',
-            saving: false,
-            savingRd: false
-        },
-        wizardBusy: false,
-        seoAudit: { running: false, score: 0, items: [] },
-        an: {
-            loading: false, range: '30d', visits: 0, prev_visits: 0, visits_change: 0,
-            series: [], country_count: 0, countries: [], top_posts: [],
-            devices: { desktop: {hits:0,pct:0}, mobile: {hits:0,pct:0}, tablet: {hits:0,pct:0} }, _loaded: false
-        },
-        seoState: <?php
-            $__ss = [];
-            foreach ($seo_mods as $__m) {
-                $__id = $__m['id'] ?? '';
-                if ($__id !== '') {
-                    $__ss[$__id] = !empty($__m['enabled']);
-                }
-            }
-            echo wp_json_encode($__ss);
-        ?>,
-
-        integEdit: {
-            ga4: '<?php echo $ga4; ?>',
-            gtm: '<?php echo $gtm; ?>',
-            gsc: '<?php echo $gsc; ?>',
-            bing: '<?php echo $bing; ?>',
-            yandex: '<?php echo $yandex; ?>',
-            sitemap: <?php echo $sitemap ? 'true' : 'false'; ?>,
-            robots: <?php echo wp_json_encode($robots); ?>
-        },
-        integSaving: { google: false, other: false, robots: false },
-        fixedList: [],
-        fixedKeywordInput: '',
-        savingFixed: false,
         
-        // Articles state
-        articles: [],
-        page: 1,
-        perPage: 10,
-        totalPages: 1,
-        total: 0,
-        searchQ: '',
-        orderby: 'modified',
-        order: 'DESC',
-        loading: false,
+        <div class="bk-data-panel bankai-card" style="padding:0;margin-bottom:16px;overflow:hidden;border-radius:16px;border:1px solid #E2E8F0;">
+            <div class="bk-data-panel__head">
+                <div>
+                    <h4>ریدایرکت سراسری</h4>
+                    <p>قوانین ۳۰۱ / ۳۰۲ / ۴۱۰ — ۱۰ ردیف در هر صفحه</p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" class="bk-seo-btn bk-seo-btn-ghost" @click="sw.redirects.push({id:'',from:'',to:'',code:301})">+ افزودن</button>
+                    <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="saveRedirects()" :disabled="sw.savingRd" x-text="sw.savingRd ? '…' : 'ذخیره'"></button>
+                </div>
+            </div>
+            <div class="bk-data-table-wrap">
+                <table class="bk-data-table">
+                    <thead><tr><th>مسیر مبدأ</th><th>مقصد</th><th style="width:100px">کد</th><th style="width:56px"></th></tr></thead>
+                    <tbody>
+                        <template x-if="!(pagedRedirects||[]).length"><tr><td colspan="4" class="bk-data-empty">ردیفی نیست</td></tr></template>
+                        <template x-for="(r,i) in pagedRedirects" :key="'rd'+((sw.rdPage||1)-1)*10+i">
+                            <tr>
+                                <td><input class="bk-data-input" type="text" dir="ltr" placeholder="/old-path" x-model="r.from"></td>
+                                <td><input class="bk-data-input" type="url" dir="ltr" placeholder="https://…" x-model="r.to"></td>
+                                <td>
+                                    <select class="bk-data-input" x-model.number="r.code">
+                                        <option :value="301">301</option>
+                                        <option :value="302">302</option>
+                                        <option :value="410">410</option>
+                                    </select>
+                                </td>
+                                <td style="text-align:center"><button type="button" class="bk-btn bk-btn-icon" @click="removeRedirectAt(((sw.rdPage||1)-1)*10+i)">×</button></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            <div class="bk-data-pager" x-show="(sw.redirects||[]).length > 10">
+                <button type="button" class="bk-seo-btn bk-seo-btn-ghost" :disabled="(sw.rdPage||1)<=1" @click="sw.rdPage--">قبلی</button>
+                <span x-text="'صفحه '+(sw.rdPage||1)+' از '+rdTotalPages"></span>
+                <button type="button" class="bk-seo-btn bk-seo-btn-ghost" :disabled="(sw.rdPage||1)>=rdTotalPages" @click="sw.rdPage++">بعدی</button>
+            </div>
+        </div>
 
-        edit: { open: false, row: null, seo_title: '', description: '', focus_keyword: '', keywords_str: '', saving: false },
+        <div class="bk-data-panel bankai-card" style="padding:0;margin-bottom:16px;overflow:hidden;border-radius:16px;border:1px solid #E2E8F0;">
+            <div class="bk-data-panel__head">
+                <div>
+                    <h4>لاگ ۴۰۴</h4>
+                    <p>آدرس‌های یافت‌نشده — ۱۰ مورد در هر صفحه</p>
+                </div>
+                <button type="button" class="bk-seo-btn bk-seo-btn-ghost" @click="clear404()">پاک کردن</button>
+            </div>
+            <div class="bk-data-table-wrap">
+                <table class="bk-data-table">
+                    <thead><tr><th>URI</th><th style="width:90px">تعداد</th><th style="width:170px">آخرین</th></tr></thead>
+                    <tbody>
+                        <template x-if="!(paged404||[]).length"><tr><td colspan="3" class="bk-data-empty">موردی ثبت نشده</td></tr></template>
+                        <template x-for="row in paged404" :key="row.uri">
+                            <tr>
+                                <td dir="ltr" style="font-family:ui-monospace,monospace;font-size:12px" x-text="row.uri"></td>
+                                <td><span class="bk-count-pill" x-text="row.count"></span></td>
+                                <td style="font-size:12px;color:#64748B" x-text="row.last ? new Date(row.last*1000).toLocaleString('fa-IR') : '—'"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            <div class="bk-data-pager" x-show="(sw.log404||[]).length > 10">
+                <button type="button" class="bk-seo-btn bk-seo-btn-ghost" :disabled="(sw.log404Page||1)<=1" @click="sw.log404Page--">قبلی</button>
+                <span x-text="'صفحه '+(sw.log404Page||1)+' از '+log404TotalPages"></span>
+                <button type="button" class="bk-seo-btn bk-seo-btn-ghost" :disabled="(sw.log404Page||1)>=log404TotalPages" @click="sw.log404Page++">بعدی</button>
+            </div>
+        </div>
 
 
-        loadAnalyticsReport: function () {
-            var self = this;
-            self.an.loading = true;
-            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
-            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
-            fetch(root + 'analytics/report?range=' + encodeURIComponent(self.an.range || '30d'), {
-                credentials: 'same-origin',
-                headers: { 'X-WP-Nonce': nonce }
-            }).then(function (r) { return r.json(); }).then(function (j) {
-                self.an.loading = false;
-                var d = (j && j.data) ? j.data : j;
-                if (!d || typeof d !== 'object') return;
-                self.an.visits = d.visits || 0;
-                self.an.prev_visits = d.prev_visits || 0;
-                self.an.visits_change = d.visits_change || 0;
-                self.an.series = d.series || [];
-                if (d.devices) self.an.devices = d.devices;
-                self.an.countries = d.countries || [];
-                self.an.country_count = d.country_count || 0;
-                self.an.top_posts = d.top_posts || [];
-                self.an._loaded = true;
-            }).catch(function () { self.an.loading = false; });
-        },
-        formatAnNum: function (n) {
-            n = parseInt(n, 10) || 0;
-            if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-            if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
-            return String(n);
-        },
-        sparkPath: function (series) {
-            series = series || [];
-            if (!series.length) return 'M0 40 L200 40';
-            var max = 1;
-            for (var i = 0; i < series.length; i++) { if ((series[i].h || 0) > max) max = series[i].h; }
-            var w = 200, h = 48, step = w / Math.max(1, series.length - 1);
-            var d = '';
-            for (var j = 0; j < series.length; j++) {
-                var x = j * step;
-                var y = h - ((series[j].h || 0) / max) * (h - 4) - 2;
-                d += (j === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
-            }
-            return d;
-        },
-        sparkArea: function (series) {
-            return this.sparkPath(series) + ' L200 48 L0 48 Z';
-        },
-        countryPct: function (hits) {
-            var max = 1;
-            var list = this.an.countries || [];
-            for (var i = 0; i < list.length; i++) { if (list[i].hits > max) max = list[i].hits; }
-            return Math.max(4, Math.round((hits / max) * 100));
-        },
-        donutStyle: function () {
-            var d = this.an.devices || {};
-            var a = (d.desktop && d.desktop.pct) || 0;
-            var b = (d.mobile && d.mobile.pct) || 0;
-            return 'background:conic-gradient(#5C6B7A 0 ' + a + '%, #8B9BB4 ' + a + '% ' + (a + b) + '%, #C5CBD3 ' + (a + b) + '% 100%)';
-        },
-        loadSitewide: function () {
-            var self = this;
-            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
-            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
-            fetch(root + 'seo/sitewide', { credentials: 'same-origin', headers: { 'X-WP-Nonce': nonce } })
-                .then(function (r) { return r.json(); })
-                .then(function (j) {
-                    if (!j || !j.success || !j.data) return;
-                    if (j.data.settings) self.sw.settings = Object.assign({}, self.sw.settings, j.data.settings);
-                    self.sw.redirects = j.data.redirects || [];
-                    self.sw.log404 = j.data.log404 || [];
-                    self.sw.sitemapIndex = (window.location.origin || '') + '/sitemap.xml';
-                }).catch(function () {});
-        },
-        saveSitewide: function () {
-            var self = this;
-            self.sw.saving = true;
-            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
-            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
-            fetch(root + 'seo/sitewide', {
-                method: 'POST', credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
-                body: JSON.stringify({ settings: self.sw.settings })
-            }).then(function (r) { return r.json(); }).then(function (j) {
-                self.sw.saving = false;
-                if (window.bankaiAdmin && bankaiAdmin.showToast) bankaiAdmin.showToast((j && j.success) ? 'ذخیره شد' : 'خطا', j && j.success ? 'success' : 'error');
-            }).catch(function () { self.sw.saving = false; });
-        },
-        saveRedirects: function () {
-            var self = this;
-            self.sw.savingRd = true;
-            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
-            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
-            fetch(root + 'seo/redirects', {
-                method: 'POST', credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
-                body: JSON.stringify({ redirects: self.sw.redirects })
-            }).then(function (r) { return r.json(); }).then(function (j) {
-                self.sw.savingRd = false;
-                if (j && j.data) self.sw.redirects = j.data;
-                if (window.bankaiAdmin && bankaiAdmin.showToast) bankaiAdmin.showToast('ریدایرکت‌ها ذخیره شد', 'success');
-            }).catch(function () { self.sw.savingRd = false; });
-        },
-        clear404: function () {
-            var self = this;
-            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
-            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
-            fetch(root + 'seo/404-log', { method: 'DELETE', credentials: 'same-origin', headers: { 'X-WP-Nonce': nonce } })
-                .then(function () { self.sw.log404 = []; });
-        },
-        toggleSeoModule: function (modId) {
-            var self = this;
-            var enabled = !!self.seoState[modId];
-            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
-            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
-            fetch(root + 'module/' + encodeURIComponent(modId), {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
-                body: JSON.stringify({ enabled: enabled })
-            }).then(function (r) { return r.json(); }).then(function (j) {
-                if (j && j.success) {
-                    if (window.bankaiAdmin && bankaiAdmin.showToast) bankaiAdmin.showToast(j.message || 'ذخیره شد', 'success');
-                    else if (typeof Alpine !== 'undefined' && window.bankaiShowToast) window.bankaiShowToast(j.message || 'ذخیره شد');
-                } else {
-                    self.seoState[modId] = !enabled;
-                    if (window.bankaiAdmin && bankaiAdmin.showToast) bankaiAdmin.showToast((j && j.message) || 'خطا در ذخیره', 'error');
-                }
-            }).catch(function () {
-                self.seoState[modId] = !enabled;
-            });
-        },
-        initEngine: function () {
-            var self = this;
-            setTimeout(function () { if (self.seoPanel === 'tools') self.loadAnalyticsReport(); }, 300);
-            // Seed module toggles from server-rendered state if empty
-            if (!this.seoState || !Object.keys(this.seoState).length) {
-                var mods = (window.bankaiState && window.bankaiState.seoModules) || [];
-                var map = {};
-                (mods || []).forEach(function (m) {
-                    if (m && m.id) map[m.id] = !!m.enabled;
-                });
-                this.seoState = map;
-            }
-            this.parseFixedKeywords(<?php echo wp_json_encode($fixed_raw); ?>);
-            this.runSeoAuditInline();
-        },
-        parseFixedKeywords: function(raw) {
-            this.fixedList = String(raw || '').split(/[,،\n]+/).map(s => s.trim()).filter(Boolean);
-        },
-        scoreColor: function (s) {
-            s = parseInt(s, 10) || 0;
-            if (s >= 80) return '#16A34A';
-            if (s >= 50) return '#D97706';
-            return '#DC2626';
-        },
-        cfg: function () {
-            return window.bankaiCoreData || window.bankaiEditorSeo || {};
-        },
-        openArticlesPanel: function () {
-            this.seoPanel = 'articles';
-            if (!this.articles.length) {
-                this.loadArticles();
-            }
-        },
-        loadArticles: async function () {
-            this.loading = true;
-            try {
-                const c = this.cfg();
-                const base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
-                const url = `${base}seo/articles?page=${this.page}&per_page=${this.perPage}&search=${encodeURIComponent(this.searchQ || '')}&orderby=${this.orderby}&order=${this.order}`;
-                
-                const r = await fetch(url, { credentials: 'same-origin', headers: { 'X-WP-Nonce': c.nonce || '' } });
-                const j = await r.json();
-                
-                if (j && j.success && j.data) {
-                    this.articles = j.data.items || [];
-                    this.total = j.data.total || 0;
-                    this.totalPages = j.data.total_pages || 1;
-                }
-            } catch (e) {
-                console.error('Error loading articles:', e);
-            } finally {
-                this.loading = false;
-            }
-        },
-        addFixedKeyword: function() {
-            const kw = this.fixedKeywordInput.trim();
-            if (kw && !this.fixedList.includes(kw)) {
-                this.fixedList.push(kw);
-                this.fixedKeywordInput = '';
-            }
-        },
-        removeFixedKeyword: function(index) {
-            this.fixedList.splice(index, 1);
-        },
-        saveFixedKeywords: async function () {
-            this.savingFixed = true;
-            try {
-                const c = this.cfg();
-                const base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
-                const r = await fetch(base + 'seo/fixed-keywords', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': c.nonce || '' },
-                    body: JSON.stringify({ keywords: this.fixedList })
-                });
-                const j = await r.json();
-                if (j && j.success) {
-                    this.fixedList = j.data.keywords || this.fixedList;
-                }
-            } catch (e) {
-                console.error('Save failed:', e);
-            } finally {
-                this.savingFixed = false;
-            }
-        },
-        openEdit: function (row) {
-            this.edit = {
-                open: true,
-                row: row,
-                seo_title: row.seo_title || '',
-                description: row.description || '',
-                focus_keyword: row.focus_keyword || '',
-                keywords_str: (row.keywords || []).join('، '),
-                saving: false
-            };
-        },
-        saveEdit: async function () {
-            if (!this.edit.row) return;
-            this.edit.saving = true;
-            try {
-                const c = this.cfg();
-                const base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
-                const keywords = this.edit.keywords_str.split(/[,،]+/).map(s => s.trim()).filter(Boolean);
-                
-                const r = await fetch(base + 'seo/articles/' + this.edit.row.id, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': c.nonce || '' },
-                    body: JSON.stringify({
-                        seo_title: this.edit.seo_title,
-                        description: this.edit.description,
-                        focus_keyword: this.edit.focus_keyword,
-                        keywords: keywords
-                    })
-                });
-                const j = await r.json();
-                if (j && j.success) {
-                    this.edit.open = false;
-                    this.loadArticles();
-                }
-            } catch (e) {
-                console.error('Save meta failed:', e);
-            } finally {
-                this.edit.saving = false;
-            }
-        },
-        runSeoAuditInline: function() {
-            this.seoAudit.running = true;
-            setTimeout(() => {
-                this.seoAudit = {
-                    running: false,
-                    score: 88,
-                    items: [
-                        { key: 'title', label: 'ساختار عناوین و متای صفحات', pass: true },
-                        { key: 'sitemap', label: 'فعال بودن نقشه سایت XML', pass: !!this.integEdit.sitemap },
-                        { key: 'robots', label: 'تنظیمات صحیح robots.txt', pass: true },
-                        { key: 'ga4', label: 'اتصال گوگل آنالیتیکس (GA4)', pass: !!this.integEdit.ga4 }
-                    ]
-                };
-            }, 600);
-        }
-    };
-}
-</script>
+
+
+</div><!-- /tab-seo-engine -->
+</div>
+</div>
+<!-- close tab-seo-engine.php -->

@@ -80,7 +80,7 @@ function bankai_theme_customize_register(WP_Customize_Manager $wp_customize): vo
     $wp_customize->add_setting('bankai_header_builder', [
         'default'           => wp_json_encode(bankai_header_default_config()),
         'type'              => 'theme_mod',
-        'transport'         => 'refresh',
+        'transport'         => 'postMessage',
         'sanitize_callback' => 'bankai_header_sanitize_config',
     ]);
     $wp_customize->add_setting('header_cta_text', [
@@ -984,6 +984,7 @@ function bankai_typo_setting_map(): array {
         'font_color_mode', 'font_preset', 'font_body', 'font_body_size', 'font_body_weight',
         'font_heading', 'font_h1_size', 'font_h2_size', 'text_direction',
         'font_nav', 'font_nav_size', 'font_title', 'font_title_size',
+        'font_button', 'font_button_size', 'font_button_color', 'font_list', 'font_list_size', 'font_list_color',
         'font_h3_size', 'font_h4_size', 'custom_fonts',
         'font_body_color', 'font_body_color_hover', 'font_nav_color', 'font_nav_color_hover',
         'font_title_color', 'font_title_color_hover', 'font_h1_color', 'font_h1_color_hover',
@@ -1013,6 +1014,12 @@ function bankai_register_typo_settings(WP_Customize_Manager $wp_customize): void
         'font_nav_size' => [15, 'absint'],
         'font_title' => ['Vazirmatn, Tahoma, sans-serif', 'sanitize_text_field'],
         'font_title_size' => [28, 'absint'],
+        'font_button' => ['Vazirmatn, Tahoma, sans-serif', 'sanitize_text_field'],
+        'font_button_size' => [15, 'absint'],
+        'font_button_color' => ['#FFFFFF', 'sanitize_hex_color'],
+        'font_list' => ['Vazirmatn, Tahoma, sans-serif', 'sanitize_text_field'],
+        'font_list_size' => [15, 'absint'],
+        'font_list_color' => ['#1E293B', 'sanitize_hex_color'],
         'font_h1_size' => [32, 'absint'],
         'font_h2_size' => [24, 'absint'],
         'font_h3_size' => [20, 'absint'],
@@ -1085,6 +1092,42 @@ add_action('customize_preview_init', static function () {
     );
 });
 
+
+
+
+/**
+ * Page-level SEO fields in customizer (home/blog/search/404).
+ */
+function bankai_register_page_seo_settings(WP_Customize_Manager $wp_customize): void {
+    // Settings already registered in page loop as page_{key}_seo_title|desc|keywords.
+    // Keep score setting only — UI is handled by customizer-page-seo.js tabs + Seo_Ai control.
+    $page_seo_keys = ['home', 'blog', 'single', 'search', '404'];
+    foreach ($page_seo_keys as $pk) {
+        if (!$wp_customize->get_setting('page_' . $pk . '_seo_score')) {
+            $wp_customize->add_setting('page_' . $pk . '_seo_score', [
+                'default'           => 0,
+                'type'              => 'theme_mod',
+                'transport'         => 'postMessage',
+                'sanitize_callback' => 'absint',
+            ]);
+        }
+        // Ensure description alias setting exists for older saves
+        if (!$wp_customize->get_setting('page_' . $pk . '_seo_desc')) {
+            $wp_customize->add_setting('page_' . $pk . '_seo_desc', [
+                'default'           => '',
+                'type'              => 'theme_mod',
+                'transport'         => 'postMessage',
+                'sanitize_callback' => 'sanitize_textarea_field',
+            ]);
+        }
+    }
+}
+add_action('customize_register', static function ($wp_customize) {
+    if ($wp_customize instanceof WP_Customize_Manager) {
+        bankai_register_page_seo_settings($wp_customize);
+    }
+}, 25);
+
 add_action('customize_controls_enqueue_scripts', static function () {
     wp_enqueue_style(
         'bankai-customizer-controls',
@@ -1103,6 +1146,13 @@ add_action('customize_controls_enqueue_scripts', static function () {
         'homeUrl' => home_url('/'),
         'blogUrl' => get_permalink(get_option('page_for_posts')) ?: home_url('/'),
     ]);
+    wp_enqueue_script(
+        'bankai-customizer-page-seo',
+        BANKAI_THEME_URI . '/assets/js/customizer-page-seo.js',
+        ['customize-controls'],
+        BANKAI_THEME_VERSION,
+        true
+    );
 });
 
 add_action('wp_ajax_bankai_theme_upload_font', 'bankai_ajax_upload_font');

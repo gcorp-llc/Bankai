@@ -73,6 +73,7 @@ document.addEventListener('alpine:init', () => {
             watermark: false,
             fillAlt: true,
             maxWidth: 1600,
+            maxHeight: 0,
             quality: 82,
             defaultAlt: ''
         },
@@ -451,6 +452,17 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        emitScore(score) {
+            try {
+                const s = Number(score) || 0;
+                this.seo.score = s;
+                this.analysis.score = s;
+                window.dispatchEvent(new CustomEvent('bankai-seo-score', {
+                    detail: { score: s, postId: this.postId || 0 }
+                }));
+            } catch (e) {}
+        },
+
         async analyze(forceSave = false) {
             try {
                 const cfg = window.bankaiEditorSeo || {};
@@ -474,7 +486,7 @@ document.addEventListener('alpine:init', () => {
                 if (data) {
                     this.analysis = Object.assign({}, this.analysis, data);
                     if (typeof data.score !== 'undefined') {
-                        this.seo.score = data.score || 0;
+                        this.emitScore(data.score || 0);
                     }
                     if (data.groups && typeof data.groups === 'object') {
                         this.analysis.groups = data.groups;
@@ -1768,8 +1780,33 @@ document.addEventListener('alpine:init', () => {
                 this.aiDraft.altTexts.forEach((item) => {
                     if (item.src && item.suggestedAlt) {
                         this.updateImageAltInEditor(item.src, item.suggestedAlt);
+                        // Reflect Alt in media tab cards
+                        const norm = (u) => String(u || '').split('?')[0].replace(/\/+$/, '');
+                        (this.postImages || []).forEach((img) => {
+                            if (norm(img.src) === norm(item.src) || norm(img.original_src) === norm(item.src)) {
+                                img.alt = item.suggestedAlt;
+                                img.new_alt = item.suggestedAlt;
+                            }
+                        });
+                        // If list empty or image missing, push entry
+                        if (!this.postImages) this.postImages = [];
+                        const exists = this.postImages.some((img) => norm(img.src) === norm(item.src) || norm(img.original_src) === norm(item.src));
+                        if (!exists) {
+                            this.postImages.push({
+                                id: 'ai_' + this.postImages.length,
+                                src: item.src,
+                                original_src: item.src,
+                                alt: item.suggestedAlt,
+                                new_alt: item.suggestedAlt,
+                                format: '',
+                                size: 0,
+                                watermarked: false
+                            });
+                        }
                     }
                 });
+                // Refresh list so UI binds
+                this.postImages = this.postImages.slice();
                 appliedCount++;
             }
 
@@ -1782,6 +1819,10 @@ document.addEventListener('alpine:init', () => {
             this.aiReviewOpen = false;
             this.aiOpen = false;
             this.showToast('تغییرات تاییدشده سئو با موفقیت اعمال شدند', 'success');
+            // Refresh media list so new Alts appear in cards
+            if (this.activeTab === 'media' || (this.postImages && this.postImages.length)) {
+                try { this.scanPostImages(); } catch (e) {}
+            }
         },
 
 
@@ -2419,6 +2460,7 @@ document.addEventListener('alpine:init', () => {
                 body.append('watermark', this.optOptions.watermark ? '1' : '0');
                 body.append('fill_alt', this.optOptions.fillAlt ? '1' : '0');
                 body.append('max_width', String(this.optOptions.maxWidth || 1600));
+                body.append('max_height', String(this.optOptions.maxHeight || 0));
                 body.append('quality', String(this.optOptions.quality || 82));
                 body.append('default_alt', this.optOptions.defaultAlt || '');
 
@@ -2435,17 +2477,26 @@ document.addEventListener('alpine:init', () => {
                     this.setEditorRawContent(data.content);
                 }
                 this.postImages = this.optReport.map((row, i) => ({
-                    id: 'rep_' + i,
+                    id: row.is_cover ? ('cover_' + (row.attachment_id || i)) : ('rep_' + i),
                     src: row.src || row.original_src,
+                    original_src: row.original_src || row.src,
                     alt: row.new_alt || row.alt || '',
+                    new_alt: row.new_alt || row.alt || '',
                     format: row.format_after || row.format_before,
-                    size: row.size_after || row.size_before,
+                    size: this.formatBytes(row.size_after || row.size_before || 0),
+                    format_before: row.format_before || '',
+                    format_after: row.format_after || row.format_before || '',
+                    size_before: this.formatBytes(row.size_before || 0),
+                    size_after: this.formatBytes(row.size_after || 0),
                     watermarked: !!row.watermarked,
                     attachment_id: row.attachment_id || 0,
+                    is_cover: !!row.is_cover,
                     converted: row.converted,
                     resized: row.resized,
                     actions: row.actions
                 }));
+                // Keep featured/cover in list even if server omitted it
+                this.postImages = this.mergeCoverImage(this.postImages);
                 this.showToast(data.message || 'بهینه‌سازی انجام شد', 'success');
             } catch (e) {
                 this.showToast((e && e.message) || 'خطا', 'error');

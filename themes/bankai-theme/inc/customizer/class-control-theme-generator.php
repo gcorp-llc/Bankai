@@ -24,9 +24,16 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
             BANKAI_THEME_VERSION
         );
         wp_enqueue_script(
+            'bankai-astra-ui',
+            BANKAI_THEME_URI . '/assets/js/bk-astra-ui.js',
+            [],
+            BANKAI_THEME_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'bankai-theme-generator',
             BANKAI_THEME_URI . '/assets/js/theme-generator.js',
-            ['customize-controls'],
+            ['customize-controls', 'bankai-astra-ui'],
             BANKAI_THEME_VERSION,
             true
         );
@@ -151,7 +158,10 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                         <?php foreach ($color_labels as $key => $label) : ?>
                             <div class="btg-color-row">
                                 <label><?php echo esc_html($label); ?></label>
-                                <input type="color" data-color="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr($colors[$key] ?? '#000000'); ?>">
+                                <div class="btg-color-circle" title="<?php echo esc_attr($label); ?>">
+                                    <span class="btg-color-swatch" style="background:<?php echo esc_attr($colors[$key] ?? '#000000'); ?>"></span>
+                                    <input type="color" data-color="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr($colors[$key] ?? '#000000'); ?>">
+                                </div>
                                 <input type="text" data-color-text="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr($colors[$key] ?? '#000000'); ?>" maxlength="7">
                             </div>
                         <?php endforeach; ?>
@@ -169,16 +179,10 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                         <?php endforeach; ?>
                     </div>
                 </div>
-                <div class="btg-demo btg-demo--compact">
-                    <h3><?php esc_html_e('پیش‌نمایش', 'bankai-theme'); ?></h3>
-                    <div class="btg-btns"><span class="btg-demo-btn p"><?php esc_html_e('اصلی', 'bankai-theme'); ?></span><span class="btg-demo-btn s"><?php esc_html_e('فرعی', 'bankai-theme'); ?></span><span class="btg-demo-btn a"><?php esc_html_e('تأکیدی', 'bankai-theme'); ?></span></div>
-                    <div class="btg-badges" style="margin-top:10px"><span class="btg-badge in">Info</span><span class="btg-badge su">OK</span><span class="btg-badge wa">Warn</span><span class="btg-badge er">Err</span></div>
-                    <div class="btg-progress" style="margin-top:10px"><span></span></div>
-                </div>
             </div>
 
-            <div class="btg-tab-panel" data-btg-panel="page">
-                <div class="btg-panel">
+            <div class="btg-tab-panel" data-btg-panel="page" style="display:none">
+                <div class="btg-panel btg-panel--boxed">
                     <h3><?php esc_html_e('طرح سایت', 'bankai-theme'); ?></h3>
                     <div class="btg-layout-grid" data-setting="site_layout">
                         <?php foreach (['boxed' => __('جعبه‌ای', 'bankai-theme'), 'wide' => __('عریض', 'bankai-theme'), 'full' => __('تمام‌عرض', 'bankai-theme'), 'content-sidebar' => __('سایدبار', 'bankai-theme')] as $val => $label) : ?>
@@ -189,7 +193,7 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                         <?php endforeach; ?>
                     </div>
                 </div>
-                <div class="btg-panel">
+                <div class="btg-panel btg-panel--boxed">
                     <h3><?php esc_html_e('چیدمان دربرگیرنده', 'bankai-theme'); ?></h3>
                     <div class="btg-layout-grid btg-layout-grid--2" data-setting="container_layout">
                         <?php foreach (['boxed' => __('جعبه‌ای', 'bankai-theme'), 'full' => __('کامل', 'bankai-theme')] as $val => $label) : ?>
@@ -200,7 +204,7 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                         <?php endforeach; ?>
                     </div>
                 </div>
-                <div class="btg-panel">
+                <div class="btg-panel btg-panel--boxed">
                     <h3><?php esc_html_e('سبک کانتینر', 'bankai-theme'); ?></h3>
                     <div class="btg-layout-grid btg-layout-grid--2" data-setting="container_style">
                         <?php foreach (['default' => __('پیش‌فرض', 'bankai-theme'), 'framed' => __('قاب‌دار', 'bankai-theme')] as $val => $label) : ?>
@@ -213,8 +217,8 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                 </div>
             </div>
 
-            <div class="btg-tab-panel" data-btg-panel="font">
-                <div class="btg-panel">
+            <div class="btg-tab-panel" data-btg-panel="font" style="display:none">
+                <div class="btg-panel btg-panel--boxed">
                     <div class="btg-dir-row">
                         <span class="btg-dir-label"><?php esc_html_e('جهت نوشتار', 'bankai-theme'); ?></span>
                         <div class="btg-dir-toggle" data-setting="text_direction">
@@ -224,9 +228,9 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                     </div>
                 </div>
 
-                <div class="btg-panel">
+                <div class="btg-panel btg-panel--boxed">
                     <h3><?php esc_html_e('مخزن فونت', 'bankai-theme'); ?></h3>
-                    <div class="btg-font-grid" data-setting="font_preset" id="btg-font-grid">
+                    <div class="btg-font-grid btg-font-grid--2" data-setting="font_preset" id="btg-font-grid">
                         <?php foreach ($fonts as $fid => $fmeta) : ?>
                             <button type="button" class="btg-font-card<?php echo $font_preset === $fid ? ' is-active' : ''; ?>" data-value="<?php echo esc_attr($fid); ?>" data-stack="<?php echo esc_attr($fmeta['stack']); ?>">
                                 <span class="btg-font-aa" style="font-family:<?php echo esc_attr($fmeta['stack']); ?>">Aa</span>
@@ -278,22 +282,29 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                         'stack_mod'=> 'font_body',
                         'color' => (string) get_theme_mod('font_body_color', '#1E293B'),
                         'color_mod' => 'font_body_color',
-                        'color_hover' => (string) get_theme_mod('font_body_color_hover', '#0F172A'),
-                        'color_hover_mod' => 'font_body_color_hover',
                         'min' => 12, 'max' => 24,
                     ],
                     [
-                        'key' => 'nav',
-                        'label' => __('نوار منو', 'bankai-theme'),
-                        'stack' => (string) get_theme_mod('font_nav', 'Vazirmatn, Tahoma, sans-serif'),
-                        'size' => (int) get_theme_mod('font_nav_size', 15),
-                        'size_mod' => 'font_nav_size',
-                        'stack_mod' => 'font_nav',
-                        'color' => (string) get_theme_mod('font_nav_color', '#334155'),
-                        'color_mod' => 'font_nav_color',
-                        'color_hover' => (string) get_theme_mod('font_nav_color_hover', '#5B8DEF'),
-                        'color_hover_mod' => 'font_nav_color_hover',
-                        'min' => 12, 'max' => 20,
+                        'key' => 'button',
+                        'label' => __('دکمه‌ها', 'bankai-theme'),
+                        'stack' => (string) get_theme_mod('font_button', get_theme_mod('font_body', 'Vazirmatn, Tahoma, sans-serif')),
+                        'size' => (int) get_theme_mod('font_button_size', 15),
+                        'size_mod' => 'font_button_size',
+                        'stack_mod' => 'font_button',
+                        'color' => (string) get_theme_mod('font_button_color', '#FFFFFF'),
+                        'color_mod' => 'font_button_color',
+                        'min' => 12, 'max' => 22,
+                    ],
+                    [
+                        'key' => 'list',
+                        'label' => __('لیست‌ها', 'bankai-theme'),
+                        'stack' => (string) get_theme_mod('font_list', get_theme_mod('font_body', 'Vazirmatn, Tahoma, sans-serif')),
+                        'size' => (int) get_theme_mod('font_list_size', 15),
+                        'size_mod' => 'font_list_size',
+                        'stack_mod' => 'font_list',
+                        'color' => (string) get_theme_mod('font_list_color', '#1E293B'),
+                        'color_mod' => 'font_list_color',
+                        'min' => 12, 'max' => 22,
                     ],
                     [
                         'key' => 'title',
@@ -304,8 +315,6 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                         'stack_mod' => 'font_title',
                         'color' => (string) get_theme_mod('font_title_color', '#0F172A'),
                         'color_mod' => 'font_title_color',
-                        'color_hover' => (string) get_theme_mod('font_title_color_hover', '#1E293B'),
-                        'color_hover_mod' => 'font_title_color_hover',
                         'min' => 16, 'max' => 48,
                     ],
                     [
@@ -317,8 +326,6 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                         'stack_mod' => 'font_heading',
                         'color' => (string) get_theme_mod('font_h1_color', '#0F172A'),
                         'color_mod' => 'font_h1_color',
-                        'color_hover' => (string) get_theme_mod('font_h1_color_hover', '#1E293B'),
-                        'color_hover_mod' => 'font_h1_color_hover',
                         'min' => 18, 'max' => 56,
                     ],
                     [
@@ -330,8 +337,6 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                         'stack_mod' => 'font_heading',
                         'color' => (string) get_theme_mod('font_h2_color', '#0F172A'),
                         'color_mod' => 'font_h2_color',
-                        'color_hover' => (string) get_theme_mod('font_h2_color_hover', '#1E293B'),
-                        'color_hover_mod' => 'font_h2_color_hover',
                         'min' => 14, 'max' => 40,
                     ],
                     [
@@ -343,8 +348,6 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                         'stack_mod' => 'font_heading',
                         'color' => (string) get_theme_mod('font_h3_color', '#1E293B'),
                         'color_mod' => 'font_h3_color',
-                        'color_hover' => (string) get_theme_mod('font_h3_color_hover', '#334155'),
-                        'color_hover_mod' => 'font_h3_color_hover',
                         'min' => 14, 'max' => 32,
                     ],
                     [
@@ -356,8 +359,6 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                         'stack_mod' => 'font_heading',
                         'color' => (string) get_theme_mod('font_h4_color', '#334155'),
                         'color_mod' => 'font_h4_color',
-                        'color_hover' => (string) get_theme_mod('font_h4_color_hover', '#475569'),
-                        'color_hover_mod' => 'font_h4_color_hover',
                         'min' => 12, 'max' => 28,
                     ],
                 ];
@@ -366,68 +367,77 @@ class Bankai_Customize_Theme_Generator_Control extends WP_Customize_Control {
                 <?php
                 $font_color_mode = get_theme_mod('font_color_mode', 'inherit');
                 ?>
-                <div class="btg-mode-toggle" data-setting="font_color_mode" style="margin-bottom:14px;">
-                    <button type="button" class="btg-mode-btn<?php echo $font_color_mode === 'inherit' ? ' is-active' : ''; ?>" data-value="inherit">
-                        <span class="btg-mode-btn__art btg-mode-btn__art--inherit"></span>
-                        <span><?php esc_html_e('ارث‌بری از تم', 'bankai-theme'); ?></span>
-                        <small><?php esc_html_e('رنگ متن از طرح کلی', 'bankai-theme'); ?></small>
-                    </button>
-                    <button type="button" class="btg-mode-btn<?php echo $font_color_mode === 'custom' ? ' is-active' : ''; ?>" data-value="custom">
-                        <span class="btg-mode-btn__art btg-mode-btn__art--custom"></span>
-                        <span><?php esc_html_e('سفارشی', 'bankai-theme'); ?></span>
-                        <small><?php esc_html_e('رنگ جدا برای هر عنصر', 'bankai-theme'); ?></small>
-                    </button>
-                </div>
-                <div class="btg-typo-cards" data-color-mode="<?php echo esc_attr($font_color_mode); ?>">
+                <div class="btg-panel btg-panel--boxed" id="btg-font-custom">
+                    <h3><?php esc_html_e('تنظیمات تایپوگرافی', 'bankai-theme'); ?></h3>
+                    <div class="btg-mode-toggle btg-mode-toggle--visual" data-setting="font_color_mode" style="margin-bottom:14px;">
+                        <button type="button" class="btg-mode-btn<?php echo $font_color_mode === 'inherit' ? ' is-active' : ''; ?>" data-value="inherit" data-font-mode="inherit">
+                            <span class="btg-mode-btn__art btg-mode-btn__art--inherit"></span>
+                            <span><?php esc_html_e('ارث‌بری از تم', 'bankai-theme'); ?></span>
+                            <small><?php esc_html_e('رنگ متن از طرح کلی', 'bankai-theme'); ?></small>
+                        </button>
+                        <button type="button" class="btg-mode-btn<?php echo $font_color_mode === 'custom' ? ' is-active' : ''; ?>" data-value="custom" data-font-mode="custom">
+                            <span class="btg-mode-btn__art btg-mode-btn__art--custom"></span>
+                            <span><?php esc_html_e('سفارشی', 'bankai-theme'); ?></span>
+                            <small><?php esc_html_e('رنگ و سایز جدا برای هر عنصر', 'bankai-theme'); ?></small>
+                        </button>
+                    </div>
 
-                    <?php foreach ($typo_cards as $card) : ?>
-                        <div class="btg-typo-card" data-typo="<?php echo esc_attr($card['key']); ?>">
-                            <div class="btg-typo-card__head"><?php echo esc_html($card['label']); ?></div>
-                            <div class="btg-typo-card__body">
-                                <label class="btg-mini-label"><?php esc_html_e('فونت', 'bankai-theme'); ?></label>
-                                <select class="btg-font-select" data-mod="<?php echo esc_attr($card['stack_mod']); ?>">
-                                    <?php
-                                    foreach ($fonts as $fid => $fmeta) {
-                                        printf(
-                                            '<option value="%s"%s>%s</option>',
-                                            esc_attr($fmeta['stack']),
-                                            selected($card['stack'], $fmeta['stack'], false),
-                                            esc_html($fmeta['label'])
-                                        );
-                                    }
-                                    foreach ($custom as $cf) {
-                                        printf(
-                                            '<option value="%s"%s>%s</option>',
-                                            esc_attr($cf['stack']),
-                                            selected($card['stack'], $cf['stack'], false),
-                                            esc_html($cf['label'])
-                                        );
-                                    }
-                                    ?>
-                                </select>
-                                <div class="btg-typo-card__row">
-                                    <div class="btg-typo-field">
-                                        <label class="btg-mini-label"><?php esc_html_e('سایز', 'bankai-theme'); ?></label>
-                                        <input type="number" min="<?php echo (int) $card['min']; ?>" max="<?php echo (int) $card['max']; ?>" data-mod="<?php echo esc_attr($card['size_mod']); ?>" value="<?php echo esc_attr((string) $card['size']); ?>">
+                    <div class="btg-typo-cards" id="btg-typo-cards" data-color-mode="<?php echo esc_attr($font_color_mode); ?>" style="<?php echo $font_color_mode === 'custom' ? '' : 'display:none'; ?>">
+                        <?php foreach ($typo_cards as $card) : ?>
+                            <div class="btg-typo-card" data-typo="<?php echo esc_attr($card['key']); ?>">
+                                <div class="btg-typo-card__head"><?php echo esc_html($card['label']); ?></div>
+                                <div class="btg-typo-card__body">
+                                    <label class="btg-mini-label"><?php esc_html_e('فونت', 'bankai-theme'); ?></label>
+                                    <select class="btg-font-select" data-mod="<?php echo esc_attr($card['stack_mod']); ?>" data-font-role="<?php echo esc_attr($card['key']); ?>">
+                                        <?php
+                                        foreach ($fonts as $fid => $fmeta) {
+                                            printf(
+                                                '<option value="%s"%s>%s</option>',
+                                                esc_attr($fmeta['stack']),
+                                                selected($card['stack'], $fmeta['stack'], false),
+                                                esc_html($fmeta['label'])
+                                            );
+                                        }
+                                        foreach ($custom as $cf) {
+                                            printf(
+                                                '<option value="%s"%s>%s</option>',
+                                                esc_attr($cf['stack']),
+                                                selected($card['stack'], $cf['stack'], false),
+                                                esc_html($cf['label'])
+                                            );
+                                        }
+                                        ?>
+                                    </select>
+                                    <div class="btg-typo-card__row btg-astra-row btg-astra-row--simple">
+                                        <div class="btg-typo-field btg-astra-size">
+                                            <label class="btg-mini-label"><?php esc_html_e('سایز px', 'bankai-theme'); ?></label>
+                                            <input type="number" class="btg-size-input btg-size-input--plain" min="<?php echo (int) $card['min']; ?>" max="<?php echo (int) $card['max']; ?>" data-mod="<?php echo esc_attr($card['size_mod']); ?>" value="<?php echo esc_attr((string) $card['size']); ?>">
+                                        </div>
+                                        <div class="btg-typo-field btg-astra-color">
+                                            <label class="btg-mini-label"><?php esc_html_e('رنگ متن', 'bankai-theme'); ?></label>
+                                            <label class="btg-color-circle">
+                                                <input type="color" data-mod="<?php echo esc_attr($card['color_mod']); ?>" value="<?php echo esc_attr($card['color']); ?>">
+                                                <span class="btg-color-swatch" style="background:<?php echo esc_attr($card['color']); ?>"></span>
+                                            </label>
+                                        </div>
                                     </div>
-                                    <div class="btg-typo-field">
-                                        <label class="btg-mini-label"><?php esc_html_e('عادی', 'bankai-theme'); ?></label>
-                                        <label class="btg-color-circle">
-                                            <input type="color" data-mod="<?php echo esc_attr($card['color_mod']); ?>" value="<?php echo esc_attr($card['color']); ?>">
-                                            <span class="btg-color-swatch" style="background:<?php echo esc_attr($card['color']); ?>"></span>
-                                        </label>
-                                    </div>
-                                    <div class="btg-typo-field">
-                                        <label class="btg-mini-label"><?php esc_html_e('هاور', 'bankai-theme'); ?></label>
-                                        <label class="btg-color-circle">
-                                            <input type="color" data-mod="<?php echo esc_attr($card['color_hover_mod']); ?>" value="<?php echo esc_attr($card['color_hover']); ?>">
-                                            <span class="btg-color-swatch" style="background:<?php echo esc_attr($card['color_hover']); ?>"></span>
-                                        </label>
+                                    <div class="btg-typo-live-sep"></div>
+                                    <div class="btg-typo-live" data-typo-live="<?php echo esc_attr($card['key']); ?>">
+                                        <span class="btg-typo-live__label"><?php esc_html_e('نمایش زنده', 'bankai-theme'); ?></span>
+                                        <p class="btg-typo-live__sample" style="font-family:<?php echo esc_attr($card['stack']); ?>;font-size:<?php echo (int) $card['size']; ?>px;color:<?php echo esc_attr($card['color']); ?>">
+                                            <?php
+                                            if ($card['key'] === 'body') {
+                                                echo esc_html__('نمونه متن بدنه — The quick brown fox · ۱۲۳۴۵۶', 'bankai-theme');
+                                            } else {
+                                                echo esc_html(sprintf(/* translators: typography label */ __('نمونه %s', 'bankai-theme'), $card['label']));
+                                            }
+                                            ?>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             </div>
 

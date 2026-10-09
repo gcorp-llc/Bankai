@@ -65,16 +65,26 @@ add_action('wp_enqueue_scripts', 'bankai_theme_scripts', 20);
  * Inline critical CSS variables from Customizer (no extra HTTP).
  */
 function bankai_theme_inline_css(): void {
-    $primary   = sanitize_hex_color(bankai_theme_mod('color_primary', '#0969DA')) ?: '#0969DA';
-    $text      = sanitize_hex_color(bankai_theme_mod('color_text', '#1F2328')) ?: '#1F2328';
-    $bg        = sanitize_hex_color(bankai_theme_mod('color_bg', '#FFFFFF')) ?: '#FFFFFF';
+    // Prefer design tokens from طرح کلی when available
+    $design = function_exists('bankai_theme_get_design') ? bankai_theme_get_design() : [];
+    $dc = is_array($design['colors'] ?? null) ? $design['colors'] : [];
+    $dr = is_array($design['radius'] ?? null) ? $design['radius'] : [];
+
+    $primary   = sanitize_hex_color($dc['primary'] ?? bankai_theme_mod('color_primary', '#0969DA')) ?: '#0969DA';
+    $text      = sanitize_hex_color($dc['base_content'] ?? bankai_theme_mod('color_text', '#1F2328')) ?: '#1F2328';
+    $bg        = sanitize_hex_color($dc['base'] ?? bankai_theme_mod('color_bg', '#FFFFFF')) ?: '#FFFFFF';
     $container = absint(bankai_theme_mod('container_width', 1280));
-    $radius    = absint(bankai_theme_mod('border_radius', 10));
-    $fs        = absint(bankai_theme_mod('font_size_base', 16));
+    $radius_raw = $dr['box'] ?? '';
+    if ($radius_raw !== '' && is_string($radius_raw)) {
+        $radius_css = $radius_raw;
+    } else {
+        $radius_css = absint(bankai_theme_mod('border_radius', 10)) . 'px';
+    }
+    $fs        = absint(bankai_theme_mod('font_body_size', bankai_theme_mod('font_size_base', 16)));
     $lh        = absint(bankai_theme_mod('line_height', 165));
     $hw        = sanitize_text_field((string) bankai_theme_mod('heading_weight', '700'));
 
-    $css = ":root{--bankai-primary:{$primary};--bankai-text:{$text};--bankai-bg:{$bg};--bankai-container:{$container}px;--bankai-radius:{$radius}px;--bankai-fs:{$fs}px;--bankai-lh:" . ($lh / 100) . ";--bankai-hw:{$hw};}";
+    $css = ":root{--bankai-primary:{$primary};--bankai-text:{$text};--bankai-bg:{$bg};--bankai-container:{$container}px;--bankai-radius:{$radius_css};--bankai-fs:{$fs}px;--bankai-lh:" . ($lh / 100) . ";--bankai-hw:{$hw};}";
     if (function_exists('bankai_theme_custom_fonts_css')) {
         $css .= bankai_theme_custom_fonts_css();
     }
@@ -110,6 +120,23 @@ function bankai_theme_inline_css(): void {
         // Inherit text colors from design tokens (طرح کلی)
         $css .= 'body{color:var(--bankai-text,var(--bc,#1A1A1A));}.bankai-menu a,.bankai-nav a{color:var(--bankai-text,var(--bc,#1A1A1A));}.bankai-menu a:hover,.bankai-nav a:hover{color:var(--bankai-primary,var(--p,#5C6B7A));}h1,h2,h3,h4,.bankai-single__title,.bankai-page__title{color:var(--bankai-text,var(--bc,#1A1A1A));}';
     }
+    
+    $fbtn = sanitize_text_field((string) bankai_theme_mod('font_button', ''));
+    $fbtns = absint(bankai_theme_mod('font_button_size', 15));
+    $fbtnc = sanitize_hex_color((string) bankai_theme_mod('font_button_color', '')) ?: '';
+    $flist = sanitize_text_field((string) bankai_theme_mod('font_list', ''));
+    $flists = absint(bankai_theme_mod('font_list_size', 15));
+    $flistc = sanitize_hex_color((string) bankai_theme_mod('font_list_color', '')) ?: '';
+    if ($fbtn !== '') {
+        $css .= ".bankai-btn,.wp-block-button__link,button[type=submit],input[type=submit],.button{font-family:{$fbtn};font-size:{$fbtns}px;}";
+        if ($fbtnc !== '') $css .= ".bankai-btn,.wp-block-button__link,button[type=submit],input[type=submit],.button{color:{$fbtnc};}";
+    }
+    if ($flist !== '') {
+        $css .= "ul,ol,.bankai-menu,li{font-family:{$flist};}";
+        $css .= "ul,ol,li{font-size:{$flists}px;}";
+        if ($flistc !== '') $css .= "ul,ol,li{color:{$flistc};}";
+    }
+    
     wp_add_inline_style('bankai-theme-main', $css);
 }
 add_action('wp_enqueue_scripts', 'bankai_theme_inline_css', 30);

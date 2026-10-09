@@ -69,6 +69,7 @@ class Bankai_Rest_API
         'llms_txt',
         'jalali_calendar',
         'settings_license',
+        'pwa',
     ];
 
     public static function instance(): Bankai_Rest_API
@@ -126,6 +127,21 @@ class Bankai_Rest_API
         ]);
 
         // Core engine modules → bankai_core_settings.active_modules
+        
+        // Articles list — always available (not gated by SEO module load)
+        register_rest_route($this->namespace, '/seo/articles', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$this, 'api_articles_list'],
+            'permission_callback' => static fn(): bool => current_user_can('edit_posts'),
+            'args'                => [
+                'page'     => ['type' => 'integer', 'default' => 1, 'sanitize_callback' => 'absint'],
+                'per_page' => ['type' => 'integer', 'default' => 20, 'sanitize_callback' => 'absint'],
+                'search'   => ['type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field'],
+                'orderby'  => ['type' => 'string', 'default' => 'date', 'sanitize_callback' => 'sanitize_key'],
+                'order'    => ['type' => 'string', 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field'],
+            ],
+        ]);
+
         register_rest_route($this->namespace, '/core-module/(?P<key>[a-zA-Z0-9_-]+)', [
             'methods'             => WP_REST_Server::EDITABLE,
             'callback'            => [$this, 'toggle_core_module'],
@@ -515,4 +531,111 @@ class Bankai_Rest_API
             'updated' => $updated,
         ]);
     }
+
+    /**
+     * List posts/pages for Articles hub (works even if SEO module class is offline).
+     */
+    public function api_articles_list(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $page     = max(1, absint($request->get_param('page') ?: 1));
+        $per_page = min(100, max(5, absint($request->get_param('per_page') ?: 10)));
+        $search   = sanitize_text_field((string) ($request->get_param('search') ?? ''));
+        $orderby  = sanitize_key((string) ($request->get_param('orderby') ?? 'date'));
+        $order    = strtoupper(sanitize_text_field((string) ($request->get_param('order') ?? 'DESC'))) === 'ASC' ? 'ASC' : 'DESC';
+
+        $args = [
+            'post_type'              => ['post', 'page'],
+            'post_status'            => ['publish', 'draft', 'pending', 'future', 'private'],
+            'posts_per_page'         => $per_page,
+            'paged'                  => $page,
+            'order'                  => $order,
+            'ignore_sticky_posts'    => true,
+            'no_found_rows'          => false,
+            'update_post_meta_cache' => true,
+            'update_post_term_cache' => false,
+        ];
+        if ($search !== '') {
+            $args['s'] = $search;
+        }
+
+        // Avoid meta_key orderby excluding posts without meta
+        $allowed_order = ['date', 'modified', 'title', 'ID'];
+        if (in_array($orderby, $allowed_order, true)) {
+            $args['orderby'] = $orderby;
+        } elseif ($orderby === 'seo_score') {
+            $args['meta_query'] = [
+                'relation' => 'OR',
+                ['key' => '_bankai_seo_score', 'compare' => 'EXISTS'],
+                ['key' => '_bankai_seo_score', 'compare' => 'NOT EXISTS'],
+            ];
+            $args['orderby'] = 'meta_value_num date';
+            $args['meta_key'] = '_bankai_seo_score';
+        } else {
+            $args['orderby'] = 'date';
+        }
+
+        $q = new \WP_Query($args);
+        $items = [];
+        foreach ($q->posts as $p) {
+            $id = (int) $p->ID;
+            $status_obj = get_post_status_object($p->post_status);
+            $items[] = [
+                'id'             => $id,
+                'title'          => get_the_title($p) ?: ('#' . $id),
+                'status'         => $p->post_status,
+                'status_label'   => $status_obj->label ?? $p->post_status,
+                'type'           => $p->post_type,
+                'permalink'      => get_permalink($p),
+                'edit_url'       => get_edit_post_link($id, 'raw'),
+                'seo_title'      => (string) get_post_meta($id, '_bankai_seo_title', true),
+                'description'    => (string) get_post_meta($id, '_bankai_seo_description', true),
+                'focus_keyword'  => (string) get_post_meta($id, '_bankai_focus_keyword', true),
+                'score'          => (int) get_post_meta($id, '_bankai_seo_score', true),
+                'views'          => (int) get_post_meta($id, '_bankai_post_views', true),
+                'seo_audit'      => (int) get_post_meta($id, '_bankai_audit_seo', true),
+                'aeo_audit'      => (int) get_post_meta($id, '_bankai_audit_aeo', true),
+                'geo_audit'      => (int) get_post_meta($id, '_bankai_audit_geo', true),
+                'audit_score'    => (int) get_post_meta($id, '_bankai_audit_score', true),
+                'cover'          => get_the_post_thumbnail_url($id, 'thumbnail') ?: '',
+                'modified'       => get_the_modified_date('Y-m-d H:i', $p),
+                'date'           => get_the_date('Y-m-d H:i', $p),
+                'internal_links' => 0,
+                'external_links' => 0,
+            ];
+        }
+
+        return new \WP_REST_Response([
+            'success' => true,
+            'data'    => [
+                'items'       => $items,
+                'total'       => (int) $q->found_posts,
+                'total_pages' => (int) $q->max_num_pages,
+                'page'        => $page,
+                'per_page'    => $per_page,
+            ],
+        ]);
+    }
+
+
+
+    public function ajax_list_articles(): void
+    {
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Forbidden'], 403);
+        }
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        $req = new \WP_REST_Request('GET');
+        $req->set_param('page', absint($_POST['page'] ?? 1));
+        $req->set_param('per_page', absint($_POST['per_page'] ?? 10));
+        $req->set_param('search', sanitize_text_field(wp_unslash($_POST['search'] ?? '')));
+        $req->set_param('orderby', sanitize_key($_POST['orderby'] ?? 'date'));
+        $req->set_param('order', sanitize_text_field($_POST['order'] ?? 'DESC'));
+        $res = $this->api_articles_list($req);
+        $data = $res->get_data();
+        if (!empty($data['success'])) {
+            wp_send_json_success($data['data'] ?? $data);
+        }
+        wp_send_json_error(['message' => 'Failed']);
+    }
+
 }

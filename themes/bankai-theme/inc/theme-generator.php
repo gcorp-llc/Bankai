@@ -369,56 +369,29 @@ function bankai_theme_presets(): array {
  * @return array<string, array{label:string,desc:string}>
  */
 function bankai_theme_design_styles(): array {
-    return [
-        'premium-minimalism' => [
-            'label' => 'Premium Minimalism',
-            'desc'  => 'ساده، تمیز، فاصله‌دار',
-        ],
-        'bento' => [
-            'label' => 'Bento',
-            'desc'  => 'کارت‌های شبکه‌ای نرم',
-        ],
-        'liquid-glass' => [
-            'label' => 'Liquid Glass',
-            'desc'  => 'شیشه‌ای و بلور',
-        ],
-        'dark-luxe' => [
-            'label' => 'Dark Luxe',
-            'desc'  => 'تاریک لوکس',
-        ],
-        'editorial-swiss' => [
-            'label' => 'Editorial Swiss',
-            'desc'  => 'تایپوگرافی شبکه‌ای',
-        ],
-        'ai-native' => [
-            'label' => 'AI-Native',
-            'desc'  => 'گرادیان و مدرن AI',
-        ],
-        'spatial-ui' => [
-            'label' => 'Spatial UI',
-            'desc'  => 'عمق و لایه فضایی',
-        ],
-        'neo-brutalism' => [
-            'label' => 'Neo-Brutalism',
-            'desc'  => 'لبه‌های سخت و سایه ضخیم',
-        ],
-        'neumorphism' => [
-            'label' => 'Neumorphism',
-            'desc'  => 'سایه نرم توکار',
-        ],
-        'claymorphism' => [
-            'label' => 'Claymorphism',
-            'desc'  => 'نرم سه‌بعدی رنگی',
-        ],
-        'y2k' => [
-            'label' => 'Y2K',
-            'desc'  => 'براق و دهه ۲۰۰۰',
-        ],
-        'kinetic-editorial' => [
-            'label' => 'Kinetic Editorial',
-            'desc'  => 'حرکتی و تحریری',
-        ],
+    $ids = [
+        'premium-minimalism' => ['Premium Minimalism', 'ساده، تمیز، فاصله‌دار'],
+        'bento'              => ['Bento', 'کارت‌های شبکه‌ای نرم'],
+        'liquid-glass'       => ['Liquid Glass', 'شیشه‌ای و بلور'],
+        'dark-luxe'          => ['Dark Luxe', 'تاریک لوکس'],
+        'editorial-swiss'    => ['Editorial Swiss', 'تایپوگرافی شبکه‌ای'],
+        'ai-native'          => ['AI-Native', 'گرادیان و مدرن AI'],
+        'spatial-ui'         => ['Spatial UI', 'عمق و لایه فضایی'],
+        'neo-brutalism'      => ['Neo-Brutalism', 'لبه‌های سخت و سایه ضخیم'],
+        'neumorphism'        => ['Neumorphism', 'سایه نرم توکار'],
+        'claymorphism'       => ['Claymorphism', 'نرم سه‌بعدی رنگی'],
+        'y2k'                => ['Y2K', 'براق و دهه ۲۰۰۰'],
+        'kinetic-editorial'  => ['Kinetic Editorial', 'حرکتی و تحریری'],
     ];
+    $out = [];
+    foreach ($ids as $id => $meta) {
+        $out[$id] = [
+            'label'  => $meta[0],
+            'desc'   => $meta[1],
+            'radius' => bankai_theme_style_radius($id),
+        ];
+    }
+    return $out;
 }
 
 function bankai_theme_default_design(): array {

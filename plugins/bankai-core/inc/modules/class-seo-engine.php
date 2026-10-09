@@ -350,8 +350,9 @@ final class Bankai_SEO_Engine
         }
 
         $analysis = $this->analyze($post_id, $overrides);
-        
-        if (empty($overrides['content'])) {
+
+        // Always keep sidebar / list / toolbar score in sync
+        if ($post_id > 0) {
             update_post_meta($post_id, self::META_SCORE, (int) ($analysis['score'] ?? 0));
         }
 
@@ -1376,11 +1377,13 @@ final class Bankai_SEO_Engine
         $order    = strtoupper(sanitize_text_field($request->get_param('order') ?? 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
 
         $args = [
-            'post_type'      => ['post', 'page'],
-            'post_status'    => ['publish', 'draft', 'pending', 'future'],
-            'posts_per_page' => $per_page,
-            'paged'          => $page,
-            'order'          => $order,
+            'post_type'              => ['post', 'page'],
+            'post_status'            => ['publish', 'draft', 'pending', 'future', 'private'],
+            'posts_per_page'         => $per_page,
+            'paged'                  => $page,
+            'order'                  => $order,
+            'ignore_sticky_posts'    => true,
+            'suppress_filters'       => false,
         ];
 
         if ($search !== '') {
@@ -1439,6 +1442,10 @@ final class Bankai_SEO_Engine
                 'views'          => (int) ($view_map[$id] ?? get_post_meta($id, self::META_VIEWS, true)),
                 'internal_links' => count($extracted['internal']),
                 'external_links' => count($extracted['external']),
+                'seo_audit'      => (int) get_post_meta($id, '_bankai_audit_seo', true),
+                'aeo_audit'      => (int) get_post_meta($id, '_bankai_audit_aeo', true),
+                'geo_audit'      => (int) get_post_meta($id, '_bankai_audit_geo', true),
+                'audit_score'    => (int) get_post_meta($id, '_bankai_audit_score', true),
                 'cover'          => get_the_post_thumbnail_url($id, 'thumbnail') ?: '',
                 'modified'       => get_the_modified_date('Y-m-d H:i', $p),
                 'date'           => get_the_date('Y-m-d H:i', $p),

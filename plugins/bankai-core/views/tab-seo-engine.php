@@ -531,109 +531,118 @@ if ($post_id && !$post) {
         </section>
 
         <!-- ========== MEDIA / OPTIMIZE TAB ========== -->
-        <section x-show="activeTab === 'media'" class="bk-panel">
-            <div class="bk-card bk-optimize-hero">
-                <div class="bk-card-head">
-                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15V5a2 2 0 0 0-2-2H9"/><rect x="3" y="9" width="12" height="12" rx="2"/><path d="M3 15l3-3 2 2 4-4"/></svg>
-                    <span>بهینه‌سازی تصاویر مقاله (Optimize)</span>
+        <section x-show="activeTab === 'media'" class="bk-panel bk-media-panel">
+            <div class="bk-media-hero">
+                <div class="bk-media-hero__text">
+                    <span class="bk-media-hero__tag">Images</span>
+                    <strong>بهینه‌سازی تصاویر مقاله</strong>
+                    <p>اسکن، واترمارک، ابعاد ثابت، Alt و فشرده‌سازی — روی کاور و تصاویر محتوا.</p>
                 </div>
-                <p class="bk-hint">شامل کاور پست و تصاویر محتوا — بهینه‌سازی، واترمارک و Alt با AI به‌صورت تکی یا گروهی.</p>
-                <div class="bk-opt-row" style="margin-top:8px;gap:8px;flex-wrap:wrap;">
-                    <button type="button" class="bk-btn-ghost bk-btn-sm bk-sync-legacy-btn"
-                        :class="{ 'is-loading': legacySyncBusy, 'is-done': legacySyncDone }"
-                        @click="syncFromLegacySeo()" :disabled="legacySyncBusy"
-                        style="display:inline-flex;align-items:center;gap:6px;">
-                        <svg x-show="legacySyncBusy" class="solar-icon bk-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" opacity=".25"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>
-                        <svg x-show="!legacySyncBusy && legacySyncDone" class="solar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>
-                        <svg x-show="!legacySyncBusy && !legacySyncDone" class="solar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v18h18"/><path d="M7 16v-5M12 16V8M17 16v-3"/></svg>
-                        <span x-text="legacySyncBusy ? 'در حال همگام‌سازی…' : (legacySyncDone ? 'انجام شد' : 'همگام‌سازی')"></span>
-                    </button>
-                    <button type="button" class="bk-btn-ghost bk-btn-sm" @click="scanPostImages()" :disabled="optBusy">اسکن مجدد تصاویر + کاور</button>
+                <button type="button" class="bk-media-btn bk-media-btn-icon" @click="scanPostImages()" :disabled="optBusy" title="اسکن تصاویر">
+                    <svg class="solar-icon" :class="{ 'bk-spin': optBusy }" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10M1 14l5.36 5.36A9 9 0 0 0 20.49 15"/></svg>
+                </button>
+            </div>
+
+            <div class="bk-media-stats" x-show="(postImages||[]).length">
+                <div class="bk-media-stat"><span x-text="(postImages||[]).length"></span><small>تصویر</small></div>
+                <div class="bk-media-stat"><span x-text="(postImages||[]).filter(i=>!(i.alt||i.new_alt)).length"></span><small>بدون Alt</small></div>
+                <div class="bk-media-stat"><span x-text="(postImages||[]).filter(i=>i.watermarked).length"></span><small>واترمارک</small></div>
+            </div>
+
+            <div class="bk-media-tools">
+                <label class="bk-media-tool" :class="{ 'is-on': !!optOptions.convertWebp }">
+                    <input type="checkbox" x-model="optOptions.convertWebp">
+                    <span class="bk-media-tool__ico">🗜️</span>
+                    <span class="bk-media-tool__lab">WebP / فشرده</span>
+                    <small>تبدیل و کاهش حجم</small>
+                </label>
+                <label class="bk-media-tool" :class="{ 'is-on': !!optOptions.resize }">
+                    <input type="checkbox" x-model="optOptions.resize">
+                    <span class="bk-media-tool__ico">📐</span>
+                    <span class="bk-media-tool__lab">ابعاد ثابت</span>
+                    <small>عرض / ارتفاع حداکثر</small>
+                </label>
+                <label class="bk-media-tool" :class="{ 'is-on': !!optOptions.watermark }">
+                    <input type="checkbox" x-model="optOptions.watermark">
+                    <span class="bk-media-tool__ico">💧</span>
+                    <span class="bk-media-tool__lab">واترمارک</span>
+                    <small>اعمال روی تصاویر</small>
+                </label>
+                <label class="bk-media-tool" :class="{ 'is-on': !!optOptions.fillAlt }">
+                    <input type="checkbox" x-model="optOptions.fillAlt">
+                    <span class="bk-media-tool__ico">🔤</span>
+                    <span class="bk-media-tool__lab">Alt خودکار</span>
+                    <small>تکمیل متن جایگزین</small>
+                </label>
+            </div>
+
+            <div class="bk-media-sliders">
+                <div class="bk-media-field">
+                    <label>حداکثر عرض <em x-text="(optOptions.maxWidth||1600)+'px'"></em></label>
+                    <input type="range" min="320" max="2560" step="40" x-model.number="optOptions.maxWidth">
                 </div>
-                <div class="bk-opt-options">
-                    <label class="bk-opt-check"><input type="checkbox" x-model="optOptions.convertWebp"> تبدیل به WebP</label>
-                    <label class="bk-opt-check"><input type="checkbox" x-model="optOptions.resize"> محدود کردن عرض</label>
-                    <label class="bk-opt-check"><input type="checkbox" x-model="optOptions.watermark"> اعمال واترمارک</label>
-                    <label class="bk-opt-check"><input type="checkbox" x-model="optOptions.fillAlt"> تکمیل Alt خالی</label>
+                <div class="bk-media-field">
+                    <label>حداکثر ارتفاع <em x-text="(optOptions.maxHeight||0) ? (optOptions.maxHeight+'px') : 'آزاد'"></em></label>
+                    <input type="range" min="0" max="2000" step="40" x-model.number="optOptions.maxHeight">
                 </div>
-                <div class="bk-opt-row bk-opt-row-2">
-                    <label>حداکثر عرض (px)
-                        <input type="number" min="320" max="2560" x-model.number="optOptions.maxWidth">
-                    </label>
-                    <label>کیفیت
-                        <input type="number" min="40" max="95" x-model.number="optOptions.quality">
-                    </label>
-                </div>
-                <div class="bk-opt-row bk-opt-row-alt">
-                    <label class="bk-alt-label">Alt پیش‌فرض
-                        <input type="text" x-model="optOptions.defaultAlt" placeholder="اختیاری — یا خالی بگذارید">
-                    </label>
-                    <button type="button" class="bk-btn-ghost bk-btn-sm" @click="openAiModal('images')" title="تولید Alt با AI">
-                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
-                        AI
-                    </button>
-                </div>
-                <div class="bk-opt-actions bk-opt-actions-inline">
-                    <button type="button" class="bk-icon-action bk-scan-btn" @click="scanPostImages()" :disabled="optBusy" title="اسکن تصاویر">
-                        <svg class="solar-icon" :class="{ 'bk-spin': optBusy }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.1-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
-                    </button>
-                    <button type="button" class="bk-btn-primary bk-btn-optimize" @click="runOptimizeImages()" :disabled="optBusy">
-                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 20V10M18 20V4M6 20v-4M10 20V8"/></svg>
-                        <span x-text="optBusy ? 'در حال بهینه‌سازی…' : 'Optimize تصاویر'"></span>
-                    </button>
+                <div class="bk-media-field">
+                    <label>کیفیت فشرده‌سازی <em x-text="(optOptions.quality||82)+'%'"></em></label>
+                    <input type="range" min="40" max="95" step="1" x-model.number="optOptions.quality">
                 </div>
             </div>
 
-            <div class="bk-card" x-show="postImages.length || optReport.length">
-                <div class="bk-card-head">
-                    <span>گزارش تصاویر</span>
-                    <span class="bk-badge" x-text="(postImages.length || optReport.length) + ' مورد'"></span>
-                </div>
-                <template x-for="(img, i) in (optReport.length ? optReport : postImages)" :key="img.id || img.src || i">
-                    <div class="bk-img-report-card bk-img-report-stack">
-                        <div class="bk-img-thumb-wrap bk-img-thumb-lg">
-                            <span class="bk-img-badge-cover" x-show="img.is_cover">کاور پست</span>
-                            <img :src="img.src || img.original_src" alt="" class="bk-img-thumb" loading="lazy">
+            <div class="bk-media-alt-bar bk-media-alt-bar--full">
+                <input type="text" x-model="optOptions.defaultAlt" placeholder="Alt پیش‌فرض برای تصاویر بدون متن جایگزین">
+                <button type="button" class="bk-media-btn bk-media-btn-icon" @click="openAiModal('images')" title="ایجاد Alt با هوش مصنوعی">
+                    <svg class="solar-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
+                </button>
+            </div>
+
+            <div class="bk-media-actions">
+                <button type="button" class="bk-media-btn bk-media-btn-primary" @click="runOptimizeImages()" :disabled="optBusy || !(postImages||[]).length">
+                    <span x-text="optBusy ? 'در حال بهینه‌سازی…' : 'اجرای بهینه‌سازی گروهی'"></span>
+                </button>
+            </div>
+
+            <div class="bk-media-list" x-show="(postImages||[]).length">
+                <div class="bk-media-list__head">گزارش تصاویر</div>
+                <template x-for="(img, idx) in postImages" :key="img.id || img.src || idx">
+                    <div class="bk-media-card">
+                        <div class="bk-media-card__thumb">
+                            <img :src="img.src || img.original_src" alt="" loading="lazy">
                         </div>
-                        <div class="bk-img-size-row">
-                            <span class="bk-size-before" x-show="img.size_before || img.format_before || img.format">
-                                <em x-text="(img.format_before || img.format || '—').toUpperCase()"></em>
-                                <span x-text="formatBytes(img.size_before || img.size || 0)"></span>
-                            </span>
-                            <svg class="solar-icon bk-size-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-                            <span class="bk-size-after" x-show="img.size_after || img.format_after">
-                                <em x-text="(img.format_after || img.format || '—').toUpperCase()"></em>
-                                <span x-text="formatBytes(img.size_after || 0)"></span>
-                            </span>
-                            <span class="bk-tag" style="background:#FEF3C7;color:#D97706" x-show="img.watermarked">Watermark</span>
-                        </div>
-                        <div class="bk-alt-edit">
-                            <input type="text" :value="img.new_alt || img.alt || ''" @change="updateImageAlt(img, $event.target.value)" placeholder="متن جایگزین (Alt)">
-                            <div class="bk-link-actions-below" style="margin-top:6px">
-                                <button type="button" class="bk-btn-ghost bk-btn-xs" @click="generateSingleAlt(img)" :disabled="aiLoading">Alt با AI</button>
-                                <button type="button" class="bk-btn-ghost bk-btn-xs" @click="watermarkSingleImage(img)" :disabled="optBusy">واترمارک تکی</button>
-                                <button type="button" class="bk-btn-primary bk-btn-xs" x-show="img.suggestedAlt" @click="updateImageAlt(img, img.suggestedAlt)">تایید Alt</button>
+                        <div class="bk-media-card__body">
+                            <div class="bk-media-card__meta">
+                                <span class="bk-media-io" x-show="img.format_before || img.size_before">
+                                    <em>قبل</em>
+                                    <span x-text="(img.format_before || '—') + (img.size_before ? (' · ' + img.size_before) : '')"></span>
+                                </span>
+                                <span class="bk-media-io is-after" x-show="img.format_after || img.size_after || img.format || img.size">
+                                    <em>بعد</em>
+                                    <span x-text="(img.format_after || img.format || '—') + ((img.size_after || img.size) ? (' · ' + (img.size_after || img.size)) : '')"></span>
+                                </span>
+                                <span class="bk-media-badge is-wm" x-show="img.watermarked">واترمارک</span>
+                                <span class="bk-media-badge is-ok" x-show="img.alt || img.new_alt">Alt</span>
+                                <span class="bk-media-badge is-warn" x-show="!(img.alt || img.new_alt)">بدون Alt</span>
                             </div>
-                        </div>
-                        <div class="bk-img-actions">
-                            <a class="bk-icon-action" :href="img.src || img.original_src" target="_blank" rel="noopener" title="مشاهده">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7M10 14L21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
-                            </a>
-                            <button type="button" class="bk-icon-action" x-show="img.watermarked" @click="removeImageWatermark(img)" title="حذف واترمارک">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.7c.3 0 6.5 6.2 6.5 10.8a6.5 6.5 0 1 1-13 0C5.5 8.9 11.7 2.7 12 2.7z"/></svg>
-                            </button>
+                            <input type="text" class="bk-media-alt-input"
+                                :value="img.new_alt || img.alt || ''"
+                                @change="updateImageAlt(img, $event.target.value)"
+                                placeholder="متن جایگزین (Alt)">
+                            <div class="bk-media-card__actions">
+                                <button type="button" class="bk-media-btn bk-media-btn-sm" @click="watermarkSingleImage(img)" :disabled="optBusy">واترمارک</button>
+                                <button type="button" class="bk-media-btn bk-media-btn-sm is-danger" x-show="img.watermarked" @click="removeImageWatermark(img)" :disabled="optBusy">حذف واترمارک</button>
+                            </div>
                         </div>
                     </div>
                 </template>
             </div>
-            <div class="bk-card" x-show="!postImages.length && !optReport.length && !optBusy">
-                <div class="bk-empty-state">تصویری در محتوا یافت نشد. ابتدا مقاله را ذخیره کنید یا اسکن را بزنید.</div>
+            <div class="bk-media-empty" x-show="!(postImages||[]).length">
+                تصویری یافت نشد — مقاله را ذخیره کنید یا آیکن اسکن را بزنید.
             </div>
         </section>
 
-
-        <!-- ========== SCHEMA TAB ========== -->
-        <section x-show="activeTab === 'schema'" class="bk-panel">
+<section x-show="activeTab === 'schema'" class="bk-panel">
             <div class="bk-card">
                 <div class="bk-card-head"><span>نوع اسکیما</span></div>
                 <select x-model="schemaType" @change="onSchemaTypeChange()">

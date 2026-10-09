@@ -32,10 +32,12 @@ class Bankai_Speed_Cache
         }
 
         add_action('wp_ajax_bankai_purge_speed_cache', [$this, 'handle_purge_speed_cache']);
+        add_action('wp_ajax_bankai_purge_page_cache', [$this, 'handle_purge_speed_cache']);
         add_action('wp_ajax_bankai_optimize_database', [$this, 'handle_optimize_database']);
         add_action('wp_ajax_bankai_benchmark_vitals', [$this, 'handle_benchmark_vitals']);
         add_action('wp_ajax_bankai_save_speed_settings', [$this, 'handle_save_speed_settings']);
         add_action('wp_ajax_bankai_speed_stats', [$this, 'handle_speed_stats']);
+        add_action('rest_api_init', [$this, 'register_redis_routes']);
 
         // Light page-cache headers when module active
         if ($this->is_sub_active('page_caching')) {
@@ -300,6 +302,54 @@ class Bankai_Speed_Cache
             wp_send_json_error(['message' => __('دسترسی مجاز نیست.', 'bankai-core')], 403);
         }
         check_ajax_referer('bankai_admin_nonce', 'nonce');
+
+        // New modular config payload
+        $raw = isset($_POST['speed_config']) ? wp_unslash((string) $_POST['speed_config']) : '';
+        $cfg = $raw !== '' ? json_decode($raw, true) : null;
+        if (is_array($cfg)) {
+            $clean = [];
+            foreach ($cfg as $key => $val) {
+                $key = sanitize_key((string) $key);
+                if ($key === '' || !is_array($val)) {
+                    continue;
+                }
+                $row = [];
+                foreach ($val as $k => $v) {
+                    $k = sanitize_key((string) $k);
+                    if (is_bool($v)) {
+                        $row[$k] = $v;
+                    } elseif (is_numeric($v)) {
+                        $row[$k] = 0 + $v;
+                    } else {
+                        $row[$k] = sanitize_textarea_field((string) $v);
+                    }
+                }
+                $clean[$key] = $row;
+            }
+            if (function_exists('bankai_update_option')) {
+                bankai_update_option('speed_config', $clean);
+            } else {
+                update_option('bankai_speed_config', $clean, false);
+            }
+            // Mirror classic keys
+            $ttl = absint($clean['page_caching']['ttl'] ?? 86400);
+            $exclusions = (string) ($clean['page_caching']['exclusions'] ?? '');
+            if (function_exists('bankai_update_option')) {
+                bankai_update_option('cache_ttl', $ttl);
+                bankai_update_option('cache_exclusions', $exclusions);
+                // module toggles
+                $mods = function_exists('bankai_get_option') ? (bankai_get_option('speed_modules', []) ?: []) : [];
+                if (!is_array($mods)) { $mods = []; }
+                foreach ($clean as $id => $row) {
+                    if (array_key_exists('enabled', $row)) {
+                        $mods[$id] = !empty($row['enabled']);
+                    }
+                }
+                bankai_update_option('speed_modules', $mods);
+            }
+            $this->sync_htaccess_rules(true);
+            wp_send_json_success(['message' => __('تنظیمات کش ذخیره شد.', 'bankai-core'), 'cache_ttl' => $ttl]);
+        }
 
         $ttl = isset($_POST['cache_ttl']) ? absint($_POST['cache_ttl']) : 86400;
         $exclusions = isset($_POST['cache_exclusions'])
@@ -1342,9 +1392,31 @@ NGX;
             $hints[] = 'https://fonts.gstatic.com';
         }
         if ($relation_type === 'preconnect') {
-            $hints[] = 'https://fonts.gstatic.com';
+            $hints[] = [
+                'href' => 'https://fonts.gstatic.com',
+                'crossorigin' => 'anonymous',
+            ];
         }
-        return array_values(array_unique($hints));
+        // Normalize: WordPress allows string OR array hints; array_unique() fatals on arrays
+        $normalized = [];
+        $seen = [];
+        foreach ($hints as $hint) {
+            if (is_array($hint)) {
+                $key = wp_json_encode($hint);
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $normalized[] = $hint;
+            } elseif (is_string($hint) && $hint !== '') {
+                if (isset($seen[$hint])) {
+                    continue;
+                }
+                $seen[$hint] = true;
+                $normalized[] = $hint;
+            }
+        }
+        return $normalized;
     }
 
     public function maybe_minify_html(string $html): string
@@ -1355,4 +1427,205 @@ NGX;
         return $html;
     }
 
+
+
+    
+    public function register_redis_routes(): void {
+        register_rest_route('bankai/v1', '/speed/redis', [
+            'methods' => 'GET',
+            'callback' => [$this, 'api_get_redis'],
+            'permission_callback' => static function () { return current_user_can('manage_options'); },
+        ]);
+        register_rest_route('bankai/v1', '/speed/redis', [
+            'methods' => 'POST',
+            'callback' => [$this, 'api_save_redis'],
+            'permission_callback' => static function () { return current_user_can('manage_options'); },
+        ]);
+        register_rest_route('bankai/v1', '/speed/redis/test', [
+            'methods' => 'POST',
+            'callback' => [$this, 'api_test_redis'],
+            'permission_callback' => static function () { return current_user_can('manage_options'); },
+        ]);
+    }
+
+    public static function get_redis_settings(): array {
+        $defaults = [
+            'enabled' => false,
+            'host' => '127.0.0.1',
+            'port' => 6379,
+            'password' => '',
+            'db' => 0,
+            'prefix' => 'bankai:',
+        ];
+        $opt = function_exists('bankai_get_option') ? bankai_get_option('redis_settings', []) : get_option('bankai_redis_settings', []);
+        if (!is_array($opt)) {
+            $opt = [];
+        }
+        return array_merge($defaults, $opt);
+    }
+
+    public function api_get_redis(): \WP_REST_Response {
+        $s = self::get_redis_settings();
+        if (!empty($s['password'])) {
+            $s['password'] = '********';
+        }
+        $s['extension'] = class_exists('Redis') || extension_loaded('redis');
+        $s['object_cache'] = function_exists('wp_using_ext_object_cache') ? wp_using_ext_object_cache() : false;
+        return new \WP_REST_Response($s, 200);
+    }
+
+    public function api_save_redis(\WP_REST_Request $req): \WP_REST_Response {
+        $body = $req->get_json_params();
+        if (!is_array($body)) {
+            $body = [];
+        }
+        $prev = self::get_redis_settings();
+        $s = [
+            'enabled' => !empty($body['enabled']),
+            'host' => sanitize_text_field($body['host'] ?? '127.0.0.1'),
+            'port' => (int) ($body['port'] ?? 6379),
+            'password' => sanitize_text_field($body['password'] ?? ''),
+            'db' => (int) ($body['db'] ?? 0),
+            'prefix' => sanitize_text_field($body['prefix'] ?? 'bankai:'),
+        ];
+        if ($s['password'] === '********') {
+            $s['password'] = $prev['password'] ?? '';
+        }
+        if (function_exists('bankai_update_option')) {
+            bankai_update_option('redis_settings', $s);
+        } else {
+            update_option('bankai_redis_settings', $s, false);
+        }
+        $test = self::probe_redis($s);
+        if (!empty($s['enabled']) && !empty($test['ok'])) {
+            self::maybe_write_object_cache_dropin($s);
+        }
+        return new \WP_REST_Response(['success' => true, 'data' => $test], 200);
+    }
+
+    public function api_test_redis(\WP_REST_Request $req): \WP_REST_Response {
+        $body = $req->get_json_params();
+        if (!is_array($body)) {
+            $body = [];
+        }
+        $s = array_merge(self::get_redis_settings(), $body);
+        if (($s['password'] ?? '') === '********') {
+            $s['password'] = self::get_redis_settings()['password'] ?? '';
+        }
+        return new \WP_REST_Response(self::probe_redis($s), 200);
+    }
+
+    public static function probe_redis(array $s): array {
+        if (!class_exists('Redis') && !extension_loaded('redis')) {
+            return [
+                'ok' => false,
+                'message' => 'افزونه PHP Redis نصب نیست. روی سرور: pecl install redis یا apt install php-redis',
+            ];
+        }
+        try {
+            $r = new \Redis();
+            $host = $s['host'] ?? '127.0.0.1';
+            $port = (int) ($s['port'] ?? 6379);
+            if (!$r->connect($host, $port, 2.0)) {
+                return ['ok' => false, 'message' => 'اتصال به Redis برقرار نشد (' . $host . ':' . $port . ')'];
+            }
+            $pass = (string) ($s['password'] ?? '');
+            if ($pass !== '' && !$r->auth($pass)) {
+                return ['ok' => false, 'message' => 'رمز Redis نادرست است'];
+            }
+            $db = (int) ($s['db'] ?? 0);
+            $r->select($db);
+            $key = ($s['prefix'] ?? 'bankai:') . 'ping';
+            $r->setex($key, 30, '1');
+            $val = $r->get($key);
+            $r->close();
+            if ($val !== '1') {
+                return ['ok' => false, 'message' => 'خواندن/نوشتن Redis ناموفق بود'];
+            }
+            return ['ok' => true, 'message' => 'Redis آماده است — ' . $host . ':' . $port . ' DB' . $db];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'message' => 'خطا: ' . $e->getMessage()];
+        }
+    }
+
+    public static function maybe_write_object_cache_dropin(array $s): void {
+        $dropin = WP_CONTENT_DIR . '/object-cache.php';
+        if (file_exists($dropin) || !is_writable(WP_CONTENT_DIR)) {
+            return;
+        }
+        $host = $s['host'] ?? '127.0.0.1';
+        $port = (int) ($s['port'] ?? 6379);
+        $pass = $s['password'] ?? '';
+        $db = (int) ($s['db'] ?? 0);
+        $prefix = $s['prefix'] ?? 'bankai:';
+        $cfg = "<?php\n// Bankai Redis bootstrap — do not edit\n"
+            . "if (!defined('ABSPATH')) { exit; }\n"
+            . "if (!defined('WP_REDIS_HOST')) { define('WP_REDIS_HOST', " . var_export($host, true) . "); }\n"
+            . "if (!defined('WP_REDIS_PORT')) { define('WP_REDIS_PORT', " . (int) $port . "); }\n"
+            . "if (!defined('WP_REDIS_PASSWORD')) { define('WP_REDIS_PASSWORD', " . var_export($pass, true) . "); }\n"
+            . "if (!defined('WP_REDIS_DATABASE')) { define('WP_REDIS_DATABASE', " . (int) $db . "); }\n"
+            . "if (!defined('WP_REDIS_PREFIX')) { define('WP_REDIS_PREFIX', " . var_export($prefix, true) . "); }\n"
+            . "if (!defined('WP_REDIS_MAXTTL')) { define('WP_REDIS_MAXTTL', 86400); }\n";
+        // Prefer instructing user to install Redis Object Cache; write marker config only
+        $marker = WP_CONTENT_DIR . '/bankai-redis-config.php';
+        @file_put_contents($marker, $cfg);
+        // Lightweight compatible drop-in
+        $php = "<?php\n"
+            . "/**\n * Bankai Redis Object Cache drop-in\n */\n"
+            . "if (!defined('ABSPATH')) { exit; }\n"
+            . "if (!class_exists('Redis')) { return; }\n\n"
+            . "class Bankai_Redis_Object_Cache {\n"
+            . "    private \$redis; private \$prefix;\n"
+            . "    public function __construct() {\n"
+            . "        \$this->prefix = " . var_export($prefix, true) . ";\n"
+            . "        try {\n"
+            . "            \$this->redis = new Redis();\n"
+            . "            \$this->redis->connect(" . var_export($host, true) . ", " . (int)$port . ", 1.5);\n"
+            . "            \$pass = " . var_export($pass, true) . ";\n"
+            . "            if (\$pass !== '') { \$this->redis->auth(\$pass); }\n"
+            . "            \$this->redis->select(" . (int)$db . ");\n"
+            . "        } catch (Throwable \$e) { \$this->redis = null; }\n"
+            . "    }\n"
+            . "    private function k(\$key, \$group = 'default') { return \$this->prefix . \$group . ':' . \$key; }\n"
+            . "    public function add(\$key, \$data, \$group = 'default', \$expire = 0) {\n"
+            . "        if (!\$this->redis || \$this->get(\$key, \$group) !== false) return false;\n"
+            . "        return \$this->set(\$key, \$data, \$group, \$expire);\n"
+            . "    }\n"
+            . "    public function set(\$key, \$data, \$group = 'default', \$expire = 0) {\n"
+            . "        if (!\$this->redis) return false;\n"
+            . "        \$payload = serialize(\$data); \$k = \$this->k(\$key, \$group);\n"
+            . "        return \$expire > 0 ? \$this->redis->setex(\$k, (int)\$expire, \$payload) : \$this->redis->set(\$k, \$payload);\n"
+            . "    }\n"
+            . "    public function get(\$key, \$group = 'default', \$force = false, &\$found = null) {\n"
+            . "        \$found = false; if (!\$this->redis) return false;\n"
+            . "        \$val = \$this->redis->get(\$this->k(\$key, \$group));\n"
+            . "        if (\$val === false || \$val === null) return false;\n"
+            . "        \$found = true; return @unserialize(\$val);\n"
+            . "    }\n"
+            . "    public function delete(\$key, \$group = 'default') {\n"
+            . "        if (!\$this->redis) return false;\n"
+            . "        return (bool) \$this->redis->del(\$this->k(\$key, \$group));\n"
+            . "    }\n"
+            . "    public function flush() {\n"
+            . "        if (!\$this->redis) return false;\n"
+            . "        \$it = null; \$this->redis->setOption(Redis::OPT_SCAN, Redis::SCAN_RETRY);\n"
+            . "        while (\$keys = \$this->redis->scan(\$it, \$this->prefix . '*', 200)) { if (\$keys) \$this->redis->del(\$keys); }\n"
+            . "        return true;\n"
+            . "    }\n"
+            . "    public function close() { if (\$this->redis) { try { \$this->redis->close(); } catch (Throwable \$e) {} } return true; }\n"
+            . "}\n\n"
+            . "function wp_cache_init() { \$GLOBALS['wp_object_cache'] = new Bankai_Redis_Object_Cache(); }\n"
+            . "function wp_cache_add(\$k, \$d, \$g = '', \$e = 0) { return \$GLOBALS['wp_object_cache']->add(\$k, \$d, \$g ?: 'default', \$e); }\n"
+            . "function wp_cache_set(\$k, \$d, \$g = '', \$e = 0) { return \$GLOBALS['wp_object_cache']->set(\$k, \$d, \$g ?: 'default', \$e); }\n"
+            . "function wp_cache_get(\$k, \$g = '', \$f = false, &\$found = null) { return \$GLOBALS['wp_object_cache']->get(\$k, \$g ?: 'default', \$f, \$found); }\n"
+            . "function wp_cache_delete(\$k, \$g = '') { return \$GLOBALS['wp_object_cache']->delete(\$k, \$g ?: 'default'); }\n"
+            . "function wp_cache_flush() { return \$GLOBALS['wp_object_cache']->flush(); }\n"
+            . "function wp_cache_close() { return \$GLOBALS['wp_object_cache']->close(); }\n"
+            . "function wp_cache_add_global_groups(\$g) {}\n"
+            . "function wp_cache_add_non_persistent_groups(\$g) {}\n"
+            . "function wp_cache_replace(\$k, \$d, \$g = '', \$e = 0) { return wp_cache_set(\$k, \$d, \$g, \$e); }\n"
+            . "function wp_cache_incr(\$k, \$o = 1, \$g = '') { \$v = (int) wp_cache_get(\$k, \$g); \$v += \$o; wp_cache_set(\$k, \$v, \$g); return \$v; }\n"
+            . "function wp_cache_decr(\$k, \$o = 1, \$g = '') { return wp_cache_incr(\$k, -\$o, \$g); }\n";
+        @file_put_contents($dropin, $php);
+    }
 }

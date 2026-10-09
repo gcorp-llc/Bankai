@@ -119,6 +119,7 @@
     }
     if (header.classList.contains('is-transparent')) {
       header.classList.toggle('is-scrolled', y > 20);
+      document.body.classList.toggle('bankai-header-scrolled', y > 20);
     }
     lastY = y;
   }, { passive: true });

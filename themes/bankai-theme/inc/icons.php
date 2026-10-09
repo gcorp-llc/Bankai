@@ -13,7 +13,7 @@ defined('ABSPATH') || exit;
 function bankai_theme_lucide_alias(string $name): string {
     $map = [
         'close'      => 'x',
-        'hamburger'  => 'menu',
+        'hamburger'  => 'hamburger',
         'menu'       => 'menu',
         'cart'       => 'shopping-cart',
         'chat'       => 'message-circle',

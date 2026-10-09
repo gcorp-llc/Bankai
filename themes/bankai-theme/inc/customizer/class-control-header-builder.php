@@ -24,9 +24,16 @@ class Bankai_Customize_Header_Builder_Control extends WP_Customize_Control {
         );
         wp_enqueue_media();
         wp_enqueue_script(
+            'bankai-astra-ui',
+            BANKAI_THEME_URI . '/assets/js/bk-astra-ui.js',
+            [],
+            BANKAI_THEME_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'bankai-header-builder',
             BANKAI_THEME_URI . '/assets/js/header-builder.js',
-            ['customize-controls', 'jquery'],
+            ['customize-controls', 'jquery', 'bankai-astra-ui'],
             BANKAI_THEME_VERSION,
             true
         );
@@ -191,52 +198,553 @@ class Bankai_Customize_Header_Builder_Control extends WP_Customize_Control {
                 </button>
             </div>
 
-            <span class="customize-control-title ast-builder-title" style="margin-top:14px"><?php esc_html_e('ظاهر نوار دسکتاپ', 'bankai-theme'); ?></span>
+            <span class="customize-control-title ast-builder-title" style="margin-top:14px"><?php esc_html_e('ظاهر نوار', 'bankai-theme'); ?></span>
+            <p class="description bhb-desc"><?php esc_html_e('تنظیمات جدا برای دسکتاپ و موبایل — مشابه Astra', 'bankai-theme'); ?></p>
             <?php
-            $nd = $cfg['nav_desktop'] ?? [];
-            $nd_mode = ($nd['style_mode'] ?? 'inherit') === 'custom' ? 'custom' : 'inherit';
+            $nd = $cfg['nav_desktop'] ?? (function_exists('bankai_header_nav_skin_defaults') ? bankai_header_nav_skin_defaults() : []);
+            $nm = $cfg['nav_mobile'] ?? (function_exists('bankai_header_nav_skin_defaults') ? bankai_header_nav_skin_defaults() : []);
+            $nd_mode = (($nd['style_mode'] ?? 'inherit') === 'custom') ? 'custom' : 'inherit';
+            $nm_mode = (($nm['style_mode'] ?? 'inherit') === 'custom') ? 'custom' : 'inherit';
             ?>
-            <div class="btg-mode-toggle bhb-style-mode" data-nav-mode="desktop" style="margin-bottom:10px">
-                <button type="button" class="btg-mode-btn<?php echo $nd_mode === 'inherit' ? ' is-active' : ''; ?>" data-nav="desktop" data-nav-key="style_mode" data-value="inherit">
-                    <span class="btg-mode-btn__art btg-mode-btn__art--inherit" aria-hidden="true"></span>
-                    <span><?php esc_html_e('ارث‌بری از تم', 'bankai-theme'); ?></span>
-                    <small><?php esc_html_e('رنگ و استایل تم', 'bankai-theme'); ?></small>
-                </button>
-                <button type="button" class="btg-mode-btn<?php echo $nd_mode === 'custom' ? ' is-active' : ''; ?>" data-nav="desktop" data-nav-key="style_mode" data-value="custom">
-                    <span class="btg-mode-btn__art btg-mode-btn__art--custom" aria-hidden="true"></span>
-                    <span><?php esc_html_e('سفارشی', 'bankai-theme'); ?></span>
-                    <small><?php esc_html_e('رنگ و فونت دستی', 'bankai-theme'); ?></small>
-                </button>
-            </div>
-            <div class="bhb-nav-skin bhb-nav-skin--custom-only<?php echo $nd_mode === 'custom' ? ' is-open' : ''; ?>" data-nav-skin="desktop" data-depends-mode="desktop">
-                <label class="bhb-color-circle" title="پس‌زمینه"><span class="bhb-color-circle__lab">پس‌زمینه</span><span class="bhb-color-circle__swatch" style="background:<?php echo esc_attr(($nd['bg'] ?? '') ?: '#ffffff'); ?>"></span><input type="color" data-nav="desktop" data-nav-key="bg" value="<?php echo esc_attr(($nd['bg'] ?? '') ?: '#ffffff'); ?>"></label>
-                <label class="bhb-color-circle" title="متن"><span class="bhb-color-circle__lab">متن</span><span class="bhb-color-circle__swatch" style="background:<?php echo esc_attr(($nd['color'] ?? '') ?: '#1a1a1a'); ?>"></span><input type="color" data-nav="desktop" data-nav-key="color" value="<?php echo esc_attr(($nd['color'] ?? '') ?: '#1a1a1a'); ?>"></label>
-                <label class="bhb-check-pill<?php echo ! empty($nd['shadow']) ? ' is-on' : ''; ?>"><input type="checkbox" data-nav="desktop" data-nav-key="shadow" <?php checked(! empty($nd['shadow'])); ?>><span>سایه</span></label>
-                <label class="bhb-side-field"><span>سایز فونت</span><input type="number" min="10" max="28" data-nav="desktop" data-nav-key="font_size" value="<?php echo esc_attr((string) ($nd['font_size'] ?? 15)); ?>"></label>
+            <div class="bhb-device-tabs bhb-device-tabs--visual" role="tablist">
+              <button type="button" class="bhb-device-tab is-active" data-bhb-device-tab="desktop">
+                <span class="bhb-device-tab__art bhb-device-tab__art--desk" aria-hidden="true">
+                  <span class="bhb-device-tab__monitor"><i></i></span>
+                </span>
+                <span class="bhb-device-tab__lab"><?php esc_html_e('دسکتاپ', 'bankai-theme'); ?></span>
+                <small><?php esc_html_e('نمایش عریض', 'bankai-theme'); ?></small>
+              </button>
+              <button type="button" class="bhb-device-tab" data-bhb-device-tab="mobile">
+                <span class="bhb-device-tab__art bhb-device-tab__art--mob" aria-hidden="true">
+                  <span class="bhb-device-tab__phone"><i></i></span>
+                </span>
+                <span class="bhb-device-tab__lab"><?php esc_html_e('موبایل', 'bankai-theme'); ?></span>
+                <small><?php esc_html_e('نمایش موبایل', 'bankai-theme'); ?></small>
+              </button>
             </div>
 
-            <span class="customize-control-title ast-builder-title" style="margin-top:14px"><?php esc_html_e('ظاهر نوار موبایل', 'bankai-theme'); ?></span>
-            <?php
-            $nm = $cfg['nav_mobile'] ?? [];
-            $nm_mode = ($nm['style_mode'] ?? 'inherit') === 'custom' ? 'custom' : 'inherit';
-            ?>
-            <div class="btg-mode-toggle bhb-style-mode" data-nav-mode="mobile" style="margin-bottom:10px">
+            <div class="bhb-device-panel is-active" data-bhb-device-panel="desktop">
+              <div class="btg-mode-toggle btg-mode-toggle--visual bhb-style-mode" data-nav-mode="desktop" style="margin-bottom:12px">
+                <button type="button" class="btg-mode-btn<?php echo $nd_mode === 'inherit' ? ' is-active' : ''; ?>" data-nav="desktop" data-nav-key="style_mode" data-value="inherit">
+                  <span class="btg-mode-btn__art btg-mode-btn__art--inherit" aria-hidden="true"></span>
+                  <span><?php esc_html_e('ارث‌بری از تم', 'bankai-theme'); ?></span>
+                  <small><?php esc_html_e('رنگ و فونت از طرح کلی', 'bankai-theme'); ?></small>
+                </button>
+                <button type="button" class="btg-mode-btn<?php echo $nd_mode === 'custom' ? ' is-active' : ''; ?>" data-nav="desktop" data-nav-key="style_mode" data-value="custom">
+                  <span class="btg-mode-btn__art btg-mode-btn__art--custom" aria-hidden="true"></span>
+                  <span><?php esc_html_e('سفارشی', 'bankai-theme'); ?></span>
+                  <small><?php esc_html_e('تنظیم دستی رنگ و فاصله', 'bankai-theme'); ?></small>
+                </button>
+              </div>
+              <div class="bhb-nav-skin bhb-nav-skin--custom-only<?php echo $nd_mode === 'custom' ? ' is-open' : ''; ?>" data-nav-skin="desktop" data-depends-mode="desktop">
+
+            
+            <div class="bhb-nav-skin-form" data-nav-skin="desktop">
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('رنگ‌ها و زمینه', 'bankai-theme'); ?></div>
+                <?php
+                echo bankai_ui_color_row([
+                    'label' => __('پس‌زمینه نوار', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nd['bg'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'bg'],
+                    ]],
+                ]);
+                echo bankai_ui_color_row([
+                    'label' => __('متن / پیوند', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [
+                        [
+                            'value' => (string) ($nd['color'] ?? ''),
+                            'default' => '',
+                            'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'color'],
+                        ],
+                        [
+                            'value' => (string) ($nd['link_active'] ?? ''),
+                            'default' => '',
+                            'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'link_active'],
+                        ],
+                    ],
+                ]);
+                echo bankai_ui_color_row([
+                    'label' => __('رنگ لینک فعال', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nd['link_active'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'link_active'],
+                    ]],
+                ]);
+                ?>
+              </div>
+
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('پوشش پس‌زمینه ردیف‌ها', 'bankai-theme'); ?></div>
+                <?php
+                echo bankai_ui_color_row([
+                    'label' => __('بالای سربرگ', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nd['row_top_bg'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'row_top_bg'],
+                    ]],
+                ]);
+                echo bankai_ui_color_row([
+                    'label' => __('سربرگ اصلی', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nd['row_main_bg'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'row_main_bg'],
+                    ]],
+                ]);
+                echo bankai_ui_color_row([
+                    'label' => __('پایین سربرگ', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nd['row_bottom_bg'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'row_bottom_bg'],
+                    ]],
+                ]);
+                ?>
+              </div>
+
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('سربرگ چسبان', 'bankai-theme'); ?></div>
+                <div class="bk-crow">
+                  <div class="bk-crow__label"><span><?php esc_html_e('فعال', 'bankai-theme'); ?></span></div>
+                  <div class="bk-crow__controls">
+                    <label class="bhb-check-pill<?php echo ! empty($nd['sticky_on']) ? ' is-on' : ''; ?>"><input type="checkbox" data-nav="desktop" data-nav-key="sticky_on" <?php checked(! empty($nd['sticky_on'])); ?>><span><?php esc_html_e('چسبان', 'bankai-theme'); ?></span></label>
+                  </div>
+                </div>
+                <?php
+                echo bankai_ui_color_row([
+                    'label' => __('پس‌زمینه اسکرول', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nd['sticky_bg'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'sticky_bg'],
+                    ]],
+                ]);
+                echo bankai_ui_color_row([
+                    'label' => __('متن اسکرول', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nd['sticky_color'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'sticky_color'],
+                    ]],
+                ]);
+                ?>
+                <div class="bk-crow">
+                  <div class="bk-crow__label"><span><?php esc_html_e('مات / شفاف', 'bankai-theme'); ?></span></div>
+                  <div class="bk-crow__controls">
+                    <label class="bhb-check-pill<?php echo ! empty($nd['sticky_blur']) ? ' is-on' : ''; ?>"><input type="checkbox" data-nav="desktop" data-nav-key="sticky_blur" <?php checked(! empty($nd['sticky_blur'])); ?>><span>Blur</span></label>
+                    <label class="bhb-check-pill<?php echo ! empty($nd['sticky_anim']) ? ' is-on' : ''; ?>"><input type="checkbox" data-nav="desktop" data-nav-key="sticky_anim" <?php checked(! empty($nd['sticky_anim'])); ?>><span><?php esc_html_e('انیمیشن', 'bankai-theme'); ?></span></label>
+                  </div>
+                </div>
+              </div>
+
+              <?php
+              echo bankai_ui_spacing([
+                  'label' => __('حاشیه (Margin)', 'bankai-theme'),
+                  'device' => true,
+                  'nav' => 'desktop',
+                  'attrs_prefix' => 'margin',
+                  'linked' => ! empty($nd['margin_linked']) || ! isset($nd['margin_linked']),
+                  'values' => [
+                      'top' => (int) ($nd['margin_top'] ?? $nd['margin'] ?? 0),
+                      'right' => (int) ($nd['margin_right'] ?? $nd['margin'] ?? 0),
+                      'bottom' => (int) ($nd['margin_bottom'] ?? $nd['margin'] ?? 0),
+                      'left' => (int) ($nd['margin_left'] ?? $nd['margin'] ?? 0),
+                  ],
+              ]);
+              echo bankai_ui_spacing([
+                  'label' => __('پدینگ (Padding)', 'bankai-theme'),
+                  'device' => true,
+                  'nav' => 'desktop',
+                  'attrs_prefix' => 'padding',
+                  'linked' => ! empty($nd['padding_linked']) || ! isset($nd['padding_linked']),
+                  'values' => [
+                      'top' => (int) ($nd['padding_top'] ?? $nd['padding_y'] ?? 0),
+                      'right' => (int) ($nd['padding_right'] ?? $nd['padding_x'] ?? 0),
+                      'bottom' => (int) ($nd['padding_bottom'] ?? $nd['padding_y'] ?? 0),
+                      'left' => (int) ($nd['padding_left'] ?? $nd['padding_x'] ?? 0),
+                  ],
+              ]);
+              echo bankai_ui_spacing([
+                  'label' => __('Border Radius', 'bankai-theme'),
+                  'device' => true,
+                  'nav' => 'desktop',
+                  'attrs_prefix' => 'radius',
+                  'linked' => ! empty($nd['radius_linked']) || ! isset($nd['radius_linked']),
+                  'values' => [
+                      'top' => (int) ($nd['radius_top'] ?? $nd['radius'] ?? 0),
+                      'right' => (int) ($nd['radius_right'] ?? $nd['radius'] ?? 0),
+                      'bottom' => (int) ($nd['radius_bottom'] ?? $nd['radius'] ?? 0),
+                      'left' => (int) ($nd['radius_left'] ?? $nd['radius'] ?? 0),
+                  ],
+              ]);
+              ?>
+
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('بوردر', 'bankai-theme'); ?></div>
+                <div class="bk-crow">
+                  <div class="bk-crow__label"><span><?php esc_html_e('ضخامت / سبک', 'bankai-theme'); ?></span></div>
+                  <div class="bk-crow__controls" style="gap:8px">
+                    <input type="number" min="0" max="12" style="width:56px" data-nav="desktop" data-nav-key="border_width" value="<?php echo esc_attr((string) ($nd['border_width'] ?? 0)); ?>">
+                    <select data-nav="desktop" data-nav-key="border_style">
+                      <?php foreach (['solid'=>'Solid','dashed'=>'Dashed','dotted'=>'Dotted','none'=>'None'] as $bv=>$bl): ?>
+                        <option value="<?php echo esc_attr($bv); ?>" <?php selected(($nd['border_style'] ?? 'solid'), $bv); ?>><?php echo esc_html($bl); ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </div>
+                </div>
+                <?php
+                echo bankai_ui_color_row([
+                    'label' => __('رنگ بوردر', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nd['border_color'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'border_color'],
+                    ]],
+                ]);
+                ?>
+              </div>
+
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('استایل لینک فعال', 'bankai-theme'); ?></div>
+                <div class="bhb-seg" style="margin:10px 14px">
+                  <?php foreach (['none'=>__('بدون', 'bankai-theme'),'underline'=>__('زیرخط', 'bankai-theme'),'box'=>__('کادر', 'bankai-theme')] as $av=>$al): ?>
+                    <button type="button" class="bhb-seg__btn<?php echo (($nd['active_style'] ?? 'none') === $av) ? ' is-active' : ''; ?>" data-nav="desktop" data-nav-key="active_style" data-value="<?php echo esc_attr($av); ?>"><?php echo esc_html($al); ?></button>
+                  <?php endforeach; ?>
+                </div>
+                <div class="bhb-nav-active-panel" data-active-for="underline" style="<?php echo (($nd['active_style'] ?? '') === 'underline') ? '' : 'display:none'; ?>;padding:0 14px 12px">
+                  <label class="bhb-side-field"><span><?php esc_html_e('نوع خط', 'bankai-theme'); ?></span>
+                    <select data-nav="desktop" data-nav-key="ul_style">
+                      <?php foreach (['solid','dashed','dotted','double'] as $us): ?>
+                        <option value="<?php echo esc_attr($us); ?>" <?php selected(($nd['ul_style'] ?? 'solid'), $us); ?>><?php echo esc_html($us); ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </label>
+                  <?php
+                  echo bankai_ui_color_row([
+                      'label' => __('رنگ خط', 'bankai-theme'),
+                      'swatches' => [[
+                          'value' => (string) ($nd['ul_color'] ?? ''),
+                          'default' => '',
+                          'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'ul_color'],
+                      ]],
+                  ]);
+                  ?>
+                </div>
+                <div class="bhb-nav-active-panel" data-active-for="box" style="<?php echo (($nd['active_style'] ?? '') === 'box') ? '' : 'display:none'; ?>;padding:0 14px 12px">
+                  <?php
+                  echo bankai_ui_color_row([
+                      'label' => __('پس‌زمینه کادر', 'bankai-theme'),
+                      'swatches' => [[
+                          'value' => (string) ($nd['box_bg'] ?? ''),
+                          'default' => '',
+                          'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'box_bg'],
+                      ]],
+                  ]);
+                  echo bankai_ui_color_row([
+                      'label' => __('بوردر کادر', 'bankai-theme'),
+                      'swatches' => [[
+                          'value' => (string) ($nd['box_border_c'] ?? ''),
+                          'default' => '',
+                          'attrs' => ['data-nav' => 'desktop', 'data-nav-key' => 'box_border_c'],
+                      ]],
+                  ]);
+                  ?>
+                  <div class="bhb-nav-grid-nums" style="padding:8px 0">
+                    <label class="bhb-side-field"><span><?php esc_html_e('شفافیت %', 'bankai-theme'); ?></span><input type="number" min="0" max="100" data-nav="desktop" data-nav-key="box_opacity" value="<?php echo esc_attr((string) ($nd['box_opacity'] ?? 100)); ?>"></label>
+                    <label class="bhb-side-field"><span><?php esc_html_e('فاصله', 'bankai-theme'); ?></span><input type="number" min="0" max="40" data-nav="desktop" data-nav-key="box_pad" value="<?php echo esc_attr((string) ($nd['box_pad'] ?? 6)); ?>"></label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('فونت لینک‌ها', 'bankai-theme'); ?></div>
+                <div class="bk-crow">
+                  <div class="bk-crow__label"><span><?php esc_html_e('سایز px', 'bankai-theme'); ?></span></div>
+                  <div class="bk-crow__controls">
+                    <input type="number" min="10" max="28" style="width:72px" data-nav="desktop" data-nav-key="font_size" value="<?php echo esc_attr((string) ($nd['font_size'] ?? 15)); ?>">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+              </div>
+            </div>
+
+            <div class="bhb-device-panel" data-bhb-device-panel="mobile" style="display:none">
+              <div class="btg-mode-toggle btg-mode-toggle--visual bhb-style-mode" data-nav-mode="mobile" style="margin-bottom:12px">
                 <button type="button" class="btg-mode-btn<?php echo $nm_mode === 'inherit' ? ' is-active' : ''; ?>" data-nav="mobile" data-nav-key="style_mode" data-value="inherit">
-                    <span class="btg-mode-btn__art btg-mode-btn__art--inherit" aria-hidden="true"></span>
-                    <span><?php esc_html_e('ارث‌بری از تم', 'bankai-theme'); ?></span>
-                    <small><?php esc_html_e('هماهنگ با تم', 'bankai-theme'); ?></small>
+                  <span class="btg-mode-btn__art btg-mode-btn__art--inherit" aria-hidden="true"></span>
+                  <span><?php esc_html_e('ارث‌بری از تم', 'bankai-theme'); ?></span>
+                  <small><?php esc_html_e('رنگ و فونت از طرح کلی', 'bankai-theme'); ?></small>
                 </button>
                 <button type="button" class="btg-mode-btn<?php echo $nm_mode === 'custom' ? ' is-active' : ''; ?>" data-nav="mobile" data-nav-key="style_mode" data-value="custom">
-                    <span class="btg-mode-btn__art btg-mode-btn__art--custom" aria-hidden="true"></span>
-                    <span><?php esc_html_e('سفارشی', 'bankai-theme'); ?></span>
-                    <small><?php esc_html_e('رنگ و فونت دستی', 'bankai-theme'); ?></small>
+                  <span class="btg-mode-btn__art btg-mode-btn__art--custom" aria-hidden="true"></span>
+                  <span><?php esc_html_e('سفارشی', 'bankai-theme'); ?></span>
+                  <small><?php esc_html_e('تنظیم دستی رنگ و فاصله', 'bankai-theme'); ?></small>
                 </button>
+              </div>
+              <div class="bhb-nav-skin bhb-nav-skin--custom-only<?php echo $nm_mode === 'custom' ? ' is-open' : ''; ?>" data-nav-skin="mobile" data-depends-mode="mobile">
+
+            
+            <div class="bhb-nav-skin-form" data-nav-skin="mobile">
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('رنگ‌ها و زمینه', 'bankai-theme'); ?></div>
+                <?php
+                echo bankai_ui_color_row([
+                    'label' => __('پس‌زمینه نوار', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nm['bg'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'bg'],
+                    ]],
+                ]);
+                echo bankai_ui_color_row([
+                    'label' => __('متن / پیوند', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [
+                        [
+                            'value' => (string) ($nm['color'] ?? ''),
+                            'default' => '',
+                            'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'color'],
+                        ],
+                        [
+                            'value' => (string) ($nm['link_active'] ?? ''),
+                            'default' => '',
+                            'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'link_active'],
+                        ],
+                    ],
+                ]);
+                echo bankai_ui_color_row([
+                    'label' => __('رنگ لینک فعال', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nm['link_active'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'link_active'],
+                    ]],
+                ]);
+                ?>
+              </div>
+
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('پوشش پس‌زمینه ردیف‌ها', 'bankai-theme'); ?></div>
+                <?php
+                echo bankai_ui_color_row([
+                    'label' => __('بالای سربرگ', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nm['row_top_bg'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'row_top_bg'],
+                    ]],
+                ]);
+                echo bankai_ui_color_row([
+                    'label' => __('سربرگ اصلی', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nm['row_main_bg'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'row_main_bg'],
+                    ]],
+                ]);
+                echo bankai_ui_color_row([
+                    'label' => __('پایین سربرگ', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nm['row_bottom_bg'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'row_bottom_bg'],
+                    ]],
+                ]);
+                ?>
+              </div>
+
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('سربرگ چسبان', 'bankai-theme'); ?></div>
+                <div class="bk-crow">
+                  <div class="bk-crow__label"><span><?php esc_html_e('فعال', 'bankai-theme'); ?></span></div>
+                  <div class="bk-crow__controls">
+                    <label class="bhb-check-pill<?php echo ! empty($nm['sticky_on']) ? ' is-on' : ''; ?>"><input type="checkbox" data-nav="mobile" data-nav-key="sticky_on" <?php checked(! empty($nm['sticky_on'])); ?>><span><?php esc_html_e('چسبان', 'bankai-theme'); ?></span></label>
+                  </div>
+                </div>
+                <?php
+                echo bankai_ui_color_row([
+                    'label' => __('پس‌زمینه اسکرول', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nm['sticky_bg'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'sticky_bg'],
+                    ]],
+                ]);
+                echo bankai_ui_color_row([
+                    'label' => __('متن اسکرول', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nm['sticky_color'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'sticky_color'],
+                    ]],
+                ]);
+                ?>
+                <div class="bk-crow">
+                  <div class="bk-crow__label"><span><?php esc_html_e('مات / شفاف', 'bankai-theme'); ?></span></div>
+                  <div class="bk-crow__controls">
+                    <label class="bhb-check-pill<?php echo ! empty($nm['sticky_blur']) ? ' is-on' : ''; ?>"><input type="checkbox" data-nav="mobile" data-nav-key="sticky_blur" <?php checked(! empty($nm['sticky_blur'])); ?>><span>Blur</span></label>
+                    <label class="bhb-check-pill<?php echo ! empty($nm['sticky_anim']) ? ' is-on' : ''; ?>"><input type="checkbox" data-nav="mobile" data-nav-key="sticky_anim" <?php checked(! empty($nm['sticky_anim'])); ?>><span><?php esc_html_e('انیمیشن', 'bankai-theme'); ?></span></label>
+                  </div>
+                </div>
+              </div>
+
+              <?php
+              echo bankai_ui_spacing([
+                  'label' => __('حاشیه (Margin)', 'bankai-theme'),
+                  'device' => true,
+                  'nav' => 'mobile',
+                  'attrs_prefix' => 'margin',
+                  'linked' => ! empty($nm['margin_linked']) || ! isset($nm['margin_linked']),
+                  'values' => [
+                      'top' => (int) ($nm['margin_top'] ?? $nm['margin'] ?? 0),
+                      'right' => (int) ($nm['margin_right'] ?? $nm['margin'] ?? 0),
+                      'bottom' => (int) ($nm['margin_bottom'] ?? $nm['margin'] ?? 0),
+                      'left' => (int) ($nm['margin_left'] ?? $nm['margin'] ?? 0),
+                  ],
+              ]);
+              echo bankai_ui_spacing([
+                  'label' => __('پدینگ (Padding)', 'bankai-theme'),
+                  'device' => true,
+                  'nav' => 'mobile',
+                  'attrs_prefix' => 'padding',
+                  'linked' => ! empty($nm['padding_linked']) || ! isset($nm['padding_linked']),
+                  'values' => [
+                      'top' => (int) ($nm['padding_top'] ?? $nm['padding_y'] ?? 0),
+                      'right' => (int) ($nm['padding_right'] ?? $nm['padding_x'] ?? 0),
+                      'bottom' => (int) ($nm['padding_bottom'] ?? $nm['padding_y'] ?? 0),
+                      'left' => (int) ($nm['padding_left'] ?? $nm['padding_x'] ?? 0),
+                  ],
+              ]);
+              echo bankai_ui_spacing([
+                  'label' => __('Border Radius', 'bankai-theme'),
+                  'device' => true,
+                  'nav' => 'mobile',
+                  'attrs_prefix' => 'radius',
+                  'linked' => ! empty($nm['radius_linked']) || ! isset($nm['radius_linked']),
+                  'values' => [
+                      'top' => (int) ($nm['radius_top'] ?? $nm['radius'] ?? 0),
+                      'right' => (int) ($nm['radius_right'] ?? $nm['radius'] ?? 0),
+                      'bottom' => (int) ($nm['radius_bottom'] ?? $nm['radius'] ?? 0),
+                      'left' => (int) ($nm['radius_left'] ?? $nm['radius'] ?? 0),
+                  ],
+              ]);
+              ?>
+
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('بوردر', 'bankai-theme'); ?></div>
+                <div class="bk-crow">
+                  <div class="bk-crow__label"><span><?php esc_html_e('ضخامت / سبک', 'bankai-theme'); ?></span></div>
+                  <div class="bk-crow__controls" style="gap:8px">
+                    <input type="number" min="0" max="12" style="width:56px" data-nav="mobile" data-nav-key="border_width" value="<?php echo esc_attr((string) ($nm['border_width'] ?? 0)); ?>">
+                    <select data-nav="mobile" data-nav-key="border_style">
+                      <?php foreach (['solid'=>'Solid','dashed'=>'Dashed','dotted'=>'Dotted','none'=>'None'] as $bv=>$bl): ?>
+                        <option value="<?php echo esc_attr($bv); ?>" <?php selected(($nm['border_style'] ?? 'solid'), $bv); ?>><?php echo esc_html($bl); ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </div>
+                </div>
+                <?php
+                echo bankai_ui_color_row([
+                    'label' => __('رنگ بوردر', 'bankai-theme'),
+                    'device' => true,
+                    'swatches' => [[
+                        'value' => (string) ($nm['border_color'] ?? ''),
+                        'default' => '',
+                        'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'border_color'],
+                    ]],
+                ]);
+                ?>
+              </div>
+
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('استایل لینک فعال', 'bankai-theme'); ?></div>
+                <div class="bhb-seg" style="margin:10px 14px">
+                  <?php foreach (['none'=>__('بدون', 'bankai-theme'),'underline'=>__('زیرخط', 'bankai-theme'),'box'=>__('کادر', 'bankai-theme')] as $av=>$al): ?>
+                    <button type="button" class="bhb-seg__btn<?php echo (($nm['active_style'] ?? 'none') === $av) ? ' is-active' : ''; ?>" data-nav="mobile" data-nav-key="active_style" data-value="<?php echo esc_attr($av); ?>"><?php echo esc_html($al); ?></button>
+                  <?php endforeach; ?>
+                </div>
+                <div class="bhb-nav-active-panel" data-active-for="underline" style="<?php echo (($nm['active_style'] ?? '') === 'underline') ? '' : 'display:none'; ?>;padding:0 14px 12px">
+                  <label class="bhb-side-field"><span><?php esc_html_e('نوع خط', 'bankai-theme'); ?></span>
+                    <select data-nav="mobile" data-nav-key="ul_style">
+                      <?php foreach (['solid','dashed','dotted','double'] as $us): ?>
+                        <option value="<?php echo esc_attr($us); ?>" <?php selected(($nm['ul_style'] ?? 'solid'), $us); ?>><?php echo esc_html($us); ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </label>
+                  <?php
+                  echo bankai_ui_color_row([
+                      'label' => __('رنگ خط', 'bankai-theme'),
+                      'swatches' => [[
+                          'value' => (string) ($nm['ul_color'] ?? ''),
+                          'default' => '',
+                          'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'ul_color'],
+                      ]],
+                  ]);
+                  ?>
+                </div>
+                <div class="bhb-nav-active-panel" data-active-for="box" style="<?php echo (($nm['active_style'] ?? '') === 'box') ? '' : 'display:none'; ?>;padding:0 14px 12px">
+                  <?php
+                  echo bankai_ui_color_row([
+                      'label' => __('پس‌زمینه کادر', 'bankai-theme'),
+                      'swatches' => [[
+                          'value' => (string) ($nm['box_bg'] ?? ''),
+                          'default' => '',
+                          'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'box_bg'],
+                      ]],
+                  ]);
+                  echo bankai_ui_color_row([
+                      'label' => __('بوردر کادر', 'bankai-theme'),
+                      'swatches' => [[
+                          'value' => (string) ($nm['box_border_c'] ?? ''),
+                          'default' => '',
+                          'attrs' => ['data-nav' => 'mobile', 'data-nav-key' => 'box_border_c'],
+                      ]],
+                  ]);
+                  ?>
+                  <div class="bhb-nav-grid-nums" style="padding:8px 0">
+                    <label class="bhb-side-field"><span><?php esc_html_e('شفافیت %', 'bankai-theme'); ?></span><input type="number" min="0" max="100" data-nav="mobile" data-nav-key="box_opacity" value="<?php echo esc_attr((string) ($nm['box_opacity'] ?? 100)); ?>"></label>
+                    <label class="bhb-side-field"><span><?php esc_html_e('فاصله', 'bankai-theme'); ?></span><input type="number" min="0" max="40" data-nav="mobile" data-nav-key="box_pad" value="<?php echo esc_attr((string) ($nm['box_pad'] ?? 6)); ?>"></label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bk-cgroup">
+                <div class="bk-cgroup__head"><?php esc_html_e('فونت لینک‌ها', 'bankai-theme'); ?></div>
+                <div class="bk-crow">
+                  <div class="bk-crow__label"><span><?php esc_html_e('سایز px', 'bankai-theme'); ?></span></div>
+                  <div class="bk-crow__controls">
+                    <input type="number" min="10" max="28" style="width:72px" data-nav="mobile" data-nav-key="font_size" value="<?php echo esc_attr((string) ($nm['font_size'] ?? 15)); ?>">
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="bhb-nav-skin bhb-nav-skin--custom-only<?php echo $nm_mode === 'custom' ? ' is-open' : ''; ?>" data-nav-skin="mobile" data-depends-mode="mobile">
-                <label class="bhb-color-circle" title="پس‌زمینه"><span class="bhb-color-circle__lab">پس‌زمینه</span><span class="bhb-color-circle__swatch" style="background:<?php echo esc_attr(($nm['bg'] ?? '') ?: '#ffffff'); ?>"></span><input type="color" data-nav="mobile" data-nav-key="bg" value="<?php echo esc_attr(($nm['bg'] ?? '') ?: '#ffffff'); ?>"></label>
-                <label class="bhb-color-circle" title="متن"><span class="bhb-color-circle__lab">متن</span><span class="bhb-color-circle__swatch" style="background:<?php echo esc_attr(($nm['color'] ?? '') ?: '#1a1a1a'); ?>"></span><input type="color" data-nav="mobile" data-nav-key="color" value="<?php echo esc_attr(($nm['color'] ?? '') ?: '#1a1a1a'); ?>"></label>
-                <label class="bhb-check-pill<?php echo ! empty($nm['shadow']) ? ' is-on' : ''; ?>"><input type="checkbox" data-nav="mobile" data-nav-key="shadow" <?php checked(! empty($nm['shadow'])); ?>><span>سایه</span></label>
-                <label class="bhb-side-field"><span>سایز فونت</span><input type="number" min="10" max="28" data-nav="mobile" data-nav-key="font_size" value="<?php echo esc_attr((string) ($nm['font_size'] ?? 15)); ?>"></label>
+
+
+              </div>
             </div>
 
             <button type="button" class="bhb-open-btn" id="bhb-open-sheet"><?php esc_html_e('ویرایش ردیف‌ها و المان‌ها', 'bankai-theme'); ?></button>
@@ -262,6 +770,13 @@ class Bankai_Customize_Footer_Builder_Control extends WP_Customize_Control {
             BANKAI_THEME_URI . '/assets/css/header-builder.css',
             ['bankai-single-layout-control'],
             BANKAI_THEME_VERSION
+        );
+        wp_enqueue_script(
+            'bankai-astra-ui',
+            BANKAI_THEME_URI . '/assets/js/bk-astra-ui.js',
+            [],
+            BANKAI_THEME_VERSION,
+            true
         );
         wp_enqueue_script(
             'bankai-header-builder',

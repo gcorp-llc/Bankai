@@ -112,8 +112,8 @@
     var s = JSON.parse(JSON.stringify(cfgIn || defaultHeader()));
     if (!s.behavior) s.behavior = s.transparent ? 'transparent' : (s.sticky ? 'sticky' : 'static');
     if (!s.mobile_menu) s.mobile_menu = { icon: 'hamburger', style: 'drawer-right', show_logo: true, show_search: true, logo_url: '' };
-    if (!s.nav_desktop) s.nav_desktop = { bg: '', color: '', shadow: false, font: '', font_size: 0 };
-    if (!s.nav_mobile) s.nav_mobile = { bg: '', color: '', shadow: false, font: '', font_size: 0 };
+    if (!s.nav_desktop) s.nav_desktop = { style_mode: 'inherit' };
+    if (!s.nav_mobile) s.nav_mobile = { style_mode: 'inherit' };
     if (!s.mobile) s.mobile = { behavior: s.behavior, rows: mobileRows() };
     (s.rows || []).forEach(function (row) {
       if (!row.colCount) row.colCount = (row.cols && row.cols.length) || 3;
@@ -137,6 +137,7 @@
   function save() {
     var input = document.getElementById('bhb-config-input');
     if (input && state) {
+      window.bankaiHeaderState = state;
       input.value = JSON.stringify(state);
       if (wp.customize('bankai_header_builder')) {
         wp.customize('bankai_header_builder').set(input.value);
@@ -981,17 +982,35 @@
     }
     if (iconModalTarget.getAttribute('data-prop') === 'icon' && typeof setProp === 'function') {
       setProp('icon', iconModalSelected);
+      if (typeof setProp === 'function') {
+        try { setProp('size', iconModalSize); } catch (e1) {}
+        try { setProp('color', (iconModalColor === '#1a1a1a' || iconModalColor === 'currentColor') ? '' : iconModalColor); } catch (e2) {}
+      }
     }
     if (iconModalTarget.hasAttribute('data-mm-icon-set') || iconModalTarget.hasAttribute('data-mm-icon-pick')) {
       if (!state) state = normalize({});
       if (!state.mobile_menu) state.mobile_menu = { icon: 'menu', style: 'drawer-right' };
       state.mobile_menu.icon = iconModalSelected;
+      state.mobile_menu.icon_size = iconModalSize;
+      state.mobile_menu.icon_stroke = iconModalStroke;
+      state.mobile_menu.icon_color = (iconModalColor === '#1a1a1a' || iconModalColor === 'currentColor') ? '' : iconModalColor;
       save();
       var g = iconModalTarget.querySelector('.bhb-icon-preview__glyph');
       if (g && lucideNodesCache && lucideNodesCache[iconModalSelected]) {
-        g.innerHTML = nodesToSvg(lucideNodesCache[iconModalSelected], 24, iconModalStroke, iconModalColor || '#1a1a1a');
+        g.innerHTML = nodesToSvg(lucideNodesCache[iconModalSelected], iconModalSize || 24, iconModalStroke, iconModalColor || '#1a1a1a');
       }
       iconModalTarget.setAttribute('data-icon', iconModalSelected);
+      // Live preview: update mobile toggle in preview iframe if possible
+      try {
+        if (wp.customize && wp.customize.previewer) {
+          wp.customize.previewer.send('bankai-mobile-icon', {
+            icon: iconModalSelected,
+            size: iconModalSize,
+            color: state.mobile_menu.icon_color,
+            stroke: iconModalStroke
+          });
+        }
+      } catch (err) {}
     }
     if (iconModalTarget.hasAttribute('data-b404-icon')) {
       var b404id = iconModalTarget.getAttribute('data-b404-icon');
@@ -1438,28 +1457,67 @@
     });
 
 
-    // Nav skin desktop/mobile
+    // Nav skin desktop/mobile (inputs + segment buttons)
     document.querySelectorAll('[data-nav][data-nav-key]').forEach(function (inp) {
       var apply = function () {
         var which = inp.getAttribute('data-nav'); // desktop|mobile
         var key = inp.getAttribute('data-nav-key');
         var bag = which === 'mobile' ? (state.nav_mobile = state.nav_mobile || {}) : (state.nav_desktop = state.nav_desktop || {});
-        if (inp.type === 'checkbox') {
+        if (inp.tagName === 'BUTTON') {
+          var val = inp.getAttribute('data-value') || inp.value || '';
+          bag[key] = val;
+          var wrap = inp.closest('.bhb-nav-block') || inp.closest('[data-nav-skin]') || document;
+          if (key === 'active_style') {
+            wrap.querySelectorAll('.bhb-seg__btn[data-nav-key="active_style"]').forEach(function (b) {
+              b.classList.toggle('is-active', b === inp);
+            });
+            wrap.querySelectorAll('.bhb-nav-active-panel').forEach(function (p) {
+              p.style.display = p.getAttribute('data-active-for') === val ? '' : 'none';
+            });
+          }
+          if (key === 'style_mode') {
+            document.querySelectorAll('[data-nav="' + which + '"][data-nav-key="style_mode"]').forEach(function (b) {
+              b.classList.toggle('is-active', b === inp);
+            });
+            var skins = document.querySelectorAll('[data-nav-skin="' + which + '"]');
+            skins.forEach(function (skin) { skin.classList.toggle('is-open', val === 'custom'); });
+            // also toggle visibility of custom-only panels
+            document.querySelectorAll('[data-depends-mode="' + which + '"]').forEach(function (el) {
+              el.classList.toggle('is-open', val === 'custom');
+              if (val === 'custom') el.style.display = '';
+              else if (el.classList.contains('bhb-nav-skin--custom-only')) el.style.display = 'none';
+            });
+          }
+        } else if (inp.type === 'checkbox') {
           bag[key] = inp.checked;
           var pill = inp.closest('.bhb-check-pill');
           if (pill) pill.classList.toggle('is-on', inp.checked);
+          // any custom toggle implies custom mode
+          if (key !== 'style_mode' && bag.style_mode !== 'custom') {
+            bag.style_mode = 'custom';
+          }
         } else if (inp.type === 'number') {
           bag[key] = parseInt(inp.value, 10) || 0;
+          if (key !== 'style_mode') bag.style_mode = 'custom';
+        } else if (inp.tagName === 'SELECT') {
+          bag[key] = inp.value;
+          if (key !== 'style_mode') bag.style_mode = 'custom';
         } else {
           bag[key] = inp.value;
-          var sw = inp.parentNode.querySelector('.bhb-color-circle__swatch');
+          // color/text change → force custom so live preview applies
+          if (key !== 'style_mode') bag.style_mode = 'custom';
+          var sw = inp.parentNode && inp.parentNode.querySelector('.bhb-color-circle__swatch, .bk-swatch__fill, .btg-color-swatch');
           if (sw) sw.style.background = inp.value;
         }
         save();
       };
       inp.addEventListener('input', apply);
       inp.addEventListener('change', apply);
+      inp.addEventListener('click', function () {
+        if (inp.tagName === 'BUTTON' || inp.type === 'checkbox') apply();
+      });
     });
+
     document.querySelectorAll('[data-mm-opt]').forEach(function (inp) {
       var apply = function () {
         if (!state.mobile_menu) state.mobile_menu = {};
@@ -1675,3 +1733,94 @@
     watchSections();
   });
 })(jQuery);
+
+/* Device tabs + active-style segment + nav button keys */
+(function () {
+  'use strict';
+  document.addEventListener('click', function (e) {
+    var tab = e.target.closest('[data-bhb-device-tab]');
+    if (tab) {
+      var id = tab.getAttribute('data-bhb-device-tab');
+      document.querySelectorAll('[data-bhb-device-tab]').forEach(function (b) {
+        b.classList.toggle('is-active', b === tab);
+      });
+      document.querySelectorAll('[data-bhb-device-panel]').forEach(function (p) {
+        var on = p.getAttribute('data-bhb-device-panel') === id;
+        p.classList.toggle('is-active', on);
+        p.style.display = on ? '' : 'none';
+      });
+      return;
+    }
+    var seg = e.target.closest('.bhb-seg__btn[data-nav-key="active_style"]');
+    if (seg) {
+      var which = seg.getAttribute('data-nav');
+      var val = seg.getAttribute('data-value') || 'none';
+      var wrap = seg.closest('.bhb-nav-block') || seg.closest('[data-nav-skin]') || document;
+      wrap.querySelectorAll('.bhb-seg__btn[data-nav-key="active_style"]').forEach(function (b) {
+        b.classList.toggle('is-active', b === seg);
+      });
+      wrap.querySelectorAll('.bhb-nav-active-panel').forEach(function (p) {
+        p.style.display = p.getAttribute('data-active-for') === val ? '' : 'none';
+      });
+      // store via existing pipeline: synthesize a change on a hidden path by dispatching through state
+      try {
+        if (typeof state !== 'undefined' && state) {
+          var bag = which === 'mobile' ? (state.nav_mobile = state.nav_mobile || {}) : (state.nav_desktop = state.nav_desktop || {});
+          bag.active_style = val;
+          if (typeof save === 'function') save();
+        } else if (window.wp && wp.customize) {
+          // fallback: find config input and merge
+          var input = document.getElementById('bhb-config-input');
+          if (input) {
+            var cfg = {};
+            try { cfg = JSON.parse(input.value || '{}'); } catch (err) { cfg = {}; }
+            var key = which === 'mobile' ? 'nav_mobile' : 'nav_desktop';
+            cfg[key] = cfg[key] || {};
+            cfg[key].active_style = val;
+            input.value = JSON.stringify(cfg);
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+      } catch (err2) {}
+    }
+  });
+})();
+
+
+/* bankai-nav-color-delegate: picker → nav state even if control rebound */
+(function () {
+  function applyNavFromInput(inp) {
+    try {
+      if (!inp || !inp.getAttribute) return;
+      var which = inp.getAttribute('data-nav');
+      var key = inp.getAttribute('data-nav-key');
+      if (!which || !key) return;
+      if (typeof state === 'undefined' || !state) {
+        // try global via window
+        if (!window.bankaiHeaderState) return;
+      }
+      var st = (typeof state !== 'undefined' && state) ? state : window.bankaiHeaderState;
+      if (!st) return;
+      var bag = which === 'mobile' ? (st.nav_mobile = st.nav_mobile || {}) : (st.nav_desktop = st.nav_desktop || {});
+      if (inp.type === 'checkbox') bag[key] = inp.checked;
+      else if (inp.type === 'number') bag[key] = parseInt(inp.value, 10) || 0;
+      else bag[key] = inp.value;
+      if (key !== 'style_mode') bag.style_mode = 'custom';
+      // persist
+      var input = document.getElementById('bhb-config-input');
+      if (input) {
+        input.value = JSON.stringify(st);
+        if (window.wp && wp.customize && wp.customize('bankai_header_builder')) {
+          wp.customize('bankai_header_builder').set(input.value);
+          if (wp.customize.state && wp.customize.state('saved')) wp.customize.state('saved').set(false);
+        }
+      }
+    } catch (e) {}
+  }
+  document.addEventListener('input', function (e) {
+    if (e.target && e.target.getAttribute && e.target.getAttribute('data-nav')) applyNavFromInput(e.target);
+  }, true);
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.getAttribute && e.target.getAttribute('data-nav')) applyNavFromInput(e.target);
+  }, true);
+})();
