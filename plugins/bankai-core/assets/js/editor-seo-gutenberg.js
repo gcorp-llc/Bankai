@@ -146,9 +146,25 @@
                 hostRef.current.innerHTML = html;
                 hostRef.current.dataset.bankaiMounted = '1';
 
-                if (!cancelled) {
-                    setReady(true);
-                }
+                const tryAlpine = (attempt) => {
+                    if (cancelled) return;
+                    if (window.Alpine && typeof window.Alpine.initTree === 'function') {
+                        try {
+                            window.Alpine.initTree(hostRef.current);
+                            setReady(true);
+                            return;
+                        } catch (err) {
+                            console.warn('Bankai Alpine.initTree', err);
+                        }
+                    }
+                    if (attempt < 40) {
+                        setTimeout(function () { tryAlpine(attempt + 1); }, 100);
+                    } else {
+                        setReady(true);
+                    }
+                };
+
+                setTimeout(function () { tryAlpine(0); }, 50);
             }
 
             setReady(false);

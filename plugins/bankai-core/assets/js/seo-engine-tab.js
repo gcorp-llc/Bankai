@@ -1,6 +1,6 @@
 /* Bankai SEO Engine — modular */
-document.addEventListener('bankai:init', () => {
-    BankaiApp.data('bankaiSeoEngineData', function () {
+document.addEventListener('alpine:init', () => {
+    Alpine.data('bankaiSeoEngineData', function () {
 
     return {
         seoPanel: 'tools',
@@ -214,7 +214,7 @@ document.addEventListener('bankai:init', () => {
             }).then(function (r) { return r.json(); }).then(function (j) {
                 if (j && j.success) {
                     if (window.bankaiAdmin && bankaiAdmin.showToast) bankaiAdmin.showToast(j.message || 'ذخیره شد', 'success');
-                    else if (typeof BankaiApp !== 'undefined' && window.bankaiShowToast) window.bankaiShowToast(j.message || 'ذخیره شد');
+                    else if (typeof Alpine !== 'undefined' && window.bankaiShowToast) window.bankaiShowToast(j.message || 'ذخیره شد');
                 } else {
                     self.seoState[modId] = !enabled;
                     if (window.bankaiAdmin && bankaiAdmin.showToast) bankaiAdmin.showToast((j && j.message) || 'خطا در ذخیره', 'error');
