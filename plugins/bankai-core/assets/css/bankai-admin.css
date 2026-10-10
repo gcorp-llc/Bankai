@@ -6,9 +6,9 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   0. FOUC Prevention
+   0. FOUC Prevention & Initial Visibility
    -------------------------------------------------------------------------- */
-[x-cloak] {
+[data-bankai-cloak] {
   display: none !important;
 }
 
@@ -20,8 +20,8 @@ body.toplevel_page_bankai-core #wpwrap,
 body.toplevel_page_bankai-core #wpcontent,
 body.toplevel_page_bankai-core #wpbody,
 body.toplevel_page_bankai-core #wpbody-content {
-  background-color: #F5F5F7 !important;
-  color: #1D1D1F !important;
+  background-color: #f6f8fa !important;
+  color: #1f2328 !important;
   min-height: 100vh !important;
 }
 
@@ -1208,7 +1208,7 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* انیمیشن ترانزیشن Alpine */
+/* انیمیشن ترانزیشن BankaiApp */
 .bankai-transition-enter { transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 .bankai-transition-leave { transition: all 0.2s cubic-bezier(0.7, 0, 0.84, 0); }
 .bankai-transition-start { opacity: 0; transform: scale(0.96); }
@@ -3039,13 +3039,13 @@ body.admin-bar #bankai-admin-app .bankai-sidebar {
 }
 
 
-/* tab-pane-visibility-fix — do NOT force display:none (breaks Alpine x-show) */
+/* tab-pane-visibility-fix — do NOT force display:none (breaks BankaiApp data-bankai-show) */
 .bankai-tab-pane {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
-.bankai-tab-pane[x-cloak] {
+.bankai-tab-pane[data-bankai-cloak] {
   display: none !important;
 }
 #bankai-admin-sidebar .bankai-nav-off-badge { display: none !important; }
@@ -3529,12 +3529,12 @@ body.toplevel_page_bankai-core #wpcontent {
   display: block !important;
 }
 /* Hide inactive tabs firmly */
-#bankai-admin-app .bankai-tab-pane[x-cloak],
+#bankai-admin-app .bankai-tab-pane[data-bankai-cloak],
 #bankai-admin-app .bankai-tab-pane[style*="display: none"] {
   display: none !important;
 }
 #bankai-admin-app .bankai-tab-pane:not(.is-active-tab) {
-  /* alpine x-show handles; fallback when cloak present */
+  /* data-bankai-show handles; fallback when cloak present */
 }
 /* Telemetry status text blue-gray */
 #bankai-admin-sidebar .status-title,

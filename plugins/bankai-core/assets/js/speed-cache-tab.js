@@ -6,8 +6,8 @@
     return null;
   }
 
-  document.addEventListener('alpine:init', () => {
-    Alpine.data('bankaiSpeedTab', (savedCfg) => ({
+  document.addEventListener('bankai:init', () => {
+    BankaiApp.data('bankaiSpeedTab', (savedCfg) => ({
       speedTab: 'config',
       openOpt: '',
       cfg: {},

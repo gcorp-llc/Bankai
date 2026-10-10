@@ -29,6 +29,8 @@ if (!function_exists('rest_url')) { function rest_url($p) { return 'https://exam
 if (!function_exists('admin_url')) { function admin_url($p) { return 'https://example.com/wp-admin/' . $p; } }
 if (!function_exists('home_url')) { function home_url($p) { return 'https://example.com' . $p; } }
 if (!function_exists('get_bloginfo')) { function get_bloginfo($p) { return '6.5.0'; } }
+if (!function_exists('get_site_icon_url')) { function get_site_icon_url($size=512) { return 'https://example.com/favicon.ico'; } }
+if (!function_exists('wp_get_attachment_image_url')) { function wp_get_attachment_image_url($id, $size='thumbnail') { return 'https://example.com/img.png'; } }
 if (!function_exists('get_the_ID')) { function get_the_ID() { return 1; } }
 if (!function_exists('get_post')) { function get_post($id) { return (object)['ID' => $id, 'post_title' => 'Test Post', 'post_author' => 1]; } }
 if (!function_exists('get_post_meta')) { function get_post_meta($id, $key, $single=true) { return '0'; } }
@@ -44,6 +46,14 @@ if (!function_exists('bankai_get_option')) { function bankai_get_option($k='', $
 if (!function_exists('bankai_seo_score_color')) { function bankai_seo_score_color($s) { return '#10B981'; } }
 if (!function_exists('get_categories')) { function get_categories($args=[]) { return [(object)['term_id' => 1, 'name' => 'General']]; } }
 if (!function_exists('get_users')) { function get_users($args=[]) { return [(object)['ID' => 1, 'display_name' => 'Admin']]; } }
+if (!function_exists('wp_count_posts')) { function wp_count_posts($type='post') { return (object)['publish' => 10, 'draft' => 2]; } }
+if (!function_exists('wp_get_theme')) { function wp_get_theme() { return (object)['get' => function($k) { return 'Bankai Theme'; }, 'get_stylesheet' => function() { return 'bankai-theme'; }]; } }
+if (!function_exists('get_post_types')) { function get_post_types($args=[], $output='names') { return ['post' => 'post', 'page' => 'page']; } }
+if (!function_exists('get_taxonomies')) { function get_taxonomies($args=[], $output='names') { return ['category' => 'category', 'post_tag' => 'post_tag']; } }
+if (!function_exists('get_terms')) { function get_terms($args=[]) { return [(object)['term_id' => 1, 'name' => 'General']]; } }
+if (!function_exists('get_category_link')) { function get_category_link($id) { return 'https://example.com/category/general'; } }
+if (!function_exists('wp_doing_ajax')) { function wp_doing_ajax() { return false; } }
+if (!function_exists('wp_parse_url')) { function wp_parse_url($url, $component = -1) { return parse_url($url, $component); } }
 
 // Load Bankai_AI_Studio class if available, or mock
 if (file_exists(BANKAI_CORE_DIR . 'inc/modules/class-ai-studio.php')) {

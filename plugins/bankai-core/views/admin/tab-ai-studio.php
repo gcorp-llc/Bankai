@@ -75,8 +75,8 @@ foreach ($image_status as $row) {
 
 
 
-<div id="tab-ai-studio" class="bankai-tab-pane" x-show="activeTab === 'ai-studio'" x-cloak>
-<div class="bankai-ai-studio-root" x-data="bankaiAiStudioRoot">
+<div id="tab-ai-studio" class="bankai-tab-pane" data-bankai-show="activeTab === 'ai-studio'" data-bankai-cloak>
+<div class="bankai-ai-studio-root" data-bankai-data="bankaiAiStudioRoot">
     <div class="bk-lg-header bk-wm-hero bk-page-hero">
         <div class="bk-wm-hero__main">
             <div class="bk-wm-hero__icon">
@@ -91,25 +91,25 @@ foreach ($image_status as $row) {
             </div>
         </div>
         <div class="bk-wm-hero__actions">
-            <button type="button" class="bk-wm-chip-btn" @click="testAllConnections()" :disabled="busy" x-show="aiMode==='text'">
-                <span x-show="!busy">تست همه اتصالات</span>
-                <span x-show="busy" x-cloak>در حال تست…</span>
+            <button type="button" class="bk-wm-chip-btn" data-bankai-click="testAllConnections()" data-bankai-disabled="busy" data-bankai-show="aiMode==='text'">
+                <span data-bankai-show="!busy">تست همه اتصالات</span>
+                <span data-bankai-show="busy" data-bankai-cloak>در حال تست…</span>
             </button>
-            <button type="button" class="bk-wm-chip-btn" @click="openAddModal()" x-show="aiMode==='text'" style="background:rgba(255,255,255,.95)!important;color:#5b21b6!important">افزودن هوش مصنوعی</button>
+            <button type="button" class="bk-wm-chip-btn" data-bankai-click="openAddModal()" data-bankai-show="aiMode==='text'" style="background:rgba(255,255,255,.95)!important;color:#5b21b6!important">افزودن هوش مصنوعی</button>
         </div>
     </div>
     <div class="bk-art-tabs bk-lg-tabs bk-ai-mode-tabs">
-    <button type="button" class="bk-lg-tab bk-ai-mode-tab" :class="{'is-active': aiMode==='text'}" @click="aiMode='text'">
+    <button type="button" class="bk-lg-tab bk-ai-mode-tab" data-bankai-class="{'is-active': aiMode==='text'}" data-bankai-click="aiMode='text'">
       <svg class="solar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
       هوش‌های مصنوعی متنی
     </button>
-    <button type="button" class="bk-lg-tab bk-ai-mode-tab" :class="{'is-active': aiMode==='image'}" @click="aiMode='image'">
+    <button type="button" class="bk-lg-tab bk-ai-mode-tab" data-bankai-class="{'is-active': aiMode==='image'}" data-bankai-click="aiMode='image'">
       <svg class="solar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>
       هوش مصنوعی تصویری
     </button>
   </div>
 
-  <div x-show="aiMode==='text'" style="display:block">
+  <div data-bankai-show="aiMode==='text'" style="display:block">
   <div class="bk-vault">
     <div>
       <h4>
@@ -120,7 +120,7 @@ foreach ($image_status as $row) {
     </div>
     <div class="bk-field" style="margin:0;min-width:200px">
       <label>موتور پیش‌فرض</label>
-      <select x-model="defaultProvider" @change="updateDefaultProvider()">
+      <select data-bankai-model="defaultProvider" data-bankai-change="updateDefaultProvider()">
         <?php foreach ($catalog as $id => $meta): ?>
         <option value="<?php echo esc_attr($id); ?>" <?php selected($default_p, $id); ?>><?php echo esc_html($meta['name'] ?? $id); ?></option>
         <?php endforeach; ?>
@@ -143,7 +143,7 @@ foreach ($image_status as $row) {
     ?>
     <div class="bk-provider-card <?php echo $has_key ? 'is-ready' : ''; ?>"
          style="--pc-accent:<?php echo esc_attr($accent); ?>"
-         x-data="bankaiProviderCard({
+         data-bankai-data="bankaiProviderCard({
            id:'<?php echo esc_js($id); ?>',
            key:'<?php echo esc_js($masked); ?>',
            model:'<?php echo esc_js($sel_model); ?>',
@@ -161,11 +161,11 @@ foreach ($image_status as $row) {
             <div class="bk-chip-row">
               <?php if (!empty($meta['free_tier'])): ?><span class="bk-chip is-green">رایگان</span><?php endif; ?>
               <?php if ($is_custom): ?><span class="bk-chip is-purple">سفارشی</span><?php endif; ?>
-              <span class="bk-chip is-blue" x-text="label"><?php echo esc_html($label); ?></span>
+              <span class="bk-chip is-blue" data-bankai-text="label"><?php echo esc_html($label); ?></span>
             </div>
           </div>
         </div>
-        <button type="button" class="bk-btn bk-btn-ghost" style="padding:6px 10px" @click="openModelsEditor()" title="ویرایش مدل‌ها">
+        <button type="button" class="bk-btn bk-btn-ghost" style="padding:6px 10px" data-bankai-click="openModelsEditor()" title="ویرایش مدل‌ها">
           <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
           ویرایش
         </button>
@@ -173,17 +173,17 @@ foreach ($image_status as $row) {
 
       <div class="bk-field">
         <label>مدل فعال</label>
-        <select x-model="model">
-          <template x-for="m in models" :key="m">
-            <option :value="m" x-text="m === 'openrouter/auto' ? '⚡ خودکار' : (m === 'openrouter/free' ? '⚡ خودکار رایگان' : m)"></option>
+        <select data-bankai-model="model">
+          <template data-bankai-for="m in models" data-bankai-key="m">
+            <option :value="m" data-bankai-text="m === 'openrouter/auto' ? '⚡ خودکار' : (m === 'openrouter/free' ? '⚡ خودکار رایگان' : m)"></option>
           </template>
         </select>
       </div>
 
-      <div class="bk-model-list" x-show="models.length">
-        <template x-for="m in models" :key="'p'+m">
+      <div class="bk-model-list" data-bankai-show="models.length">
+        <template data-bankai-for="m in models" data-bankai-key="'p'+m">
           <span class="bk-model-pill">
-            <span x-text="m"></span>
+            <span data-bankai-text="m"></span>
           </span>
         </template>
       </div>
@@ -191,14 +191,14 @@ foreach ($image_status as $row) {
       <div class="bk-field">
         <label>کلید API</label>
         <div class="bk-key-row">
-          <input :type="'text'" data-bk-secret="1" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other" :style="showKey ? '' : 'text-security:disc;-webkit-text-security:disc'" x-model="key"
-                 @input="keyDirty=true"
+          <input :type="'text'" data-bk-secret="1" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other" data-bankai-style="showKey ? '' : 'text-security:disc;-webkit-text-security:disc'" data-bankai-model="key"
+                 data-bankai-input="keyDirty=true"
                  @focus="if(!keyDirty && key.indexOf('•')!==-1){key='';keyDirty=true;}"
                  placeholder="<?php echo esc_attr($meta['key_hint'] ?? 'API Key'); ?>" autocomplete="off">
-          <button type="button" class="bk-icon-btn" @click="showKey=!showKey" title="نمایش">
+          <button type="button" class="bk-icon-btn" data-bankai-click="showKey=!showKey" title="نمایش">
             <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
-          <button type="button" class="bk-icon-btn" @click="clearKey()" title="حذف کلید">
+          <button type="button" class="bk-icon-btn" data-bankai-click="clearKey()" title="حذف کلید">
             <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
           </button>
         </div>
@@ -209,39 +209,39 @@ foreach ($image_status as $row) {
       <?php endif; ?>
 
       <div class="bk-card-actions">
-        <button type="button" class="bk-btn bk-btn-primary" style="padding:8px 12px" :disabled="saving" @click="save()">
-          <span class="bk-btn-spin" x-show="saving" x-cloak></span>
-          <span x-show="!saving">ذخیره</span>
-          <span x-show="saving" x-cloak>در حال ذخیره…</span>
+        <button type="button" class="bk-btn bk-btn-primary" style="padding:8px 12px" data-bankai-disabled="saving" data-bankai-click="save()">
+          <span class="bk-btn-spin" data-bankai-show="saving" data-bankai-cloak></span>
+          <span data-bankai-show="!saving">ذخیره</span>
+          <span data-bankai-show="saving" data-bankai-cloak>در حال ذخیره…</span>
         </button>
-        <button type="button" class="bk-btn bk-btn-ghost" style="padding:8px 12px" :disabled="testing" @click="test()">
-          <span class="bk-btn-spin" x-show="testing" x-cloak></span>
-          <span x-show="!testing">تست اتصال</span>
-          <span x-show="testing" x-cloak>در حال تست…</span>
+        <button type="button" class="bk-btn bk-btn-ghost" style="padding:8px 12px" data-bankai-disabled="testing" data-bankai-click="test()">
+          <span class="bk-btn-spin" data-bankai-show="testing" data-bankai-cloak></span>
+          <span data-bankai-show="!testing">تست اتصال</span>
+          <span data-bankai-show="testing" data-bankai-cloak>در حال تست…</span>
         </button>
         <?php if ($is_custom): ?>
-        <button type="button" class="bk-btn bk-btn-ghost" style="padding:8px 12px;color:#c42b1c" @click="$dispatch('bk-delete-provider', {id: id})">حذف ایجنت</button>
+        <button type="button" class="bk-btn bk-btn-ghost" style="padding:8px 12px;color:#c42b1c" data-bankai-click="$dispatch('bk-delete-provider', {id: id})">حذف ایجنت</button>
         <?php endif; ?>
       </div>
 
       <!-- models editor (inline expand) -->
-      <div x-show="editModels" x-cloak style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bk-line)">
+      <div data-bankai-show="editModels" data-bankai-cloak style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bk-line)">
         <div class="bk-field">
           <label>افزودن شناسه مدل جدید</label>
           <div class="bk-key-row">
-            <input type="text" x-model="newModel" dir="ltr" placeholder="model-id">
-            <button type="button" class="bk-btn bk-btn-primary" style="padding:8px 12px" @click="addModel()" :disabled="busyModel">+</button>
+            <input type="text" data-bankai-model="newModel" dir="ltr" placeholder="model-id">
+            <button type="button" class="bk-btn bk-btn-primary" style="padding:8px 12px" data-bankai-click="addModel()" data-bankai-disabled="busyModel">+</button>
           </div>
         </div>
         <div class="bk-model-list">
-          <template x-for="m in models" :key="'e'+m">
+          <template data-bankai-for="m in models" data-bankai-key="'e'+m">
             <span class="bk-model-pill">
-              <span x-text="m"></span>
-              <button type="button" @click="removeModel(m)" title="حذف">×</button>
+              <span data-bankai-text="m"></span>
+              <button type="button" data-bankai-click="removeModel(m)" title="حذف">×</button>
             </span>
           </template>
         </div>
-        <button type="button" class="bk-btn bk-btn-ghost" style="padding:6px 10px;margin-top:6px" @click="editModels=false">بستن</button>
+        <button type="button" class="bk-btn bk-btn-ghost" style="padding:6px 10px;margin-top:6px" data-bankai-click="editModels=false">بستن</button>
       </div>
     </div>
     <?php endforeach; ?>
@@ -264,7 +264,7 @@ foreach ($image_status as $row) {
         $mod_id = esc_attr($mod['id']);
         $is_active = !empty($saved_mods[$mod_id]);
       ?>
-      <div class="bk-mod-card" x-data="{active: <?php echo $is_active ? 'true' : 'false'; ?>}">
+      <div class="bk-mod-card" data-bankai-data="{active: <?php echo $is_active ? 'true' : 'false'; ?>}">
         <div class="bk-mod-top">
           <div>
             <div class="bk-mod-title" style="display:flex;align-items:center;gap:8px">
@@ -273,7 +273,7 @@ foreach ($image_status as $row) {
             </div>
             <span class="bk-mod-badge"><?php echo esc_html($mod['badge']); ?></span>
           </div>
-          <label class="bk-switch"><input type="checkbox" x-model="active" @change="toggleModule('<?php echo $mod_id; ?>', active)"><span></span></label>
+          <label class="bk-switch"><input type="checkbox" data-bankai-model="active" data-bankai-change="toggleModule('<?php echo $mod_id; ?>', active)"><span></span></label>
         </div>
         <p><?php echo esc_html($mod['description_fa']); ?></p>
       </div>
@@ -284,7 +284,7 @@ foreach ($image_status as $row) {
 
   </div><!-- end text AI mode -->
 
-  <div x-show="aiMode==='image'" style="display:none">
+  <div data-bankai-show="aiMode==='image'" style="display:none">
     <div class="bk-vault">
       <div>
         <h4>
@@ -295,7 +295,7 @@ foreach ($image_status as $row) {
       </div>
       <div class="bk-field" style="margin:0;min-width:220px">
         <label>موتور تصویری پیش‌فرض</label>
-        <select x-model="imageDefault" @change="setImageDefault()">
+        <select data-bankai-model="imageDefault" data-bankai-change="setImageDefault()">
           <?php foreach ($image_catalog as $id => $meta): ?>
           <option value="<?php echo esc_attr($id); ?>" <?php selected($image_default, $id); ?>><?php echo esc_html($meta['name'] ?? $id); ?></option>
           <?php endforeach; ?>
@@ -318,7 +318,7 @@ foreach ($image_status as $row) {
       ?>
       <div class="bk-provider-card <?php echo $has ? 'is-ready' : ''; ?>"
            style="--pc-accent:<?php echo esc_attr($accent); ?>"
-           x-data="bankaiImageProviderCard({
+           data-bankai-data="bankaiImageProviderCard({
              id:'<?php echo esc_js($id); ?>',
              key:'<?php echo esc_js($masked); ?>',
              model:'<?php echo esc_js($sel_model); ?>',
@@ -337,11 +337,11 @@ foreach ($image_status as $row) {
               <div class="bk-chip-row">
                 <?php if (!empty($meta['free_tier'])): ?><span class="bk-chip is-green">رایگان</span><?php endif; ?>
                 <span class="bk-chip is-purple">تصویر</span>
-                <span class="bk-chip is-blue" x-text="label"><?php echo esc_html($label); ?></span>
+                <span class="bk-chip is-blue" data-bankai-text="label"><?php echo esc_html($label); ?></span>
               </div>
             </div>
           </div>
-          <button type="button" class="bk-btn bk-btn-ghost" style="padding:6px 10px" @click="openModelsEditor()" title="ویرایش مدل‌ها">
+          <button type="button" class="bk-btn bk-btn-ghost" style="padding:6px 10px" data-bankai-click="openModelsEditor()" title="ویرایش مدل‌ها">
             <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
             ویرایش
           </button>
@@ -349,31 +349,31 @@ foreach ($image_status as $row) {
 
         <div class="bk-field">
           <label>مدل فعال</label>
-          <select x-model="model" @change="saveModelOnly()">
-            <template x-for="m in models" :key="m">
-              <option :value="m" x-text="m"></option>
+          <select data-bankai-model="model" data-bankai-change="saveModelOnly()">
+            <template data-bankai-for="m in models" data-bankai-key="m">
+              <option :value="m" data-bankai-text="m"></option>
             </template>
           </select>
         </div>
 
-        <div class="bk-model-list" x-show="models.length">
-          <template x-for="m in models" :key="'ip'+m">
-            <span class="bk-model-pill"><span x-text="m"></span></span>
+        <div class="bk-model-list" data-bankai-show="models.length">
+          <template data-bankai-for="m in models" data-bankai-key="'ip'+m">
+            <span class="bk-model-pill"><span data-bankai-text="m"></span></span>
           </template>
         </div>
 
         <div class="bk-field">
           <label>کلید API</label>
           <div class="bk-key-row">
-            <input :type="'text'" data-bk-secret="1" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other" :style="showKey ? '' : 'text-security:disc;-webkit-text-security:disc'" x-model="key"
-                   @input="keyDirty=true"
+            <input :type="'text'" data-bk-secret="1" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other" data-bankai-style="showKey ? '' : 'text-security:disc;-webkit-text-security:disc'" data-bankai-model="key"
+                   data-bankai-input="keyDirty=true"
                    @focus="if(!keyDirty && key && key.indexOf('•')!==-1){key='';keyDirty=true;}"
                    :placeholder="hasKey ? '•••• برای تغییر بنویسید' : '<?php echo esc_attr($meta['key_hint'] ?? 'API Key'); ?>'"
                    autocomplete="off">
-            <button type="button" class="bk-btn bk-btn-ghost" style="padding:8px" @click="showKey=!showKey" title="نمایش">
+            <button type="button" class="bk-btn bk-btn-ghost" style="padding:8px" data-bankai-click="showKey=!showKey" title="نمایش">
               <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
-            <button type="button" class="bk-btn bk-btn-ghost" style="padding:8px;color:#c42b1c" x-show="hasKey" @click="clearKey()" title="حذف کلید">
+            <button type="button" class="bk-btn bk-btn-ghost" style="padding:8px;color:#c42b1c" data-bankai-show="hasKey" data-bankai-click="clearKey()" title="حذف کلید">
               <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
             </button>
           </div>
@@ -384,35 +384,35 @@ foreach ($image_status as $row) {
         <?php endif; ?>
 
         <div class="bk-card-actions">
-          <button type="button" class="bk-btn bk-btn-primary" style="padding:8px 12px" :disabled="saving || busy" @click="save()">
-          <span class="bk-btn-spin" x-show="saving" x-cloak></span>
-          <span x-show="!saving">ذخیره</span>
-          <span x-show="saving" x-cloak>در حال ذخیره…</span>
+          <button type="button" class="bk-btn bk-btn-primary" style="padding:8px 12px" data-bankai-disabled="saving || busy" data-bankai-click="save()">
+          <span class="bk-btn-spin" data-bankai-show="saving" data-bankai-cloak></span>
+          <span data-bankai-show="!saving">ذخیره</span>
+          <span data-bankai-show="saving" data-bankai-cloak>در حال ذخیره…</span>
         </button>
-          <button type="button" class="bk-btn bk-btn-ghost" style="padding:8px 12px" :disabled="testing || busy" @click="test()">
-          <span class="bk-btn-spin" x-show="testing" x-cloak></span>
-          <span x-show="!testing">تست اتصال</span>
-          <span x-show="testing" x-cloak>در حال تست…</span>
+          <button type="button" class="bk-btn bk-btn-ghost" style="padding:8px 12px" data-bankai-disabled="testing || busy" data-bankai-click="test()">
+          <span class="bk-btn-spin" data-bankai-show="testing" data-bankai-cloak></span>
+          <span data-bankai-show="!testing">تست اتصال</span>
+          <span data-bankai-show="testing" data-bankai-cloak>در حال تست…</span>
         </button>
         </div>
 
-        <div x-show="editModels" x-cloak style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bk-line)">
+        <div data-bankai-show="editModels" data-bankai-cloak style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bk-line)">
           <div class="bk-field">
             <label>افزودن شناسه مدل جدید</label>
             <div class="bk-key-row">
-              <input type="text" x-model="newModel" dir="ltr" placeholder="model-id">
-              <button type="button" class="bk-btn bk-btn-primary" style="padding:8px 12px" @click="addModel()" :disabled="busy">+</button>
+              <input type="text" data-bankai-model="newModel" dir="ltr" placeholder="model-id">
+              <button type="button" class="bk-btn bk-btn-primary" style="padding:8px 12px" data-bankai-click="addModel()" data-bankai-disabled="busy">+</button>
             </div>
           </div>
           <div class="bk-model-list">
-            <template x-for="m in models" :key="'ie'+m">
+            <template data-bankai-for="m in models" data-bankai-key="'ie'+m">
               <span class="bk-model-pill">
-                <span x-text="m"></span>
-                <button type="button" @click="removeModel(m)" title="حذف">×</button>
+                <span data-bankai-text="m"></span>
+                <button type="button" data-bankai-click="removeModel(m)" title="حذف">×</button>
               </span>
             </template>
           </div>
-          <button type="button" class="bk-btn bk-btn-ghost" style="padding:6px 10px;margin-top:6px" @click="editModels=false">بستن</button>
+          <button type="button" class="bk-btn bk-btn-ghost" style="padding:6px 10px;margin-top:6px" data-bankai-click="editModels=false">بستن</button>
         </div>
       </div>
       <?php endforeach; ?>
@@ -425,12 +425,12 @@ foreach ($image_status as $row) {
           <span class="bk-chip is-purple">کاور · محتوای مقاله</span>
         </div>
         <div class="bk-img-purpose">
-          <button type="button" :class="{'is-on': imgPurpose==='cover'}" @click="imgPurpose='cover'">کاور پست (۱۶:۹)</button>
-          <button type="button" :class="{'is-on': imgPurpose==='inline'}" @click="imgPurpose='inline'">تصویر داخل مقاله</button>
+          <button type="button" data-bankai-class="{'is-on': imgPurpose==='cover'}" data-bankai-click="imgPurpose='cover'">کاور پست (۱۶:۹)</button>
+          <button type="button" data-bankai-class="{'is-on': imgPurpose==='inline'}" data-bankai-click="imgPurpose='inline'">تصویر داخل مقاله</button>
         </div>
         <div class="bk-field">
           <label>موتور</label>
-          <select x-model="imgProvider">
+          <select data-bankai-model="imgProvider">
             <?php foreach ($image_catalog as $id => $meta): ?>
             <option value="<?php echo esc_attr($id); ?>"><?php echo esc_html($meta['name'] ?? $id); ?></option>
             <?php endforeach; ?>
@@ -438,14 +438,14 @@ foreach ($image_status as $row) {
         </div>
         <div class="bk-field">
           <label>شناسه پست (اختیاری — برای ست‌کردن کاور)</label>
-          <input type="number" min="0" x-model="imgPostId" placeholder="مثلاً 42">
+          <input type="number" min="0" data-bankai-model="imgPostId" placeholder="مثلاً 42">
         </div>
         <div class="bk-field">
           <label>پرامپت تصویر</label>
-          <textarea x-model="imgPrompt" rows="4" placeholder="موضوع، سبک بصری، نورپردازی… از متن ناخوانا روی تصویر پرهیز کنید"></textarea>
+          <textarea data-bankai-model="imgPrompt" rows="4" placeholder="موضوع، سبک بصری، نورپردازی… از متن ناخوانا روی تصویر پرهیز کنید"></textarea>
         </div>
-        <button type="button" class="bk-btn bk-btn-primary" style="width:100%" @click="generateImage()" :disabled="imgBusy || !imgPrompt.trim()">
-          <span x-text="imgBusy ? 'در حال تولید…' : (imgPurpose==='cover' ? 'ساخت کاور و ذخیره در رسانه' : 'ساخت تصویر محتوا')"></span>
+        <button type="button" class="bk-btn bk-btn-primary" style="width:100%" data-bankai-click="generateImage()" data-bankai-disabled="imgBusy || !imgPrompt.trim()">
+          <span data-bankai-text="imgBusy ? 'در حال تولید…' : (imgPurpose==='cover' ? 'ساخت کاور و ذخیره در رسانه' : 'ساخت تصویر محتوا')"></span>
         </button>
         <p style="margin:10px 0 0;font-size:11px;color:var(--bk-muted);line-height:1.55">
           خروجی در کتابخانه رسانه ذخیره می‌شود. اگر شناسه پست وارد شود و حالت کاور باشد، به‌عنوان تصویر شاخص ست می‌گردد.
@@ -454,13 +454,13 @@ foreach ($image_status as $row) {
       <div class="bk-card">
         <div class="bk-card-head"><strong>پیش‌نمایش</strong></div>
         <div class="bk-img-preview">
-          <template x-if="imgResultUrl"><img :src="imgResultUrl" alt="AI"></template>
-          <template x-if="!imgResultUrl"><span style="font-size:12px;color:var(--bk-soft);padding:16px;text-align:center">پس از تولید اینجا نمایش داده می‌شود</span></template>
+          <template data-bankai-if="imgResultUrl"><img data-bankai-src="imgResultUrl" alt="AI"></template>
+          <template data-bankai-if="!imgResultUrl"><span style="font-size:12px;color:var(--bk-soft);padding:16px;text-align:center">پس از تولید اینجا نمایش داده می‌شود</span></template>
         </div>
-        <div style="margin-top:10px;font-size:12px;color:var(--bk-muted)" x-show="imgMessage" x-text="imgMessage"></div>
-        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap" x-show="imgResultUrl">
-          <a class="bk-btn bk-btn-soft" :href="imgResultUrl" target="_blank" rel="noopener">باز کردن</a>
-          <button type="button" class="bk-btn bk-btn-ghost" x-show="imgHtml" @click="copyImgHtml()">کپی HTML درج در مقاله</button>
+        <div style="margin-top:10px;font-size:12px;color:var(--bk-muted)" data-bankai-show="imgMessage" data-bankai-text="imgMessage"></div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap" data-bankai-show="imgResultUrl">
+          <a class="bk-btn bk-btn-soft" data-bankai-href="imgResultUrl" target="_blank" rel="noopener">باز کردن</a>
+          <button type="button" class="bk-btn bk-btn-ghost" data-bankai-show="imgHtml" data-bankai-click="copyImgHtml()">کپی HTML درج در مقاله</button>
         </div>
       </div>
     </div>
@@ -468,38 +468,38 @@ foreach ($image_status as $row) {
 
 
   <!-- ADD PROVIDER MODAL -->
-  <div class="bk-modal-shell" x-show="addModal" x-cloak @click.self="addModal=false">
+  <div class="bk-modal-shell" data-bankai-show="addModal" data-bankai-cloak data-bankai-click-self="addModal=false">
     <div class="bk-modal-panel" @click.stop>
       <div class="bk-modal-head">
         <h3>پیکربندی ایجنت هوشمند جدید</h3>
-        <button type="button" class="bk-icon-btn" @click="addModal=false">×</button>
+        <button type="button" class="bk-icon-btn" data-bankai-click="addModal=false">×</button>
       </div>
       <p style="margin:0 0 12px;font-size:12px;color:var(--bk-muted);line-height:1.6">
         کد اتصال را به‌صورت <code dir="ltr">curl</code> یا فرم زیر وارد کنید. اندپوینت OpenAI-compatible پشتیبانی می‌شود.
       </p>
       <div class="bk-field">
         <label>کد اتصال (curl)</label>
-        <textarea class="bk-code" x-model="customForm.curl" placeholder='curl -X POST "http://localhost:8000/v1/chat/completions" \
+        <textarea class="bk-code" data-bankai-model="customForm.curl" placeholder='curl -X POST "http://localhost:8000/v1/chat/completions" \
   -H "Content-Type: application/json" \
   --data '"'"'{"model":"XiaomiMiMo/MiMo-V2.6-Pro-RL","messages":[{"role":"user","content":"..."}]}'"'"'></textarea>
-        <button type="button" class="bk-btn bk-btn-soft" style="margin-top:8px" @click="parseCurl()">استخراج از curl</button>
+        <button type="button" class="bk-btn bk-btn-soft" style="margin-top:8px" data-bankai-click="parseCurl()">استخراج از curl</button>
       </div>
       <div class="bk-form-grid">
-        <div class="bk-field"><label>نام نمایشی *</label><input type="text" x-model="customForm.name" placeholder="دستیار سئو"></div>
-        <div class="bk-field"><label>شناسه یکتا</label><input type="text" x-model="customForm.id" dir="ltr" placeholder="my-agent"></div>
-        <div class="bk-field bk-span-2"><label>Endpoint *</label><input type="url" x-model="customForm.endpoint" dir="ltr" placeholder="http://127.0.0.1:8000/v1/chat/completions"></div>
-        <div class="bk-field"><label>Model ID</label><input type="text" x-model="customForm.default_model" dir="ltr" placeholder="model-name"></div>
-        <div class="bk-field"><label>API Key</label><input type="text" data-bk-secret="1" style="text-security:disc;-webkit-text-security:disc" x-model="customForm.api_key" autocomplete="off"></div>
-        <div class="bk-field bk-span-2"><label>مدل‌ها (هر خط یکی)</label><textarea x-model="customForm.models" rows="2" dir="ltr"></textarea></div>
-        <div class="bk-field"><label>هدر Auth</label><input type="text" x-model="customForm.auth_header" dir="ltr"></div>
-        <div class="bk-field"><label>پیشوند Auth</label><input type="text" x-model="customForm.auth_prefix" dir="ltr"></div>
+        <div class="bk-field"><label>نام نمایشی *</label><input type="text" data-bankai-model="customForm.name" placeholder="دستیار سئو"></div>
+        <div class="bk-field"><label>شناسه یکتا</label><input type="text" data-bankai-model="customForm.id" dir="ltr" placeholder="my-agent"></div>
+        <div class="bk-field bk-span-2"><label>Endpoint *</label><input type="url" data-bankai-model="customForm.endpoint" dir="ltr" placeholder="http://127.0.0.1:8000/v1/chat/completions"></div>
+        <div class="bk-field"><label>Model ID</label><input type="text" data-bankai-model="customForm.default_model" dir="ltr" placeholder="model-name"></div>
+        <div class="bk-field"><label>API Key</label><input type="text" data-bk-secret="1" style="text-security:disc;-webkit-text-security:disc" data-bankai-model="customForm.api_key" autocomplete="off"></div>
+        <div class="bk-field bk-span-2"><label>مدل‌ها (هر خط یکی)</label><textarea data-bankai-model="customForm.models" rows="2" dir="ltr"></textarea></div>
+        <div class="bk-field"><label>هدر Auth</label><input type="text" data-bankai-model="customForm.auth_header" dir="ltr"></div>
+        <div class="bk-field"><label>پیشوند Auth</label><input type="text" data-bankai-model="customForm.auth_prefix" dir="ltr"></div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
-        <button type="button" class="bk-btn bk-btn-ghost" @click="addModal=false">انصراف</button>
-        <button type="button" class="bk-btn bk-btn-success" @click="saveCustomAgent()" :disabled="busy">
-          <span class="bk-btn-spin" x-show="busy" x-cloak></span>
-          <span x-show="!busy">ذخیره ایجنت</span>
-          <span x-show="busy" x-cloak>در حال ذخیره…</span>
+        <button type="button" class="bk-btn bk-btn-ghost" data-bankai-click="addModal=false">انصراف</button>
+        <button type="button" class="bk-btn bk-btn-success" data-bankai-click="saveCustomAgent()" data-bankai-disabled="busy">
+          <span class="bk-btn-spin" data-bankai-show="busy" data-bankai-cloak></span>
+          <span data-bankai-show="!busy">ذخیره ایجنت</span>
+          <span data-bankai-show="busy" data-bankai-cloak>در حال ذخیره…</span>
         </button>
       </div>
     </div>

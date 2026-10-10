@@ -1,8 +1,20 @@
 /**
- * Bankai Admin — Alpine.js root (SEO + Speed + module sync)
+ * Bankai Admin — BankaiApp.js root (SEO + Speed + module sync)
  */
 (function () {
     'use strict';
+
+    if (!window.BankaiApp) {
+        window.BankaiApp = {
+            _registry: {},
+            data: function (name, factory) {
+                this._registry[name] = factory;
+            },
+            init: function () {
+                document.dispatchEvent(new CustomEvent('bankai:init'));
+            }
+        };
+    }
 
     function cfg() {
         return window.bankaiData || window.bankaiCoreData || {};
@@ -830,7 +842,7 @@ initSeoImport: function () {
             loadSeoAiProviders: function () {
                 var self = this;
                 var st = (window.bankaiState || this.$data || {});
-                // Alpine state often has providers from get_initial_state_data
+                // BankaiApp state often has providers from get_initial_state_data
                 var text = st.providers || st.aiProviders || this.providers || [];
                 var image = st.imageProviders || this.imageProviders || [];
                 var c = cfg();
@@ -863,7 +875,7 @@ initSeoImport: function () {
                         };
                     }).filter(function (p) { return p.id; });
                 }
-                // Alpine root often has providers directly
+                // BankaiApp root often has providers directly
                 if ((!text || !text.length) && Array.isArray(self.providers)) text = self.providers;
                 if ((!image || !image.length) && Array.isArray(self.imageProviders)) image = self.imageProviders;
                 self.seoImport.textProviders = norm(text);
@@ -2722,4 +2734,80 @@ openBulkWatermark: function () {
 
         };
     };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.BankaiApp && typeof window.BankaiApp.init === 'function') {
+            window.BankaiApp.init();
+        }
+
+        if (!window.bankaiAdminInstance && typeof window.bankaiAdmin === 'function') {
+            window.bankaiAdminInstance = window.bankaiAdmin();
+            if (typeof window.bankaiAdminInstance.init === 'function') {
+                window.bankaiAdminInstance.init();
+            }
+        }
+
+        var app = window.bankaiAdminInstance;
+        if (!app) return;
+
+        // Sync tab panes
+        function updateTabPanes(activeTab) {
+            var panes = document.querySelectorAll('.bankai-tab-pane');
+            panes.forEach(function (pane) {
+                var id = pane.id || '';
+                var tabName = id.replace(/^tab-/, '');
+                if (tabName === activeTab || pane.dataset.tab === activeTab) {
+                    pane.style.display = 'block';
+                    pane.classList.add('is-active-tab');
+                } else {
+                    pane.style.display = 'none';
+                    pane.classList.remove('is-active-tab');
+                }
+            });
+
+            var navItems = document.querySelectorAll('.bankai-nav-item, [data-tab-target]');
+            navItems.forEach(function (nav) {
+                var target = nav.dataset.tabTarget || nav.getAttribute('href') || '';
+                if (target.includes(activeTab)) {
+                    nav.classList.add('is-active');
+                } else {
+                    nav.classList.remove('is-active');
+                }
+            });
+        }
+
+        var initialTab = (cfg() && cfg().activeTab) || 'overview';
+        updateTabPanes(initialTab);
+
+        document.addEventListener('click', function (evt) {
+            var btn = evt.target.closest('[data-bankai-click], [data-tab], .bankai-nav-item');
+            if (!btn) return;
+
+            var tabTarget = btn.dataset.tab || btn.dataset.tabTarget;
+            if (tabTarget) {
+                evt.preventDefault();
+                app.setTab(tabTarget);
+                updateTabPanes(tabTarget);
+                return;
+            }
+
+            var clickExpr = btn.getAttribute('data-bankai-click');
+            if (clickExpr) {
+                if (clickExpr.includes('setTab(')) {
+                    var match = clickExpr.match(/setTab\(['"]([^'"]+)['"]\)/);
+                    if (match && match[1]) {
+                        evt.preventDefault();
+                        app.setTab(match[1]);
+                        updateTabPanes(match[1]);
+                    }
+                } else if (clickExpr.includes('toggleMobileMenu()')) {
+                    evt.preventDefault();
+                    app.toggleMobileMenu();
+                } else if (clickExpr.includes('closeMobileMenu()')) {
+                    evt.preventDefault();
+                    app.closeMobileMenu();
+                }
+            }
+        });
+    });
 })();

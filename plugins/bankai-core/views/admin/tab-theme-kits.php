@@ -1,5 +1,5 @@
 <!-- Tab: Theme Kits & Customizer -->
-<div id="tab-theme-kits" class="bankai-tab-pane" style="width:100%;max-width:100%;box-sizing:border-box" x-show="activeTab === 'theme-kits'" x-cloak>
+<div id="tab-theme-kits" class="bankai-tab-pane" style="width:100%;max-width:100%;box-sizing:border-box" data-bankai-show="activeTab === 'theme-kits'" data-bankai-cloak>
 
     <!-- Header -->
     <div class="bankai-card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; flex-wrap: wrap; gap: 14px;">
@@ -11,20 +11,20 @@
                     <circle cx="12" cy="7" r="1.5" fill="currentColor" stroke="none" />
                     <circle cx="16" cy="10" r="1.5" fill="currentColor" stroke="none" />
                 </svg>
-                <span x-text="t('themeKitsTitle')">Bankai Starter Kits &amp; Frontend Customizer</span>
+                <span data-bankai-text="t('themeKitsTitle')">Bankai Starter Kits &amp; Frontend Customizer</span>
             </h2>
-            <p style="font-size: 12px; color: #8C959F; margin: 0;" x-text="t('themeKitsDesc')">
+            <p style="font-size: 12px; color: #8C959F; margin: 0;" data-bankai-text="t('themeKitsDesc')">
                 1-Click turnkey site architectures, Tailwind CSS variable compiler, and high-performance design presets.
             </p>
         </div>
 
         <button type="button"
-                @click="syncLibrary()"
+                data-bankai-click="syncLibrary()"
                 style="background-color: #0969DA; border: none; color: #FFFFFF; padding: 10px 18px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(9, 105, 218, 0.3);">
             <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M19.95 11a8 8 0 1 0-.5 4m.5-4h-5m5 0V6" />
             </svg>
-            <span x-text="t('syncLibrary')">Sync Library</span>
+            <span data-bankai-text="t('syncLibrary')">Sync Library</span>
         </button>
     </div>
 
@@ -34,15 +34,15 @@
             <svg class="solar-icon" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
             </svg>
-            <span x-text="t('customizerTitle')">Theme Customizer Panel</span>
+            <span data-bankai-text="t('customizerTitle')">Theme Customizer Panel</span>
         </h3>
 
         <div class="bankai-grid-3">
             <!-- Typography -->
             <div>
                 <label style="display: block; font-size: 12px; font-weight: 700; color: #656D76; margin-bottom: 8px;"
-                       x-text="t('fontFamily')">Typography Font Family</label>
-                <select x-model="customizer.fontFamily"
+                       data-bankai-text="t('fontFamily')">Typography Font Family</label>
+                <select data-bankai-model="customizer.fontFamily"
                         style="width: 100%; background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #1F2328; padding: 10px 14px; border-radius: 8px; font-size: 13px; outline: none;">
                     <option value="Vazirmatn">Vazirmatn (وزیرمتن - استاندارد فارسی)</option>
                     <option value="Inter">System UI / Inter (Default LTR)</option>
@@ -50,7 +50,7 @@
                     <option value="Fira Code">Fira Code (Developer / Monospace)</option>
                 </select>
                 <span style="font-size: 11px; color: #8C959F; margin-top: 6px; display: block;"
-                      x-text="isRtl ? 'حالت فارسی به طور خودکار فواصل حروف و رندر فونت را بهینه می‌کند.' : 'Persian / RTL mode automatically optimizes kerning and font fallbacks.'">
+                      data-bankai-text="isRtl ? 'حالت فارسی به طور خودکار فواصل حروف و رندر فونت را بهینه می‌کند.' : 'Persian / RTL mode automatically optimizes kerning and font fallbacks.'">
                     Persian / RTL mode automatically optimizes kerning and font fallbacks.
                 </span>
             </div>
@@ -58,36 +58,36 @@
             <!-- Container Width -->
             <div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <label style="font-size: 12px; font-weight: 700; color: #656D76;" x-text="t('containerWidth')">Container Max-Width</label>
-                    <span style="font-size: 12px; font-weight: 800; color: #0969DA; font-family: monospace;" x-text="customizer.containerWidth + 'px'">1400px</span>
+                    <label style="font-size: 12px; font-weight: 700; color: #656D76;" data-bankai-text="t('containerWidth')">Container Max-Width</label>
+                    <span style="font-size: 12px; font-weight: 800; color: #0969DA; font-family: monospace;" data-bankai-text="customizer.containerWidth + 'px'">1400px</span>
                 </div>
-                <input type="range" min="1200" max="1600" step="10" x-model="customizer.containerWidth"
+                <input type="range" min="1200" max="1600" step="10" data-bankai-model="customizer.containerWidth"
                        style="width: 100%; accent-color: #0969DA; cursor: pointer;">
                 <div style="display: flex; justify-content: space-between; font-size: 10px; color: #8C959F; margin-top: 6px;">
-                    <span x-text="isRtl ? '۱۲۰۰ پیکسل (فشرده)' : '1200px (Compact)'">1200px (Compact)</span>
-                    <span x-text="isRtl ? '۱۴۰۰ پیکسل (استاندارد)' : '1400px (Standard)'">1400px (Standard)</span>
-                    <span x-text="isRtl ? '۱۶۰۰ پیکسل (عریض)' : '1600px (Ultra Wide)'">1600px (Ultra Wide)</span>
+                    <span data-bankai-text="isRtl ? '۱۲۰۰ پیکسل (فشرده)' : '1200px (Compact)'">1200px (Compact)</span>
+                    <span data-bankai-text="isRtl ? '۱۴۰۰ پیکسل (استاندارد)' : '1400px (Standard)'">1400px (Standard)</span>
+                    <span data-bankai-text="isRtl ? '۱۶۰۰ پیکسل (عریض)' : '1600px (Ultra Wide)'">1600px (Ultra Wide)</span>
                 </div>
             </div>
 
             <!-- Layout Toggles -->
             <div>
                 <label style="display: block; font-size: 12px; font-weight: 700; color: #656D76; margin-bottom: 8px;"
-                       x-text="t('layoutComponents')">Layout Components</label>
+                       data-bankai-text="t('layoutComponents')">Layout Components</label>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; background-color: #F6F8FA; padding: 10px 14px; border-radius: 8px; border: 1px solid #D0D7DE;">
                         <span style="font-size: 12px; color: #1F2328; font-weight: 600;"
-                              x-text="isRtl ? 'سربرگ چسبان هوشمند' : 'Sticky Header Navigation'">Sticky Header Navigation</span>
+                              data-bankai-text="isRtl ? 'سربرگ چسبان هوشمند' : 'Sticky Header Navigation'">Sticky Header Navigation</span>
                         <label class="bankai-switch">
-                            <input type="checkbox" checked @change="showToast(isRtl ? 'تنظیم سربرگ چسبان به‌روز شد' : 'Sticky Header state updated')">
+                            <input type="checkbox" checked data-bankai-change="showToast(isRtl ? 'تنظیم سربرگ چسبان به‌روز شد' : 'Sticky Header state updated')">
                             <span class="bankai-slider"></span>
                         </label>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; background-color: #F6F8FA; padding: 10px 14px; border-radius: 8px; border: 1px solid #D0D7DE;">
                         <span style="font-size: 12px; color: #1F2328; font-weight: 600;"
-                              x-text="isRtl ? 'پاورقی پیشرفته چندستونه' : 'Expanded Multi-Column Footer'">Expanded Multi-Column Footer</span>
+                              data-bankai-text="isRtl ? 'پاورقی پیشرفته چندستونه' : 'Expanded Multi-Column Footer'">Expanded Multi-Column Footer</span>
                         <label class="bankai-switch">
-                            <input type="checkbox" checked @change="showToast(isRtl ? 'تنظیم پاورقی چندستونه به‌روز شد' : 'Expanded Footer state updated')">
+                            <input type="checkbox" checked data-bankai-change="showToast(isRtl ? 'تنظیم پاورقی چندستونه به‌روز شد' : 'Expanded Footer state updated')">
                             <span class="bankai-slider"></span>
                         </label>
                     </div>
@@ -103,7 +103,7 @@
                 <path d="M14.5 9.5L18 6M15.5 15.5L12 19l-3.5-1.5L7 16l-2.5-2.5L3 10l3.5-3.5L10 3l6 3.5 4.5 1.5c.5.167.9.6.9 1.1a12.5 12.5 0 0 1-5.9 7.4Z" />
                 <path d="M9 15L4 20M2 22l3-1-2-2-1 3Z" />
             </svg>
-            <span x-text="isRtl ? 'قالب‌های آماده و معماری‌های قابل نصب' : 'Available Starter Kits & Site Architecture'">Available Starter Kits &amp; Site Architecture</span>
+            <span data-bankai-text="isRtl ? 'قالب‌های آماده و معماری‌های قابل نصب' : 'Available Starter Kits & Site Architecture'">Available Starter Kits &amp; Site Architecture</span>
         </h3>
 
         <div class="bankai-grid-3">
@@ -144,24 +144,24 @@
 
                             <div style="display: flex; gap: 10px; margin-top: 12px;">
                                 <button type="button"
-                                        @click="showToast(isRtl ? 'پیش‌نمایش آنلاین قالب فعال شد' : 'Live preview active for <?php echo esc_js($kit['name'] ?? ''); ?>')"
+                                        data-bankai-click="showToast(isRtl ? 'پیش‌نمایش آنلاین قالب فعال شد' : 'Live preview active for <?php echo esc_js($kit['name'] ?? ''); ?>')"
                                         style="flex: 1; text-align: center; background-color: #FFFFFF; color: #1F2328; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid #D0D7DE; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 2px rgba(46, 52, 64, 0.04);">
                                     <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                                         <circle cx="12" cy="12" r="3" />
                                     </svg>
-                                    <span x-text="t('preview')">Preview</span>
+                                    <span data-bankai-text="t('preview')">Preview</span>
                                 </button>
 
                                 <button type="button"
-                                        @click='openImportModal(<?php echo $kit_json; ?>)'
+                                        data-bankai-click='openImportModal(<?php echo $kit_json; ?>)'
                                         style="flex: 1.2; background-color: #0969DA; border: none; color: #FFFFFF; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(9, 105, 218, 0.3); display: flex; align-items: center; justify-content: center; gap: 6px;">
                                     <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                         <polyline points="7 10 12 15 17 10" />
                                         <line x1="12" y1="15" x2="12" y2="3" />
                                     </svg>
-                                    <span x-text="t('importKit')">Import Kit</span>
+                                    <span data-bankai-text="t('importKit')">Import Kit</span>
                                 </button>
                             </div>
                         </div>
@@ -172,7 +172,7 @@
     </div>
 
     <!-- Import Modal -->
-    <div x-show="importModal.show" x-cloak class="bankai-modal-overlay" x-transition.opacity>
+    <div data-bankai-show="importModal.show" data-bankai-cloak class="bankai-modal-overlay" data-bankai-transition.opacity>
         <div @click.away="closeImportModal()"
              class="bankai-card"
              style="width: 520px; max-width: 90%; padding: 28px; box-shadow: 0 20px 40px rgba(46, 52, 64, 0.25); position: relative;">
@@ -184,29 +184,29 @@
                         <polyline points="7 10 12 15 17 10" />
                         <line x1="12" y1="15" x2="12" y2="3" />
                     </svg>
-                    <span x-text="t('importingKit')">Import Starter Kit Architecture</span>
+                    <span data-bankai-text="t('importingKit')">Import Starter Kit Architecture</span>
                 </h3>
-                <button type="button" @click="closeImportModal()" style="background: none; border: none; color: #8C959F; font-size: 20px; cursor: pointer;">&times;</button>
+                <button type="button" data-bankai-click="closeImportModal()" style="background: none; border: none; color: #8C959F; font-size: 20px; cursor: pointer;">&times;</button>
             </div>
 
-            <template x-if="importModal.kit">
+            <template data-bankai-if="importModal.kit">
                 <div>
                     <div style="background-color: #F6F8FA; border: 1px solid #D0D7DE; border-radius: 10px; padding: 14px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px;">
-                        <img :src="importModal.kit.thumbnail" alt="" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
+                        <img data-bankai-src="importModal.kit.thumbnail" alt="" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
                         <div>
-                            <div style="font-weight: 800; color: #1F2328; font-size: 15px;" x-text="importModal.kit.name"></div>
-                            <div style="font-size: 11px; color: #1A7F37; font-weight: 700;" x-text="importModal.kit.version"></div>
+                            <div style="font-weight: 800; color: #1F2328; font-size: 15px;" data-bankai-text="importModal.kit.name"></div>
+                            <div style="font-size: 11px; color: #1A7F37; font-weight: 700;" data-bankai-text="importModal.kit.version"></div>
                         </div>
                     </div>
 
                     <div style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 12px;">
-                        <template x-for="step in importModal.steps" :key="step.id">
+                        <template data-bankai-for="step in importModal.steps" data-bankai-key="step.id">
                             <div style="display: flex; justify-content: space-between; align-items: center; background-color: #F6F8FA; border: 1px solid #D0D7DE; padding: 12px 14px; border-radius: 8px;">
                                 <span style="font-size: 13px; color: #1F2328; font-weight: 600;"
-                                      x-text="isRtl ? (step.id === 'demo_content' ? t('stepContent') : (step.id === 'custom_fields' ? t('stepAcf') : t('stepPlugins'))) : step.label"></span>
+                                      data-bankai-text="isRtl ? (step.id === 'demo_content' ? t('stepContent') : (step.id === 'custom_fields' ? t('stepAcf') : t('stepPlugins'))) : step.label"></span>
                                 <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px;"
-                                      :style="step.status === 'completed' ? 'background-color: rgba(31, 136, 61,0.25); color: #1A7F37;' : (step.status === 'in_progress' ? 'background-color: rgba(9, 105, 218,0.2); color: #0969DA;' : 'background-color: #D0D7DE; color: #8C959F;')"
-                                      x-text="step.status === 'completed' ? (isRtl ? '✓ آماده' : '✓ Ready') : (step.status === 'in_progress' ? (isRtl ? '⌛ در حال نصب...' : '⌛ Processing...') : (isRtl ? 'در انتظار' : 'Pending'))">
+                                      data-bankai-style="step.status === 'completed' ? 'background-color: rgba(31, 136, 61,0.25); color: #1A7F37;' : (step.status === 'in_progress' ? 'background-color: rgba(9, 105, 218,0.2); color: #0969DA;' : 'background-color: #D0D7DE; color: #8C959F;')"
+                                      data-bankai-text="step.status === 'completed' ? (isRtl ? '✓ آماده' : '✓ Ready') : (step.status === 'in_progress' ? (isRtl ? '⌛ در حال نصب...' : '⌛ Processing...') : (isRtl ? 'در انتظار' : 'Pending'))">
                                 </span>
                             </div>
                         </template>
@@ -214,35 +214,35 @@
 
                     <div style="margin-bottom: 24px;">
                         <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #656D76; margin-bottom: 6px;">
-                            <span x-text="isRtl ? 'پیشرفت نصب و درون‌ریزی' : 'Installation Progress'">Installation Progress</span>
-                            <span style="color: #0969DA; font-family: monospace;" x-text="importModal.progress + '%'">0%</span>
+                            <span data-bankai-text="isRtl ? 'پیشرفت نصب و درون‌ریزی' : 'Installation Progress'">Installation Progress</span>
+                            <span style="color: #0969DA; font-family: monospace;" data-bankai-text="importModal.progress + '%'">0%</span>
                         </div>
                         <div style="height: 10px; background-color: #D0D7DE; border-radius: 5px; overflow: hidden;">
                             <div style="height: 100%; background: linear-gradient(90deg, #218BFF, #0969DA); transition: width 0.3s ease;"
-                                 :style="'width: ' + importModal.progress + '%'"></div>
+                                 data-bankai-style="'width: ' + importModal.progress + '%'"></div>
                         </div>
                     </div>
 
-                    <template x-if="importModal.status === 'completed'">
+                    <template data-bankai-if="importModal.status === 'completed'">
                         <div style="background-color: rgba(31, 136, 61, 0.2); border: 1px solid #1A7F37; color: #1A7F37; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 20px;"
-                             x-text="isRtl ? 'قالب با موفقیت درون‌ریزی شد! چیدمان سایت اکنون فعال است.' : 'Starter Kit imported successfully! Your layout is now active.'">
+                             data-bankai-text="isRtl ? 'قالب با موفقیت درون‌ریزی شد! چیدمان سایت اکنون فعال است.' : 'Starter Kit imported successfully! Your layout is now active.'">
                             Starter Kit imported successfully! Your layout is now active.
                         </div>
                     </template>
 
                     <div style="display: flex; justify-content: flex-end; gap: 12px;">
                         <button type="button"
-                                @click="closeImportModal()"
+                                data-bankai-click="closeImportModal()"
                                 style="background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #656D76; padding: 10px 18px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;">
-                            <span x-text="importModal.status === 'completed' ? t('close') : t('cancel')">Cancel</span>
+                            <span data-bankai-text="importModal.status === 'completed' ? t('close') : t('cancel')">Cancel</span>
                         </button>
 
                         <button type="button"
-                                x-show="importModal.status === 'idle'"
-                                x-cloak
-                                @click="startImport()"
+                                data-bankai-show="importModal.status === 'idle'"
+                                data-bankai-cloak
+                                data-bankai-click="startImport()"
                                 style="background-color: #0969DA; border: none; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 14px rgba(9, 105, 218, 0.35);"
-                                x-text="isRtl ? 'شروع نصب ۱-کلیکه' : 'Start 1-Click Import'">
+                                data-bankai-text="isRtl ? 'شروع نصب ۱-کلیکه' : 'Start 1-Click Import'">
                             Start 1-Click Import
                         </button>
                     </div>

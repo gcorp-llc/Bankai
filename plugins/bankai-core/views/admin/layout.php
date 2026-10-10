@@ -36,11 +36,11 @@ $bankai_state = [
 ?>
 <div id="bankai-admin-app" autocomplete="off" data-lpignore="true"
      class="bankai-admin-wrap bankai-ekit-shell"
-     x-data="bankaiAdmin()"
-     :dir="isRtl ? 'rtl' : 'ltr'"
-     :class="{ 'rtl': isRtl, 'ltr': !isRtl }">
+     data-bankai-data="bankaiAdmin()"
+     data-bankai-dir="isRtl ? 'rtl' : 'ltr'"
+     data-bankai-class="{ 'rtl': isRtl, 'ltr': !isRtl }">
 
-    <!-- Bridge PHP → Alpine -->
+    <!-- Bridge PHP → BankaiApp -->
     <script>
         window.bankaiData = <?php echo wp_json_encode($bankai_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
         window.bankaiCoreData = window.bankaiData;
@@ -97,11 +97,11 @@ $bankai_state = [
     <!-- Page Progress -->
     <div id="bankai-page-loader"
          class="bankai-page-progress-track"
-         x-show="pageLoading"
-         x-cloak
+         data-bankai-show="pageLoading"
+         data-bankai-cloak
          role="progressbar"
          aria-live="polite">
-        <div class="bankai-page-progress-bar" :style="{ width: pageProgress + '%' }"></div>
+        <div class="bankai-page-progress-bar" data-bankai-style="{ width: pageProgress + '%' }"></div>
     </div>
 
     <!-- Header -->
@@ -129,10 +129,10 @@ $bankai_state = [
             intended.
         -->
         <div class="bankai-mobile-overlay"
-             x-show="mobileMenuOpen"
-             x-cloak
-             x-transition.opacity
-             @click="closeMobileMenu()"
+             data-bankai-show="mobileMenuOpen"
+             data-bankai-cloak
+             data-bankai-transition.opacity
+             data-bankai-click="closeMobileMenu()"
              aria-hidden="true"></div>
 
         <!-- Sidebar -->
@@ -146,9 +146,9 @@ $bankai_state = [
         <!-- Main Content -->
         <main id="bankai-main-content" class="bankai-main-content">
             <div class="bankai-tab-loading-overlay"
-                 x-show="pageLoading"
-                 x-cloak
-                 x-transition.opacity
+                 data-bankai-show="pageLoading"
+                 data-bankai-cloak
+                 data-bankai-transition.opacity
                  role="status"
                  aria-live="polite">
                 <div class="bankai-loading-pill">
@@ -156,7 +156,7 @@ $bankai_state = [
                         <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".2" stroke-width="2.5"/>
                         <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
-                    <span x-text="isRtl ? 'در حال بارگذاری بخش...' : 'Loading section...'">
+                    <span data-bankai-text="isRtl ? 'در حال بارگذاری بخش...' : 'Loading section...'">
                         <?php esc_html_e('Loading section...', 'bankai-core'); ?>
                     </span>
                 </div>

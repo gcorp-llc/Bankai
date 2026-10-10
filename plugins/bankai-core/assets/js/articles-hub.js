@@ -1,5 +1,5 @@
-document.addEventListener('alpine:init', () => {
-    Alpine.data('bankaiArticlesHub', () => ({
+document.addEventListener('bankai:init', () => {
+    BankaiApp.data('bankaiArticlesHub', () => ({
         panel: 'list',
         ms: {
             items: [], total: 0, page: 1, pages: 1, selected: [], allSelected: false,
