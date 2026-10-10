@@ -419,15 +419,17 @@
             setTab: function (tab) {
                 if (!tab) return;
                 var self = this;
-                // Ensure modules appear enabled in UI
-                // keep moduleActive as-is (respect dashboard toggles)
                 if (tab === 'speed-cache' && typeof this.loadRedisSettings === 'function') {
                     try { this.loadRedisSettings(); } catch (e) {}
                 }
                 this.pageLoading = true;
                 this.pageProgress = 40;
-                // Set tab immediately so content shows even if timeout fails
                 this.activeTab = tab;
+
+                if (typeof window.bankaiUpdateTabPanes === 'function') {
+                    window.bankaiUpdateTabPanes(tab);
+                }
+
                 setTimeout(function () {
                     self.activeTab = tab;
                     self.pageProgress = 100;
@@ -2758,6 +2760,7 @@ openBulkWatermark: function () {
                 var tabName = id.replace(/^tab-/, '');
                 if (tabName === activeTab || pane.dataset.tab === activeTab) {
                     pane.style.display = 'block';
+                    pane.removeAttribute('data-bankai-cloak');
                     pane.classList.add('is-active-tab');
                 } else {
                     pane.style.display = 'none';
@@ -2775,6 +2778,7 @@ openBulkWatermark: function () {
                 }
             });
         }
+        window.bankaiUpdateTabPanes = updateTabPanes;
 
         var initialTab = (cfg() && cfg().activeTab) || 'overview';
         updateTabPanes(initialTab);
