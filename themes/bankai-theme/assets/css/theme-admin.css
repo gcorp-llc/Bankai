@@ -4,12 +4,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap');
 
 .bta {
-  --bta-bg: #F5F5F7;
-  --bta-card: #fff;
-  --bta-line: rgba(0,0,0,.06);
-  --bta-text: #1D1D1F;
-  --bta-muted: #6E6E73;
-  --bta-accent: #5C6B7A;
+  --bta-bg: #f6f8fa;
+  --bta-card: #ffffff;
+  --bta-line: #d0d7de;
+  --bta-text: #1f2328;
+  --bta-muted: #656d76;
+  --bta-accent: #0969da;
   max-width: 1180px;
   margin: 20px auto;
   padding: 0 16px 48px;

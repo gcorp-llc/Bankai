@@ -493,7 +493,7 @@
 
 /* CSS Styling System for Bankai SEO Engine */
 #tab-seo-engine { font-family: inherit; color: #0F172A; }
-#tab-seo-engine [x-cloak] { display: none !important; }
+#tab-seo-engine [data-bankai-cloak] { display: none !important; }
 
 .bk-section-title { font-size: 15px; font-weight: 800; color: #0F172A; margin: 0 0 14px; }
 .bk-seo-header { border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; background: #fff; margin-bottom: 20px; }

@@ -1,6 +1,6 @@
-document.addEventListener('alpine:init', () => {
+document.addEventListener('bankai:init', () => {
 
-    Alpine.data('bankaiSeoSidebar', (postId) => ({
+    BankaiApp.data('bankaiSeoSidebar', (postId) => ({
 
         postId: postId || (window.bankaiEditorSeo && bankaiEditorSeo.postId) || 0,
 

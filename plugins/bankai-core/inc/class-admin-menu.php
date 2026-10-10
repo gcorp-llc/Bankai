@@ -236,23 +236,12 @@ class Bankai_Admin_Menu {
             );
         }
 
-        // Scripts in footer; Alpine deferred after admin app is ready
+        // Scripts in footer; BankaiApp deferred after admin app is ready
         $js_ver = static function (string $rel) {
             $path = BANKAI_CORE_DIR . 'assets/js/' . $rel;
             $base = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0';
             return is_file($path) ? $base . '.' . (string) filemtime($path) : $base;
         };
-
-        wp_enqueue_script(
-            'bankai-htmx-js',
-            bankai_asset_url('js/htmx.min.js'),
-            [],
-            $js_ver('htmx.min.js'),
-            true
-        );
-        if (function_exists('wp_script_add_data')) {
-            wp_script_add_data('bankai-htmx-js', 'strategy', 'defer');
-        }
 
         wp_enqueue_media();
 
@@ -288,12 +277,12 @@ class Bankai_Admin_Menu {
         wp_enqueue_script(
             'bankai-admin-js',
             bankai_asset_url('js/bankai-admin.js'),
-            ['jquery', 'bankai-htmx-js'],
+            ['jquery'],
             $js_ver('bankai-admin.js'),
             true
         );
 
-        // Articles hub module (Alpine.data) — must register before Alpine boots
+        // Articles hub module (BankaiApp.data) — must register before BankaiApp boots
         if (is_file(BANKAI_CORE_DIR . 'assets/js/articles-hub.js')) {
             wp_enqueue_script(
                 'bankai-articles-hub',
@@ -371,21 +360,6 @@ class Bankai_Admin_Menu {
             );
         }
 
-        // Alpine must load after component registrations
-        wp_enqueue_script(
-            'bankai-alpine-js',
-            bankai_asset_url('js/alpine.min.js'),
-            array_values(array_filter([
-                'bankai-admin-js',
-                is_file(BANKAI_CORE_DIR . 'assets/js/articles-hub.js') ? 'bankai-articles-hub' : null,
-                is_file(BANKAI_CORE_DIR . 'assets/js/seo-engine-tab.js') ? 'bankai-seo-engine-tab' : null,
-                is_file(BANKAI_CORE_DIR . 'assets/js/ai-studio-tab.js') ? 'bankai-ai-studio-tab' : null,
-                is_file(BANKAI_CORE_DIR . 'assets/js/speed-cache-tab.js') ? 'bankai-speed-cache-tab' : null,
-            ])),
-            $js_ver('alpine.min.js'),
-            true
-        );
-        // Do NOT defer Alpine — it auto-starts and must see prior registrations
 
 
         $core_data = [
@@ -442,19 +416,7 @@ class Bankai_Admin_Menu {
     }
 
     public function add_defer_attribute(string $tag, string $handle, string $src = ''): string {
-        if (!in_array($handle, ['bankai-alpine-js', 'bankai-htmx-js'], true)) {
-            return $tag;
-        }
-
-        if (empty($src) || strpos($tag, ' src=') === false) {
-            return $tag;
-        }
-
-        if (strpos($tag, ' defer') !== false) {
-            return $tag;
-        }
-
-        return str_replace(' src=', ' defer="defer" src=', $tag);
+        return $tag;
     }
 
     private function get_current_tab(): string {

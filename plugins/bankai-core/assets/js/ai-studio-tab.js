@@ -7,8 +7,8 @@
     window.ajaxurl = (window.bankaiCoreData && window.bankaiCoreData.ajaxUrl) || '/wp-admin/admin-ajax.php';
   }
 })();
-document.addEventListener('alpine:init', () => {
-  Alpine.data('bankaiAiStudioRoot', () => ({
+document.addEventListener('bankai:init', () => {
+  BankaiApp.data('bankaiAiStudioRoot', () => ({
     busy: false,
     addModal: false,
     aiMode: 'text',
@@ -215,7 +215,7 @@ document.addEventListener('alpine:init', () => {
   }));
 
 
-  Alpine.data('bankaiImageProviderCard', (config) => ({
+  BankaiApp.data('bankaiImageProviderCard', (config) => ({
     id: config.id,
     key: config.key || '',
     keyDirty: false,
@@ -364,7 +364,7 @@ document.addEventListener('alpine:init', () => {
     }
   }));
 
-  Alpine.data('bankaiProviderCard', (config) => ({
+  BankaiApp.data('bankaiProviderCard', (config) => ({
     id: config.id,
     key: config.key || '',
     keyDirty: false,

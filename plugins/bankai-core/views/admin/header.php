@@ -7,10 +7,10 @@ defined('ABSPATH') || exit;
         <button type="button"
                 id="btn-mobile-menu"
                 class="bankai-mobile-btn"
-                @click="toggleMobileMenu()"
+                data-bankai-click="toggleMobileMenu()"
                 :title="isRtl ? '<?php echo esc_js(__('باز و بسته کردن منو', 'bankai-core')); ?>' : '<?php echo esc_js(__('Toggle navigation menu', 'bankai-core')); ?>'"
                 aria-label="<?php esc_attr_e('Toggle navigation menu', 'bankai-core'); ?>">
-            <svg x-show="!mobileMenuOpen"
+            <svg data-bankai-show="!mobileMenuOpen"
                  class="solar-icon"
                  width="20"
                  height="20"
@@ -24,8 +24,8 @@ defined('ABSPATH') || exit;
                  aria-hidden="true">
                 <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-            <svg x-show="mobileMenuOpen"
-                 x-cloak
+            <svg data-bankai-show="mobileMenuOpen"
+                 data-bankai-cloak
                  class="solar-icon"
                  width="20"
                  height="20"
@@ -76,7 +76,7 @@ defined('ABSPATH') || exit;
                 <line x1="8" y1="21" x2="16" y2="21" />
                 <line x1="12" y1="17" x2="12" y2="21" />
             </svg>
-            <span class="btn-label" x-text="isRtl ? '<?php echo esc_js(__('قالب Bankai', 'bankai-core')); ?>' : '<?php echo esc_js(__('Bankai Theme', 'bankai-core')); ?>'">
+            <span class="btn-label" data-bankai-text="isRtl ? '<?php echo esc_js(__('قالب Bankai', 'bankai-core')); ?>' : '<?php echo esc_js(__('Bankai Theme', 'bankai-core')); ?>'">
                 <?php esc_html_e('Bankai Theme', 'bankai-core'); ?>
             </span>
         </a>
@@ -92,7 +92,7 @@ defined('ABSPATH') || exit;
                 <line x1="2" y1="12" x2="22" y2="12"/>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"/>
             </svg>
-            <span class="btn-label" x-text="isRtl ? '<?php echo esc_js(__('پیش‌نمایش سایت', 'bankai-core')); ?>' : '<?php echo esc_js(__('Site Preview', 'bankai-core')); ?>'">
+            <span class="btn-label" data-bankai-text="isRtl ? '<?php echo esc_js(__('پیش‌نمایش سایت', 'bankai-core')); ?>' : '<?php echo esc_js(__('Site Preview', 'bankai-core')); ?>'">
                 <?php esc_html_e('Site Preview', 'bankai-core'); ?>
             </span>
         </a>
@@ -101,13 +101,13 @@ defined('ABSPATH') || exit;
         <button type="button"
                 id="btn-purge-cache"
                 class="bankai-btn-action bankai-btn-purge"
-                @click="purgeAllCaches()"
+                data-bankai-click="purgeAllCaches()"
                 :title="isRtl ? '<?php echo esc_js(__('تخلیه تمام کش‌ها', 'bankai-core')); ?>' : '<?php echo esc_js(__('Purge All Caches', 'bankai-core')); ?>'">
             <svg class="solar-icon solar-icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: block; flex-shrink: 0;">
                 <path d="M21 12a9 9 0 1 1-3-6.7" />
                 <polyline points="21 3 21 9 15 9" />
             </svg>
-            <span class="btn-label" x-text="t('purgeCache')"><?php esc_html_e('Purge Cache', 'bankai-core'); ?></span>
+            <span class="btn-label" data-bankai-text="t('purgeCache')"><?php esc_html_e('Purge Cache', 'bankai-core'); ?></span>
         </button>
     </div>
 </header>
