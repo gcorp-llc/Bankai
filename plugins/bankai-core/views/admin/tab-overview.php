@@ -1,5 +1,5 @@
 <!-- Tab 1: Dashboard -->
-<div id="tab-overview" class="bankai-tab-pane" x-show="activeTab === 'overview'" x-cloak x-init="initDashboard && initDashboard()">
+<div id="tab-overview" class="bankai-tab-pane" :class="{ 'is-active-tab': activeTab === 'overview' }" x-show="activeTab === 'overview'" x-cloak x-init="initDashboard && initDashboard()">
 
     <div class="bk-dash-hero">
         <div class="bk-dash-hero-main">
@@ -113,3 +113,4 @@
         </button>
     </div>
 </div>
+<!-- /tab-overview root -->

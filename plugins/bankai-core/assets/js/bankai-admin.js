@@ -185,6 +185,8 @@
 
         var wmSaved = st.watermarkSettings || {};
         var watermarkStudio = {
+                custom_fonts: (window.bankaiWmCustomFonts || []),
+                custom_font_path: '',
             enabled: wmSaved.enabled !== false,
             type: wmSaved.type || 'text',
             position: wmSaved.position || 'bottom-right',
@@ -251,7 +253,7 @@
             mediaDrawer: { show: false, id: '', title: '' },
             mediaSubTab: 'watermark',
             wmFontBusy: false,
-            wmBulkModal: { show: false, running: false, progress: 0, progressText: '', items: [], title: '' },
+            wmBulkModal: { show: false, running: false, progress: 0, progressText: '', items: [], title: '', alsoCompress: false },
 
             compressOpts: { format: 'webp', quality: 82, maxWidth: 1600 },
             mediaLib: {
@@ -369,6 +371,14 @@
 
             init: function () {
                 window.bankaiAdminInstance = this;
+                try {
+                    var t = this.activeTab || 'overview';
+                    document.querySelectorAll('#bankai-admin-app .bankai-tab-pane').forEach(function (el) {
+                        var on = (el.id === 'tab-' + t);
+                        el.classList.toggle('is-active-tab', on);
+                        if (on) el.removeAttribute('x-cloak');
+                    });
+                } catch (e) {}
             },
 
             t: function (key) {
@@ -416,6 +426,14 @@
                 this.pageProgress = 40;
                 // Set tab immediately so content shows even if timeout fails
                 this.activeTab = tab;
+                try {
+                    document.querySelectorAll('#bankai-admin-app .bankai-tab-pane').forEach(function (el) {
+                        var id = el.id || '';
+                        var on = (id === 'tab-' + tab);
+                        el.classList.toggle('is-active-tab', on);
+                        if (on) { el.removeAttribute('x-cloak'); }
+                    });
+                } catch (e) {}
                 setTimeout(function () {
                     self.activeTab = tab;
                     self.pageProgress = 100;
@@ -1996,21 +2014,32 @@ initSeoImport: function () {
             
             wmFontList: function () {
                 var list = [
-                    { id: 'default', name: 'Vazirmatn', sample: 'Aa آب', style: "font-family:Vazirmatn,Tahoma,sans-serif" },
-                    { id: 'vazirmatn-bold', name: 'Vazir Bold', sample: 'Aa آب', style: "font-family:Vazirmatn,Tahoma,sans-serif;font-weight:800" },
-                    { id: 'tahoma', name: 'Tahoma', sample: 'Aa آب', style: "font-family:Tahoma,sans-serif" },
-                    { id: 'arial', name: 'Arial', sample: 'Aa Bb', style: "font-family:Arial,sans-serif" },
-                    { id: 'georgia', name: 'Georgia', sample: 'Aa Bb', style: "font-family:Georgia,serif" },
-                    { id: 'roboto', name: 'Roboto', sample: 'Aa Bb', style: "font-family:Roboto,sans-serif" },
-                    { id: 'inter', name: 'Inter', sample: 'Aa Bb', style: "font-family:Inter,sans-serif" }
+                    { id: 'default', name: 'پیش‌فرض', sample: 'Aa آب', style: "font-family: Vazirmatn, Tahoma, sans-serif" },
+                    { id: 'vazirmatn-bold', name: 'وزیر Bold', sample: 'Aa آب', style: "font-family: Vazirmatn, Tahoma, sans-serif;font-weight:700" },
+                    { id: 'tahoma', name: 'Tahoma', sample: 'Aa آب', style: "font-family: Tahoma, sans-serif" },
+                    { id: 'arial', name: 'Arial', sample: 'Aa', style: "font-family: Arial, sans-serif" },
+                    { id: 'dejavu', name: 'DejaVu', sample: 'Aa آب', style: "font-family: DejaVu Sans, Tahoma, sans-serif" }
                 ];
                 var w = this.watermarkStudio || {};
-                if (w.custom_font_url) {
-                    list.unshift({
-                        id: 'custom',
-                        name: w.custom_font_name || 'سفارشی',
+                var customs = Array.isArray(w.custom_fonts) ? w.custom_fonts : [];
+                customs.forEach(function (cf) {
+                    if (!cf) return;
+                    var id = cf.id || ('cf_' + (cf.name || 'x'));
+                    list.push({
+                        id: id,
+                        name: cf.name || id,
                         sample: 'Aa آب',
-                        style: "font-family:'" + (w.custom_font_name || 'Custom') + "',sans-serif"
+                        style: 'font-family: "' + id + '", Tahoma, sans-serif',
+                        url: cf.url || ''
+                    });
+                });
+                if (w.custom_font_name && !customs.some(function (c) { return c && c.name === w.custom_font_name; })) {
+                    list.push({
+                        id: 'custom',
+                        name: w.custom_font_name,
+                        sample: 'Aa آب',
+                        style: "font-family: 'custom-wm', Tahoma, sans-serif",
+                        url: w.custom_font_url || ''
                     });
                 }
                 return list;
@@ -2027,20 +2056,31 @@ initSeoImport: function () {
             selectWmFont: function (f) {
                 if (!f || !this.watermarkStudio) return;
                 this.watermarkStudio.text_font = f.id;
-                if (f.id === 'custom' && this.watermarkStudio.custom_font_url) {
+                if ((f.id === 'custom' || f.id === 'custom_font') && this.watermarkStudio.custom_font_url) {
                     this.ensureWmFontFace();
                 }
             },
             ensureWmFontFace: function () {
                 var w = this.watermarkStudio || {};
                 if (!w.custom_font_url) return;
-                var name = w.custom_font_name || 'BankaiCustomFont';
-                var id = 'bk-wm-font-' + name.replace(/[^a-z0-9]/gi, '');
-                if (document.getElementById(id)) return;
+                var fam = 'BankaiWmCustom';
+                var id = 'bk-wm-font-face-custom';
+                var existing = document.getElementById(id);
+                if (existing) existing.remove();
                 var style = document.createElement('style');
                 style.id = id;
-                style.textContent = "@font-face{font-family:'" + name + "';src:url('" + w.custom_font_url + "');font-display:swap;}";
+                var url = w.custom_font_url;
+                var format = 'woff2';
+                if (/\.woff2/i.test(url)) format = 'woff2';
+                else if (/\.woff/i.test(url)) format = 'woff';
+                else if (/\.otf/i.test(url)) format = 'opentype';
+                else if (/\.ttf/i.test(url)) format = 'truetype';
+                style.textContent = "@font-face{font-family:'" + fam + "';src:url('" + url + "') format('" + format + "');font-display:swap;font-weight:100 900;font-style:normal;}";
                 document.head.appendChild(style);
+                // force repaint of badge
+                if (this.watermarkStudio) {
+                    this.watermarkStudio._fontTick = (this.watermarkStudio._fontTick || 0) + 1;
+                }
             },
             startBulkCompress: function (selectedOnly) {
                 var self = this;
@@ -2092,41 +2132,107 @@ initSeoImport: function () {
                 var self = this;
                 this.wmBulkModal = {
                     show: true, running: false, progress: 0,
-                    progressText: this.isRtl ? 'در حال آماده‌سازی…' : 'Preparing…',
-                    items: [], title: this.isRtl ? 'اعمال گروهی واترمارک' : 'Bulk watermark'
+                    progressText: this.isRtl ? 'در حال بارگذاری تصاویر…' : 'Loading images…',
+                    items: [], title: this.isRtl ? 'اعمال گروهی واترمارک' : 'Bulk watermark',
+                    alsoCompress: !!(this.wmBulkModal && this.wmBulkModal.alsoCompress),
+                    selectAll: false
                 };
-                // load library then process
-                var prev = this.mediaSubTab;
-                this.mediaLib.loading = true;
-                ajax('bankai_list_media', { page: 1, per_page: 40 }).then(function (res) {
-                    var d = res.data || res;
-                    var items = (d.items || d.media || []).map(function (it) {
+                function mapItems(list) {
+                    return (list || []).filter(function (it) { return it && it.id; }).map(function (it) {
                         return {
-                            id: it.id, title: it.title || ('#' + it.id),
-                            thumb: it.thumb || it.url, url: it.url,
-                            status: 'pending', statusText: self.isRtl ? 'در صف' : 'Queued'
+                            id: it.id,
+                            title: it.title || ('#' + it.id),
+                            thumb: it.thumb || it.url,
+                            url: it.url,
+                            selected: true,
+                            status: 'idle',
+                            statusText: self.isRtl ? 'آماده' : 'Ready'
                         };
                     });
+                }
+                function done(items) {
                     self.wmBulkModal.items = items;
+                    self.wmBulkModal.selectAll = items.length > 0;
+                    self.wmBulkModal.progressText = items.length
+                        ? (self.isRtl ? (items.length + ' تصویر — انتخاب کنید و شروع کنید') : (items.length + ' images — select & start'))
+                        : (self.isRtl ? 'تصویری یافت نشد' : 'No images');
+                }
+                var cached = ((this.mediaLib && this.mediaLib.items) || []);
+                if (cached.length) {
+                    done(mapItems(cached));
+                    return;
+                }
+                this.mediaLib = this.mediaLib || {};
+                this.mediaLib.loading = true;
+                ajax('bankai_list_media_library', { page: 1, per_page: 80 }).then(function (res) {
+                    var d = (res && res.data) ? res.data : (res || {});
+                    var items = d.items || d.media || [];
+                    self.mediaLib.items = items;
                     self.mediaLib.loading = false;
-                    if (!items.length) {
-                        self.wmBulkModal.progressText = self.isRtl ? 'تصویری یافت نشد' : 'No images';
-                        return;
-                    }
-                    self.runWmBulkQueue(true);
+                    done(mapItems(items));
                 }).catch(function () {
                     self.mediaLib.loading = false;
                     self.wmBulkModal.progressText = self.t('error');
                 });
             },
+            toggleWmBulkSelectAll: function () {
+                var all = !!(this.wmBulkModal && this.wmBulkModal.selectAll);
+                (this.wmBulkModal.items || []).forEach(function (r) { r.selected = all; });
+            },
+            startWmBulkSelected: function () {
+                var self = this;
+                var items = (this.wmBulkModal.items || []).filter(function (r) { return r.selected; });
+                if (!items.length) {
+                    this.showToast(this.isRtl ? 'حداقل یک تصویر انتخاب کنید' : 'Select at least one image', 'warning');
+                    return;
+                }
+                var w = this.watermarkStudio || {};
+                var payload = {
+                    enabled: '1',
+                    type: w.type || 'text',
+                    position: w.position || 'bottom-right',
+                    opacity: w.opacity != null ? w.opacity : 75,
+                    text: w.text || '',
+                    text_size: w.text_size || 18,
+                    text_color: w.text_color || '#FFFFFF',
+                    text_font: w.text_font || 'default',
+                    box_enabled: w.box_enabled ? '1' : '0',
+                    box_padding: w.box_padding || 8,
+                    box_radius: w.box_radius || 6,
+                    box_color: w.box_color || '#000000',
+                    box_opacity: w.box_opacity != null ? w.box_opacity : 45,
+                    box_style: w.box_style || 'solid',
+                    text_cover: w.text_cover || 'none',
+                    custom_font_url: w.custom_font_url || '',
+                    custom_font_name: w.custom_font_name || '',
+                    custom_font_path: w.custom_font_path || '',
+                    image_id: w.image_id || 0,
+                    image_scale: w.image_scale || 20,
+                    min_dimension: 0
+                };
+                this.wmBulkModal.running = true;
+                this.wmBulkModal.progressText = this.isRtl ? 'ذخیره تنظیمات…' : 'Saving settings…';
+                ajax('bankai_save_watermark_settings', payload).then(function () {
+                    self.wmBulkModal.items = items.map(function (r) {
+                        return Object.assign({}, r, { status: 'pending', statusText: self.isRtl ? 'در صف' : 'Queued' });
+                    });
+                    self.runWmBulkQueue(true);
+                }).catch(function () {
+                    self.wmBulkModal.items = items.map(function (r) {
+                        return Object.assign({}, r, { status: 'pending', statusText: self.isRtl ? 'در صف' : 'Queued' });
+                    });
+                    self.runWmBulkQueue(true);
+                });
+            },
+
             runWmBulkQueue: function (apply) {
                 var self = this;
                 var items = (this.wmBulkModal.items || []).slice();
                 if (!items.length) return;
                 this.wmBulkModal.running = true;
-                var i = 0;
-                var ok = 0, fail = 0;
-                function next() {
+                var alsoCompress = !!(this.wmBulkModal.alsoCompress);
+                var i = 0, ok = 0, fail = 0;
+                function processOne() {
                     if (i >= items.length) {
                         self.wmBulkModal.running = false;
                         self.wmBulkModal.progress = 100;
@@ -2138,35 +2244,90 @@ initSeoImport: function () {
                     }
                     var row = items[i];
                     row.status = 'work';
-                    row.statusText = self.isRtl ? 'در حال اعمال…' : 'Applying…';
+                    row.statusText = self.isRtl
+                        ? (alsoCompress ? 'واترمارک + فشرده…' : 'در حال واترمارک…')
+                        : (alsoCompress ? 'WM + compress…' : 'Applying…');
                     self.wmBulkModal.items = items.slice();
                     self.wmBulkModal.progress = Math.round((i / items.length) * 100);
                     self.wmBulkModal.progressText = (i + 1) + ' / ' + items.length + ' — ' + (row.title || '');
-                    ajax('bankai_bulk_watermark_ids', {
-                        ids: [row.id],
+
+                    var payload = {
+                        ids: JSON.stringify([row.id]),
                         apply: apply ? '1' : '0',
-                        replace: '1'
+                        replace: '1',
+                        also_compress: alsoCompress ? '1' : '0'
+                    };
+                    // single-id endpoint with extended timeout via fetch
+                    var c = (typeof cfg === 'function') ? cfg() : (window.bankaiData || window.bankaiCoreData || {});
+                    var body = new FormData();
+                    body.append('action', 'bankai_bulk_watermark_ids');
+                    try {
+                        var w = self.watermarkStudio || {};
+                        body.append('wm_settings', JSON.stringify({
+                            enabled: true,
+                            type: w.type || 'text',
+                            position: w.position || 'bottom-right',
+                            opacity: w.opacity != null ? w.opacity : 75,
+                            text: w.text || '',
+                            text_size: w.text_size || 18,
+                            text_color: w.text_color || '#FFFFFF',
+                            text_font: w.text_font || 'default',
+                            box_enabled: !!w.box_enabled,
+                            box_padding: w.box_padding || 8,
+                            box_radius: w.box_radius || 6,
+                            box_color: w.box_color || '#000000',
+                            box_opacity: w.box_opacity != null ? w.box_opacity : 45,
+                            box_style: w.box_style || 'solid',
+                            text_cover: w.text_cover || 'none',
+                            custom_font_url: w.custom_font_url || '',
+                            custom_font_name: w.custom_font_name || '',
+                            custom_font_path: w.custom_font_path || '',
+                            image_id: w.image_id || 0,
+                            image_scale: w.image_scale || 20,
+                            min_dimension: 0
+                        }));
+                    } catch (e) {}
+                    body.append('nonce', c.adminNonce || c.nonce || '');
+                    Object.keys(payload).forEach(function (k) { body.append(k, payload[k]); });
+
+                    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+                    var timer = setTimeout(function () { if (controller) controller.abort(); }, 90000);
+
+                    fetch(c.ajaxUrl || window.ajaxurl || '', {
+                        method: 'POST',
+                        body: body,
+                        credentials: 'same-origin',
+                        signal: controller ? controller.signal : undefined
+                    }).then(function (r) {
+                        return r.text().then(function (txt) {
+                            try { return JSON.parse(txt); }
+                            catch (e) { return { success: false, data: { message: txt.slice(0, 120) } }; }
+                        });
                     }).then(function (res) {
-                        if (res.success) {
+                        clearTimeout(timer);
+                        if (res && res.success) {
                             row.status = 'done';
                             row.statusText = self.isRtl ? 'انجام شد' : 'Done';
                             ok++;
                         } else {
                             row.status = 'fail';
-                            row.statusText = (res.data && res.data.message) || 'Error';
+                            row.statusText = (res && res.data && res.data.message) || 'Error';
                             fail++;
                         }
-                    }).catch(function () {
+                    }).catch(function (err) {
+                        clearTimeout(timer);
                         row.status = 'fail';
-                        row.statusText = 'Error';
+                        row.statusText = (err && err.name === 'AbortError')
+                            ? (self.isRtl ? 'تایم‌اوت' : 'Timeout')
+                            : 'Error';
                         fail++;
                     }).finally(function () {
                         self.wmBulkModal.items = items.slice();
                         i++;
-                        setTimeout(next, 120);
+                        setTimeout(processOne, 200);
                     });
                 }
-                next();
+                processOne();
             },
 
             wmPreviewSamples: function () {
@@ -2209,27 +2370,55 @@ initSeoImport: function () {
                 var self = this;
                 var file = ev.target && ev.target.files && ev.target.files[0];
                 if (!file) return;
-                var c = (typeof cfg === 'function') ? cfg() : (window.bankaiData || {});
+                var c = (typeof cfg === 'function') ? cfg() : (window.bankaiData || window.bankaiCoreData || {});
                 var fd = new FormData();
                 fd.append('action', 'bankai_upload_wm_font');
                 fd.append('nonce', c.adminNonce || c.nonce || '');
                 fd.append('font', file);
                 self.wmFontBusy = true;
                 fetch(c.ajaxUrl || window.ajaxurl || '', { method: 'POST', body: fd, credentials: 'same-origin' })
-                    .then(function (r) { return r.json(); })
+                    .then(function (r) {
+                        return r.text().then(function (txt) {
+                            try { return JSON.parse(txt); }
+                            catch (e) { return { success: false, data: { message: txt.slice(0, 180) || 'Invalid response' } }; }
+                        });
+                    })
                     .then(function (res) {
                         if (res && res.success && res.data) {
+                            if (!self.watermarkStudio) self.watermarkStudio = {};
                             self.watermarkStudio.custom_font_url = res.data.url || '';
                             self.watermarkStudio.custom_font_name = res.data.name || file.name;
-                            self.watermarkStudio.text_font = 'custom';
+                            self.watermarkStudio.custom_font_path = res.data.path || '';
+                            self.watermarkStudio._fontTick = Date.now();
+                            var fonts = Array.isArray(self.watermarkStudio.custom_fonts) ? self.watermarkStudio.custom_fonts.slice() : [];
+                            var entry = {
+                                id: 'cf_' + String(res.data.name || file.name).replace(/[^a-zA-Z0-9._-]/g, '_'),
+                                name: res.data.name || file.name,
+                                url: res.data.url || '',
+                                path: res.data.path || ''
+                            };
+                            fonts = fonts.filter(function (f) { return f && f.name !== entry.name; });
+                            fonts.push(entry);
+                            self.watermarkStudio.custom_fonts = fonts;
+                            self.watermarkStudio.text_font = entry.id;
+                            try {
+                                if (entry.url) {
+                                    var st = document.getElementById('bankai-wm-font-face') || document.createElement('style');
+                                    st.id = 'bankai-wm-font-face';
+                                    st.textContent = (st.textContent || '') + '@font-face{font-family:"' + entry.id + '";src:url("' + entry.url + '");font-display:swap;}';
+                                    document.head.appendChild(st);
+                                }
+                            } catch (e) {}
                             if (typeof self.ensureWmFontFace === 'function') self.ensureWmFontFace();
-                            self.showToast(self.isRtl ? 'فونت آپلود و اعمال شد' : 'Font uploaded', 'success');
+                            self.showToast((res.data.message) || (self.isRtl ? 'فونت آپلود شد' : 'Font uploaded'), 'success');
                         } else {
                             var msg = (res && res.data && res.data.message) ? res.data.message : self.t('error');
                             self.showToast(msg, 'error');
                         }
                     })
-                    .catch(function () { self.showToast(self.t('error'), 'error'); })
+                    .catch(function (err) {
+                        self.showToast((err && err.message) || self.t('error'), 'error');
+                    })
                     .finally(function () {
                         self.wmFontBusy = false;
                         if (ev.target) ev.target.value = '';
@@ -2308,6 +2497,43 @@ initSeoImport: function () {
                 };
                 var pos = this.watermarkStudio && this.watermarkStudio.position;
                 return map[pos] || map['bottom-right'];
+            },
+            wmTextBadgeStyle: function () {
+                var w = this.watermarkStudio || {};
+                var tick = w._fontTick || 0;
+                var fam = 'Vazirmatn, Tahoma, sans-serif';
+                if (w.text_font === 'custom' && w.custom_font_url) {
+                    fam = "'BankaiWmCustom', Vazirmatn, Tahoma, sans-serif";
+                    this.ensureWmFontFace();
+                } else if (w.text_font === 'vazirmatn' || w.text_font === 'vazirmatn-bold') {
+                    fam = "Vazirmatn, Tahoma, sans-serif";
+                } else if (w.text_font === 'tahoma') {
+                    fam = "Tahoma, sans-serif";
+                } else if (w.text_font === 'arial') {
+                    fam = "Arial, sans-serif";
+                }
+                var boxOp = (w.box_opacity != null ? w.box_opacity : 45) / 100;
+                var bg = 'transparent';
+                if (w.box_enabled) {
+                    var hex = w.box_color || '#000000';
+                    var r = parseInt(hex.slice(1,3),16)||0, g=parseInt(hex.slice(3,5),16)||0, b=parseInt(hex.slice(5,7),16)||0;
+                    bg = 'rgba('+r+','+g+','+b+','+boxOp+')';
+                }
+                return {
+                    fontFamily: fam,
+                    fontSize: (w.text_size || 18) + 'px',
+                    color: w.text_color || '#fff',
+                    background: bg,
+                    padding: w.box_enabled ? ((w.box_padding || 8) + 'px') : '0',
+                    borderRadius: (w.box_radius || 6) + 'px',
+                    fontWeight: (w.text_font === 'vazirmatn-bold' ? '800' : '700'),
+                    direction: 'rtl',
+                    unicodeBidi: 'plaintext',
+                    textAlign: 'center',
+                    whiteSpace: 'nowrap',
+                    backdropFilter: w.box_enabled ? 'blur(6px)' : 'none',
+                    opacity: (w.opacity != null ? (w.opacity/100) : 0.9)
+                };
             },
             wmPreviewStyle: function () {
                 var pos = this.getWatermarkPositionStyle();

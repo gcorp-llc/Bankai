@@ -17,11 +17,34 @@
         Object.keys(data || {}).forEach(function (k) {
             body.append(k, data[k] == null ? '' : data[k]);
         });
-        return fetch(c.ajaxUrl || window.ajaxurl || '/wp-admin/admin-ajax.php', {
+        var endpoint = c.ajaxUrl || window.ajaxurl;
+        if (!endpoint) {
+            return Promise.reject(new Error('نشانی درخواست AJAX تنظیم نشده است.'));
+        }
+        if (!(c.adminNonce || c.nonce)) {
+            return Promise.reject(new Error('توکن امنیتی درخواست در دسترس نیست؛ صفحه را تازه‌سازی کنید.'));
+        }
+
+        return fetch(endpoint, {
             method: 'POST',
             credentials: 'same-origin',
+            headers: { 'Accept': 'application/json' },
             body: body
-        }).then(function (r) { return r.json(); });
+        }).then(function (response) {
+            return response.text().then(function (raw) {
+                var payload;
+                try {
+                    payload = JSON.parse(raw);
+                } catch (error) {
+                    throw new Error('پاسخ سرور معتبر نیست (HTTP ' + response.status + ').');
+                }
+                if (!response.ok) {
+                    var message = payload && payload.data && payload.data.message;
+                    throw new Error(message || ('خطای سرور (HTTP ' + response.status + ').'));
+                }
+                return payload;
+            });
+        });
     }
 
     function getEditorContent() {
@@ -52,9 +75,14 @@
 
     function setField(selector, value) {
         if (!selector || value == null) return;
-        var el = document.querySelector(selector);
-        if (!el) return;
-        el.value = value;
+        var el;
+        try {
+            el = document.querySelector(selector);
+        } catch (error) {
+            return;
+        }
+        if (!el || !('value' in el)) return;
+        el.value = String(value);
         el.dispatchEvent(new Event('input', { bubbles: true }));
         el.dispatchEvent(new Event('change', { bubbles: true }));
         // Alpine / React friendly
@@ -81,8 +109,14 @@
             return;
         }
         // Prefer existing white toast if present
-        var host = document.querySelector('.bankai-toast, #bankai-toast, .notice');
-        console.log('[Bankai AI]', type, msg);
+        var host = document.querySelector('.bankai-toast, #bankai-toast');
+        if (host) {
+            host.textContent = String(msg || '');
+            host.setAttribute('role', type === 'error' ? 'alert' : 'status');
+            host.hidden = false;
+            return;
+        }
+        console[type === 'error' ? 'error' : 'info']('[Bankai AI]', msg);
     }
 
     function runTask(task, btn) {
@@ -92,6 +126,7 @@
         var kwEl = document.querySelector('[data-bankai-field="focus_keyword"], #bankai_focus_keyword, input[name="_bankai_seo_focus_keyword"]');
         var kw = kwEl ? kwEl.value : '';
 
+        if (btn && btn.disabled) return;
         showLoader(btn, true);
         ajax('bankai_ai_seo_task', {
             task: task,
@@ -101,6 +136,9 @@
             locale: c.locale || document.documentElement.lang || 'fa_IR',
             provider: c.defaultAiProvider || ''
         }).then(function (res) {
+            if (!res || typeof res !== 'object') {
+                throw new Error('ساختار پاسخ هوش مصنوعی معتبر نیست.');
+            }
             var d = res.data || res;
             if (!res.success) {
                 toast((d && d.message) || 'AI error', 'error');
@@ -119,7 +157,7 @@
             } else if (task === 'focus_keyword') {
                 setField('[data-bankai-field="focus_keyword"], #bankai_focus_keyword, input[name="_bankai_seo_focus_keyword"]', d.focus_keyword || text);
             } else if (task === 'keywords') {
-                var kws = d.keywords || [];
+                var kws = Array.isArray(d.keywords) ? d.keywords.slice() : [];
                 if ((!kws || !kws.length) && text) {
                     kws = String(text).split(/[,،]+/).map(function (s) { return s.trim(); }).filter(Boolean);
                 }
@@ -129,12 +167,15 @@
                     fixed = fixed.split(/[,،]+/).map(function (s) { return s.trim(); }).filter(Boolean);
                 }
                 if (Array.isArray(fixed) && fixed.length) {
-                    var seen = {};
-                    kws.forEach(function (k) { seen[String(k).toLowerCase()] = true; });
+                    var seen = new Set();
+                    kws = kws.map(function (k) { return String(k).trim(); }).filter(Boolean);
+                    kws.forEach(function (k) { seen.add(k.toLocaleLowerCase()); });
                     fixed.forEach(function (f) {
-                        if (f && !seen[String(f).toLowerCase()]) {
+                        f = String(f || '').trim();
+                        var key = f.toLocaleLowerCase();
+                        if (f && !seen.has(key)) {
                             kws.push(f);
-                            seen[String(f).toLowerCase()] = true;
+                            seen.add(key);
                         }
                     });
                 }
@@ -159,7 +200,9 @@
     }
 
     document.addEventListener('click', function (e) {
-        var btn = e.target.closest('[data-bankai-ai-task]');
+        var target = e.target;
+        if (!target || typeof target.closest !== 'function') return;
+        var btn = target.closest('[data-bankai-ai-task]');
         if (!btn) return;
         e.preventDefault();
         var task = btn.getAttribute('data-bankai-ai-task');

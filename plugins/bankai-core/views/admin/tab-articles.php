@@ -30,7 +30,7 @@ if (class_exists('Bankai_AI_Studio')) {
 echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
 ?></script>
 
-<div id="tab-articles" class="bankai-tab-pane" x-show="activeTab === 'articles'" x-cloak
+<div id="tab-articles" class="bankai-tab-pane" :class="{ 'is-active-tab': activeTab === 'articles' }" x-show="activeTab === 'articles'" x-cloak
      x-data="bankaiArticlesHub"
      x-init="init()">
 
@@ -169,9 +169,9 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
                     <div class="bk-audit-ai__preview" x-show="auditDrawer.aiReady && auditDrawer.aiProposed">
                         <div class="bk-audit-ai__preview-title">پیش‌نمایش اصلاحات پیشنهادی</div>
                         <div class="bk-audit-ai__grid">
-                            <div x-show="auditDrawer.aiProposed.seo_title"><small>عنوان سئو</small><strong x-text="auditDrawer.aiProposed.seo_title"></strong></div>
-                            <div x-show="auditDrawer.aiProposed.description"><small>توضیحات متا</small><strong x-text="auditDrawer.aiProposed.description"></strong></div>
-                            <div x-show="auditDrawer.aiProposed.content_changed" style="grid-column:1/-1"><small>تغییر محتوا</small><strong x-text="auditDrawer.aiProposed.content_preview"></strong></div>
+                            <div x-show="(auditDrawer.aiProposed && auditDrawer.aiProposed.seo_title)"><small>عنوان سئو</small><strong x-text="(auditDrawer.aiProposed && auditDrawer.aiProposed.seo_title)"></strong></div>
+                            <div x-show="(auditDrawer.aiProposed && auditDrawer.aiProposed.description)"><small>توضیحات متا</small><strong x-text="(auditDrawer.aiProposed && auditDrawer.aiProposed.description)"></strong></div>
+                            <div x-show="(auditDrawer.aiProposed && auditDrawer.aiProposed.content_changed)" style="grid-column:1/-1"><small>تغییر محتوا</small><strong x-text="(auditDrawer.aiProposed && auditDrawer.aiProposed.content_preview)"></strong></div>
                         </div>
                     </div>
                 </div>
@@ -660,8 +660,10 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
             </template>
         </div><!-- /schedule -->
     </div><!-- /bk-art-main -->
-</div><!-- /tab-articles -->
+<!-- /tab-articles -->
 
 <script>
 window.bankaiArticlesQueue = <?php echo $queue_json ?: '[]'; ?>;
 </script>
+</div>
+<!-- /tab-articles root -->

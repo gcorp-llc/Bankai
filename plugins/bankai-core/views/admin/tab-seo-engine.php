@@ -32,7 +32,7 @@ $posts_count = (int) wp_count_posts('post')->publish;
 $page_count  = (int) wp_count_posts('page')->publish;
 ?>
 
-<div id="tab-seo-engine" class="bankai-tab-pane" x-show="activeTab === 'seo-engine'" x-cloak
+<div id="tab-seo-engine" class="bankai-tab-pane" :class="{ 'is-active-tab': activeTab === 'seo-engine' }" x-show="activeTab === 'seo-engine'" x-cloak
      x-data="bankaiSeoEngineData"
      x-init="initEngine()">
 
@@ -974,5 +974,7 @@ $page_count  = (int) wp_count_posts('page')->publish;
 
 </div><!-- /tab-seo-engine -->
 </div>
-</div>
+
 <!-- close tab-seo-engine.php -->
+</div>
+<!-- /tab-seo-engine root -->

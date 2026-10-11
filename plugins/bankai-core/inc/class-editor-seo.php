@@ -29,6 +29,7 @@ class Bankai_Editor_SEO
         add_action('manage_pages_custom_column', [$this, 'render_score_column'], 10, 2);
         add_filter('manage_edit-post_sortable_columns', [$this, 'sortable_score']);
         add_filter('manage_edit-page_sortable_columns', [$this, 'sortable_score']);
+        add_action('pre_get_posts', [$this, 'apply_score_sorting']);
     }
 
     private function is_seo_enabled(): bool
@@ -270,7 +271,7 @@ class Bankai_Editor_SEO
             return;
         }
 
-        $score = (int) get_post_meta($post_id, '_bankai_seo_score', true);
+        $score = min(100, max(0, (int) get_post_meta($post_id, '_bankai_seo_score', true)));
         $color = function_exists('bankai_seo_score_color')
             ? bankai_seo_score_color($score)
             : '#B8BCC2';
@@ -294,6 +295,28 @@ class Bankai_Editor_SEO
     {
         $columns['bankai_seo_score'] = 'bankai_seo_score';
         return $columns;
+    }
+
+    /**
+     * Apply numeric sorting for the SEO score column in post/page lists.
+     */
+    public function apply_score_sorting($query): void
+    {
+        if (!is_admin() || !$query instanceof WP_Query || !$query->is_main_query()) {
+            return;
+        }
+
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!$screen || !in_array($screen->id, ['edit-post', 'edit-page'], true)) {
+            return;
+        }
+
+        if ($query->get('orderby') !== 'bankai_seo_score') {
+            return;
+        }
+
+        $query->set('meta_key', '_bankai_seo_score');
+        $query->set('orderby', 'meta_value_num');
     }
 
     private function list_column_css(): string

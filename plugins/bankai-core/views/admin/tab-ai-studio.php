@@ -75,7 +75,7 @@ foreach ($image_status as $row) {
 
 
 
-<div id="tab-ai-studio" class="bankai-tab-pane" x-show="activeTab === 'ai-studio'" x-cloak>
+<div id="tab-ai-studio" class="bankai-tab-pane" :class="{ 'is-active-tab': activeTab === 'ai-studio' }" x-show="activeTab === 'ai-studio'" x-cloak>
 <div class="bankai-ai-studio-root" x-data="bankaiAiStudioRoot">
     <div class="bk-lg-header bk-wm-hero bk-page-hero">
         <div class="bk-wm-hero__main">
@@ -507,5 +507,7 @@ foreach ($image_status as $row) {
 </div><!-- /bankaiAiStudioRoot -->
 
 <!-- /tab-ai-studio -->
-</div>
+
 <!-- /tab-ai-studio close -->
+</div>
+<!-- /tab-ai-studio root -->

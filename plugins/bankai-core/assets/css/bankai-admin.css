@@ -3680,3 +3680,13 @@ body.admin-bar #bankai-admin-app .bankai-sidebar {
     flex: 1 1 auto !important;
   }
 }
+
+
+/* === v144: settings tab must show when active === */
+#bankai-admin-app #tab-settings-license.is-active-tab,
+#bankai-admin-app #tab-settings-license:not([x-cloak]) {
+  /* x-show sets inline display */
+}
+#bankai-admin-app .bankai-tab-pane.is-active-tab {
+  display: block !important;
+}

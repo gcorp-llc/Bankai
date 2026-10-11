@@ -18,9 +18,11 @@ if (!is_array($cfg)) { $cfg = []; }
 $cfg_json = wp_json_encode($cfg, JSON_UNESCAPED_UNICODE);
 ?>
 <div id="tab-speed-cache" class="bankai-tab-pane bk-speed-shell"
-     x-show="activeTab === 'speed-cache'" x-cloak
-     x-data="bankaiSpeedTab(<?php echo htmlspecialchars($cfg_json, ENT_QUOTES, 'UTF-8'); ?>)"
-     x-init="initSpeed && initSpeed()">
+     x-show="activeTab === 'speed-cache'"
+     :class="{ 'is-active-tab': activeTab === 'speed-cache' }"
+     x-cloak>
+<div x-data="bankaiSpeedTab(<?php echo htmlspecialchars($cfg_json, ENT_QUOTES, 'UTF-8'); ?>)"
+     x-init="typeof initSpeed === 'function' && initSpeed()">
 
     <div class="bk-lg-header bk-wm-hero bk-page-hero">
         <div class="bk-wm-hero__main">
@@ -205,5 +207,7 @@ $cfg_json = wp_json_encode($cfg, JSON_UNESCAPED_UNICODE);
             </ol>
         </div>
     </div>
-</div>
+
 <!-- /tab-speed-cache.php close -->
+</div><!-- /speed inner x-data -->
+</div><!-- /tab-speed-cache -->

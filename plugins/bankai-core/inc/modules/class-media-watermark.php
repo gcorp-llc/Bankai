@@ -68,6 +68,7 @@ class Bankai_Media_Watermark
         add_action('wp_ajax_bankai_update_image_alt', [$this, 'ajax_update_image_alt']);
         add_action('wp_ajax_bankai_remove_image_watermark', [$this, 'ajax_remove_image_watermark']);
         add_action('wp_ajax_bankai_list_media_library', [$this, 'ajax_list_media_library']);
+        add_action('wp_ajax_bankai_list_media', [$this, 'ajax_list_media_library']);
         add_action('wp_ajax_bankai_compress_attachment', [$this, 'ajax_compress_attachment']);
         add_action('wp_ajax_bankai_bulk_compress_media', [$this, 'ajax_bulk_compress_media']);
     }
@@ -111,7 +112,11 @@ class Bankai_Media_Watermark
             'image_url'       => '',
             'image_scale'     => 20,
             'quality'         => 82,
-            'min_dimension'   => 300,
+            'min_dimension'   => 0,
+            'custom_fonts'    => [],
+            'custom_font_url' => '',
+            'custom_font_name'=> '',
+            'custom_font_path'=> '',
             'exclude_patterns'=> "logo
 banner
 icon
@@ -138,6 +143,20 @@ watermark",
             }
         }
         return wp_parse_args($saved, $defaults);
+    }
+
+    /**
+     * Persist watermark settings (shared by AJAX handlers).
+     */
+    public function save_settings(array $settings): array
+    {
+        $current = $this->get_settings();
+        $merged  = array_merge($current, $settings);
+        update_option('bankai_watermark_settings', $merged, false);
+        if (function_exists('bankai_update_option')) {
+            bankai_update_option('watermark_settings', $merged);
+        }
+        return $merged;
     }
 
     public function process_uploaded_image(array $upload): array
@@ -247,6 +266,12 @@ watermark",
         if (!$image) {
             return false;
         }
+        if (function_exists('imagealphablending')) {
+            imagealphablending($image, true);
+        }
+        if (function_exists('imagesavealpha')) {
+            imagesavealpha($image, true);
+        }
 
         $width  = imagesx($image);
         $height = imagesy($image);
@@ -315,10 +340,83 @@ watermark",
         return false;
     }
 
+
+    private function sanitize_custom_fonts($raw): array
+    {
+        $current = $this->get_settings();
+        $list = is_array($current['custom_fonts'] ?? null) ? $current['custom_fonts'] : [];
+        if ($raw === null) {
+            return $list;
+        }
+        if (is_string($raw)) {
+            $decoded = json_decode(wp_unslash($raw), true);
+            $raw = is_array($decoded) ? $decoded : [];
+        }
+        if (!is_array($raw)) {
+            return $list;
+        }
+        $out = [];
+        foreach ($raw as $item) {
+            if (!is_array($item)) continue;
+            $name = sanitize_file_name((string) ($item['name'] ?? ''));
+            $url  = esc_url_raw((string) ($item['url'] ?? ''));
+            $path = sanitize_text_field((string) ($item['path'] ?? ''));
+            if ($name === '' && $url === '') continue;
+            $out[] = [
+                'id'   => sanitize_key((string) ($item['id'] ?? ('cf_' . md5($name . $url)))),
+                'name' => $name,
+                'url'  => $url,
+                'path' => $path,
+            ];
+        }
+        return $out;
+    }
+
     private function resolve_font_path(string $font_key): string
     {
+        $s = $this->get_settings();
+        // Custom uploaded font (TTF/OTF only — GD imagettftext requirement)
+        if ($font_key === 'custom' || $font_key === 'custom_font' || str_starts_with($font_key, 'cf_')) {
+            // try list entry by id
+            if (str_starts_with($font_key, 'cf_')) {
+                foreach ((array) ($s['custom_fonts'] ?? []) as $cf) {
+                    if (($cf['id'] ?? '') === $font_key) {
+                        $path = (string) ($cf['path'] ?? '');
+                        if ($path && is_readable($path)) {
+                            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                            if (in_array($ext, ['ttf', 'otf'], true)) return $path;
+                        }
+                    }
+                }
+            }
+            $custom = $this->resolve_custom_font_file($s);
+            if ($custom !== '') {
+                $ext = strtolower(pathinfo($custom, PATHINFO_EXTENSION));
+                if (in_array($ext, ['ttf', 'otf'], true)) {
+                    return $custom;
+                }
+            }
+        }
+        // If settings force custom_font_url and text_font is custom
+        if (!empty($s['custom_font_url']) && ($font_key === 'custom' || empty($font_key) || $font_key === 'default')) {
+            // only prefer custom when explicitly selected as custom
+        }
+        if ($font_key === 'custom' && !empty($s['custom_font_name'])) {
+            $custom = $this->resolve_custom_font_file($s);
+            if ($custom !== '') {
+                return $custom;
+            }
+        }
+
         $map = [
             'default' => '',
+            'vazirmatn' => '',
+            'vazirmatn-bold' => '',
+            'tahoma' => '',
+            'arial' => '',
+            'georgia' => '',
+            'roboto' => '',
+            'inter' => '',
             'dejavu'  => '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
             'dejavu-bold' => '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
             'liberation' => '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
@@ -328,10 +426,72 @@ watermark",
         if ($path && is_readable($path)) {
             return $path;
         }
-        // fallback scan
-        foreach ($map as $p) {
+        // system fallbacks useful for Persian glyphs
+        $fallbacks = [
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+            '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
+            '/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf',
+            'C:/Windows/Fonts/tahoma.ttf',
+            'C:/Windows/Fonts/arial.ttf',
+        ];
+        foreach ($fallbacks as $p) {
             if ($p && is_readable($p)) {
                 return $p;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * Map custom_font_url / custom_font_name to local filesystem path for GD.
+     */
+    private function resolve_custom_font_file(array $s): string
+    {
+        if (!empty($s['custom_font_path']) && is_readable((string) $s['custom_font_path'])) {
+            $ext = strtolower(pathinfo((string) $s['custom_font_path'], PATHINFO_EXTENSION));
+            if (in_array($ext, ['ttf', 'otf'], true)) {
+                return (string) $s['custom_font_path'];
+            }
+        }
+        $name = (string) ($s['custom_font_name'] ?? '');
+        $url  = (string) ($s['custom_font_url'] ?? '');
+        $upload = wp_upload_dir();
+        $dir = trailingslashit($upload['basedir']) . 'bankai-fonts';
+
+        if ($name !== '') {
+            $candidate = $dir . '/' . ltrim($name, '/');
+            if (is_readable($candidate)) {
+                $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION));
+                if (in_array($ext, ['ttf', 'otf', 'woff', 'woff2'], true)) {
+                    return $candidate;
+                }
+            }
+        }
+        if ($url !== '') {
+            // Convert URL under uploads to path
+            $baseurl = trailingslashit($upload['baseurl']);
+            if (str_starts_with($url, $baseurl)) {
+                $rel = substr($url, strlen($baseurl));
+                $candidate = trailingslashit($upload['basedir']) . ltrim($rel, '/');
+                if (is_readable($candidate)) {
+                    $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION));
+                    if (in_array($ext, ['ttf', 'otf'], true)) {
+                        return $candidate;
+                    }
+                }
+            }
+            // Absolute path stored by mistake
+            if (is_readable($url)) {
+                return $url;
+            }
+        }
+        // last: any ttf in bankai-fonts
+        if (is_dir($dir)) {
+            foreach (array_merge(glob($dir . '/*.ttf') ?: [], glob($dir . '/*.otf') ?: [], glob($dir . '/*.woff') ?: [], glob($dir . '/*.woff2') ?: []) as $f) {
+                if (is_readable($f)) {
+                    return $f;
+                }
             }
         }
         return '';
@@ -353,12 +513,157 @@ watermark",
         ];
     }
 
+
+    /**
+     * Shape Arabic/Persian for GD imagettftext (visual LTR order of presentation forms).
+     */
+    private function shape_rtl_text(string $text): string
+    {
+        if ($text === '' || !preg_match('/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}\x{FB50}-\x{FDFF}\x{FE70}-\x{FEFF}]/u', $text)) {
+            return $text;
+        }
+        // Isolate Arabic runs and reshape each
+        $out = '';
+        $buf = '';
+        $len = mb_strlen($text, 'UTF-8');
+        for ($i = 0; $i < $len; $i++) {
+            $ch = mb_substr($text, $i, 1, 'UTF-8');
+            $o = $this->utf8_ord($ch);
+            $is_ar = ($o >= 0x0600 && $o <= 0x06FF) || ($o >= 0x0750 && $o <= 0x077F)
+                || ($o >= 0x08A0 && $o <= 0x08FF) || ($o >= 0xFB50 && $o <= 0xFDFF)
+                || ($o >= 0xFE70 && $o <= 0xFEFF) || $ch === ' ' || $ch === "\u{200C}" || $ch === "\u{200D}";
+            if ($is_ar) {
+                $buf .= $ch;
+            } else {
+                if ($buf !== '') {
+                    $out .= $this->reshape_arabic_run($buf);
+                    $buf = '';
+                }
+                $out .= $ch;
+            }
+        }
+        if ($buf !== '') {
+            $out .= $this->reshape_arabic_run($buf);
+        }
+        return $out;
+    }
+
+    private function utf8_ord(string $ch): int
+    {
+        $u = unpack('N', mb_convert_encoding($ch, 'UCS-4BE', 'UTF-8'));
+        return (int) ($u[1] ?? 0);
+    }
+
+    private function reshape_arabic_run(string $run): string
+    {
+        // Map isolated/initial/medial/final forms for common Persian/Arabic letters
+        static $forms = null;
+        if ($forms === null) {
+            // [isolated, final, initial, medial]
+            $forms = [
+                0x0627 => [0xFE8D, 0xFE8E, 0xFE8D, 0xFE8E], // ا
+                0x0628 => [0xFE8F, 0xFE90, 0xFE91, 0xFE92], // ب
+                0x067E => [0xFB56, 0xFB57, 0xFB58, 0xFB59], // پ
+                0x062A => [0xFE95, 0xFE96, 0xFE97, 0xFE98], // ت
+                0x062B => [0xFE99, 0xFE9A, 0xFE9B, 0xFE9C], // ث
+                0x062C => [0xFE9D, 0xFE9E, 0xFE9F, 0xFEA0], // ج
+                0x0686 => [0xFB7A, 0xFB7B, 0xFB7C, 0xFB7D], // چ
+                0x062D => [0xFEA1, 0xFEA2, 0xFEA3, 0xFEA4], // ح
+                0x062E => [0xFEA5, 0xFEA6, 0xFEA7, 0xFEA8], // خ
+                0x062F => [0xFEA9, 0xFEAA, 0xFEA9, 0xFEAA], // د
+                0x0630 => [0xFEAB, 0xFEAC, 0xFEAB, 0xFEAC], // ذ
+                0x0631 => [0xFEAD, 0xFEAE, 0xFEAD, 0xFEAE], // ر
+                0x0632 => [0xFEAF, 0xFEB0, 0xFEAF, 0xFEB0], // ز
+                0x0698 => [0xFB8A, 0xFB8B, 0xFB8A, 0xFB8B], // ژ
+                0x0633 => [0xFEB1, 0xFEB2, 0xFEB3, 0xFEB4], // س
+                0x0634 => [0xFEB5, 0xFEB6, 0xFEB7, 0xFEB8], // ش
+                0x0635 => [0xFEB9, 0xFEBA, 0xFEBB, 0xFEBC], // ص
+                0x0636 => [0xFEBD, 0xFEBE, 0xFEBF, 0xFEC0], // ض
+                0x0637 => [0xFEC1, 0xFEC2, 0xFEC3, 0xFEC4], // ط
+                0x0638 => [0xFEC5, 0xFEC6, 0xFEC7, 0xFEC8], // ظ
+                0x0639 => [0xFEC9, 0xFECA, 0xFECB, 0xFECC], // ع
+                0x063A => [0xFECD, 0xFECE, 0xFECF, 0xFED0], // غ
+                0x0641 => [0xFED1, 0xFED2, 0xFED3, 0xFED4], // ف
+                0x0642 => [0xFED5, 0xFED6, 0xFED7, 0xFED8], // ق
+                0x06A9 => [0xFB8E, 0xFB8F, 0xFB90, 0xFB91], // ک
+                0x0643 => [0xFED9, 0xFEDA, 0xFEDB, 0xFEDC], // ك
+                0x06AF => [0xFB92, 0xFB93, 0xFB94, 0xFB95], // گ
+                0x0644 => [0xFEDD, 0xFEDE, 0xFEDF, 0xFEE0], // ل
+                0x0645 => [0xFEE1, 0xFEE2, 0xFEE3, 0xFEE4], // م
+                0x0646 => [0xFEE5, 0xFEE6, 0xFEE7, 0xFEE8], // ن
+                0x0648 => [0xFEED, 0xFEEE, 0xFEED, 0xFEEE], // و
+                0x0647 => [0xFEE9, 0xFEEA, 0xFEEB, 0xFEEC], // ه
+                0x06CC => [0xFBFC, 0xFBFD, 0xFBFE, 0xFBFF], // ی
+                0x064A => [0xFEF1, 0xFEF2, 0xFEF3, 0xFEF4], // ي
+                0x0622 => [0xFE81, 0xFE82, 0xFE81, 0xFE82], // آ
+                0x0629 => [0xFE93, 0xFE94, 0xFE93, 0xFE94], // ة
+                0x0621 => [0xFE80, 0xFE80, 0xFE80, 0xFE80], // ء
+            ];
+        }
+        // letters that don't connect to next
+        static $non_connect = null;
+        if ($non_connect === null) {
+            $non_connect = array_flip([
+                0x0627, 0x062F, 0x0630, 0x0631, 0x0632, 0x0698, 0x0648, 0x0622, 0x0629, 0x0621, 0xFE80, 0xFE81, 0xFE82,
+            ]);
+        }
+
+        $chars = [];
+        $n = mb_strlen($run, 'UTF-8');
+        for ($i = 0; $i < $n; $i++) {
+            $ch = mb_substr($run, $i, 1, 'UTF-8');
+            $chars[] = $this->utf8_ord($ch);
+        }
+
+        $shaped = [];
+        for ($i = 0; $i < count($chars); $i++) {
+            $cp = $chars[$i];
+            if ($cp === 0x20 || $cp === 0x200C || $cp === 0x200D) {
+                $shaped[] = $cp === 0x20 ? ' ' : '';
+                continue;
+            }
+            if (!isset($forms[$cp])) {
+                $shaped[] = mb_convert_encoding(pack('N', $cp), 'UTF-8', 'UCS-4BE');
+                continue;
+            }
+            $prev = null;
+            for ($j = $i - 1; $j >= 0; $j--) {
+                if ($chars[$j] === 0x20 || $chars[$j] === 0x200C) break;
+                if ($chars[$j] === 0x200D) continue;
+                $prev = $chars[$j];
+                break;
+            }
+            $next = null;
+            for ($j = $i + 1; $j < count($chars); $j++) {
+                if ($chars[$j] === 0x20 || $chars[$j] === 0x200C) break;
+                if ($chars[$j] === 0x200D) continue;
+                $next = $chars[$j];
+                break;
+            }
+            $joins_prev = $prev !== null && isset($forms[$prev]) && !isset($non_connect[$prev]);
+            $joins_next = $next !== null && isset($forms[$next]);
+            if ($joins_prev && $joins_next) {
+                $form = $forms[$cp][3]; // medial
+            } elseif ($joins_prev) {
+                $form = $forms[$cp][1]; // final
+            } elseif ($joins_next) {
+                $form = $forms[$cp][2]; // initial
+            } else {
+                $form = $forms[$cp][0]; // isolated
+            }
+            $shaped[] = mb_convert_encoding(pack('N', $form), 'UTF-8', 'UCS-4BE');
+        }
+        // Visual order for RTL: reverse the shaped glyphs
+        return implode('', array_reverse($shaped));
+    }
+
     private function draw_text_watermark($image, int $width, int $height, array $s, int $alpha): void
     {
         $text = (string) ($s['text'] ?? 'BANKAI');
         if ($text === '') {
             return;
         }
+        $text = $this->shape_rtl_text($text);
         $size = max(10, min(72, (int) ($s['text_size'] ?? 18)));
         $font_key = (string) ($s['text_font'] ?? 'default');
         $font_path = $this->resolve_font_path($font_key);
@@ -720,6 +1025,35 @@ watermark",
             'convert_webp'  => !empty($_POST['convert_webp']),
             'keep_original' => !empty($_POST['keep_original']),
         ];
+
+        // Preserve font library unless explicitly posted
+        $prev = $this->get_settings();
+        if (empty($settings['custom_fonts']) && !empty($prev['custom_fonts'])) {
+            $settings['custom_fonts'] = $prev['custom_fonts'];
+        }
+        if (empty($settings['custom_font_url']) && !empty($prev['custom_font_url'])) {
+            $settings['custom_font_url'] = $prev['custom_font_url'];
+            $settings['custom_font_name'] = $prev['custom_font_name'] ?? '';
+            $settings['custom_font_path'] = $prev['custom_font_path'] ?? '';
+        }
+        if (!empty($_POST['custom_font_url'])) {
+            $settings['custom_font_url'] = esc_url_raw(wp_unslash($_POST['custom_font_url']));
+        }
+        if (!empty($_POST['custom_font_name'])) {
+            $settings['custom_font_name'] = sanitize_file_name(wp_unslash($_POST['custom_font_name']));
+        }
+        if (!empty($_POST['custom_font_path'])) {
+            $settings['custom_font_path'] = sanitize_text_field(wp_unslash($_POST['custom_font_path']));
+        }
+        if (isset($_POST['custom_fonts'])) {
+            $settings['custom_fonts'] = $this->sanitize_custom_fonts($_POST['custom_fonts']);
+        }
+        if (!empty($_POST['box_style'])) {
+            $settings['box_style'] = sanitize_key(wp_unslash($_POST['box_style']));
+        }
+        if (!empty($_POST['text_cover'])) {
+            $settings['text_cover'] = sanitize_key(wp_unslash($_POST['text_cover']));
+        }
 
         update_option('bankai_watermark_settings', $settings, false);
         if (function_exists('bankai_update_option')) {
@@ -1730,6 +2064,8 @@ watermark",
             wp_send_json_error(['message' => __('دسترسی مجاز نیست.', 'bankai-core')], 403);
         }
         check_ajax_referer('bankai_admin_nonce', 'nonce');
+        @set_time_limit(120);
+        @ini_set('max_execution_time', '120');
 
         $ids_raw = $_POST['ids'] ?? [];
         if (is_string($ids_raw)) {
@@ -1747,8 +2083,25 @@ watermark",
         }
 
         $s = $this->get_settings();
-        if ($apply && empty($s['enabled'])) {
-            wp_send_json_error(['message' => __('سرویس واترمارک غیرفعال است. ابتدا فعال و ذخیره کنید.', 'bankai-core')]);
+        // Allow live studio settings override from POST (so bulk uses current UI values)
+        if (!empty($_POST['wm_settings'])) {
+            $raw = wp_unslash($_POST['wm_settings']);
+            if (is_string($raw)) {
+                $decoded = json_decode($raw, true);
+                if (is_array($decoded)) {
+                    $s = array_merge($s, $decoded);
+                    // persist so next time is consistent
+                    $this->save_settings($s);
+                }
+            } elseif (is_array($raw)) {
+                $s = array_merge($s, $raw);
+                $this->save_settings($s);
+            }
+        }
+        $s['enabled'] = true;
+        // Never skip bulk by min_dimension unless explicitly set high
+        if (!isset($_POST['respect_min_dim'])) {
+            $s['min_dimension'] = 0;
         }
         if ($apply && !extension_loaded('gd')) {
             wp_send_json_error(['message' => __('افزونه GD روی سرور فعال نیست.', 'bankai-core')]);
@@ -1807,6 +2160,20 @@ watermark",
             );
         }
 
+        // optional simultaneous compress (single/batch ids)
+        $also = !empty($_POST['also_compress']) && ($_POST['also_compress'] === '1' || $_POST['also_compress'] === 'true');
+        if ($also && $ok > 0 && extension_loaded('gd')) {
+            foreach ($ids as $id) {
+                $path = get_attached_file($id);
+                if (!$path || !file_exists($path)) continue;
+                $mime = get_post_mime_type($id) ?: '';
+                $quality = (int) ($s['quality'] ?? 82);
+                if (method_exists($this, 'maybe_create_webp')) {
+                    $this->maybe_create_webp($path, $mime, $quality);
+                }
+            }
+        }
+
         wp_send_json_success([
             'message' => $msg,
             'ok'      => $ok,
@@ -1854,6 +2221,7 @@ watermark",
         if (!in_array($ext, ['ttf', 'otf', 'woff', 'woff2'], true)) {
             wp_send_json_error(['message' => __('فقط ttf/otf/woff مجاز است.', 'bankai-core')]);
         }
+        // WOFF/WOFF2 allowed for CSS live preview; GD raster uses TTF/OTF or system fallback
         require_once ABSPATH . 'wp-admin/includes/file.php';
         $overrides = ['test_form' => false, 'mimes' => [
             'ttf' => 'font/ttf', 'otf' => 'font/otf', 'woff' => 'font/woff', 'woff2' => 'font/woff2',
@@ -1881,9 +2249,33 @@ watermark",
         $s = $this->get_settings();
         $s['custom_font_url'] = $url;
         $s['custom_font_name'] = $safe;
+        $s['custom_font_path'] = $dest;
         $s['text_font'] = 'custom';
+        $list = is_array($s['custom_fonts'] ?? null) ? $s['custom_fonts'] : [];
+        $id = 'cf_' . md5($safe);
+        $found = false;
+        foreach ($list as &$it) {
+            if (($it['name'] ?? '') === $safe || ($it['id'] ?? '') === $id) {
+                $it = ['id' => $id, 'name' => $safe, 'url' => $url, 'path' => $dest];
+                $found = true;
+                break;
+            }
+        }
+        unset($it);
+        if (!$found) {
+            $list[] = ['id' => $id, 'name' => $safe, 'url' => $url, 'path' => $dest];
+        }
+        $s['custom_fonts'] = $list;
         $this->save_settings($s);
-        wp_send_json_success(['url' => $url, 'name' => $safe]);
+        $hint = in_array($ext, ['woff', 'woff2'], true)
+            ? ' ' . __('(WOFF برای پیش‌نمایش؛ رندر فایل روی سرور با فونت سیستم تکمیل می‌شود)', 'bankai-core')
+            : '';
+        wp_send_json_success([
+            'url'  => $url,
+            'name' => $safe,
+            'path' => $dest,
+            'message' => __('فونت ذخیره شد و برای واترمارک ثبت شد.', 'bankai-core') . $hint,
+        ]);
     }
 
 

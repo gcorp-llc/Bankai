@@ -16,6 +16,10 @@ $imagick_ok = !empty($env['imagick']);
 $webp_ok = !empty($env['webp']);
 $avif_ok = !empty($env['avif']) || function_exists('imageavif');
 
+$custom_fonts = is_array($wm['custom_fonts'] ?? null) ? $wm['custom_fonts'] : [];
+$wm_fonts_json = wp_json_encode($custom_fonts, JSON_UNESCAPED_UNICODE);
+
+
 $positions = [
     'top-left'      => ['icon' => 'north_west', 'label' => 'بالا چپ'],
     'top-center'    => ['icon' => 'north', 'label' => 'بالا وسط'],
@@ -29,7 +33,7 @@ $positions = [
 ];
 ?>
 
-<div id="tab-media-watermark" class="bankai-tab-pane bk-wm-shell" x-show="activeTab === 'media-watermark'" x-cloak>
+<div id="tab-media-watermark" class="bankai-tab-pane bk-wm-shell" :class="{ 'is-active-tab': activeTab === 'media-watermark' }" x-show="activeTab === 'media-watermark'" x-cloak>
 
     <!-- Hero -->
     <div class="bk-lg-header bk-wm-hero">
@@ -71,10 +75,6 @@ $positions = [
         <button type="button" class="bk-lg-tab bk-wm-subtab" :class="{ 'is-active': mediaSubTab === 'compress' }" @click="mediaSubTab = 'compress'; loadMediaLibrary && loadMediaLibrary(true)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14h6v6H4zM14 4h6v6h-6zM14 14h6v6h-6zM4 4h6v6H4z"/></svg>
             فشرده‌سازی تصاویر
-        </button>
-        <button type="button" class="bk-lg-tab bk-wm-subtab" :class="{ 'is-active': mediaSubTab === 'modules' }" @click="mediaSubTab = 'modules'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-            ماژول‌ها و هوک‌ها
         </button>
     </div>
 
@@ -128,16 +128,7 @@ $positions = [
                         <div class="bk-wm-canvas__wm" :class="'is-' + (watermarkStudio.position || 'bottom-right') + (watermarkStudio.text_cover==='width'?' is-cover-width':'') + (watermarkStudio.text_cover==='height'?' is-cover-height':'') + (watermarkStudio.text_cover==='banner'?' is-cover-banner':'')" :style="wmBadgeStyle()">
                             <template x-if="watermarkStudio.type === 'text'">
                                 <span class="bk-wm-badge"
-                                      :style="{
-                                        fontSize: (watermarkStudio.text_size||18)+'px',
-                                        color: watermarkStudio.text_color || '#fff',
-                                        background: watermarkStudio.box_enabled ? (watermarkStudio.box_color||'#000000') : 'transparent',
-                                        opacity: watermarkStudio.box_enabled ? 1 : 1,
-                                        padding: watermarkStudio.box_enabled ? ((watermarkStudio.box_padding||8)+'px') : '0',
-                                        borderRadius: (watermarkStudio.box_radius||6)+'px',
-                                        fontWeight: '700',
-                                        backdropFilter: watermarkStudio.box_enabled ? 'blur(6px)' : 'none'
-                                      }"
+                                      :style="wmTextBadgeStyle()"
                                       x-text="watermarkStudio.text || '© BANKAI MEDIA'"></span>
                             </template>
                             <template x-if="watermarkStudio.type === 'image' && watermarkStudio.image_url">
@@ -378,9 +369,55 @@ $positions = [
     </div>
 
 
-    <!-- COMPRESS -->
     
-    
+        <!-- Inline bulk watermark panel -->
+    <div x-show="wmBulkModal.show" x-cloak class="bk-wm-bulk-panel" style="margin:16px 0 28px;padding:18px;border-radius:16px;background:rgba(15,23,42,.04);border:1px solid rgba(148,163,184,.35);">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
+            <div>
+                <strong style="font-size:14px" x-text="wmBulkModal.title || 'اعمال گروهی واترمارک'"></strong>
+                <div style="font-size:12px;color:#64748b;margin-top:4px" x-text="wmBulkModal.progressText"></div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" x-model="wmBulkModal.selectAll" @change="toggleWmBulkSelectAll()">
+                    انتخاب همه
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                    <input type="checkbox" x-model="wmBulkModal.alsoCompress">
+                    همزمان فشرده‌سازی
+                </label>
+                <button type="button" class="bk-wm-btn-primary" :disabled="wmBulkModal.running" @click="startWmBulkSelected()">
+                    <span class="bk-btn-spin" x-show="wmBulkModal.running" x-cloak></span>
+                    شروع واترمارک
+                </button>
+                <button type="button" class="bk-wm-btn-ghost" :disabled="wmBulkModal.running" @click="wmBulkModal.show=false">بستن</button>
+            </div>
+        </div>
+        <div class="bk-compress-progress" x-show="wmBulkModal.running || wmBulkModal.progress > 0" style="margin-bottom:12px">
+            <div class="bk-compress-bar"><i :style="'width:'+(wmBulkModal.progress||0)+'%'"></i></div>
+        </div>
+        <div class="bk-wm-bulk-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;max-height:420px;overflow:auto">
+            <template x-for="row in (wmBulkModal.items || [])" :key="row.id">
+                <div class="bk-wm-bulk-card" :class="{'is-done':row.status==='done','is-work':row.status==='work','is-fail':row.status==='fail','is-selected':row.selected}"
+                     @click="!wmBulkModal.running && (row.selected = !row.selected)"
+                     style="position:relative;border-radius:12px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#0f172a">
+                    <div :style="row.selected ? 'border-color:#22c55e' : 'border-color:transparent'" style="position:absolute;inset:0;border:2px solid;border-radius:12px;pointer-events:none;z-index:2"></div>
+                    <img :src="row.thumb || row.url" alt="" style="width:100%;height:110px;object-fit:cover;display:block">
+                    <div style="padding:8px;font-size:11px;color:#e2e8f0;min-height:42px">
+                        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600" x-text="row.title"></div>
+                        <div style="opacity:.7;margin-top:2px" x-text="row.statusText || ''"></div>
+                    </div>
+                    <div x-show="row.selected && row.status==='idle'" style="position:absolute;top:8px;inset-inline-start:8px;background:#22c55e;color:#fff;border-radius:999px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;z-index:3">✓</div>
+                    <div x-show="row.status==='work'" style="position:absolute;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:3">
+                        <span class="bk-btn-spin"></span>
+                    </div>
+                    <div x-show="row.status==='done'" style="position:absolute;top:8px;inset-inline-end:8px;background:#16a34a;color:#fff;border-radius:999px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;z-index:3">✓</div>
+                    <div x-show="row.status==='fail'" style="position:absolute;top:8px;inset-inline-end:8px;background:#dc2626;color:#fff;border-radius:999px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;z-index:3">!</div>
+                </div>
+            </template>
+        </div>
+    </div>
+
     <!-- Bulk watermark progress modal -->
     <div x-show="wmBulkModal.show" x-cloak class="bankai-modal-shell bk-wm-bulk-modal" style="z-index:100080">
         <div class="bankai-modal-panel" @click.outside="!wmBulkModal.running && (wmBulkModal.show=false)">
@@ -408,7 +445,12 @@ $positions = [
                     </template>
                 </div>
             </div>
-            <div class="bankai-modal-foot">
+            <div class="bankai-modal-foot" style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-inline-end:auto">
+                    <input type="checkbox" x-model="wmBulkModal.selectAll" @change="toggleWmBulkSelectAll()">
+                    انتخاب همه
+                </label>
+                <button type="button" class="bk-wm-btn-primary" :disabled="wmBulkModal.running" @click="startWmBulkSelected()">شروع واترمارک</button>
                 <button type="button" class="bankai-btn-ghost" @click="wmBulkModal.show=false" :disabled="wmBulkModal.running">بستن</button>
             </div>
         </div>
@@ -477,107 +519,8 @@ $positions = [
         </div>
     </div>
 
-<div x-show="mediaSubTab === 'modules'" x-cloak class="bk-media-modules">
-        <h3 style="margin:0 0 14px;font-size:15px;font-weight:800;color:#0f172a">ماژول‌ها و هوک‌های رسانه</h3>
-        <div class="bk-seo-mod-grid">
-            <?php if (empty($media_mods)): ?>
-            <div class="bk-seo-mod-card" style="grid-column:1/-1;text-align:center;color:#94a3b8">ماژول ثبت نشده است.</div>
-            <?php else: foreach ($media_mods as $mod):
-                $mod_id = esc_attr($mod['id'] ?? '');
-                $title_fa = esc_html($mod['title_fa'] ?? $mod['title'] ?? '');
-                $desc_fa = esc_html($mod['description_fa'] ?? $mod['description'] ?? '');
-                $badge = esc_html($mod['badge'] ?? '');
-                $is_cdn = (bool) preg_match('/cdn|cloud|r2|bunny|s3|arvan|abr|liara/i', $mod_id . ' ' . ($mod['title'] ?? ''));
-            ?>
-            <div class="bk-seo-mod-card" :class="{ 'is-on': mediaState['<?php echo $mod_id; ?>'] }">
-                <div>
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <div class="bk-seo-mod-icon">📦</div>
-                            <div>
-                                <div style="font-weight:700;font-size:13px;color:#0F172A;line-height:1.35;"><?php echo $title_fa; ?></div>
-                                <?php if ($badge): ?><span class="bk-seo-badge" style="background:#3B82F61A;color:#3B82F6"><?php echo $badge; ?></span><?php endif; ?>
-                            </div>
-                        </div>
-                        <label class="bankai-switch">
-                            <input type="checkbox" x-model="mediaState['<?php echo $mod_id; ?>']" @change="toggleMediaModule('<?php echo $mod_id; ?>')">
-                            <span class="bankai-slider"></span>
-                        </label>
-                    </div>
-                    <p style="font-size:12px;color:#64748B;line-height:1.6;margin:0 0 14px;"><?php echo $desc_fa; ?></p>
-                </div>
-                <div class="bk-seo-mod-foot">
-                    <span :style="mediaState['<?php echo $mod_id; ?>'] ? 'color:#16A34A' : 'color:#94A3B8'"
-                          x-text="mediaState['<?php echo $mod_id; ?>'] ? 'فعال' : 'غیرفعال'"></span>
-                    <?php if ($is_cdn): ?>
-                    <button type="button" class="bk-seo-btn-sm" @click="mediaState['<?php echo $mod_id; ?>']=true">تنظیمات CDN</button>
-                    <?php else: ?>
-                    <button type="button" class="bk-seo-btn-sm" disabled style="opacity:.45">تنظیمات</button>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endforeach; endif; ?>
-        </div>
 
-<div class="bk-wm-card bk-cdn-panel"
-             x-show="isCdnModuleOn()"
-             x-cloak>
-            <div class="bk-wm-card__head">
-                <h3><i class="dot is-indigo"></i> تنظیمات CDN و فضای ابری</h3>
-                <span class="bk-wm-muted">بازنویسی URL رسانه · CDN ایرانی و بین‌المللی</span>
-            </div>
-            <div class="bk-cdn-row">
-                <label class="bk-wm-field">
-                    <span>ارائه‌دهنده</span>
-                    <select x-model="cdnSettings.provider">
-                        <option value="custom">سفارشی (Base URL)</option>
-                        <option value="arvan">آروان کلاد (ArvanCloud)</option>
-                        <option value="abr">ابر آروان Object Storage</option>
-                        <option value="liara">لیارا (Liara)</option>
-                        <option value="pars">پارس‌پک CDN</option>
-                        <option value="cloudflare_r2">Cloudflare R2</option>
-                        <option value="bunny">Bunny CDN</option>
-                        <option value="s3">Amazon S3 / سازگار</option>
-                    </select>
-                </label>
-                <label class="bk-wm-field">
-                    <span>آدرس عمومی CDN (Base URL)</span>
-                    <input type="url" dir="ltr" x-model="cdnSettings.base_url" placeholder="https://cdn.example.com">
-                </label>
-                <label class="bk-wm-field">
-                    <span>Path Prefix</span>
-                    <input type="text" dir="ltr" x-model="cdnSettings.path_prefix" placeholder="wp-content/uploads">
-                </label>
-                <label class="bk-wm-field">
-                    <span>Access Key</span>
-                    <input type="text" dir="ltr" x-model="cdnSettings.access_key" autocomplete="off">
-                </label>
-                <label class="bk-wm-field">
-                    <span>Secret Key</span>
-                    <input type="text" dir="ltr" data-bk-secret="1" x-model="cdnSettings.secret_key" autocomplete="new-password">
-                </label>
-                <label class="bk-wm-field" x-show="['s3','cloudflare_r2','abr','liara'].includes(cdnSettings.provider)" x-cloak>
-                    <span>Bucket / Endpoint</span>
-                    <input type="text" dir="ltr" x-model="cdnSettings.bucket" placeholder="my-bucket">
-                </label>
-                <label class="bk-wm-check" style="align-self:end;padding-bottom:8px">
-                    <input type="checkbox" x-model="cdnSettings.rewrite_urls">
-                    <span>بازنویسی URL روی فرانت</span>
-                </label>
-                <div style="align-self:end">
-                    <button type="button" class="bk-wm-btn-primary" :disabled="cdnModal.saving" @click="saveCdnSettings()">
-                        <span class="bk-btn-spin" x-show="cdnModal.saving" x-cloak></span>
-                        ذخیره CDN
-                    </button>
-                </div>
-            </div>
-            <p class="bk-wm-muted" style="margin-top:10px;line-height:1.6">
-                پس از ذخیره، آدرس فایل‌های رسانه در فرانت از طریق Base URL بازنویسی می‌شود. برای آروان/لیارا معمولاً فقط Base URL عمومی کافی است.
-            </p>
-        </div>
-    </div>
-
-    <!-- Media module drawer (optional) -->
+<!-- Media module drawer (optional) -->
     <div x-show="mediaDrawer.show" x-cloak class="bankai-modal-shell" x-transition>
         <div class="bankai-modal-panel" @click.outside="mediaDrawer.show=false">
             <div class="bankai-modal-head">
@@ -591,6 +534,7 @@ $positions = [
                 <button type="button" class="bankai-btn-ghost" @click="mediaDrawer.show=false">بستن</button>
             </div>
         </div>
-    </div><!-- /tab-media-watermark -->
-
-<!-- /tab-media-watermark.php close -->
+    </div>
+<!-- end tab-media-watermark -->
+</div>
+<!-- /tab-media-watermark root -->

@@ -1,5 +1,9 @@
+<?php defined('ABSPATH') || exit; ?>
 <!-- Tab: Settings & License Management -->
-<div id="tab-settings-license" class="bankai-tab-pane" style="width:100%;max-width:100%;box-sizing:border-box" x-show="activeTab === 'settings-license'" x-cloak>
+<div id="tab-settings-license" class="bankai-tab-pane" style="width:100%;max-width:100%;box-sizing:border-box"
+     x-show="activeTab === 'settings-license'"
+     :class="{ 'is-active-tab': activeTab === 'settings-license' }"
+     x-cloak>
     <div class="bk-lg-header bk-wm-hero bk-page-hero">
         <div class="bk-wm-hero__main">
             <div class="bk-wm-hero__icon">
@@ -283,5 +287,6 @@
         <textarea readonly rows="8"
                   style="width: 100%; background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #656D76; font-family: monospace; font-size: 12px; padding: 12px; border-radius: 8px; line-height: 1.6; resize: none; direction: ltr; text-align: left;"><?php echo esc_textarea($state['systemReport'] ?? ''); ?></textarea>
     </div>
-
-<!-- /tab-settings-license.php close -->
+<!-- end tab-settings-license -->
+</div>
+<!-- /tab-settings-license root -->

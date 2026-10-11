@@ -2564,3 +2564,565 @@
 .bk-media-io em { font-style: normal; color: #94A3B8; }
 .bk-media-io.is-after { background: #ECFDF5; color: #047857; }
 .bk-media-io.is-after em { color: #059669; }
+
+
+
+/* =========================================================
+   BANKAI SEO — Visual Refresh (2026)
+   Modern editorial UI: cool neutrals, clearer hierarchy,
+   consistent controls, accessible focus and responsive layout.
+   ========================================================= */
+
+#bankai-seo-sidebar,
+.bankai-seo-root {
+    --c-canvas: #f5f7fb;
+    --c-card: #ffffff;
+    --c-border: #e2e8f0;
+    --c-border-m: #edf1f7;
+    --c-fg: #172033;
+    --c-muted: #64748b;
+    --c-subtle: #7c8ba1;
+    --c-blue: #4f46e5;
+    --c-blue-s: #eef2ff;
+    --c-blue-b: #a5b4fc;
+    --c-green: #15803d;
+    --c-green-s: #dcfce7;
+    --c-green-t: #166534;
+    --c-purple: #7c3aed;
+    --c-purple-s: #f5f3ff;
+    --c-yellow: #a16207;
+    --c-yellow-s: #fef3c7;
+    --c-red: #b91c1c;
+    --c-red-s: #fee2e2;
+    --bk-radius-sm: 9px;
+    --bk-radius-md: 13px;
+    --bk-radius-lg: 17px;
+    --bk-shadow-card: 0 2px 8px rgba(15, 23, 42, .035), 0 1px 2px rgba(15, 23, 42, .025);
+    color: var(--c-fg);
+    background: var(--c-canvas);
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+.bankai-seo-root button,
+.bankai-seo-root input,
+.bankai-seo-root textarea,
+.bankai-seo-root select {
+    font: inherit;
+}
+
+.bankai-seo-root button {
+    transition: background-color .16s ease, border-color .16s ease,
+                box-shadow .16s ease, color .16s ease, transform .16s ease;
+}
+
+.bankai-seo-root button:focus-visible,
+.bankai-seo-root a:focus-visible,
+.bankai-seo-root input:focus-visible,
+.bankai-seo-root textarea:focus-visible,
+.bankai-seo-root select:focus-visible {
+    outline: 2px solid #818cf8 !important;
+    outline-offset: 2px;
+}
+
+/* Header / score */
+.bankai-seo-root .bk-header {
+    background: rgba(255, 255, 255, .96);
+    border-bottom: 1px solid var(--c-border);
+    box-shadow: 0 3px 12px rgba(15, 23, 42, .025);
+    backdrop-filter: blur(12px);
+}
+
+.bankai-seo-root .bk-header-main {
+    gap: 12px;
+    padding: 15px 16px 14px;
+    border-bottom: 1px solid var(--c-border-m);
+}
+
+.bankai-seo-root .bk-score-ring {
+    width: 48px;
+    height: 48px;
+    padding: 2px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 0 4px #f1f5f9;
+}
+
+.bankai-seo-root .bk-track {
+    stroke: #e8edf5;
+    stroke-width: 3.2;
+}
+
+.bankai-seo-root .bk-progress {
+    stroke-width: 3.2;
+}
+
+.bankai-seo-root .bk-score-num {
+    font-size: 12px;
+    font-weight: 850;
+    color: #172033;
+}
+
+.bankai-seo-root .bk-header-text {
+    min-width: 0;
+}
+
+.bankai-seo-root .bk-header-text strong {
+    display: block;
+    color: #172033;
+    font-size: 14px;
+    letter-spacing: -.02em;
+}
+
+.bankai-seo-root .bk-header-text small,
+.bankai-seo-root .bk-header-text p {
+    color: var(--c-muted);
+}
+
+.bankai-seo-root .bk-icon-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--c-border);
+    background: #fff;
+    color: #64748b;
+    border-radius: 11px;
+}
+
+.bankai-seo-root .bk-icon-btn:hover {
+    background: var(--c-blue-s);
+    color: var(--c-blue);
+    border-color: #c7d2fe;
+    transform: translateY(-1px);
+}
+
+/* Tabs */
+.bankai-seo-root .bk-tabs {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 5px;
+    padding: 9px 10px;
+    background: #f8faff;
+    border-top: 0;
+}
+
+.bankai-seo-root .bk-tabs button {
+    min-width: 0;
+    min-height: 36px;
+    padding: 7px 4px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.bankai-seo-root .bk-tabs button:hover {
+    color: #3730a3;
+    background: #eef2ff;
+}
+
+.bankai-seo-root .bk-tabs button.is-active {
+    color: #4338ca;
+    background: #fff;
+    border-color: #c7d2fe;
+    box-shadow: 0 2px 5px rgba(79, 70, 229, .09);
+}
+
+.bankai-seo-root .bk-tabs .bk-tab-ai {
+    color: #7c3aed !important;
+    background: #f5f3ff;
+}
+
+.bankai-seo-root .bk-tabs .bk-tab-ai.is-active {
+    color: #6d28d9 !important;
+    background: #fff;
+    border-color: #ddd6fe;
+}
+
+/* Main content and cards */
+.bankai-seo-root .bk-body {
+    padding: 12px;
+    background: var(--c-canvas);
+}
+
+.bankai-seo-root .bk-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.bankai-seo-root .bk-card,
+.bankai-seo-root .bk-action-card,
+.bankai-seo-root .bk-link-builder-card,
+.bankai-seo-root .bk-img-report-card {
+    border: 1px solid var(--c-border) !important;
+    border-radius: var(--bk-radius-md) !important;
+    background: #fff !important;
+    box-shadow: var(--bk-shadow-card) !important;
+    overflow: hidden;
+}
+
+.bankai-seo-root .bk-card {
+    padding: 14px;
+    margin: 0;
+}
+
+.bankai-seo-root .bk-card-head {
+    gap: 9px;
+    margin-bottom: 12px;
+    color: #263247;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.bankai-seo-root .bk-card-head > span:first-child,
+.bankai-seo-root .bk-card-head strong {
+    color: #263247;
+}
+
+.bankai-seo-root .bk-card-head .solar-icon {
+    color: #6366f1;
+}
+
+.bankai-seo-root .bk-hint {
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #f5f8ff;
+    color: #475569;
+    padding: 10px 12px;
+    line-height: 1.7;
+}
+
+/* Search preview */
+.bankai-seo-root .bk-serp {
+    padding: 15px;
+    border: 1px solid #e1e8f2;
+    border-radius: 13px;
+    background: linear-gradient(180deg, #fff 0%, #fbfdff 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+}
+
+.bankai-seo-root .bk-serp.is-mobile {
+    max-width: 340px;
+    margin-inline: auto;
+    border-radius: 18px;
+    box-shadow: 0 5px 18px rgba(15, 23, 42, .07);
+}
+
+.bankai-seo-root .bk-serp-url {
+    color: #475569;
+    font-size: 11px;
+}
+
+.bankai-seo-root .bk-fav {
+    border-radius: 7px;
+    box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+.bankai-seo-root .bk-serp-title {
+    color: #1d4ed8;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.bankai-seo-root .bk-serp-desc {
+    color: #475569;
+    font-size: 12px;
+    line-height: 1.75;
+}
+
+.bankai-seo-root .bk-serp-meta {
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px solid #eef2f7;
+}
+
+/* Keyword chips */
+.bankai-seo-root .bk-kw-box {
+    min-height: 48px;
+    gap: 7px;
+    padding: 9px;
+    border: 1px solid #dbe3ef;
+    border-radius: 12px;
+    background: #fbfcff;
+    transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.bankai-seo-root .bk-kw-box:focus-within {
+    border-color: #818cf8;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, .1);
+    background: #fff;
+}
+
+.bankai-seo-root .bk-chip {
+    border: 1px solid #e0e7ff;
+    border-radius: 8px;
+    background: #f5f7ff;
+    color: #3730a3;
+    padding: 5px 8px;
+}
+
+.bankai-seo-root .bk-chip.is-primary {
+    border-color: #c7d2fe;
+    background: #eef2ff;
+    color: #3730a3;
+}
+
+.bankai-seo-root .bk-chip-badge {
+    border-radius: 5px;
+    background: #e0e7ff;
+    color: #4338ca;
+}
+
+/* Inputs */
+.bankai-seo-root .bk-field input:not([type="checkbox"]):not([type="radio"]),
+.bankai-seo-root .bk-field textarea,
+.bankai-seo-root .bk-field select,
+.bankai-seo-root .bk-kw-input,
+.bankai-seo-root .bk-input-sm,
+.bankai-seo-root .bk-input-with-action input,
+.bankai-seo-root .bk-alt-edit,
+.bankai-seo-root .bk-media-alt-input {
+    min-height: 38px;
+    border: 1px solid #dbe3ef !important;
+    border-radius: 10px !important;
+    background: #fff !important;
+    color: #172033 !important;
+    padding: 9px 11px;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, .025);
+    transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.bankai-seo-root .bk-field input:focus,
+.bankai-seo-root .bk-field textarea:focus,
+.bankai-seo-root .bk-field select:focus,
+.bankai-seo-root .bk-kw-input:focus,
+.bankai-seo-root .bk-input-sm:focus,
+.bankai-seo-root .bk-input-with-action input:focus {
+    border-color: #818cf8 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, .11) !important;
+    outline: none;
+}
+
+.bankai-seo-root .bk-field label,
+.bankai-seo-root .bk-field-head {
+    color: #334155;
+    font-weight: 750;
+}
+
+.bankai-seo-root .bk-counter {
+    padding: 3px 7px;
+    border-radius: 7px;
+    background: #f1f5f9;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.bankai-seo-root .bk-bar {
+    height: 5px;
+    border-radius: 999px;
+    background: #e9eef6;
+    overflow: hidden;
+}
+
+.bankai-seo-root .bk-bar > div {
+    border-radius: inherit;
+    transition: width .22s ease;
+}
+
+/* Buttons */
+.bankai-seo-root .bk-btn-primary,
+.bankai-seo-root .bk-btn-optimize,
+.bankai-seo-root .bk-btn-ai,
+.bankai-seo-root .bk-media-btn-primary {
+    border: 1px solid #4f46e5;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #5b55e7, #4338ca);
+    color: #fff;
+    font-weight: 800;
+    box-shadow: 0 2px 5px rgba(79, 70, 229, .16);
+}
+
+.bankai-seo-root .bk-btn-primary:hover,
+.bankai-seo-root .bk-btn-optimize:hover,
+.bankai-seo-root .bk-btn-ai:hover,
+.bankai-seo-root .bk-media-btn-primary:hover {
+    background: linear-gradient(135deg, #4f46e5, #3730a3);
+    box-shadow: 0 4px 10px rgba(79, 70, 229, .2);
+    transform: translateY(-1px);
+}
+
+.bankai-seo-root .bk-btn-ghost,
+.bankai-seo-root .bk-btn-sm,
+.bankai-seo-root .bk-link-btn,
+.bankai-seo-root .bk-media-btn-ghost {
+    border-radius: 9px;
+}
+
+.bankai-seo-root .bk-link-btn {
+    color: #4f46e5;
+    font-weight: 750;
+}
+
+.bankai-seo-root .bk-link-btn:hover {
+    color: #3730a3;
+    background: #eef2ff;
+}
+
+.bankai-seo-root .bk-icon-action,
+.bankai-seo-root .bk-icon-btn,
+.bankai-seo-root .bk-icon-btn:hover {
+    transition: all .16s ease;
+}
+
+/* SEO checklist / accordion */
+.bankai-seo-root .bk-acc {
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
+    background: #fff;
+}
+
+.bankai-seo-root .bk-acc + .bk-acc {
+    margin-top: 8px;
+}
+
+.bankai-seo-root .bk-acc-head {
+    min-height: 44px;
+    padding: 10px 12px;
+    background: #f8faff;
+    color: #334155;
+    font-weight: 800;
+}
+
+.bankai-seo-root .bk-acc-head:hover {
+    background: #f1f5ff;
+}
+
+.bankai-seo-root .bk-acc-body {
+    padding: 4px 12px 10px;
+    background: #fff;
+}
+
+.bankai-seo-root .bk-check {
+    gap: 9px;
+    padding: 11px 0;
+    border-bottom: 1px solid #edf1f7;
+}
+
+.bankai-seo-root .bk-check.is-ok .bk-check-status {
+    background: #ecfdf3;
+    color: #166534;
+}
+
+.bankai-seo-root .bk-check.is-warn .bk-check-status {
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.bankai-seo-root .bk-check-status {
+    padding: 3px 7px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+/* Robots switches */
+.bankai-seo-root .bk-switch-row {
+    padding: 10px 0;
+    border-bottom-color: #edf1f7;
+    color: #334155;
+}
+
+.bankai-seo-root .bk-switch-row:hover {
+    color: #312e81;
+}
+
+/* Modal / AI areas */
+.bankai-seo-root .bk-ai-modal {
+    border: 1px solid #e0e7ff;
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
+    overflow: hidden;
+}
+
+.bankai-seo-root .bk-ai-modal .bk-modal-head {
+    background: linear-gradient(135deg, #f5f3ff, #eef2ff);
+    border-bottom: 1px solid #e0e7ff;
+}
+
+.bankai-seo-root .bk-ai-output,
+.bankai-seo-root .bk-empty-state {
+    border-radius: 12px;
+}
+
+/* Media and image tools */
+.bankai-seo-root .bk-media-hero {
+    border-color: #dbeafe;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #eef2ff, #f8fafc);
+}
+
+.bankai-seo-root .bk-media-stat {
+    border-radius: 11px;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .025);
+}
+
+.bankai-seo-root .bk-media-tool {
+    border-radius: 11px;
+}
+
+.bankai-seo-root .bk-media-tool:hover {
+    border-color: #a5b4fc;
+    box-shadow: 0 3px 10px rgba(79, 70, 229, .08);
+}
+
+.bankai-seo-root .bk-media-tool.is-on {
+    border-color: #818cf8;
+    background: #eef2ff;
+}
+
+/* Scrollbars, reduced motion, narrow panels */
+.bankai-seo-root * {
+    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-width: thin;
+}
+
+@media (max-width: 520px) {
+    .bankai-seo-root .bk-body {
+        padding: 8px;
+    }
+
+    .bankai-seo-root .bk-card {
+        padding: 11px;
+        border-radius: 11px !important;
+    }
+
+    .bankai-seo-root .bk-tabs {
+        gap: 3px;
+        padding: 7px 6px;
+    }
+
+    .bankai-seo-root .bk-tabs button {
+        padding-inline: 2px;
+        font-size: 10px;
+    }
+
+    .bankai-seo-root .bk-header-main {
+        padding: 12px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bankai-seo-root *,
+    .bankai-seo-root *::before,
+    .bankai-seo-root *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}
