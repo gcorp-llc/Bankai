@@ -38,22 +38,71 @@ if ($post_id && !$post) {
                 <span class="bk-score-num" x-text="analysis.score">0</span>
             </div>
             <div class="bk-header-text">
-                <strong>سئوی بنکای</strong>
+                <strong>سئو بنکای</strong>
             </div>
             <button type="button" class="bk-icon-btn" @click="analyze(true)" :disabled="loading" title="تازه‌سازی">
                 <svg class="solar-icon" :class="{ 'bk-spin': loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.1-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
             </button>
         </div>
 
+        <!-- SUB-SCORES (SEO, AEO, GEO Circular Progress Bars Side-by-Side) -->
+        <div class="bk-subscores-row">
+            <div class="bk-subscore-card">
+                <div class="bk-subscore-ring">
+                    <svg viewBox="0 0 32 32">
+                        <circle class="bk-track" cx="16" cy="16" r="12" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+                        <circle class="bk-progress" cx="16" cy="16" r="12" fill="none"
+                            :stroke="subScoreColor(subScores.seo)" stroke-width="3"
+                            stroke-linecap="round"
+                            :stroke-dasharray="2 * Math.PI * 12"
+                            :stroke-dashoffset="subScoreOffset(subScores.seo)"/>
+                    </svg>
+                    <span class="bk-subscore-num" :style="{ color: subScoreColor(subScores.seo) }" x-text="(subScores.seo || 0) + '%'">0%</span>
+                </div>
+                <span class="bk-subscore-label">SEO</span>
+            </div>
+
+            <div class="bk-subscore-card">
+                <div class="bk-subscore-ring">
+                    <svg viewBox="0 0 32 32">
+                        <circle class="bk-track" cx="16" cy="16" r="12" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+                        <circle class="bk-progress" cx="16" cy="16" r="12" fill="none"
+                            :stroke="subScoreColor(subScores.aeo)" stroke-width="3"
+                            stroke-linecap="round"
+                            :stroke-dasharray="2 * Math.PI * 12"
+                            :stroke-dashoffset="subScoreOffset(subScores.aeo)"/>
+                    </svg>
+                    <span class="bk-subscore-num" :style="{ color: subScoreColor(subScores.aeo) }" x-text="(subScores.aeo || 0) + '%'">0%</span>
+                </div>
+                <span class="bk-subscore-label">AEO</span>
+            </div>
+
+            <div class="bk-subscore-card">
+                <div class="bk-subscore-ring">
+                    <svg viewBox="0 0 32 32">
+                        <circle class="bk-track" cx="16" cy="16" r="12" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+                        <circle class="bk-progress" cx="16" cy="16" r="12" fill="none"
+                            :stroke="subScoreColor(subScores.geo)" stroke-width="3"
+                            stroke-linecap="round"
+                            :stroke-dasharray="2 * Math.PI * 12"
+                            :stroke-dashoffset="subScoreOffset(subScores.geo)"/>
+                    </svg>
+                    <span class="bk-subscore-num" :style="{ color: subScoreColor(subScores.geo) }" x-text="(subScores.geo || 0) + '%'">0%</span>
+                </div>
+                <span class="bk-subscore-label">GEO</span>
+            </div>
+        </div>
+
         <!-- TABS -->
-        <nav class="bk-tabs bk-tabs-6">
-            <button type="button" :class="{ 'is-active': activeTab === 'seo' }" @click="activeTab = 'seo'">سئو</button>
+        <nav class="bk-tabs">
+            <button type="button" :class="{ 'is-active': activeTab === 'seo' }" @click="activeTab = 'seo'">چک‌لیست</button>
+            <button type="button" :class="{ 'is-active': activeTab === 'aeo_geo' }" @click="activeTab = 'aeo_geo'">AEO & GEO</button>
             <button type="button" :class="{ 'is-active': activeTab === 'links' }" @click="activeTab = 'links'; loadLinks()">لینک‌ها</button>
             <button type="button" :class="{ 'is-active': activeTab === 'media' }" @click="activeTab = 'media'; scanPostImages()">تصاویر</button>
             <button type="button" :class="{ 'is-active': activeTab === 'schema' }" @click="activeTab = 'schema'">اسکیما</button>
             <button type="button" :class="{ 'is-active': activeTab === 'social' }" @click="activeTab = 'social'">سوشال</button>
-            <button type="button" class="bk-tab-ai" :class="{ 'is-active': activeTab === 'ai' }" @click="openAiModal()">
-                AI <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
+            <button type="button" class="bk-tab-ai" @click="openAiModal()">
+                دستیار AI <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
             </button>
         </nav>
     </header>
@@ -199,27 +248,42 @@ if ($post_id && !$post) {
                 <div class="bk-bar"><div :style="'width:' + descBarPct + '%;background:' + descBarColor"></div></div>
             </div>
 
-            <!-- ANALYSIS -->
-            <div class="bk-card">
-                <div class="bk-card-head">
-                    <span>تحلیل سئو</span>
+            <!-- ANALYSIS CHECKLIST (Redesigned into Separate Graphic Cards per Group) -->
+            <div class="bk-checklist-section">
+                <div class="bk-section-divider">
+                    <span>چک‌لیست و کیفیت سئو</span>
                     <span class="bk-badge" :style="'background:' + scoreColor + '22;color:' + scoreColor + ';border-color:' + scoreColor">
                         <span x-text="analysis.passed"></span>/<span x-text="analysis.total"></span>
                     </span>
                 </div>
 
                 <template x-for="(group, gkey) in analysis.groups" :key="gkey">
-                    <div class="bk-acc" x-show="group.items && group.items.length">
-                        <button type="button" class="bk-acc-head" @click="toggleGroup(gkey)">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg><!--group status-->
-                            <span x-text="group.label"></span>
-                            <span class="bk-acc-count" x-text="groupPassedCount(group) + '/' + group.items.length"></span>
-                            <svg class="solar-icon bk-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-                        </button>
+                    <div class="bk-card bk-check-group-card" x-show="group.items && group.items.length">
+                        <div class="bk-card-head" @click="toggleGroup(gkey)" style="cursor:pointer;user-select:none;">
+                            <div class="bk-group-title-wrap">
+                                <svg class="solar-icon bk-purple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+                                <strong x-text="group.label"></strong>
+                            </div>
+                            <div class="bk-group-head-actions">
+                                <span class="bk-badge-sm" :class="groupPassedCount(group) === group.items.length ? 'is-pass' : 'is-warn'">
+                                    <span x-text="groupPassedCount(group) + '/' + group.items.length"></span>
+                                </span>
+                                <svg class="solar-icon bk-chevron" :class="{ 'is-open': openGroups[gkey] }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar for Group -->
+                        <div class="bk-bar" style="margin:0 12px 10px;">
+                            <div :style="'width:' + Math.round((groupPassedCount(group) / (group.items.length || 1)) * 100) + '%;background:' + (groupPassedCount(group) === group.items.length ? '#10b981' : '#f59e0b')"></div>
+                        </div>
+
                         <div class="bk-acc-body" x-show="openGroups[gkey]">
                             <template x-for="check in group.items" :key="check.key">
                                 <div class="bk-check" :class="checkStatusClass(check)">
-                                    <template x-if="check.passed"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></template><template x-if="!check.passed"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></template>
+                                    <div class="bk-check-icon">
+                                        <template x-if="check.passed"><svg class="solar-icon bk-text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></template>
+                                        <template x-if="!check.passed"><svg class="solar-icon bk-text-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></template>
+                                    </div>
                                     <div class="bk-check-main">
                                         <strong x-text="check.label"></strong>
                                         <small x-text="check.message"></small>
@@ -288,6 +352,96 @@ if ($post_id && !$post) {
                     <p class="bk-hint" style="margin-top:6px">در صورت پر بودن، بازدید این صفحه با کد ۳۰۱ به آدرس بالا منتقل می‌شود.</p>
                 </div>
             </div>
+        </section>
+
+        <!-- ========== AEO & GEO TAB ========== -->
+        <section x-show="activeTab === 'aeo_geo'" class="bk-panel">
+
+            <!-- AI Engines Readiness Card -->
+            <div class="bk-card">
+                <div class="bk-card-head">
+                    <svg class="solar-icon bk-purple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>
+                    <span>آمادگی موتورهای پاسخ‌گو (AEO & GEO)</span>
+                </div>
+                <p class="bk-hint" style="margin-bottom:12px">ارزیابی ساختار محتوا، پاسخ‌های مستقیم و داده‌های ساختاریافته برای موتورهای هوش مصنوعی.</p>
+
+                <div class="bk-aeo-engines-grid">
+                    <div class="bk-engine-card">
+                        <div class="bk-engine-head">
+                            <strong>ChatGPT / OpenAI</strong>
+                            <span class="bk-engine-score" :style="{ color: subScoreColor(subScores.aeo) }" x-text="(subScores.aeo || 0) + '%'"></span>
+                        </div>
+                        <div class="bk-bar"><div :style="'width:' + (subScores.aeo || 0) + '%;background:' + subScoreColor(subScores.aeo)"></div></div>
+                        <small>استخراج FAQ و تعاریف</small>
+                    </div>
+
+                    <div class="bk-engine-card">
+                        <div class="bk-engine-head">
+                            <strong>Perplexity AI</strong>
+                            <span class="bk-engine-score" :style="{ color: subScoreColor(subScores.aeo) }" x-text="Math.min(100, (subScores.aeo || 0) + 5) + '%'"></span>
+                        </div>
+                        <div class="bk-bar"><div :style="'width:' + Math.min(100, (subScores.aeo || 0) + 5) + '%;background:' + subScoreColor(subScores.aeo)"></div></div>
+                        <small>لیست‌ها و منابع استنادی</small>
+                    </div>
+
+                    <div class="bk-engine-card">
+                        <div class="bk-engine-head">
+                            <strong>Google AI Overview</strong>
+                            <span class="bk-engine-score" :style="{ color: subScoreColor(subScores.geo) }" x-text="(subScores.geo || 0) + '%'"></span>
+                        </div>
+                        <div class="bk-bar"><div :style="'width:' + (subScores.geo || 0) + '%;background:' + subScoreColor(subScores.geo)"></div></div>
+                        <small>موجودیت‌ها و Key Takeaways</small>
+                    </div>
+
+                    <div class="bk-engine-card">
+                        <div class="bk-engine-head">
+                            <strong>Claude AI</strong>
+                            <span class="bk-engine-score" :style="{ color: subScoreColor(subScores.aeo) }" x-text="Math.max(0, (subScores.aeo || 0) - 5) + '%'"></span>
+                        </div>
+                        <div class="bk-bar"><div :style="'width:' + Math.max(0, (subScores.aeo || 0) - 5) + '%;background:' + subScoreColor(subScores.aeo)"></div></div>
+                        <small>عمق متن و ساختار منطقی</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AEO FAQ Section Helper -->
+            <div class="bk-card">
+                <div class="bk-card-head">
+                    <svg class="solar-icon bk-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>بهینه‌سازی سوالات متداول (AEO FAQs)</span>
+                    <button type="button" class="bk-link-btn" @click="openAiModal('faq')">
+                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
+                        تولید FAQ با AI
+                    </button>
+                </div>
+                <p class="bk-hint">پاسخ‌های کوتاه و مستقیم به سوالات رایج کاربران شانس حضور در پاسخ‌های هوش مصنوعی را تا ۷۰٪ افزایش می‌دهد.</p>
+                <div class="bk-faq-quick-list" x-show="faqItems && faqItems.length && faqItems[0].q">
+                    <template x-for="(item, fi) in faqItems" :key="'aeofaq'+fi">
+                        <div class="bk-faq-quick-item" x-show="item.q">
+                            <strong x-text="'س) ' + item.q"></strong>
+                            <p x-text="item.a || 'بدون پاسخ'"></p>
+                        </div>
+                    </template>
+                </div>
+                <button type="button" class="bk-btn-ghost bk-full" style="margin-top:10px;" @click="activeTab = 'schema'">مدیریت اسکیما FAQ</button>
+            </div>
+
+            <!-- GEO Key Takeaways & Summary -->
+            <div class="bk-card">
+                <div class="bk-card-head">
+                    <svg class="solar-icon bk-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>
+                    <span>نکات کلیدی مقاله (GEO Summary / Key Takeaways)</span>
+                    <button type="button" class="bk-link-btn" @click="openAiModal('takeaways')">
+                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
+                        ساخت با AI
+                    </button>
+                </div>
+                <p class="bk-hint">خلاصه کلیدی در ابتدای مقاله جهت خلاصه‌سازی مستقیم توسط خزنده‌های موتورهای مولد (GEO).</p>
+                <button type="button" class="bk-btn-primary bk-full" style="margin-top:10px" @click="insertKeyTakeawaysBox()">
+                    درج باکس نکات کلیدی در ابتدای متن مقاله
+                </button>
+            </div>
+
         </section>
 
         <!-- ========== LINKS TAB (Enhanced Side-box) ========== -->
@@ -770,8 +924,8 @@ if ($post_id && !$post) {
 
     </div>
 
-    <!-- ========== AI ASSISTANT MODAL (Redesigned Action Grid & Automation Workflow) ========== -->
-    <div class="bk-modal-backdrop" x-show="aiOpen" x-cloak @click.self="aiOpen = false" dir="rtl">
+    <!-- ========== AI ASSISTANT MODAL (Redesigned Categorized Grid & Wizard Workflow) ========== -->
+    <div class="bk-modal-backdrop" x-show="aiOpen" x-cloak @click.self="aiOpen = false" @keydown.escape.window="aiOpen = false" dir="rtl">
         <div class="bk-modal bk-ai-modal" role="dialog" aria-modal="true">
             
             <!-- Modal Header -->
@@ -849,134 +1003,137 @@ if ($post_id && !$post) {
 
                 <!-- Dashboard / Actions Grid -->
                 <div class="bk-actions-dashboard" x-show="!aiReviewOpen">
-                    <h3 class="bk-grid-section-title">کارت‌های اقدام سریع (Quick Actions)</h3>
-                    
                     <!-- Hero Auto-Optimize All Card -->
-                    <div class="bk-action-card bk-hero-action-card" @click="runAiAction('auto_all')" :class="{ 'is-disabled': aiLoading }">
+                    <div class="bk-action-card bk-hero-action-card" @click="runAiAction('auto_all')" :class="{ 'is-disabled': aiLoading }" style="margin-bottom:16px;">
                         <div class="bk-action-badge">پیشنهادی 🚀</div>
                         <div class="bk-action-icon">
                             <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.5c-1.5 1.3-2 3.5-2 3.5s2.2-.5 3.5-2c1-1 1.1-2.3.4-3.1-.8-.7-2.1-.6-3.1.4z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.9A12.4 12.4 0 0 1 22 2c0 2.7-.8 5.6-2.4 7.9A22 22 0 0 1 15 12l-3 3z"/><path d="M9 12H4s.5-1 2-2c1.4-.9 2.5-.5 3 0"/><path d="M12 15v5s1-.5 2-2c.9-1.4.5-2.5 0-3"/></svg>
                         </div>
                         <div class="bk-action-content">
-                            <h4>اجرای یک‌پارچه تمام موارد (Auto-Optimize All)</h4>
-                            <p>تحلیل مقاله، عنوان و متا، لینک‌سازی، Alt تصاویر و در صورت امکان تولید کاور با AI.</p>
+                            <h4>اجرای ویزارد کامل بهینه‌سازی (Auto-Optimize All)</h4>
+                            <p>تحلیل یک‌پارچه مقاله، عنوان و متا، لینک‌سازی، Alt تصاویر و تولید کاور با AI.</p>
                         </div>
                         <button type="button" class="bk-btn-primary bk-action-btn" :disabled="aiLoading">
-                            <span x-show="!aiLoading">شروع بهینه‌سازی کامل</span>
+                            <span x-show="!aiLoading">شروع ویزارد کامل</span>
                             <span x-show="aiLoading">در حال پردازش...</span>
                         </button>
                     </div>
 
-                    <!-- Quick Action Cards Grid -->
-                    <div class="bk-quick-cards-grid">
-                        
-                        <!-- Full Rewrite -->
-                        <div class="bk-action-card" @click="runAiAction('rewrite')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-purple">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>بازنویسی کامل مقاله</h4>
-                                <p>ارتقای لحن و روان‌سازی محتوا با حفظ تگ‌های HTML و ساختار هدینگ‌ها.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">بازنویسی با AI</button>
+                    <!-- CATEGORY 1: Auto Meta & Titles -->
+                    <div class="bk-ai-group-section" style="margin-bottom:12px;">
+                        <div class="bk-ai-group-header">
+                            <span class="bk-ai-group-badge blue">گروه ۱</span>
+                            <strong>بهینه‌سازی خودکار و متاها (Meta & Titles)</strong>
                         </div>
-
-                        <!-- Auto Metas & Keywords -->
-                        <div class="bk-action-card" @click="runAiAction('meta')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-blue">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V5h16v2M12 5v14M9 19h6"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>تولید خودکار متاها</h4>
-                                <p>ایجاد عنوان سئو، متادیسکریپشن جذاب و استخراج کلمات کلیدی + ادغام کلیدواژه‌های ثابت.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">تولید متا و کلیدواژه</button>
-                        </div>
-
-                        <!-- Smart Internal Links -->
-                        <div class="bk-action-card" @click="runAiAction('links')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-emerald">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>لینک‌سازی هوشمند داخلی</h4>
-                                <p>شناسایی کلمات کلیدی محتوا و پیشنهاد بهترین مقالات مرتبط سایت برای لینک‌سازی.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">پیشنهاد لینک داخلی</button>
-                        </div>
-
-                        
-                        <!-- Categories & Tags -->
-                        <div class="bk-action-card" @click="runAiAction('terms')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-amber">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>تولید دسته و برچسب</h4>
-                                <p>استخراج یا ایجاد دسته‌بندی و برچسب‌های سئو بر اساس کلمات کلیدی مقاله.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">اجرا</button>
-                        </div>
-
-                        <!-- AI Cover -->
-                        <div class="bk-action-card" @click="runAiAction('cover_image')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-purple">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>تولید کاور با AI</h4>
-                                <p>ساخت تصویر شاخص از عنوان + دو پاراگراف ابتدایی مقاله (معرف دقیق مطلب).</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">اجرا</button>
-                        </div>
-
-                        <!-- AI Content Image -->
-                        <div class="bk-action-card" @click="runAiAction('content_image')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 9v6M9 12h6"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>تصاویر درون محتوا با AI</h4>
-                                <p>تا ۲۰۰۰ کلمه: ۲ تصویر | بیش از ۲۰۰۰: ۳ تصویر — هر کدام هماهنگ با پاراگراف‌های اطراف.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">اجرا</button>
-                        </div>
-
-                        <!-- CTA system -->
-                        <div class="bk-cta-panel" style="margin-top:12px;padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;">
-                            <div style="font-weight:600;margin-bottom:8px;">کال‌تو‌اکشن (CTA) در محتوا</div>
-                            <label style="display:block;font-size:12px;margin-bottom:4px;">لینک CTA</label>
-                            <input type="url" x-model="cta.url" placeholder="https://..." style="width:100%;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;">
-                            <label style="display:block;font-size:12px;margin-bottom:4px;">متن دکمه</label>
-                            <input type="text" x-model="cta.label" placeholder="همین حالا اقدام کنید" style="width:100%;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;">
-                            <label style="display:block;font-size:12px;margin-bottom:4px;">کد سفارشی HTML (اختیاری — جایگزین دکمه)</label>
-                            <textarea x-model="cta.code" rows="2" placeholder='&lt;div class="bankai-cta"&gt;...&lt;/div&gt;' style="width:100%;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;font-family:monospace;font-size:12px;"></textarea>
-                            <label style="display:block;font-size:12px;margin-bottom:4px;">هر چند پاراگراف یک‌بار؟</label>
-                            <select x-model="cta.every" style="width:100%;margin-bottom:10px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;">
-                                <option value="2">هر ۲ پاراگراف</option>
-                                <option value="3">هر ۳ پاراگراف</option>
-                                <option value="4">هر ۴ پاراگراف</option>
-                            </select>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <button type="button" class="bk-btn-primary" @click="runAiAction('cta_auto')" :disabled="aiLoading">درج خودکار در کل محتوا</button>
-                                <button type="button" class="bk-btn-ghost" @click="runAiAction('cta_once')" :disabled="aiLoading">درج یک‌بار (موقعیت فعلی)</button>
+                        <div class="bk-quick-cards-grid">
+                            <div class="bk-action-card" @click="runAiAction('meta')" :class="{ 'is-disabled': aiLoading }">
+                                <div class="bk-action-icon bk-icon-blue">
+                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7V5h16v2M12 5v14M9 19h6"/></svg>
+                                </div>
+                                <div class="bk-action-content">
+                                    <h4>تولید خودکار متاها</h4>
+                                    <p>عنوان سئو جذاب، متادیسکریپشن استاندارد و استخراج کلمات کلیدی.</p>
+                                </div>
+                                <button type="button" class="bk-btn-ghost bk-action-btn">تولید متا و کلیدواژه</button>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Image SEO Alt -->
-                        <div class="bk-action-card" @click="runAiAction('images')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-blue">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>سئوی تصاویر مقاله</h4>
-                                <p>شناسایی تصاویر فاقد Alt و تولید متن جایگزین سئوشده بر اساس محتوا.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">تولید Alt</button>
+                    <!-- CATEGORY 2: Content AI & Rewriting -->
+                    <div class="bk-ai-group-section" style="margin-bottom:12px;">
+                        <div class="bk-ai-group-header">
+                            <span class="bk-ai-group-badge purple">گروه ۲</span>
+                            <strong>محتوا و بازنویسی (Content AI & Rewriting)</strong>
                         </div>
+                        <div class="bk-quick-cards-grid">
+                            <div class="bk-action-card" @click="runAiAction('rewrite')" :class="{ 'is-disabled': aiLoading }">
+                                <div class="bk-action-icon bk-icon-purple">
+                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                                </div>
+                                <div class="bk-action-content">
+                                    <h4>بازنویسی کامل مقاله</h4>
+                                    <p>ارتقای لحن و روان‌سازی محتوا با حفظ تگ‌های HTML و ساختار.</p>
+                                </div>
+                                <button type="button" class="bk-btn-ghost bk-action-btn">بازنویسی با AI</button>
+                            </div>
 
+                            <div class="bk-action-card">
+                                <div style="font-weight:700;margin-bottom:6px;font-size:12px;">کال‌تو‌اکشن (CTA) در محتوا</div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+                                    <input type="url" x-model="cta.url" placeholder="لینک CTA https://..." class="bk-input-sm">
+                                    <input type="text" x-model="cta.label" placeholder="متن دکمه" class="bk-input-sm">
+                                </div>
+                                <div style="display:flex;gap:6px;align-items:center;">
+                                    <select x-model="cta.every" class="bk-input-sm" style="width:auto;">
+                                        <option value="2">هر ۲ بند</option>
+                                        <option value="3">هر ۳ بند</option>
+                                    </select>
+                                    <button type="button" class="bk-btn-primary bk-btn-xs" @click="runAiAction('cta_auto')" :disabled="aiLoading">درج خودکار</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
+                    <!-- CATEGORY 3: Links & Architecture -->
+                    <div class="bk-ai-group-section" style="margin-bottom:12px;">
+                        <div class="bk-ai-group-header">
+                            <span class="bk-ai-group-badge emerald">گروه ۳</span>
+                            <strong>لینک‌سازی و ساختار (Links & Architecture)</strong>
+                        </div>
+                        <div class="bk-quick-cards-grid">
+                            <div class="bk-action-card" @click="runAiAction('links')" :class="{ 'is-disabled': aiLoading }">
+                                <div class="bk-action-icon bk-icon-emerald">
+                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
+                                </div>
+                                <div class="bk-action-content">
+                                    <h4>لینک‌سازی هوشمند داخلی</h4>
+                                    <p>شناسایی کلمات کلیدی محتوا و پیشنهاد بهترین مقالات مرتبط.</p>
+                                </div>
+                                <button type="button" class="bk-btn-ghost bk-action-btn">پیشنهاد لینک داخلی</button>
+                            </div>
+
+                            <div class="bk-action-card" @click="runAiAction('terms')" :class="{ 'is-disabled': aiLoading }">
+                                <div class="bk-action-icon bk-icon-amber">
+                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                                </div>
+                                <div class="bk-action-content">
+                                    <h4>تولید دسته و برچسب</h4>
+                                    <p>استخراج یا ایجاد دسته‌بندی و برچسب‌های سئو مقاله.</p>
+                                </div>
+                                <button type="button" class="bk-btn-ghost bk-action-btn">اجرا</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CATEGORY 4: Images & Media AI -->
+                    <div class="bk-ai-group-section">
+                        <div class="bk-ai-group-header">
+                            <span class="bk-ai-group-badge amber">گروه ۴</span>
+                            <strong>سئوی تصاویر و رسانه (Images & Media AI)</strong>
+                        </div>
+                        <div class="bk-quick-cards-grid">
+                            <div class="bk-action-card" @click="runAiAction('images')" :class="{ 'is-disabled': aiLoading }">
+                                <div class="bk-action-icon bk-icon-blue">
+                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>
+                                </div>
+                                <div class="bk-action-content">
+                                    <h4>سئوی تصاویر مقاله</h4>
+                                    <p>شناسایی تصاویر فاقد Alt و تولید متن جایگزین سئوشده.</p>
+                                </div>
+                                <button type="button" class="bk-btn-ghost bk-action-btn">تولید Alt</button>
+                            </div>
+
+                            <div class="bk-action-card" @click="runAiAction('cover_image')" :class="{ 'is-disabled': aiLoading }">
+                                <div class="bk-action-icon bk-icon-purple">
+                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>
+                                </div>
+                                <div class="bk-action-content">
+                                    <h4>تولید کاور با AI</h4>
+                                    <p>ساخت تصویر شاخص از عنوان و مقدمه مقاله.</p>
+                                </div>
+                                <button type="button" class="bk-btn-ghost bk-action-btn">اجرا</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
