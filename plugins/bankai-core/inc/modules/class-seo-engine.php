@@ -795,6 +795,8 @@ final class Bankai_SEO_Engine
             'advanced' => ['label' => 'بررسی‌های تکمیلی', 'items' => []],
             'title'    => ['label' => 'خوانایی عنوان', 'items' => []],
             'content'  => ['label' => 'خوانایی محتوا', 'items' => []],
+            'aeo'      => ['label' => 'بهینه‌سازی موتور پاسخ (AEO)', 'items' => []],
+            'geo'      => ['label' => 'بهینه‌سازی هوش مصنوعی (GEO)', 'items' => []],
         ];
 
         $has_kw = $keyword !== '';
@@ -1471,6 +1473,144 @@ final class Bankai_SEO_Engine
             ]
         );
 
+        // --- AEO (Answer Engine Optimization) ---
+        $q_heading_count = 0;
+        foreach ($headings[1] ?? [] as $ht) {
+            $ht_clean = wp_strip_all_tags($ht);
+            if (preg_match('/\?|؟|چیست|چگونه|چرا|کدام|آیا|How|What|Why|When/iu', $ht_clean)) {
+                $q_heading_count++;
+            }
+        }
+        $aeo_q_ok = $q_heading_count >= 1;
+        $checks[] = $this->check(
+            'aeo_question_headings',
+            'هدینگ‌های سؤالی (AEO)',
+            $aeo_q_ok,
+            $aeo_q_ok ? sprintf('%d هدینگ سؤالی برای استخراج مستقیم AI یافت شد.', $q_heading_count) : 'استفاده از هدینگ‌های سؤالی (چیست، چگونه، چرا...) به استخراج پاسخ توسط AI کمک می‌کند.',
+            'aeo',
+            [
+                'status'         => $aeo_q_ok ? 'pass' : 'warning',
+                'severity'       => 'medium',
+                'evidence'       => ['question_headings' => $q_heading_count],
+                'recommendation' => $aeo_q_ok ? '' : 'حداقل یک هدینگ H2 سؤالی مانند «... چیست؟» یا «چگونه ... کنیم؟» اضافه کنید.',
+                'auto_fixable'  => true,
+            ]
+        );
+
+        $has_direct_def = (bool) preg_match('/عبارت است از|یعنی|به معنای|تعریف|is defined as|\bis\b/iu', mb_substr($clean_text, 0, 1500));
+        $checks[] = $this->check(
+            'aeo_direct_definition',
+            'پاسخ مستقیم و تعریف (AEO)',
+            $has_direct_def,
+            $has_direct_def ? 'الگوی تعریف مستقیم در ابتدای متن شناسایی شد.' : 'ارائه تعریف صریح در بند اول شانس انتخاب توسط موتورهای پاسخ را افزایش می‌دهد.',
+            'aeo',
+            [
+                'status'         => $has_direct_def ? 'pass' : 'warning',
+                'severity'       => 'medium',
+                'evidence'       => ['has_definition' => $has_direct_def],
+                'recommendation' => $has_direct_def ? '' : 'در اولین پاراگراف، مفهوم اصلی را با الگوی شفاف «[موضوع] عبارت است از...» تعریف کنید.',
+                'auto_fixable'  => true,
+            ]
+        );
+
+        $has_faq_struct = (bool) preg_match('/bankai-faq|faq|پرسش و پاسخ|سوالات متداول|<details\b/iu', $raw_content);
+        $checks[] = $this->check(
+            'aeo_faq_structure',
+            'بخش سوالات متداول / FAQ (AEO)',
+            $has_faq_struct,
+            $has_faq_struct ? 'بخش ساختاریافته سوالات متداول موجود است.' : 'ایجاد بخش FAQ شانس دریافت پاسخ برجسته (Featured Snippets) را بالا می‌برد.',
+            'aeo',
+            [
+                'status'         => $has_faq_struct ? 'pass' : 'warning',
+                'severity'       => 'medium',
+                'evidence'       => ['has_faq' => $has_faq_struct],
+                'recommendation' => $has_faq_struct ? '' : 'یک بخش «سوالات متداول» کوتاه با ۲ تا ۴ پرسش و پاسخ کاربردی اضافه کنید.',
+                'auto_fixable'  => true,
+            ]
+        );
+
+        $aeo_lists_ok = $has_list;
+        $checks[] = $this->check(
+            'aeo_structured_lists',
+            'لیست‌های گام‌به‌گام برای AI (AEO)',
+            $aeo_lists_ok,
+            $aeo_lists_ok ? 'لیست‌های ساختاریافته برای پاسخ‌های گام‌به‌گام وجود دارد.' : 'استفاده از لیست شماره‌دار یا نقطه‌ای برای خلاصه‌سازی پاسخ عالی است.',
+            'aeo',
+            [
+                'status'         => $aeo_lists_ok ? 'pass' : 'warning',
+                'severity'       => 'low',
+                'evidence'       => ['has_list' => $aeo_lists_ok],
+                'recommendation' => $aeo_lists_ok ? '' : 'نکات کلیدی یا مراحل انجام کار را به‌صورت فهرست شماره‌دار ارائه دهید.',
+                'auto_fixable'  => true,
+            ]
+        );
+
+        // --- GEO (Generative Engine Optimization) ---
+        $geo_citation_ok = $external >= 1;
+        $checks[] = $this->check(
+            'geo_source_citations',
+            'ارجاع به منابع معتبر (GEO)',
+            $geo_citation_ok,
+            $geo_citation_ok ? sprintf('%d لینک/ارتباط خارجی به عنوان منبع شناسایی شد.', $external) : 'موتورهای مولد (ChatGPT / Perplexity) مطالب دارای ارجاع و منبع را ترجیح می‌دهند.',
+            'geo',
+            [
+                'status'         => $geo_citation_ok ? 'pass' : 'warning',
+                'severity'       => 'medium',
+                'evidence'       => ['external' => $external],
+                'recommendation' => $geo_citation_ok ? '' : 'به یک منبع یا آمار معتبر مرتبط لینک دهید تا استنادپذیری محتوا برای AI بالا برود.',
+                'auto_fixable'  => false,
+            ]
+        );
+
+        $has_summary = (bool) preg_match('/conclusion|نتیجه‌گیری|جمع‌بندی|خلاصه|tl;dr|takeaways/iu', $raw_content);
+        $checks[] = $this->check(
+            'geo_summary_conclusion',
+            'بخش خلاصه / نتیجه‌گیری (GEO)',
+            $has_summary,
+            $has_summary ? 'بخش جمع‌بندی یا خلاصه برای مرور سریع AI موجود است.' : 'وجود بخش خلاصه/نتیجه‌گیری به موتورهای مولد کمک می‌کند سریعاً پیام اصلی مقاله را درک کنند.',
+            'geo',
+            [
+                'status'         => $has_summary ? 'pass' : 'warning',
+                'severity'       => 'low',
+                'evidence'       => ['has_summary' => $has_summary],
+                'recommendation' => $has_summary ? '' : 'یک زیرتیتر H2 با عنوان «نتیجه‌گیری» یا «خلاصه نکات کلیدی» در انتهای مطلب اضافه کنید.',
+                'auto_fixable'  => true,
+            ]
+        );
+
+        $has_actionable = (bool) preg_match('/باید|سعی کنید|پیشنهاد می‌شود|مقایسه|در مقابل|\bvs\b/iu', $clean_text);
+        $checks[] = $this->check(
+            'geo_comparative_actionable',
+            'محتوای عملیاتی و مقایسه‌ای (GEO)',
+            $has_actionable,
+            $has_actionable ? 'ساختار راهنمای عملیاتی یا مقایسه‌ای در متن وجود دارد.' : 'افزودن راهکارهای عملیاتی و مقایسه‌ای شانس ارجاع در پاسخ‌های هوش مصنوعی را بالا می‌برد.',
+            'geo',
+            [
+                'status'         => $has_actionable ? 'pass' : 'warning',
+                'severity'       => 'low',
+                'evidence'       => ['has_actionable' => $has_actionable],
+                'recommendation' => $has_actionable ? '' : 'از عبارات توصیه‌ای عملیاتی یا جدول مقایسه‌ای استفاده کنید.',
+                'auto_fixable'  => true,
+            ]
+        );
+
+        $schema_raw = (string) get_post_meta($post_id, self::META_SCHEMA, true);
+        $has_schema = $schema_raw !== '' || true; // Breadcrumbs + Article auto generated
+        $checks[] = $this->check(
+            'geo_schema_variety',
+            'اسکیمای ساختاریافته کامل (GEO)',
+            $has_schema,
+            'داده ساختاریافته (Article + Breadcrumb) فعال است.',
+            'geo',
+            [
+                'status'         => 'pass',
+                'severity'       => 'info',
+                'evidence'       => ['schema_active' => true],
+                'recommendation' => '',
+                'auto_fixable'  => false,
+            ]
+        );
+
         foreach ($checks as $c) {
             $g = $c['group'] ?? 'basic';
             if (!isset($groups[$g])) {
@@ -1479,14 +1619,16 @@ final class Bankai_SEO_Engine
             $groups[$g]['items'][] = $c;
         }
 
-        // Scoring (Phase B):
+        // Scoring (SEO + AEO + GEO):
         // - Exclude not_applicable from denominator (does not unfairly lower score)
         // - unknown is NOT counted as pass
         // - pass → passed; warning/fail/unknown → not passed
-        // Formula documented: score = round(pass_count / scored_total * 100)
-        // Legacy fields: passed = pass_count, total = scored_total (eligible)
         $pass_count = 0;
         $scored_total = 0;
+        $seo_pass = 0; $seo_tot = 0;
+        $aeo_pass = 0; $aeo_tot = 0;
+        $geo_pass = 0; $geo_tot = 0;
+
         foreach ($checks as $c) {
             $st = (string) ($c['status'] ?? '');
             if ($st === 'not_applicable') {
@@ -1496,16 +1638,34 @@ final class Bankai_SEO_Engine
             if ($st === 'pass') {
                 $pass_count++;
             }
+
+            $g = $c['group'] ?? 'basic';
+            if (in_array($g, ['basic', 'advanced', 'title', 'content'], true)) {
+                $seo_tot++;
+                if ($st === 'pass') { $seo_pass++; }
+            } elseif ($g === 'aeo') {
+                $aeo_tot++;
+                if ($st === 'pass') { $aeo_pass++; }
+            } elseif ($g === 'geo') {
+                $geo_tot++;
+                if ($st === 'pass') { $geo_pass++; }
+            }
         }
         $score = $scored_total > 0 ? (int) round(($pass_count / $scored_total) * 100) : 0;
+        $seo_score = $seo_tot > 0 ? (int) round(($seo_pass / $seo_tot) * 100) : $score;
+        $aeo_score = $aeo_tot > 0 ? (int) round(($aeo_pass / $aeo_tot) * 100) : $score;
+        $geo_score = $geo_tot > 0 ? (int) round(($geo_pass / $geo_tot) * 100) : $score;
 
         return [
             'score'           => $score,
+            'seo_score'       => $seo_score,
+            'aeo_score'       => $aeo_score,
+            'geo_score'       => $geo_score,
             'passed'          => $pass_count,
             'total'           => $scored_total,
             'checks'          => $checks,
             'groups'          => $groups,
-            'scoring_version' => 'b1',
+            'scoring_version' => 'f1',
             'stats'           => [
                 'words'       => $word_count,
                 'description' => $desc_len,

@@ -3142,3 +3142,232 @@
 #bankai-seo-sidebar .bk-check.is-unknown .bk-check-status {
   color: #64748b;
 }
+
+/* SEO / AEO / GEO Sub-scores Pills */
+.bk-header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+.bk-header-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.bk-ver-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 99px;
+    background: #ddf4ff;
+    color: #0969da;
+    border: 1px solid #54a3ff;
+}
+.bk-subscores-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+.bk-subscore-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    color: #1f2328;
+}
+.bk-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.bk-dot-seo { background: #0969da; }
+.bk-dot-aeo { background: #8250df; }
+.bk-dot-geo { background: #1f883d; }
+
+/* Filter Chips in Checklist */
+.bk-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.bk-fchip {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 99px;
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    color: #57606a;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.bk-fchip:hover {
+    background: #eaeef2;
+    color: #1f2328;
+}
+.bk-fchip.is-active {
+    background: #0969da;
+    border-color: #0969da;
+    color: #ffffff;
+}
+.bk-fchip-warn.is-active {
+    background: #cf222e;
+    border-color: #cf222e;
+}
+.bk-fchip-ok.is-active {
+    background: #1f883d;
+    border-color: #1f883d;
+}
+
+/* Checklist Item Cards */
+.bk-checklist-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.bk-check-card {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #d0d7de;
+    background: #ffffff;
+    transition: border-color 0.2s ease;
+}
+.bk-check-card.is-pass {
+    border-color: #4ac26b;
+    background: #f6fbf7;
+}
+.bk-check-card.is-fail,
+.bk-check-card.is-warn {
+    border-color: #ff8182;
+    background: #fff8f8;
+}
+.bk-check-head-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.bk-check-title-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.bk-check-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+.bk-check-icon.is-pass {
+    background: #dafbe1;
+    color: #1f883d;
+}
+.bk-check-icon.is-fail {
+    background: #ffebe9;
+    color: #cf222e;
+}
+.bk-check-badges {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.bk-pillar-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: #eaeef2;
+    color: #57606a;
+}
+.bk-sev-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+.bk-sev-badge.sev-high {
+    background: #ffebe9;
+    color: #cf222e;
+}
+.bk-sev-badge.sev-medium {
+    background: #fff8c5;
+    color: #9a6700;
+}
+.bk-sev-badge.sev-low {
+    background: #ddf4ff;
+    color: #0969da;
+}
+.bk-check-msg {
+    font-size: 11px;
+    color: #24292f;
+    margin: 2px 0 6px 0;
+    line-height: 1.5;
+}
+.bk-check-rec {
+    font-size: 10.5px;
+    background: #fff8c5;
+    color: #6e4c00;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border-inline-start: 3px solid #d4a72c;
+    margin-bottom: 6px;
+}
+.bk-check-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+/* AEO & GEO Cards */
+.bk-aeo-card {
+    border-inline-start: 4px solid #8250df;
+}
+.bk-geo-card {
+    border-inline-start: 4px solid #1f883d;
+}
+.bk-pill-tag {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.bk-tag-aeo { background: #f3e8ff; color: #8250df; }
+.bk-tag-geo { background: #dafbe1; color: #1f883d; }
+.bk-score-badge {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: #0969da;
+    color: #ffffff;
+    margin-inline-start: auto;
+}
+.bk-card-desc {
+    font-size: 11px;
+    color: #57606a;
+    line-height: 1.5;
+    margin: 6px 0 10px 0;
+}
+
+/* AI Quick Actions */
+.bk-ai-quick-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+.bk-tabs-scroll {
+    overflow-x: auto;
+    white-space: nowrap;
+}
