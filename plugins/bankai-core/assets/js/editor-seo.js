@@ -1,6 +1,8 @@
-document.addEventListener('alpine:init', () => {
+(function () {
+    'use strict';
 
-    Alpine.data('bankaiSeoSidebar', (postId) => ({
+    function bankaiSeoSidebarFactory(postId) {
+        return ({
 
         postId: postId || (window.bankaiEditorSeo && bankaiEditorSeo.postId) || 0,
 
@@ -56,6 +58,7 @@ document.addEventListener('alpine:init', () => {
         // Links state
         linkData: { internal: [], external: [], counts: { internal: 0, external: 0 } },
         pendingAiLinks: [],
+        linkApplyBusy: false,
         linksSubTab: 'active', // 'active' | 'pending'
         linkAnchor: '',
         postResults: [],
@@ -103,6 +106,15 @@ document.addEventListener('alpine:init', () => {
         aiProgress: 0,
         aiStepText: '',
         aiActiveAction: '', // 'rewrite', 'meta', 'links', 'images', 'auto_all'
+        metaGenerationStatus: '', // success | error
+        metaValidationStatus: '', // passed | needs_review | failed
+        metaValidationMessage: '',
+        metaFailedChecks: [],
+        // Phase D — display only (from central settings)
+        centralTextProviderName: '',
+        centralImageProviderName: '',
+        centralTextProviderReady: false,
+        centralImageProviderReady: false,
         aiChecklist: [
             { id: 'analyze', label: 'تحلیل محتوا و ساختار مقاله', status: 'pending', icon: 'analytics' },
             { id: 'meta', label: 'تولید خودکار عنوان سئو و متا دیسکریپشن', status: 'pending', icon: 'title' },
@@ -179,7 +191,27 @@ document.addEventListener('alpine:init', () => {
             return c - (c * s / 100);
         },
 
+        checkStatusClass(check) {
+            const st = (check && check.status) ? check.status : (check && check.passed ? 'pass' : 'fail');
+            if (st === 'pass') return 'is-ok';
+            if (st === 'not_applicable') return 'is-na';
+            if (st === 'unknown') return 'is-unknown';
+            if (st === 'warning') return 'is-warn';
+            return 'is-warn';
+        },
+        checkStatusLabel(check) {
+            const st = (check && check.status) ? check.status : (check && check.passed ? 'pass' : 'fail');
+            const map = {
+                pass: 'تایید',
+                fail: 'رد',
+                warning: 'توجه',
+                not_applicable: 'نامرتبط',
+                unknown: 'نامشخص'
+            };
+            return map[st] || (check && check.passed ? 'تایید' : 'توجه');
+        },
         get scoreColor() {
+
             const s = this.analysis.score || 0;
             if (s < 10) return '#B8BCC2';
             if (s < 20) return '#E8D3A2';
@@ -238,6 +270,7 @@ document.addEventListener('alpine:init', () => {
 
         init() {
             this.initFixedKeywords();
+            this.initCentralProviders();
             this.loadSeo();
 
             document.addEventListener('bankai-ai-result', (e) => {
@@ -273,6 +306,25 @@ document.addEventListener('alpine:init', () => {
             return this.fixedKeywordsList.some((f) => String(f).trim().toLowerCase() === target);
         },
 
+        initCentralProviders() {
+            const cfg = window.bankaiEditorSeo || {};
+            const textId = cfg.defaultAiProvider || this.aiProvider || '';
+            const imageId = cfg.defaultImageProvider || this.aiImageProvider || '';
+            this.aiProvider = textId;
+            this.aiImageProvider = imageId;
+            this.centralTextProviderName = cfg.defaultAiProviderName || textId || 'تنظیم‌نشده';
+            this.centralImageProviderName = cfg.defaultImageProviderName || imageId || 'تنظیم‌نشده';
+            const list = Array.isArray(cfg.aiProviders) ? cfg.aiProviders : [];
+            const imgList = Array.isArray(cfg.imageProviders) ? cfg.imageProviders : [];
+            const textEntry = list.find((p) => p && p.id === textId);
+            const imgEntry = imgList.find((p) => p && p.id === imageId);
+            this.centralTextProviderReady = !!(textEntry && (textEntry.ready || textEntry.has_key));
+            this.centralImageProviderReady = !!(imgEntry && (imgEntry.ready || imgEntry.has_key));
+            // If list empty but default set, still show name
+            if (!list.length && textId) {
+                this.centralTextProviderName = cfg.defaultAiProviderName || textId;
+            }
+        },
 
         restBase() {
             const cfg = window.bankaiEditorSeo || {};
@@ -579,36 +631,54 @@ document.addEventListener('alpine:init', () => {
         async smartSuggestInternalLinks() {
             this.linkBusy = true;
             try {
-                const cfg = window.bankaiEditorSeo || {};
                 const ctx = this.getEditorContext();
+                const kws = Array.isArray(this.keywordList) ? this.keywordList.slice() : [];
+                if (this.seo && this.seo.focus_keyword && !kws.includes(this.seo.focus_keyword)) {
+                    kws.unshift(this.seo.focus_keyword);
+                }
                 const res = await fetch(this.restBase() + 'seo/suggest-links', {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: this.restHeaders(true),
                     body: JSON.stringify({
                         post_id: this.postId,
-                        keywords: this.keywordList,
-                        content: ctx.content
+                        keywords: kws,
+                        content: ctx.rawHtml || ctx.content || '',
+                        title: ctx.title || '',
+                        limit: 8
                     })
                 });
                 const json = await res.json();
-                if (json.success && json.data && Array.isArray(json.data.suggestions)) {
-                    json.data.suggestions.forEach((s) => {
-                        const exists = this.pendingAiLinks.some((p) => p.target_url === s.permalink);
-                        if (!exists) {
-                            this.pendingAiLinks.push({
-                                id: 'sugg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                                keyword: s.suggested_anchor || s.focus_keyword || s.title,
-                                target_post_id: s.id,
-                                target_title: s.title,
-                                target_url: s.permalink,
-                                reason: s.in_content ? 'کلمه کلیدی در متن مقاله یافت شد' : 'مقاله مرتبط سئوشده',
-                                status: 'pending'
-                            });
-                        }
+                const payload = (json && json.data) ? json.data : json;
+                const suggestions = (payload && Array.isArray(payload.suggestions)) ? payload.suggestions : [];
+                let added = 0;
+                suggestions.forEach((s) => {
+                    const url = s.target_url || s.permalink || '';
+                    if (!url) return;
+                    const exists = this.pendingAiLinks.some((p) => p.target_url === url || p.target_post_id === (s.target_post_id || s.id));
+                    if (exists) return;
+                    this.pendingAiLinks.push({
+                        id: 'sugg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                        keyword: s.suggested_anchor || s.keyword || s.focus_keyword || s.title,
+                        target_post_id: s.target_post_id || s.id || 0,
+                        target_title: s.target_title || s.title || '',
+                        target_url: url,
+                        reason: s.reason || (Array.isArray(s.reasons) ? s.reasons.join(' ') : ''),
+                        reasons: Array.isArray(s.reasons) ? s.reasons : [],
+                        score: typeof s.score === 'number' ? s.score : 0,
+                        factors: s.factors || {},
+                        insertion_confidence: s.insertion_confidence || (s.anchor_in_content ? 'high' : 'low'),
+                        link_status: s.link_status || 'new',
+                        requires_approval: true,
+                        status: 'pending'
                     });
-                    this.linksSubTab = 'pending';
-                    this.showToast(json.data.suggestions.length + ' پیشنهاد لینک هوشمند اضافه شد', 'success');
+                    added++;
+                });
+                this.linksSubTab = 'pending';
+                if (added) {
+                    this.showToast(added + ' پیشنهاد لینک رتبه‌بندی‌شده اضافه شد (نیازمند تأیید)', 'success');
+                } else {
+                    this.showToast('پیشنهاد مرتبطی با آستانه کیفیت یافت نشد', 'info');
                 }
             } catch (e) {
                 this.showToast('خطا در دریافت پیشنهادهای لینک', 'error');
@@ -637,12 +707,59 @@ document.addEventListener('alpine:init', () => {
             this.loadLinks();
         },
 
-        acceptPendingLink(link) {
-            if (!link) return;
-            this.insertLinkIntoEditor(link.keyword, link.target_url, link.target_title);
-            this.pendingAiLinks = this.pendingAiLinks.filter((p) => p.id !== link.id);
-            this.showToast('لینک پیشنهادی پذیرفته و در متن درج شد', 'success');
-            this.loadLinks();
+        async acceptPendingLink(link) {
+            if (!link || this.linkApplyBusy) return;
+            if (link.status === 'applied') return;
+            this.linkApplyBusy = true;
+            try {
+                const href = String(link.target_url || '').trim();
+                const needle = String(link.keyword || link.suggested_anchor || '').trim();
+                if (!href || /^(javascript:|data:|vbscript:)/i.test(href)) {
+                    this.showToast('آدرس مقصد نامعتبر است', 'error');
+                    return;
+                }
+                if (!needle) {
+                    this.showToast('عبارت لنگر خالی است', 'error');
+                    return;
+                }
+                // Live content — never use stale snapshot from suggestion time
+                const raw = this.getEditorRawContent() || '';
+                if (!raw) {
+                    this.showToast('محتوای ویرایشگر در دسترس نیست', 'error');
+                    return;
+                }
+                // Duplicate destination (normalized path — trailing slash / host variants)
+                if (this.contentAlreadyLinksTo(raw, href, link.target_post_id || 0)) {
+                    this.showToast('این مقصد از قبل در مقاله لینک شده است', 'info');
+                    this.pendingAiLinks = this.pendingAiLinks.filter((p) => p.id !== link.id);
+                    return;
+                }
+                // Anchor must still exist in current content (author may have edited)
+                if (raw.toLowerCase().indexOf(needle.toLowerCase()) === -1) {
+                    this.showToast('عبارت لنگر در محتوای فعلی یافت نشد؛ احتمالاً متن تغییر کرده است. پیشنهاد را رد یا انکر را ویرایش کنید.', 'warning');
+                    return;
+                }
+                // Low confidence: still allow only if user clicked confirm AND anchor exists
+                const ok = this.insertLinkIntoEditor(needle, href, link.target_title || '', false, true);
+                if (!ok) {
+                    this.showToast('درج لینک ناموفق بود (محل مناسب یافت نشد یا داخل لینک موجود است)', 'error');
+                    return;
+                }
+                link.status = 'applied';
+                this.pendingAiLinks = this.pendingAiLinks.filter((p) => p.id !== link.id);
+                this.showToast('لینک با موفقیت درج شد', 'success');
+                if (typeof this.loadLinks === 'function') this.loadLinks();
+                // Analyze is separate from insert success
+                if (typeof this.analyze === 'function') {
+                    try {
+                        await this.analyze(false);
+                    } catch (eA) {
+                        this.showToast('لینک درج شد، اما به‌روزرسانی تحلیل سئو ناموفق بود', 'warning');
+                    }
+                }
+            } finally {
+                this.linkApplyBusy = false;
+            }
         },
 
         rejectPendingLink(link) {
@@ -651,15 +768,23 @@ document.addEventListener('alpine:init', () => {
             this.showToast('پیشنهاد رد شد', 'info');
         },
 
-        approveAllPendingLinks() {
-            if (!this.pendingAiLinks.length) return;
-            const count = this.pendingAiLinks.length;
-            this.pendingAiLinks.forEach((link) => {
-                this.insertLinkIntoEditor(link.keyword, link.target_url, link.target_title);
-            });
-            this.pendingAiLinks = [];
-            this.showToast(count + ' لینک پیشنهادی پذیرفته و در متن مقاله درج شدند', 'success');
-            this.loadLinks();
+        async approveAllPendingLinks() {
+            if (!this.pendingAiLinks.length || this.linkApplyBusy) return;
+            // Only high-confidence anchors auto-batch; low confidence stays for manual review
+            const batch = this.pendingAiLinks.filter((l) => l.insertion_confidence !== 'low');
+            const skipped = this.pendingAiLinks.length - batch.length;
+            let applied = 0;
+            for (const link of batch.slice()) {
+                const before = this.pendingAiLinks.length;
+                await this.acceptPendingLink(link);
+                if (this.pendingAiLinks.length < before) applied++;
+            }
+            if (skipped > 0) {
+                this.showToast(applied + ' لینک درج شد؛ ' + skipped + ' مورد با اطمینان پایین نیاز به بررسی دستی دارند', 'info');
+            } else {
+                this.showToast(applied + ' لینک درج شد', applied ? 'success' : 'info');
+            }
+            if (typeof this.loadLinks === 'function') this.loadLinks();
         },
 
         getEditorRawContent() {
@@ -694,6 +819,43 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        normalizeHrefForCompare(href) {
+            try {
+                const base = (typeof window !== 'undefined' && window.location && window.location.origin)
+                    ? window.location.origin
+                    : 'https://example.invalid';
+                const u = new URL(String(href || ''), base);
+                let path = (u.pathname || '/').replace(/\/+$/, '') || '/';
+                return (path + (u.search || '')).toLowerCase();
+            } catch (e) {
+                return String(href || '').replace(/\/+$/, '').toLowerCase();
+            }
+        },
+
+        contentAlreadyLinksTo(html, href, targetPostId) {
+            if (!html) return false;
+            let doc;
+            try {
+                doc = new DOMParser().parseFromString(String(html), 'text/html');
+            } catch (e) {
+                return false;
+            }
+            const targetNorm = this.normalizeHrefForCompare(href);
+            const anchors = doc.querySelectorAll('a[href]');
+            for (let i = 0; i < anchors.length; i++) {
+                const aHref = anchors[i].getAttribute('href') || '';
+                if (!aHref || aHref.charAt(0) === '#') continue;
+                if (this.normalizeHrefForCompare(aHref) === targetNorm) return true;
+            }
+            if (targetPostId) {
+                const idStr = String(targetPostId);
+                if (html.indexOf('post_id=' + idStr) !== -1 || html.indexOf('data-post-id="' + idStr + '"') !== -1) {
+                    return true;
+                }
+            }
+            return false;
+        },
+
         /**
          * Insert link on first free text match inside editor HTML (not inside existing <a>).
          * Internal: follow + target=_blank + rel=noopener
@@ -702,8 +864,15 @@ document.addEventListener('alpine:init', () => {
          */
         insertLinkIntoEditor(keyword, url, title = '', nofollow = false, bold = true) {
             const needle = String(keyword || '').trim();
-            const href = String(url || '').trim();
+            let href = String(url || '').trim();
             if (!needle || !href) return false;
+            // Security: only http(s) or site-relative paths
+            if (/^(javascript:|data:|vbscript:)/i.test(href)) return false;
+            if (!/^(https?:\/\/|\/|#)/i.test(href)) {
+                // allow protocol-relative
+                if (!href.startsWith('//')) return false;
+            }
+            // Avoid linking entire document replacement — operate on live editor HTML only
 
             let html = this.getEditorRawContent();
             if (!html) return false;
@@ -879,7 +1048,8 @@ document.addEventListener('alpine:init', () => {
                 rawHtml: rawHtml,
                 focus_keyword: this.seo.focus_keyword || (this.keywordList && this.keywordList[0]) || '',
                 locale: (window.bankaiEditorSeo && bankaiEditorSeo.locale) || document.documentElement.lang || 'fa_IR',
-                provider: this.aiProvider || (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || ''
+                // Phase D: never send a client-chosen provider override
+                provider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || ''
             };
         },
 
@@ -889,11 +1059,14 @@ document.addEventListener('alpine:init', () => {
             body.append('action', 'bankai_ai_seo_task');
             body.append('nonce', cfg.adminNonce || cfg.nonce || '');
             body.append('task', task);
+            body.append('post_id', String(this.postId || ctx.post_id || 0));
             body.append('title', ctx.title || '');
-            body.append('content', ctx.content || '');
+            body.append('content', ctx.content || ctx.rawHtml || '');
             body.append('focus_keyword', ctx.focus_keyword || '');
             body.append('locale', ctx.locale || 'fa_IR');
-            body.append('provider', ctx.provider || '');
+            body.append('provider', (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || ctx.provider || '');
+            body.append('seo_title', ctx.seo_title || (this.seo && this.seo.seo_title) || '');
+            body.append('description', ctx.description || (this.seo && this.seo.description) || '');
 
             Object.keys(extraData).forEach((k) => {
                 if (k === '_timeoutMs') return;
@@ -1069,10 +1242,11 @@ document.addEventListener('alpine:init', () => {
             const ctx = this.getEditorContext();
             body.append('title', ctx.title || this.seo.title || '');
             body.append('focus_keyword', ctx.focus_keyword || this.seo.focus_keyword || '');
-            const imgProv = this.aiImageProvider || (window.bankaiEditorSeo && bankaiEditorSeo.defaultImageProvider) || '';
+            // Phase D: only central default image provider (server also enforces)
+            const imgProv = (window.bankaiEditorSeo && bankaiEditorSeo.defaultImageProvider) || '';
             body.append('provider', imgProv);
-            if (!imgProv && !(window.bankaiEditorSeo && bankaiEditorSeo.imageProviders && bankaiEditorSeo.imageProviders.length)) {
-                throw new Error('هیچ موتور تصویری فعال نیست. از استودیو AI تب تصویر، کلید API ذخیره کنید.');
+            if (!imgProv) {
+                throw new Error('موتور تصویر پیش‌فرض در تنظیمات مرکزی تنظیم نشده است. از استودیو AI → تب تصویر پیکربندی کنید.');
             }
             const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
             const timer = controller ? setTimeout(() => { try { controller.abort(); } catch (e) {} }, 180000) : null;
@@ -1297,17 +1471,54 @@ document.addEventListener('alpine:init', () => {
                     this.showToast('بازنویسی هوشمند مقاله آماده پیش‌نمایش است', 'success');
 
                 } else if (actionKey === 'meta') {
-                    this.aiProgress = 20;
-                    this.aiStepText = 'در حال تولید عنوان سئو و متا دیسکریپشن...';
+                    this.aiProgress = 15;
+                    this.aiStepText = 'تحلیل وضعیت فعلی و تولید عنوان/متا...';
                     this.setChecklistStatus('meta', 'loading');
+                    this.metaGenerationStatus = '';
+                    this.metaValidationStatus = '';
+                    this.metaValidationMessage = '';
+                    this.metaFailedChecks = [];
 
-                    const [tRes, dRes] = await Promise.all([
-                        this.callSeoAi('meta_title', ctx),
-                        this.callSeoAi('meta_description', ctx)
-                    ]);
-                    this.aiDraft.title = tRes.seo_title || tRes.text || '';
-                    this.aiDraft.description = dRes.description || dRes.text || '';
-                    this.setChecklistStatus('meta', 'success');
+                    // Phase C: single pipeline (generate → validate → repair ≤2)
+                    const metaRes = await this.callSeoAi('meta', Object.assign({}, ctx, {
+                        seo_title: (this.seo && this.seo.seo_title) || '',
+                        description: (this.seo && this.seo.description) || ''
+                    }));
+
+                    this.metaGenerationStatus = metaRes.generation_status || (metaRes.seo_title || metaRes.description ? 'success' : 'error');
+                    this.metaValidationStatus = metaRes.validation_status || (metaRes.validated ? 'passed' : (metaRes.needs_review ? 'needs_review' : ''));
+                    this.metaValidationMessage = metaRes.message || '';
+                    this.metaFailedChecks = Array.isArray(metaRes.failed_checks) ? metaRes.failed_checks : [];
+
+                    if (metaRes.seo_title || metaRes.title) {
+                        this.aiDraft.title = metaRes.seo_title || metaRes.title || '';
+                    }
+                    if (metaRes.description || metaRes.meta_description) {
+                        this.aiDraft.description = metaRes.description || metaRes.meta_description || '';
+                    }
+
+                    // AI step status = generation only (not SEO pass)
+                    if (this.metaGenerationStatus === 'error') {
+                        this.setChecklistStatus('meta', 'error');
+                        this.showToast(this.metaValidationMessage || 'خطای تولید عنوان/متا', 'error');
+                    } else {
+                        this.setChecklistStatus('meta', 'success');
+                        if (this.metaValidationStatus === 'passed') {
+                            this.showToast('تولید و اعتبارسنجی سئو موفق بود', 'success');
+                        } else if (this.metaValidationStatus === 'needs_review') {
+                            this.showToast('خروجی تولید شد — نیازمند بازبینی معیارهای سئو', 'warning');
+                        } else {
+                            this.showToast('تولید انجام شد', 'info');
+                        }
+                    }
+
+                    // Apply draft to live fields then re-analyze deterministically
+                    if (this.aiDraft.title) this.seo.seo_title = this.aiDraft.title;
+                    if (this.aiDraft.description) this.seo.description = this.aiDraft.description;
+                    if (typeof this.onFieldChange === 'function') this.onFieldChange();
+                    if (typeof this.analyze === 'function') {
+                        try { await this.analyze(false); } catch (eAn) {}
+                    }
 
                     this.aiProgress = 60;
                     this.aiStepText = 'در حال استخراج کلمات کلیدی و ادغام کلیدواژه‌های ثابت...';
@@ -1328,71 +1539,20 @@ document.addEventListener('alpine:init', () => {
                     this.showToast('متا و کلمات کلیدی پیشنهادی آماده تایید است', 'success');
 
                 } else if (actionKey === 'links') {
-                    this.aiProgress = 40;
-                    this.aiStepText = 'در حال تحلیل مقاله و یافتن بهترین مقالات مرتبط سایت...';
+                    this.aiProgress = 30;
+                    this.aiStepText = 'رتبه‌بندی مقالات مرتبط بر اساس محتوا و کلمات کلیدی...';
                     this.setChecklistStatus('links', 'loading');
-
-                    let siteArts = [];
-                    try {
-                        const cfg = window.bankaiEditorSeo || {};
-                        const q = (ctx.focus_keyword || ctx.title || '').trim() || 'مقاله';
-                        const searchRes = await fetch(this.restBase() + 'seo/search-posts', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce || '' },
-                            body: JSON.stringify({ s: q, q: q, post_id: this.postId, limit: 20 })
-                        });
-                        const sJson = await searchRes.json();
-                        const rows = (sJson && sJson.data && (sJson.data.posts || sJson.data)) || [];
-                        siteArts = (Array.isArray(rows) ? rows : []).map((p) => ({
-                            id: p.id,
-                            title: p.title,
-                            permalink: p.permalink,
-                            focus_keyword: p.focus_keyword || ''
-                        }));
-                    } catch (e) {}
-
-                    let newLinks = [];
-                    try {
-                        const linkRes = await this.callSeoAi('smart_internal_links', ctx, { articles: siteArts });
-                        newLinks = Array.isArray(linkRes.links) ? linkRes.links : [];
-                    } catch (eLink) {
-                        newLinks = [];
-                    }
-
-                    // Fallback: if AI returned nothing, build from site search results
-                    if (!newLinks.length && siteArts.length) {
-                        const words = ((ctx.focus_keyword || ctx.title || '') + '').split(/\s+/).filter((w) => w.length > 2);
-                        newLinks = siteArts.slice(0, 6).map((p, i) => ({
-                            keyword: words[i % Math.max(1, words.length)] || p.title,
-                            target_post_id: p.id,
-                            target_title: p.title,
-                            target_url: p.permalink,
-                            reason: 'پیشنهاد بر اساس عنوان/کلیدواژه مرتبط سایت'
-                        }));
-                    }
-
-                    this.aiDraft.smartLinks = newLinks;
-                    newLinks.forEach((l) => {
-                        const url = l.target_url || l.permalink || '';
-                        if (!url) return;
-                        const exists = this.pendingAiLinks.some((p) => p.target_url === url);
-                        if (!exists) {
-                            this.pendingAiLinks.push({
-                                id: 'ai_link_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                                keyword: l.keyword || l.target_title || '',
-                                target_post_id: l.target_post_id || l.id || 0,
-                                target_title: l.target_title || l.title || '',
-                                target_url: url,
-                                reason: l.reason || '',
-                                status: 'pending'
-                            });
-                        }
-                    });
-
+                    await this.smartSuggestInternalLinks();
                     this.aiProgress = 100;
-                    this.setChecklistStatus('links', 'success');
+                    this.aiStepText = 'پیشنهادهای رتبه‌بندی‌شده آماده تأیید هستند.';
+                    this.setChecklistStatus('links', this.pendingAiLinks.length ? 'success' : 'error');
                     this.aiReviewOpen = true;
-                    this.showToast(newLinks.length + ' لینک پیشنهادی آماده شد', newLinks.length ? 'success' : 'info');
+                    this.showToast(
+                        this.pendingAiLinks.length
+                            ? (this.pendingAiLinks.length + ' پیشنهاد لینک — فقط پس از تأیید درج می‌شود')
+                            : 'پیشنهاد مرتبطی یافت نشد',
+                        this.pendingAiLinks.length ? 'success' : 'info'
+                    );
 
                 } else if (actionKey === 'images') {
                     this.aiProgress = 30;
@@ -1546,12 +1706,18 @@ document.addEventListener('alpine:init', () => {
                     this.setChecklistStatus('meta', 'loading');
                     this.setChecklistStatus('keywords', 'loading');
 
-                    const [tRes, dRes] = await Promise.all([
-                        this.callSeoAi('meta_title', ctx),
-                        this.callSeoAi('meta_description', ctx)
-                    ]);
-                    this.aiDraft.title = tRes.seo_title || tRes.text || '';
-                    this.aiDraft.description = dRes.description || dRes.text || '';
+                    const metaRes = await this.callSeoAi('meta', Object.assign({}, ctx, {
+                        seo_title: (this.seo && this.seo.seo_title) || '',
+                        description: (this.seo && this.seo.description) || ''
+                    }));
+                    this.metaGenerationStatus = metaRes.generation_status || '';
+                    this.metaValidationStatus = metaRes.validation_status || '';
+                    this.metaValidationMessage = metaRes.message || '';
+                    this.metaFailedChecks = Array.isArray(metaRes.failed_checks) ? metaRes.failed_checks : [];
+                    this.aiDraft.title = metaRes.seo_title || metaRes.title || '';
+                    this.aiDraft.description = metaRes.description || metaRes.meta_description || '';
+                    if (this.aiDraft.title) this.seo.seo_title = this.aiDraft.title;
+                    if (this.aiDraft.description) this.seo.description = this.aiDraft.description;
 
                     let fk = ctx.focus_keyword;
                     if (!fk) {
@@ -1565,64 +1731,20 @@ document.addEventListener('alpine:init', () => {
                     this.setChecklistStatus('meta', 'success');
                     this.setChecklistStatus('keywords', 'success');
 
-                    // Step 3: Smart Internal Links
+                    // Step 3: Ranked internal links (Phase E — no client bulk dump to AI)
                     this.aiProgress = 65;
-                    this.aiStepText = 'گام ۳/۵: بررسی و تولید پیشنهادهای لینک هوشمند...';
+                    this.aiStepText = 'گام ۳: رتبه‌بندی لینک‌های داخلی بر اساس محتوا...';
                     this.setChecklistStatus('links', 'loading');
-
-                    let siteArts = [];
-                    try {
-                        const cfg = window.bankaiEditorSeo || {};
-                        const q = (fk || ctx.focus_keyword || ctx.title || 'مقاله').trim();
-                        const searchRes = await fetch(this.restBase() + 'seo/search-posts', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce || '' },
-                            body: JSON.stringify({ s: q, q: q, post_id: this.postId, limit: 20 })
-                        });
-                        const sJson = await searchRes.json();
-                        const rows = (sJson && sJson.data && (sJson.data.posts || sJson.data)) || [];
-                        siteArts = (Array.isArray(rows) ? rows : []).map((p) => ({
-                            id: p.id,
-                            title: p.title,
-                            permalink: p.permalink,
-                            focus_keyword: p.focus_keyword || ''
-                        }));
-                    } catch (e) {}
-
-                    let newLinks = [];
-                    try {
-                        const linkRes = await this.callSeoAi('smart_internal_links', ctx, { articles: siteArts });
-                        newLinks = Array.isArray(linkRes.links) ? linkRes.links : [];
-                    } catch (eL) { newLinks = []; }
-
-                    if (!newLinks.length && siteArts.length) {
-                        const words = ((fk || ctx.title || '') + '').split(/\s+/).filter((w) => w.length > 2);
-                        newLinks = siteArts.slice(0, 6).map((p, i) => ({
-                            keyword: words[i % Math.max(1, words.length)] || p.title,
-                            target_post_id: p.id,
-                            target_title: p.title,
-                            target_url: p.permalink,
-                            reason: 'پیشنهاد بر اساس عنوان/کلیدواژه مرتبط سایت'
-                        }));
-                    }
-                    this.aiDraft.smartLinks = newLinks;
-                    newLinks.forEach((l) => {
-                        const url = l.target_url || '';
-                        if (!url) return;
-                        const exists = this.pendingAiLinks.some((p) => p.target_url === url);
-                        if (!exists) {
-                            this.pendingAiLinks.push({
-                                id: 'ai_link_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                                keyword: l.keyword || '',
-                                target_post_id: l.target_post_id || 0,
-                                target_title: l.target_title || '',
-                                target_url: url,
-                                reason: l.reason || '',
-                                status: 'pending'
-                            });
-                        }
-                    });
-                    this.setChecklistStatus('links', 'success');
+                    await this.smartSuggestInternalLinks();
+                    this.aiDraft.smartLinks = (this.pendingAiLinks || []).map((l) => ({
+                        keyword: l.keyword,
+                        target_post_id: l.target_post_id,
+                        target_title: l.target_title,
+                        target_url: l.target_url,
+                        reason: l.reason,
+                        score: l.score
+                    }));
+                    this.setChecklistStatus('links', this.pendingAiLinks.length ? 'success' : 'error');
 
                     // Step 4: Images & Alt Text
                     this.aiProgress = 85;
@@ -2565,5 +2687,21 @@ document.addEventListener('alpine:init', () => {
             clearTimeout(this._toastTimer);
             this._toastTimer = setTimeout(() => { this.toast.show = false; }, ms);
         }
-    }));
-});
+        });
+    }
+
+    function registerBankaiSeoAlpine() {
+        if (!window.Alpine || typeof Alpine.data !== 'function') return;
+        if (window.__bankaiSeoAlpineRegistered) return;
+        Alpine.data('bankaiSeoSidebar', bankaiSeoSidebarFactory);
+        window.__bankaiSeoAlpineRegistered = true;
+    }
+
+    document.addEventListener('alpine:init', registerBankaiSeoAlpine);
+    // If Alpine already booted (script order race), register immediately
+    if (window.Alpine && window.Alpine.version) {
+        registerBankaiSeoAlpine();
+    }
+    // Late fallback for Gutenberg inject
+    window.bankaiRegisterSeoAlpine = registerBankaiSeoAlpine;
+})();

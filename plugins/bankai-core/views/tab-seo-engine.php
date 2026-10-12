@@ -218,7 +218,7 @@ if ($post_id && !$post) {
                         </button>
                         <div class="bk-acc-body" x-show="openGroups[gkey]">
                             <template x-for="check in group.items" :key="check.key">
-                                <div class="bk-check" :class="check.passed ? 'is-ok' : 'is-warn'">
+                                <div class="bk-check" :class="checkStatusClass(check)">
                                     <template x-if="check.passed"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></template><template x-if="!check.passed"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></template>
                                     <div class="bk-check-main">
                                         <strong x-text="check.label"></strong>
@@ -230,7 +230,7 @@ if ($post_id && !$post) {
                                             </button>
                                         </template>
                                     </div>
-                                    <span class="bk-check-status" x-text="check.passed ? 'تایید' : 'توجه'"></span>
+                                    <span class="bk-check-status" x-text="checkStatusLabel(check)"></span>
                                 </div>
                             </template>
                         </div>
@@ -343,8 +343,12 @@ if ($post_id && !$post) {
                         <div class="bk-pending-link-card bk-link-card-stack">
                             <div class="bk-link-title-only" x-text="link.target_title || link.keyword" :title="link.target_title || link.keyword"></div>
                             <div class="bk-hint" style="margin:4px 0" x-show="link.keyword">انکر: <span x-text="link.keyword"></span></div>
+                            <div class="bk-hint" style="margin:2px 0" x-show="link.score">امتیاز ارتباط: <strong x-text="Math.round(link.score)"></strong>
+                                <span x-show="link.insertion_confidence==='low'" style="color:#b45309"> — محل درج نامطمئن؛ فقط پس از بررسی دستی اعمال شود</span>
+                            </div>
+                            <div class="bk-hint" style="margin:2px 0;color:#475569" x-show="link.reason" x-text="link.reason"></div>
                             <div class="bk-pending-actions bk-link-actions-below">
-                                <button type="button" class="bk-btn-primary bk-btn-xs" @click="acceptPendingLink(link); loadLinks()" title="تایید">تایید</button>
+                                <button type="button" class="bk-btn-primary bk-btn-xs" @click="acceptPendingLink(link)" title="تایید و درج">تأیید و درج</button>
                                 <a class="bk-btn-ghost bk-btn-xs" :href="link.target_url || '#'" target="_blank" rel="noopener">نمایش مقاله</a>
                                 <button type="button" class="bk-btn-ghost bk-btn-xs bk-btn-danger" @click="rejectPendingLink(link)" title="رد">رد</button>
                             </div>
@@ -787,35 +791,22 @@ if ($post_id && !$post) {
                 </button>
             </header>
 
-            <div class="bk-ai-engine-bar">
-                <div class="bk-ai-engine-label">انتخاب موتور AI</div>
-                <div class="bk-ai-engine-scroll">
-                    <template x-for="p in aiProvidersList" :key="p.id">
-                        <button type="button" class="bk-ai-engine-card"
-                            :class="{ 'is-active': aiProvider === p.id }"
-                            @click="aiProvider = p.id">
-                            <span class="bk-ai-engine-name" x-text="p.name"></span>
-                            <span class="bk-ai-engine-status" x-text="aiProvider === p.id ? 'فعال' : 'انتخاب'"></span>
-                        </button>
-                    </template>
+            <!-- Phase D: read-only central providers (no local selectors) -->
+            <div class="bk-ai-engine-bar bk-ai-engine-readonly">
+                <div class="bk-ai-engine-label">موتورهای فعال (تنظیمات مرکزی)</div>
+                <div class="bk-ai-central-info" style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 0;">
+                    <div class="bk-ai-engine-card is-active" style="cursor:default;pointer-events:none;">
+                        <span class="bk-ai-engine-name">متن: <span x-text="centralTextProviderName || 'تنظیم نشده'"></span></span>
+                        <span class="bk-ai-engine-status" x-text="centralTextProviderReady ? 'آماده' : 'نیاز به کلید'"></span>
+                    </div>
+                    <div class="bk-ai-engine-card is-active" style="cursor:default;pointer-events:none;">
+                        <span class="bk-ai-engine-name">تصویر: <span x-text="centralImageProviderName || 'تنظیم نشده'"></span></span>
+                        <span class="bk-ai-engine-status" x-text="centralImageProviderReady ? 'آماده' : 'نیاز به کلید'"></span>
+                    </div>
                 </div>
-            </div>
-
-            <div class="bk-ai-engine-bar" style="margin-top:8px">
-                <div class="bk-ai-engine-label">انتخاب موتور تصویر AI</div>
-                <div class="bk-ai-engine-scroll">
-                    <template x-if="!imageProvidersList.length">
-                        <span style="font-size:12px;color:#cf222e;padding:8px 0">هیچ موتور تصویری با کلید فعال نیست — از استودیو AI تب تصویر کلید اضافه کنید.</span>
-                    </template>
-                    <template x-for="p in imageProvidersList" :key="'img'+p.id">
-                        <button type="button" class="bk-ai-engine-card"
-                            :class="{ 'is-active': aiImageProvider === p.id }"
-                            @click="aiImageProvider = p.id">
-                            <span class="bk-ai-engine-name" x-text="p.name"></span>
-                            <span class="bk-ai-engine-status" x-text="aiImageProvider === p.id ? 'فعال' : 'انتخاب'"></span>
-                        </button>
-                    </template>
-                </div>
+                <p style="margin:0;font-size:11px;color:#64748b;line-height:1.5;">
+                    برای تغییر موتور، از <strong>استودیو هوش مصنوعی</strong> در پنل بنکای استفاده کنید. انتخاب در این بخش غیرفعال است.
+                </p>
             </div>
 
 
@@ -1014,7 +1005,23 @@ if ($post_id && !$post) {
                                 </div>
                                 <div class="bk-review-field" style="margin-top:8px;">
                                     <small>متادیسکریپشن پیشنهادی:</small>
-                                    <textarea rows="2" x-model="aiDraft.description" class="bk-input-sm"></textarea>
+                                    <textarea rows="2" x-model="aiDraft.description" class="bk-input-sm" @input="metaValidationStatus=''; metaValidationMessage=''; if (typeof analyze==='function') analyze(false)"></textarea>
+                                </div>
+                                <div class="bk-meta-validation" style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(15,23,42,.04);font-size:12px;" x-show="metaValidationStatus || metaGenerationStatus">
+                                    <div><strong>وضعیت تولید:</strong>
+                                        <span x-text="metaGenerationStatus==='success' ? 'تولید موفق شد' : (metaGenerationStatus==='error' ? 'خطای تولید' : (metaGenerationStatus || '—'))"></span>
+                                    </div>
+                                    <div style="margin-top:4px;"><strong>وضعیت اعتبارسنجی سئو:</strong>
+                                        <span x-text="metaValidationStatus==='passed' ? 'اعتبارسنجی موفق شد' : (metaValidationStatus==='needs_review' ? 'نیازمند بازبینی' : (metaValidationStatus==='failed' ? 'ناموفق' : '—'))"></span>
+                                    </div>
+                                    <div style="margin-top:4px;color:#64748b;" x-show="metaValidationMessage" x-text="metaValidationMessage"></div>
+                                    <template x-if="metaFailedChecks && metaFailedChecks.length">
+                                        <ul style="margin:6px 0 0;padding-inline-start:18px;color:#b45309;">
+                                            <template x-for="fc in metaFailedChecks" :key="fc.key">
+                                                <li><span x-text="fc.label || fc.key"></span>: <span x-text="fc.message || fc.status"></span></li>
+                                            </template>
+                                        </ul>
+                                    </template>
                                 </div>
                             </div>
                         </div>

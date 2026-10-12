@@ -148,6 +148,9 @@
 
                 const tryAlpine = (attempt) => {
                     if (cancelled) return;
+                    if (typeof window.bankaiRegisterSeoAlpine === 'function') {
+                        try { window.bankaiRegisterSeoAlpine(); } catch (eReg) {}
+                    }
                     if (window.Alpine && typeof window.Alpine.initTree === 'function') {
                         try {
                             window.Alpine.initTree(hostRef.current);

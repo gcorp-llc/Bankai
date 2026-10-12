@@ -14,6 +14,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Persian text normalizer for SEO comparisons (pure PHP).
+$__bankai_seo_norm = __DIR__ . '/class-seo-text-normalizer.php';
+if (is_readable($__bankai_seo_norm)) {
+    require_once $__bankai_seo_norm;
+}
+$__bankai_seo_rank = __DIR__ . '/class-seo-link-ranker.php';
+if (is_readable($__bankai_seo_rank)) {
+    require_once $__bankai_seo_rank;
+}
+
+
 final class Bankai_SEO_Engine
 {
     private static ?self $instance = null;
@@ -254,23 +265,177 @@ final class Bankai_SEO_Engine
         register_rest_route($namespace, '/seo/suggest-links', [
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => [$this, 'api_suggest_internal_links'],
-            'permission_callback' => static fn(): bool => current_user_can('edit_posts'),
+            'permission_callback' => [$this, 'permission_suggest_links'],
         ]);
     }
 
     public function permission_check(WP_REST_Request $request): bool
     {
-        $post_id = absint($request['id'] ?? 0);
-        return $post_id > 0 && current_user_can('edit_post', $post_id);
+        if (!current_user_can('edit_posts')) {
+            return false;
+        }
+        $post_id = absint($request['id'] ?? $request->get_param('id') ?? 0);
+        // New / unsaved posts: allow analyze when user can edit_posts
+        if ($post_id <= 0) {
+            return true;
+        }
+        return current_user_can('edit_post', $post_id);
     }
+
+    /**
+     * Phase E.1 — suggest-links: edit_posts baseline; if post_id given, must edit that post.
+     */
+    public function permission_suggest_links(WP_REST_Request $request): bool
+    {
+        if (!current_user_can('edit_posts')) {
+            return false;
+        }
+        $params = $request->get_json_params();
+        if (!is_array($params)) {
+            $params = $request->get_params();
+        }
+        $post_id = absint(is_array($params) ? ($params['post_id'] ?? 0) : 0);
+        if ($post_id > 0) {
+            return current_user_can('edit_post', $post_id);
+        }
+        return true;
+    }
+
+    /**
+     * Optional daily views log table (post totals still live in post meta).
+     * Safe no-op when already installed.
+     */
+    public function maybe_create_views_table(): void
+    {
+        $ver = '1';
+        if (get_option('bankai_seo_views_table_ver') === $ver) {
+            return;
+        }
+        global $wpdb;
+        $table   = $wpdb->prefix . 'bankai_post_views_log';
+        $charset = $wpdb->get_charset_collate();
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        $sql = "CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            post_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            viewed_on DATE NOT NULL,
+            hits INT UNSIGNED NOT NULL DEFAULT 1,
+            PRIMARY KEY (id),
+            UNIQUE KEY post_day (post_id, viewed_on),
+            KEY viewed_on (viewed_on)
+        ) {$charset};";
+        dbDelta($sql);
+        update_option('bankai_seo_views_table_ver', $ver, false);
+    }
+
+    /**
+     * Bulk read view counts from post meta.
+     *
+     * @param list<int> $post_ids
+     * @return array<int,int>
+     */
+    public function get_views_map(array $post_ids): array
+    {
+        $post_ids = array_values(array_filter(array_map('absint', $post_ids)));
+        if (!$post_ids) {
+            return [];
+        }
+        $map = [];
+        foreach ($post_ids as $id) {
+            $map[$id] = (int) get_post_meta($id, self::META_VIEWS, true);
+        }
+        // Prefer a single query when possible
+        global $wpdb;
+        $ids_sql = implode(',', $post_ids);
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- IDs are absint-filtered
+        $rows = $wpdb->get_results(
+            "SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = '" . esc_sql(self::META_VIEWS) . "' AND post_id IN ({$ids_sql})",
+            ARRAY_A
+        );
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $pid = (int) ($row['post_id'] ?? 0);
+                if ($pid > 0) {
+                    $map[$pid] = (int) ($row['meta_value'] ?? 0);
+                }
+            }
+        }
+        return $map;
+    }
+
+    /**
+     * REST: increment post view counter (public beacon).
+     */
+    public function api_track_view(WP_REST_Request $request): WP_REST_Response
+    {
+        $post_id = absint($request['id'] ?? 0);
+        if ($post_id <= 0 || get_post_status($post_id) !== 'publish') {
+            return new WP_REST_Response(['success' => false, 'message' => 'Invalid post'], 400);
+        }
+        // Skip obvious bots
+        $ua = strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+        if ($ua !== '' && preg_match('/bot|crawl|spider|slurp|facebookexternalhit|preview/i', $ua)) {
+            return new WP_REST_Response(['success' => true, 'skipped' => 'bot']);
+        }
+
+        $current = (int) get_post_meta($post_id, self::META_VIEWS, true);
+        $next    = $current + 1;
+        update_post_meta($post_id, self::META_VIEWS, $next);
+
+        // Best-effort daily log (ignore failures)
+        global $wpdb;
+        $table = $wpdb->prefix . 'bankai_post_views_log';
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+        $exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table));
+        if ($exists === $table) {
+            $today = gmdate('Y-m-d');
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+            $wpdb->query($wpdb->prepare(
+                "INSERT INTO {$table} (post_id, viewed_on, hits) VALUES (%d, %s, 1)
+                 ON DUPLICATE KEY UPDATE hits = hits + 1",
+                $post_id,
+                $today
+            ));
+        }
+
+        return new WP_REST_Response(['success' => true, 'views' => $next]);
+    }
+
+    /**
+     * Frontend view tracker (single post / page).
+     */
+    public function print_view_tracker(): void
+    {
+        if (is_admin() || !is_singular()) {
+            return;
+        }
+        $post_id = (int) get_queried_object_id();
+        if ($post_id <= 0) {
+            return;
+        }
+        $url = esc_url_raw(rest_url('bankai/v1/track-view/' . $post_id));
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON flags
+        $url_js = wp_json_encode($url);
+        echo "<script>(function(){try{if(window.navigator&&navigator.sendBeacon){navigator.sendBeacon({$url_js},'');}else{fetch({$url_js},{method:'POST',credentials:'same-origin',keepalive:true});}}catch(e){}})();</script>\n";
+    }
+
 
     public function api_get(WP_REST_Request $request): WP_REST_Response
     {
-        $post_id = absint($request['id']);
-        return new WP_REST_Response([
-            'success' => true,
-            'data'    => $this->get_seo_data($post_id),
-        ]);
+        $post_id = absint($request['id'] ?? $request->get_param('id') ?? 0);
+        try {
+            $data = $this->get_seo_data($post_id);
+            return new WP_REST_Response([
+                'success' => true,
+                'data'    => $data,
+            ]);
+        } catch (Throwable $e) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'SEO load failed',
+                'error'   => defined('WP_DEBUG') && WP_DEBUG ? $e->getMessage() : 'internal_error',
+            ], 500);
+        }
     }
 
     public function api_save(WP_REST_Request $request): WP_REST_Response
@@ -613,33 +778,70 @@ final class Bankai_SEO_Engine
             return [];
         }
 
-        $raw_content = $overrides['content'] ?? $post->post_content;
+        $raw_content = (string) ($overrides['content'] ?? $post->post_content);
         $clean_text  = wp_strip_all_tags($raw_content);
-        $title       = get_the_title($post_id);
+        $title       = (string) get_the_title($post_id);
         $seo_title   = (string) ($overrides['seo_title'] ?? get_post_meta($post_id, self::META_TITLE, true));
         $description = (string) ($overrides['description'] ?? get_post_meta($post_id, self::META_DESCRIPTION, true));
         $keyword     = trim((string) ($overrides['focus_keyword'] ?? get_post_meta($post_id, self::META_KEYWORD, true)));
-        $slug        = $post->post_name;
-        $permalink   = get_permalink($post_id);
+        $slug        = (string) $post->post_name;
+        $permalink   = (string) get_permalink($post_id);
 
-        $checks   = [];
-        $groups   = [
+        $N = class_exists('Bankai_SEO_Text_Normalizer') ? Bankai_SEO_Text_Normalizer::class : null;
+
+        $checks = [];
+        $groups = [
             'basic'    => ['label' => 'بررسی‌های پایه سئو', 'items' => []],
             'advanced' => ['label' => 'بررسی‌های تکمیلی', 'items' => []],
             'title'    => ['label' => 'خوانایی عنوان', 'items' => []],
             'content'  => ['label' => 'خوانایی محتوا', 'items' => []],
         ];
 
-        $kw_lower = mb_strtolower($keyword);
-        $has_kw   = $keyword !== '';
+        $has_kw = $keyword !== '';
+        $word_count = $N
+            ? Bankai_SEO_Text_Normalizer::word_count($clean_text)
+            : count(preg_split('/\s+/u', trim($clean_text), -1, PREG_SPLIT_NO_EMPTY) ?: []);
 
-        // Accurate Multilingual Word Count (Persian/English)
-        $words = preg_split('/\s+/u', trim($clean_text), -1, PREG_SPLIT_NO_EMPTY);
-        $word_count = is_array($words) ? count($words) : 0;
+        $contains = static function (string $hay, string $needle) use ($N): bool {
+            if ($needle === '') {
+                return false;
+            }
+            return $N
+                ? Bankai_SEO_Text_Normalizer::contains($hay, $needle)
+                : (mb_stripos($hay, $needle) !== false);
+        };
+        $starts = static function (string $hay, string $needle) use ($N): bool {
+            if ($needle === '') {
+                return false;
+            }
+            return $N
+                ? Bankai_SEO_Text_Normalizer::starts_with($hay, $needle)
+                : (mb_stripos(mb_strtolower($hay), mb_strtolower($needle)) === 0);
+        };
+        $occ = static function (string $hay, string $needle) use ($N): int {
+            if ($needle === '') {
+                return 0;
+            }
+            return $N
+                ? Bankai_SEO_Text_Normalizer::count_occurrences($hay, $needle)
+                : mb_substr_count(mb_strtolower($hay), mb_strtolower($needle));
+        };
 
         // --- Basic ---
-        $checks[] = $this->check('focus_keyword', 'کلمه کلیدی اصلی تنظیم شده', $has_kw,
-            $has_kw ? 'کلمه کلیدی اصلی تنظیم شده است.' : 'یک کلمه کلیدی اصلی برای این محتوا تنظیم کنید.', 'basic');
+        $checks[] = $this->check(
+            'focus_keyword',
+            'کلمه کلیدی اصلی تنظیم شده',
+            $has_kw,
+            $has_kw ? 'کلمه کلیدی اصلی تنظیم شده است.' : 'یک کلمه کلیدی اصلی برای این محتوا تنظیم کنید.',
+            'basic',
+            [
+                'status'         => $has_kw ? 'pass' : 'fail',
+                'severity'       => $has_kw ? 'info' : 'high',
+                'evidence'       => $has_kw ? ['keyword' => $keyword] : ['keyword' => ''],
+                'recommendation' => $has_kw ? '' : 'کلمه کلیدی اصلی را در سایدبار سئو وارد کنید.',
+                'auto_fixable'  => false,
+            ]
+        );
 
         // Secondary keywords
         $sec_raw = $overrides['keywords'] ?? get_post_meta($post_id, self::META_KEYWORDS, true);
@@ -653,97 +855,307 @@ final class Bankai_SEO_Engine
         $sec_list = array_values(array_filter(array_map(static function ($k) {
             return is_string($k) ? trim($k) : '';
         }, $sec_list)));
-        $sec_list = array_values(array_filter($sec_list, static function ($k) use ($keyword) {
-            return $k !== '' && mb_strtolower($k) !== mb_strtolower($keyword);
+        $sec_list = array_values(array_filter($sec_list, static function ($k) use ($keyword, $N) {
+            if ($k === '') {
+                return false;
+            }
+            if ($keyword === '') {
+                return true;
+            }
+            if ($N) {
+                return Bankai_SEO_Text_Normalizer::normalize($k) !== Bankai_SEO_Text_Normalizer::normalize($keyword);
+            }
+            return mb_strtolower($k) !== mb_strtolower($keyword);
         }));
         $sec_in_body = 0;
         foreach ($sec_list as $sk) {
-            if (mb_stripos($clean_text, $sk) !== false || mb_stripos($seo_title ?: $title, $sk) !== false) {
+            if ($contains($clean_text, $sk) || $contains($seo_title ?: $title, $sk)) {
                 $sec_in_body++;
             }
         }
-        $sec_ok = count($sec_list) >= 1 && $sec_in_body >= min(1, count($sec_list));
-        $checks[] = $this->check(
-            'secondary_keywords',
-            'کلیدواژه‌های فرعی',
-            $sec_ok,
-            $sec_ok
-                ? sprintf('%d کلیدواژه فرعی و حضور در محتوا تایید شد.', count($sec_list))
-                : (count($sec_list) ? 'حداقل یک کلیدواژه فرعی را در عنوان یا متن به کار ببرید.' : '۲–۳ کلیدواژه فرعی مرتبط اضافه کنید.'),
-            'basic'
+        if (!$has_kw && !$sec_list) {
+            $checks[] = $this->check(
+                'secondary_keywords',
+                'کلیدواژه‌های فرعی',
+                false,
+                'ابتدا کلمه کلیدی اصلی را تنظیم کنید؛ سپس ۲–۳ کلیدواژه فرعی اضافه کنید.',
+                'basic',
+                [
+                    'status'         => 'unknown',
+                    'severity'       => 'medium',
+                    'evidence'       => ['secondary_count' => 0, 'in_body' => 0],
+                    'recommendation' => 'پس از تعیین کلمه کلیدی اصلی، کلیدواژه‌های فرعی مرتبط اضافه کنید.',
+                    'auto_fixable'  => true,
+                ]
+            );
+        } else {
+            $sec_ok = count($sec_list) >= 1 && $sec_in_body >= min(1, count($sec_list));
+            $checks[] = $this->check(
+                'secondary_keywords',
+                'کلیدواژه‌های فرعی',
+                $sec_ok,
+                $sec_ok
+                    ? sprintf('%d کلیدواژه فرعی و حضور در محتوا تایید شد.', count($sec_list))
+                    : (count($sec_list) ? 'حداقل یک کلیدواژه فرعی را در عنوان یا متن به کار ببرید.' : '۲–۳ کلیدواژه فرعی مرتبط اضافه کنید.'),
+                'basic',
+                [
+                    'status'         => $sec_ok ? 'pass' : 'warning',
+                    'severity'       => 'medium',
+                    'evidence'       => ['secondary_count' => count($sec_list), 'in_body' => $sec_in_body, 'list' => array_slice($sec_list, 0, 10)],
+                    'recommendation' => $sec_ok ? '' : 'کلیدواژه‌های فرعی را در عنوان سئو یا بندهای اصلی متن بگنجانید.',
+                    'auto_fixable'  => true,
+                ]
+            );
+        }
+
+        // KW-dependent helpers
+        $kw_dep = static function (string $key, string $label, bool $ok, string $ok_msg, string $fail_msg, string $group, array $evidence = [], string $rec = '') use ($has_kw) {
+            if (!$has_kw) {
+                return [
+                    'ok' => false,
+                    'extra' => [
+                        'status'         => 'unknown',
+                        'severity'       => 'medium',
+                        'evidence'       => array_merge(['keyword_set' => false], $evidence),
+                        'recommendation' => 'ابتدا کلمه کلیدی اصلی را تنظیم کنید.',
+                        'auto_fixable'  => false,
+                    ],
+                    'msg' => 'کلمه کلیدی اصلی تنظیم نشده؛ این معیار قابل ارزیابی نیست.',
+                ];
+            }
+            return [
+                'ok' => $ok,
+                'extra' => [
+                    'status'         => $ok ? 'pass' : 'fail',
+                    'severity'       => $ok ? 'info' : 'high',
+                    'evidence'       => array_merge(['keyword_set' => true], $evidence),
+                    'recommendation' => $ok ? '' : $rec,
+                    'auto_fixable'  => true,
+                ],
+                'msg' => $ok ? $ok_msg : $fail_msg,
+            ];
+        };
+
+        $r = $kw_dep(
+            'kw_in_title',
+            'کلمه کلیدی در عنوان سئو',
+            $contains($seo_title ?: $title, $keyword),
+            'کلمه کلیدی در عنوان سئو یافت شد.',
+            'کلمه کلیدی اصلی را به عنوان سئو اضافه کنید.',
+            'basic',
+            ['seo_title' => mb_substr($seo_title ?: $title, 0, 120)],
+            'عنوان سئو را طوری بازنویسی کنید که شامل کلمه کلیدی اصلی باشد.'
         );
+        $checks[] = $this->check('kw_in_title', 'کلمه کلیدی در عنوان سئو', $r['ok'], $r['msg'], 'basic', $r['extra']);
 
-        $checks[] = $this->check('kw_in_title', 'کلمه کلیدی در عنوان سئو',
-            $has_kw && mb_stripos($seo_title ?: $title, $keyword) !== false,
-            'کلمه کلیدی اصلی را به عنوان سئو اضافه کنید.', 'basic');
+        $r = $kw_dep(
+            'kw_in_desc',
+            'کلمه کلیدی در توضیحات متا',
+            $contains($description, $keyword),
+            'کلمه کلیدی در توضیحات متا یافت شد.',
+            'کلمه کلیدی اصلی را به توضیحات متا اضافه کنید.',
+            'basic',
+            ['description_len' => mb_strlen($description)],
+            'توضیحات متا را طوری بنویسید که کلمه کلیدی به‌صورت طبیعی در آن باشد.'
+        );
+        $checks[] = $this->check('kw_in_desc', 'کلمه کلیدی در توضیحات متا', $r['ok'], $r['msg'], 'basic', $r['extra']);
 
-        $checks[] = $this->check('kw_in_desc', 'کلمه کلیدی در توضیحات متا',
-            $has_kw && mb_stripos($description, $keyword) !== false,
-            'کلمه کلیدی اصلی را به توضیحات متا اضافه کنید.', 'basic');
-
-        $checks[] = $this->check('kw_in_url', 'کلمه کلیدی در URL',
-            $has_kw && (mb_stripos($slug, sanitize_title($keyword)) !== false || mb_stripos($permalink, $keyword) !== false),
-            'از کلمه کلیدی اصلی در URL استفاده کنید.', 'basic');
+        $url_hay = $slug . ' ' . $permalink;
+        $slug_kw = $has_kw ? sanitize_title($keyword) : '';
+        $kw_in_url = $has_kw && (
+            ($slug_kw !== '' && (str_contains($slug, $slug_kw) || str_contains(rawurldecode($permalink), $slug_kw)))
+            || $contains($url_hay, $keyword)
+        );
+        $r = $kw_dep(
+            'kw_in_url',
+            'کلمه کلیدی در URL',
+            $kw_in_url,
+            'نشانهٔ کلمه کلیدی در URL دیده می‌شود.',
+            'از کلمه کلیدی اصلی در URL استفاده کنید.',
+            'basic',
+            ['slug' => $slug],
+            'اسلاگ را کوتاه و مرتبط با کلمه کلیدی تنظیم کنید (برای پست منتشرشده فقط با تأیید).'
+        );
+        $checks[] = $this->check('kw_in_url', 'کلمه کلیدی در URL', $r['ok'], $r['msg'], 'basic', $r['extra']);
 
         $first_pct = mb_substr($clean_text, 0, (int) max(1, mb_strlen($clean_text) * 0.1));
-        $checks[]  = $this->check('kw_in_intro', 'کلمه کلیدی در ۱۰٪ ابتدایی',
-            $has_kw && mb_stripos($first_pct, $keyword) !== false,
-            'در ابتدای محتوای خود از کلمه کلیدی اصلی استفاده کنید.', 'basic');
+        $r = $kw_dep(
+            'kw_in_intro',
+            'کلمه کلیدی در ۱۰٪ ابتدایی',
+            $contains($first_pct, $keyword),
+            'کلمه کلیدی در ابتدای محتوا یافت شد.',
+            'در ابتدای محتوای خود از کلمه کلیدی اصلی استفاده کنید.',
+            'basic',
+            ['intro_sample' => mb_substr($first_pct, 0, 160)],
+            'جملهٔ اول یا بند آغازین را با اشاره طبیعی به کلمه کلیدی بازنویسی کنید.'
+        );
+        $checks[] = $this->check('kw_in_intro', 'کلمه کلیدی در ۱۰٪ ابتدایی', $r['ok'], $r['msg'], 'basic', $r['extra']);
 
-        $checks[] = $this->check('kw_in_content', 'کلمه کلیدی در محتوا',
-            $has_kw && mb_stripos($clean_text, $keyword) !== false,
-            'در محتوا از کلمه کلیدی اصلی استفاده کنید.', 'basic');
+        $r = $kw_dep(
+            'kw_in_content',
+            'کلمه کلیدی در محتوا',
+            $contains($clean_text, $keyword),
+            'کلمه کلیدی در محتوا یافت شد.',
+            'در محتوا از کلمه کلیدی اصلی استفاده کنید.',
+            'basic',
+            ['words' => $word_count],
+            'کلمه کلیدی را حداقل یک‌بار به‌صورت طبیعی در بدنه متن به‌کار ببرید.'
+        );
+        $checks[] = $this->check('kw_in_content', 'کلمه کلیدی در محتوا', $r['ok'], $r['msg'], 'basic', $r['extra']);
 
-        $checks[] = $this->check('content_length', 'طول محتوا',
-            $word_count >= 300,
-            sprintf('طول محتوا %d کلمه است.%s', $word_count, $word_count >= 300 ? ' عالی!' : ' حداقل ۳۰۰ کلمه پیشنهاد می‌شود.'), 'basic');
+        $len_ok = $word_count >= 300;
+        $checks[] = $this->check(
+            'content_length',
+            'طول محتوا',
+            $len_ok,
+            sprintf('طول محتوا %d کلمه است.%s', $word_count, $len_ok ? ' عالی!' : ' حداقل ۳۰۰ کلمه پیشنهاد می‌شود.'),
+            'basic',
+            [
+                'status'         => $len_ok ? 'pass' : 'warning',
+                'severity'       => $len_ok ? 'info' : 'medium',
+                'evidence'       => ['words' => $word_count, 'min' => 300],
+                'recommendation' => $len_ok ? '' : 'محتوا را با جزئیات و زیرموضوع‌های مرتبط گسترش دهید.',
+                'auto_fixable'  => true,
+            ]
+        );
 
         // --- Advanced ---
         preg_match_all('/<h[2-6]\b[^>]*>(.*?)<\/h[2-6]>/is', $raw_content, $headings);
         $heading_text = implode(' ', array_map('wp_strip_all_tags', $headings[1] ?? []));
-        $checks[]     = $this->check('kw_in_headings', 'کلمه کلیدی در زیرتیترها',
-            $has_kw && mb_stripos($heading_text, $keyword) !== false,
-            'استفاده از کلمه کلیدی اصلی در زیرتیترها (H2, H3, …).', 'advanced');
+        $r = $kw_dep(
+            'kw_in_headings',
+            'کلمه کلیدی در زیرتیترها',
+            $contains($heading_text, $keyword),
+            'کلمه کلیدی در زیرتیترها یافت شد.',
+            'استفاده از کلمه کلیدی اصلی در زیرتیترها (H2, H3, …).',
+            'advanced',
+            ['heading_count' => count($headings[0] ?? [])],
+            'حداقل یک زیرتیتر مرتبط با کلمه کلیدی اضافه کنید.'
+        );
+        $checks[] = $this->check('kw_in_headings', 'کلمه کلیدی در زیرتیترها', $r['ok'], $r['msg'], 'advanced', $r['extra']);
 
         preg_match_all('/<img\b[^>]*>/i', $raw_content, $images);
-        $img_count  = count($images[0] ?? []);
+        $img_count = count($images[0] ?? []);
         $has_kw_alt = false;
-        if ($img_count > 0 && $has_kw) {
+        $alts = [];
+        if ($img_count > 0) {
             foreach ($images[0] as $img) {
-                if (preg_match('/alt=["\']([^"\']*)["\']/i', $img, $am) && mb_stripos($am[1], $keyword) !== false) {
-                    $has_kw_alt = true;
-                    break;
+                if (preg_match('/alt=["\']([^"\']*)["\']/i', $img, $am)) {
+                    $alts[] = $am[1];
+                    if ($has_kw && $contains($am[1], $keyword)) {
+                        $has_kw_alt = true;
+                    }
+                } else {
+                    $alts[] = '';
                 }
             }
         }
-        $checks[] = $this->check('kw_in_alt', 'کلیدواژه در alt تصاویر',
-            $img_count === 0 || $has_kw_alt,
-            $img_count === 0 ? 'تصویری در محتوا نیست.' : 'تصویری با کلمه کلیدی اصلی به‌عنوان alt اضافه کنید.', 'advanced');
+        if ($img_count === 0) {
+            $checks[] = $this->check(
+                'kw_in_alt',
+                'کلیدواژه در alt تصاویر',
+                false,
+                'تصویری در محتوا نیست؛ این معیار فعلاً اعمال نمی‌شود.',
+                'advanced',
+                [
+                    'status'         => 'not_applicable',
+                    'severity'       => 'info',
+                    'evidence'       => ['images' => 0],
+                    'recommendation' => 'در صورت افزودن تصویر، alt توصیفی و مرتبط بنویسید.',
+                    'auto_fixable'  => false,
+                ]
+            );
+        } elseif (!$has_kw) {
+            $checks[] = $this->check(
+                'kw_in_alt',
+                'کلیدواژه در alt تصاویر',
+                false,
+                'کلمه کلیدی تنظیم نشده؛ بررسی alt قابل ارزیابی نیست.',
+                'advanced',
+                [
+                    'status'         => 'unknown',
+                    'severity'       => 'medium',
+                    'evidence'       => ['images' => $img_count],
+                    'recommendation' => 'پس از تنظیم کلمه کلیدی، alt تصاویر را بررسی کنید.',
+                    'auto_fixable'  => true,
+                ]
+            );
+        } else {
+            $checks[] = $this->check(
+                'kw_in_alt',
+                'کلیدواژه در alt تصاویر',
+                $has_kw_alt,
+                $has_kw_alt ? 'حداقل یک تصویر با alt مرتبط با کلمه کلیدی دارد.' : 'تصویری با کلمه کلیدی اصلی به‌عنوان alt اضافه کنید.',
+                'advanced',
+                [
+                    'status'         => $has_kw_alt ? 'pass' : 'fail',
+                    'severity'       => $has_kw_alt ? 'info' : 'medium',
+                    'evidence'       => ['images' => $img_count, 'alts_sample' => array_slice($alts, 0, 5)],
+                    'recommendation' => $has_kw_alt ? '' : 'برای تصویر شاخص یا یکی از تصاویر، alt طبیعی شامل موضوع/کلمه کلیدی بنویسید.',
+                    'auto_fixable'  => true,
+                ]
+            );
+        }
 
         $density = 0.0;
         $kw_occurrences = 0;
         if ($has_kw && $word_count > 0) {
-            // Phrase-level count (Unicode); better for multi-word Persian keywords
-            $kw_occurrences = mb_substr_count(mb_strtolower($clean_text), $kw_lower);
-            $kw_words = max(1, count(preg_split('/\s+/u', trim($keyword), -1, PREG_SPLIT_NO_EMPTY) ?: [1]));
-            // Approximate density: (occurrences * keyword-word-count) / total words * 100
+            $kw_occurrences = $occ($clean_text, $keyword);
+            $kw_words = max(1, count($N ? Bankai_SEO_Text_Normalizer::words($keyword) : (preg_split('/\s+/u', trim($keyword), -1, PREG_SPLIT_NO_EMPTY) ?: [1])));
             $density = round((($kw_occurrences * $kw_words) / $word_count) * 100, 2);
         }
-        $checks[] = $this->check('kw_density', 'چگالی کلمه کلیدی',
-            $has_kw && $density >= 0.5 && $density <= 2.5,
-            !$has_kw
-                ? 'ابتدا کلمه کلیدی اصلی را تنظیم کنید.'
-                : sprintf('چگالی کلمه کلیدی %.2f٪ است (%d بار در متن). هدف حدود ۰٫۵–۲٫۵٪.', $density, $kw_occurrences),
-            'advanced');
+        if (!$has_kw) {
+            $checks[] = $this->check(
+                'kw_density',
+                'چگالی کلمه کلیدی',
+                false,
+                'ابتدا کلمه کلیدی اصلی را تنظیم کنید.',
+                'advanced',
+                [
+                    'status'         => 'unknown',
+                    'severity'       => 'medium',
+                    'evidence'       => ['density' => 0, 'occurrences' => 0],
+                    'recommendation' => 'پس از تنظیم کلمه کلیدی، چگالی را در محدوده ۰٫۵–۲٫۵٪ نگه دارید.',
+                    'auto_fixable'  => false,
+                ]
+            );
+        } else {
+            $den_ok = $density >= 0.5 && $density <= 2.5;
+            $checks[] = $this->check(
+                'kw_density',
+                'چگالی کلمه کلیدی',
+                $den_ok,
+                sprintf('چگالی کلمه کلیدی %.2f٪ است (%d بار در متن). هدف حدود ۰٫۵–۲٫۵٪.', $density, $kw_occurrences),
+                'advanced',
+                [
+                    'status'         => $den_ok ? 'pass' : 'warning',
+                    'severity'       => 'medium',
+                    'evidence'       => ['density' => $density, 'occurrences' => $kw_occurrences, 'words' => $word_count],
+                    'recommendation' => $den_ok ? '' : ($density < 0.5 ? 'چند اشاره طبیعی بیشتر به موضوع در متن بگنجانید.' : 'تکرار کلمه کلیدی را کاهش دهید تا متن طبیعی بماند.'),
+                    'auto_fixable'  => true,
+                ]
+            );
+        }
 
         $url_path = (string) (wp_parse_url($permalink, PHP_URL_PATH) ?: $permalink);
         $url_len  = mb_strlen(rawurldecode($url_path));
-        $checks[] = $this->check('url_length', 'طول URL',
-            $url_len <= 100,
-            sprintf('مسیر آدرس %d کاراکتر است.%s', $url_len, $url_len <= 100 ? ' مناسب است.' : ' کوتاه‌تر پیشنهاد می‌شود (زیر ۱۰۰ کاراکتر مسیر).'), 'advanced');
+        $url_ok   = $url_len <= 100;
+        $checks[] = $this->check(
+            'url_length',
+            'طول URL',
+            $url_ok,
+            sprintf('مسیر آدرس %d کاراکتر است.%s', $url_len, $url_ok ? ' مناسب است.' : ' کوتاه‌تر پیشنهاد می‌شود (زیر ۱۰۰ کاراکتر مسیر).'),
+            'advanced',
+            [
+                'status'         => $url_ok ? 'pass' : 'warning',
+                'severity'       => 'low',
+                'evidence'       => ['path_length' => $url_len, 'path' => mb_substr($url_path, 0, 120)],
+                'recommendation' => $url_ok ? '' : 'اسلاگ کوتاه‌تری انتخاب کنید (برای پست منتشرشده با احتیاط).',
+                'auto_fixable'  => false,
+            ]
+        );
 
         $extracted_links = $this->extract_links_from_html($raw_content);
-        // SEO-relevant internal links: exclude pure in-page anchors (#section)
         $internal_seo = array_values(array_filter(
             $extracted_links['internal'],
             static function ($item) {
@@ -753,82 +1165,244 @@ final class Bankai_SEO_Engine
         ));
         $internal = count($internal_seo);
         $external = count($extracted_links['external']);
-
-        $checks[] = $this->check('internal_links', 'لینک داخلی',
+        $checks[] = $this->check(
+            'internal_links',
+            'لینک داخلی',
             $internal >= 1,
-            $internal > 0 ? sprintf('%d لینک داخلی یافت شد.', $internal) : 'لینک داخلی پیدا نشد. به صفحات مرتبط لینک دهید.', 'advanced');
-
-        $checks[] = $this->check('external_links', 'لینک خارجی',
+            $internal > 0 ? sprintf('%d لینک داخلی یافت شد.', $internal) : 'لینک داخلی پیدا نشد. به صفحات مرتبط لینک دهید.',
+            'advanced',
+            [
+                'status'         => $internal >= 1 ? 'pass' : 'fail',
+                'severity'       => 'high',
+                'evidence'       => ['internal' => $internal],
+                'recommendation' => $internal >= 1 ? '' : 'حداقل به یک مقاله یا صفحه مرتبط داخلی لینک دهید.',
+                'auto_fixable'  => true,
+            ]
+        );
+        $checks[] = $this->check(
+            'external_links',
+            'لینک خارجی',
             $external >= 1,
-            $external > 0 ? sprintf('%d لینک خارجی یافت شد.', $external) : 'هیچ پیوند خروجی یافت نشد. به منابع خارجی پیوند دهید.', 'advanced');
+            $external > 0 ? sprintf('%d لینک خارجی یافت شد.', $external) : 'هیچ پیوند خروجی یافت نشد. به منابع خارجی پیوند دهید.',
+            'advanced',
+            [
+                'status'         => $external >= 1 ? 'pass' : 'warning',
+                'severity'       => 'medium',
+                'evidence'       => ['external' => $external],
+                'recommendation' => $external >= 1 ? '' : 'در صورت وجود منبع معتبر، یک لینک خارجی مرتبط اضافه کنید.',
+                'auto_fixable'  => false,
+            ]
+        );
 
         // --- Title readability ---
-        $title_use = $seo_title ?: $title;
-        $checks[]  = $this->check('kw_start_title', 'کلیدواژه در ابتدای عنوان',
-            $has_kw && mb_stripos(mb_strtolower($title_use), $kw_lower) === 0,
-            'از کلمه کلیدی اصلی در ابتدای عنوان سئو استفاده کنید.', 'title');
+        $title_use = $seo_title !== '' ? $seo_title : $title;
+        $r = $kw_dep(
+            'kw_start_title',
+            'کلیدواژه در ابتدای عنوان',
+            $starts($title_use, $keyword),
+            'کلمه کلیدی در ابتدای عنوان سئو قرار دارد.',
+            'از کلمه کلیدی اصلی در ابتدای عنوان سئو استفاده کنید.',
+            'title',
+            ['title' => mb_substr($title_use, 0, 120)],
+            'عنوان سئو را با کلمه کلیدی شروع کنید اگر طبیعی است.'
+        );
+        $checks[] = $this->check('kw_start_title', 'کلیدواژه در ابتدای عنوان', $r['ok'], $r['msg'], 'title', $r['extra']);
 
         $title_len = mb_strlen($title_use);
-        $checks[]  = $this->check('title_length', 'طول عنوان سئو',
-            $title_len >= 30 && $title_len <= 60,
-            sprintf('طول عنوان: %d کاراکتر (هدف ۳۰–۶۰).', $title_len), 'title');
+        $title_len_ok = $title_len >= 30 && $title_len <= 60;
+        $checks[] = $this->check(
+            'title_length',
+            'طول عنوان سئو',
+            $title_len_ok,
+            sprintf('طول عنوان: %d کاراکتر (هدف ۳۰–۶۰).', $title_len),
+            'title',
+            [
+                'status'         => $title_len_ok ? 'pass' : 'warning',
+                'severity'       => 'medium',
+                'evidence'       => ['length' => $title_len],
+                'recommendation' => $title_len_ok ? '' : ($title_len < 30 ? 'عنوان را کمی کامل‌تر کنید.' : 'عنوان را کوتاه‌تر کنید.'),
+                'auto_fixable'  => true,
+            ]
+        );
 
         $has_num = (bool) preg_match('/\d/u', $title_use);
-        $checks[] = $this->check('title_has_number', 'عدد در عنوان',
-            true, // توصیه اختیاری — روی امتیاز اجباری اثر نگذارد
-            $has_num ? 'عنوان شامل عدد است؛ جذابیت بیشتری دارد.' : 'پیشنهاد: افزودن عدد به عنوان (مثلاً «۵ روش…») کلیک را افزایش می‌دهد.', 'title');
+        $checks[] = $this->check(
+            'title_has_number',
+            'عدد در عنوان',
+            $has_num,
+            $has_num ? 'عنوان شامل عدد است؛ جذابیت بیشتری دارد.' : 'پیشنهاد: افزودن عدد به عنوان (مثلاً «۵ روش…») در صورت تناسب با موضوع.',
+            'title',
+            [
+                'status'         => $has_num ? 'pass' : 'warning',
+                'severity'       => 'low',
+                'evidence'       => ['has_number' => $has_num, 'title' => mb_substr($title_use, 0, 120)],
+                'recommendation' => $has_num ? '' : 'فقط اگر با موضوع سازگار است عدد اضافه کنید؛ اجباری نیست.',
+                'auto_fixable'  => false,
+            ]
+        );
 
         // --- Content readability ---
         $desc_len = mb_strlen($description);
-        $checks[] = $this->check('desc_length', 'طول توضیحات متا',
-            $desc_len >= 120 && $desc_len <= 160,
-            sprintf('طول توضیحات: %d کاراکتر (هدف ۱۲۰–۱۶۰).', $desc_len), 'content');
+        if ($description === '') {
+            $checks[] = $this->check(
+                'desc_length',
+                'طول توضیحات متا',
+                false,
+                'توضیحات متا خالی است.',
+                'content',
+                [
+                    'status'         => 'fail',
+                    'severity'       => 'high',
+                    'evidence'       => ['length' => 0],
+                    'recommendation' => 'یک Meta Description بین ۱۲۰ تا ۱۶۰ کاراکتر بنویسید.',
+                    'auto_fixable'  => true,
+                ]
+            );
+        } else {
+            $desc_ok = $desc_len >= 120 && $desc_len <= 160;
+            $checks[] = $this->check(
+                'desc_length',
+                'طول توضیحات متا',
+                $desc_ok,
+                sprintf('طول توضیحات: %d کاراکتر (هدف ۱۲۰–۱۶۰).', $desc_len),
+                'content',
+                [
+                    'status'         => $desc_ok ? 'pass' : 'warning',
+                    'severity'       => 'medium',
+                    'evidence'       => ['length' => $desc_len],
+                    'recommendation' => $desc_ok ? '' : ($desc_len < 120 ? 'توضیحات را کمی کامل‌تر کنید.' : 'توضیحات را کوتاه‌تر کنید.'),
+                    'auto_fixable'  => true,
+                ]
+            );
+        }
 
         preg_match_all('/<p\b[^>]*>(.*?)<\/p>/is', $raw_content, $paras);
         $long_para = false;
         foreach ($paras[1] ?? [] as $p) {
-            $p_words = preg_split('/\s+/u', trim(wp_strip_all_tags($p)), -1, PREG_SPLIT_NO_EMPTY);
-            if (is_array($p_words) && count($p_words) > 120) {
+            $pw = $N ? Bankai_SEO_Text_Normalizer::word_count(wp_strip_all_tags($p)) : count(preg_split('/\s+/u', trim(wp_strip_all_tags($p)), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+            if ($pw > 120) {
                 $long_para = true;
                 break;
             }
         }
-        $checks[] = $this->check('short_paragraphs', 'پاراگراف‌های کوتاه',
+        // If no <p> tags but long plain text, still evaluate
+        if (!$paras[1] && $word_count > 120) {
+            // treat as single block — warning only if huge
+            $long_para = $word_count > 400 && substr_count($raw_content, "\n") < 3;
+        }
+        $checks[] = $this->check(
+            'short_paragraphs',
+            'پاراگراف‌های کوتاه',
             !$long_para,
-            $long_para ? 'حداقل یک پاراگراف طولانی است. پاراگراف‌های کوتاه پیشنهاد می‌شود.' : 'طول پاراگراف‌ها مناسب است.', 'content');
+            $long_para ? 'حداقل یک پاراگراف طولانی است. پاراگراف‌های کوتاه پیشنهاد می‌شود.' : 'طول پاراگراف‌ها مناسب است.',
+            'content',
+            [
+                'status'         => !$long_para ? 'pass' : 'warning',
+                'severity'       => 'low',
+                'evidence'       => ['paragraph_tags' => count($paras[1] ?? [])],
+                'recommendation' => $long_para ? 'پاراگراف‌های بلند را به چند بند کوتاه‌تر تقسیم کنید.' : '',
+                'auto_fixable'  => true,
+            ]
+        );
 
-        // Lists
         $has_list = (bool) preg_match('/<(ul|ol)\b/i', $raw_content);
-        $checks[] = $this->check('has_lists', 'استفاده از فهرست',
-            $has_list,
-            $has_list ? 'فهرست (لیست) در محتوا وجود دارد.' : 'برای خوانایی بهتر از لیست شماره‌دار یا نقطه‌ای استفاده کنید.', 'content');
+        // Lists are recommended for long how-to content; N/A for very short posts
+        if ($word_count < 150) {
+            $checks[] = $this->check(
+                'has_lists',
+                'استفاده از فهرست',
+                false,
+                'محتوای کوتاه است؛ فهرست الزامی نیست.',
+                'content',
+                [
+                    'status'         => 'not_applicable',
+                    'severity'       => 'info',
+                    'evidence'       => ['words' => $word_count, 'has_list' => $has_list],
+                    'recommendation' => '',
+                    'auto_fixable'  => false,
+                ]
+            );
+        } else {
+            $checks[] = $this->check(
+                'has_lists',
+                'استفاده از فهرست',
+                $has_list,
+                $has_list ? 'فهرست (لیست) در محتوا وجود دارد.' : 'برای خوانایی بهتر از لیست شماره‌دار یا نقطه‌ای استفاده کنید.',
+                'content',
+                [
+                    'status'         => $has_list ? 'pass' : 'warning',
+                    'severity'       => 'low',
+                    'evidence'       => ['has_list' => $has_list],
+                    'recommendation' => $has_list ? '' : 'در صورت مناسب بودن موضوع، یک فهرست مراحل یا نکات اضافه کنید.',
+                    'auto_fixable'  => true,
+                ]
+            );
+        }
 
-        // Sentence length (approx for FA/EN)
-        $sentences = preg_split('/(?<=[.!?…۔])\s+/u', $clean_text, -1, PREG_SPLIT_NO_EMPTY);
+        // Sentence length — Persian punctuation included
+        $sentences = preg_split('/(?<=[.!?…۔؟!])\s+/u', $clean_text, -1, PREG_SPLIT_NO_EMPTY);
         $long_sent = 0;
         $sent_count = is_array($sentences) ? count($sentences) : 0;
         if (is_array($sentences)) {
             foreach ($sentences as $s) {
-                $sw = preg_split('/\s+/u', trim($s), -1, PREG_SPLIT_NO_EMPTY);
-                if (is_array($sw) && count($sw) > 40) {
+                $sw = $N ? Bankai_SEO_Text_Normalizer::word_count($s) : count(preg_split('/\s+/u', trim($s), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+                if ($sw > 40) {
                     $long_sent++;
                 }
             }
         }
         $sent_ok = $sent_count === 0 || ($long_sent / max(1, $sent_count)) < 0.35;
-        $checks[] = $this->check('sentence_length', 'طول جملات',
+        $checks[] = $this->check(
+            'sentence_length',
+            'طول جملات',
             $sent_ok,
-            $sent_ok ? 'طول جملات در محدوده مناسب است.' : sprintf('%d جمله بسیار طولانی است؛ کوتاه‌تر بنویسید.', $long_sent), 'content');
+            $sent_ok ? 'طول جملات در محدوده مناسب است.' : sprintf('%d جمله بسیار طولانی است؛ کوتاه‌تر بنویسید.', $long_sent),
+            'content',
+            [
+                'status'         => $sent_ok ? 'pass' : 'warning',
+                'severity'       => 'low',
+                'evidence'       => ['sentences' => $sent_count, 'long_sentences' => $long_sent],
+                'recommendation' => $sent_ok ? '' : 'جملات بلند را به دو یا چند جمله کوتاه‌تر بشکنید.',
+                'auto_fixable'  => true,
+            ]
+        );
 
-        // Heading ratio vs words
         $h_count = count($headings[0] ?? []);
         $need_h = $word_count > 300 ? max(1, (int) floor($word_count / 350)) : 0;
-        $h_ok = $need_h === 0 || $h_count >= $need_h;
-        $checks[] = $this->check('heading_ratio', 'نسبت زیرتیتر به طول متن',
-            $h_ok,
-            $h_ok ? 'تعداد زیرتیترها با طول محتوا هماهنگ است.' : sprintf('برای %d کلمه حدود %d زیرتیتر پیشنهاد می‌شود (الان: %d).', $word_count, $need_h, $h_count), 'content');
+        if ($need_h === 0) {
+            $checks[] = $this->check(
+                'heading_ratio',
+                'نسبت زیرتیتر به طول متن',
+                false,
+                'برای متن کوتاه‌تر از ۳۰۰ کلمه، نسبت زیرتیتر الزامی نیست.',
+                'content',
+                [
+                    'status'         => 'not_applicable',
+                    'severity'       => 'info',
+                    'evidence'       => ['headings' => $h_count, 'words' => $word_count],
+                    'recommendation' => '',
+                    'auto_fixable'  => false,
+                ]
+            );
+        } else {
+            $h_ok = $h_count >= $need_h;
+            $checks[] = $this->check(
+                'heading_ratio',
+                'نسبت زیرتیتر به طول متن',
+                $h_ok,
+                $h_ok ? 'تعداد زیرتیترها با طول محتوا هماهنگ است.' : sprintf('برای %d کلمه حدود %d زیرتیتر پیشنهاد می‌شود (الان: %d).', $word_count, $need_h, $h_count),
+                'content',
+                [
+                    'status'         => $h_ok ? 'pass' : 'warning',
+                    'severity'       => 'medium',
+                    'evidence'       => ['headings' => $h_count, 'needed' => $need_h, 'words' => $word_count],
+                    'recommendation' => $h_ok ? '' : 'زیرتیترهای H2/H3 مرتبط اضافه کنید.',
+                    'auto_fixable'  => true,
+                ]
+            );
+        }
 
-        // Duplicate title / slug across site
+        // Unique title/slug
         $dup_msg = 'عنوان و آدرس یکتا هستند.';
         $dup_ok = true;
         if ($slug !== '') {
@@ -855,20 +1429,47 @@ final class Bankai_SEO_Engine
                 'fields'         => 'ids',
             ]);
             foreach ($title_hits as $hid) {
-                if (mb_strtolower(get_the_title((int) $hid)) === mb_strtolower($title)) {
+                $other = get_the_title((int) $hid);
+                $same = $N
+                    ? (Bankai_SEO_Text_Normalizer::normalize($other) === Bankai_SEO_Text_Normalizer::normalize($title))
+                    : (mb_strtolower($other) === mb_strtolower($title));
+                if ($same) {
                     $dup_ok = false;
                     $dup_msg = 'عنوان دقیقاً با پست دیگری یکسان است.';
                     break;
                 }
             }
         }
-        $checks[] = $this->check('unique_title', 'یکتایی عنوان/اسلاگ',
-            $dup_ok, $dup_msg, 'advanced');
+        $checks[] = $this->check(
+            'unique_title',
+            'یکتایی عنوان/اسلاگ',
+            $dup_ok,
+            $dup_msg,
+            'advanced',
+            [
+                'status'         => $dup_ok ? 'pass' : 'fail',
+                'severity'       => 'high',
+                'evidence'       => ['slug' => $slug, 'title' => mb_substr($title, 0, 120)],
+                'recommendation' => $dup_ok ? '' : 'عنوان یا اسلاگ را متمایز کنید.',
+                'auto_fixable'  => false,
+            ]
+        );
 
         $has_media = $img_count > 0 || (bool) preg_match('/<(video|iframe|embed)\b/i', $raw_content);
-        $checks[]  = $this->check('rich_media', 'رسانه غنی',
+        $checks[] = $this->check(
+            'rich_media',
+            'رسانه غنی',
             $has_media,
-            $has_media ? 'رسانه در محتوا وجود دارد.' : 'از تصاویر یا ویدئو استفاده کنید.', 'content');
+            $has_media ? 'رسانه در محتوا وجود دارد.' : 'از تصاویر یا ویدئو استفاده کنید.',
+            'content',
+            [
+                'status'         => $has_media ? 'pass' : 'warning',
+                'severity'       => 'medium',
+                'evidence'       => ['images' => $img_count, 'has_media' => $has_media],
+                'recommendation' => $has_media ? '' : 'حداقل یک تصویر مرتبط اضافه کنید.',
+                'auto_fixable'  => true,
+            ]
+        );
 
         foreach ($checks as $c) {
             $g = $c['group'] ?? 'basic';
@@ -878,17 +1479,34 @@ final class Bankai_SEO_Engine
             $groups[$g]['items'][] = $c;
         }
 
-        $passed = count(array_filter($checks, static fn($c) => $c['passed']));
-        $total  = count($checks);
-        $score  = $total > 0 ? (int) round(($passed / $total) * 100) : 0;
+        // Scoring (Phase B):
+        // - Exclude not_applicable from denominator (does not unfairly lower score)
+        // - unknown is NOT counted as pass
+        // - pass → passed; warning/fail/unknown → not passed
+        // Formula documented: score = round(pass_count / scored_total * 100)
+        // Legacy fields: passed = pass_count, total = scored_total (eligible)
+        $pass_count = 0;
+        $scored_total = 0;
+        foreach ($checks as $c) {
+            $st = (string) ($c['status'] ?? '');
+            if ($st === 'not_applicable') {
+                continue;
+            }
+            $scored_total++;
+            if ($st === 'pass') {
+                $pass_count++;
+            }
+        }
+        $score = $scored_total > 0 ? (int) round(($pass_count / $scored_total) * 100) : 0;
 
         return [
-            'score'  => $score,
-            'passed' => $passed,
-            'total'  => $total,
-            'checks' => $checks,
-            'groups' => $groups,
-            'stats'  => [
+            'score'           => $score,
+            'passed'          => $pass_count,
+            'total'           => $scored_total,
+            'checks'          => $checks,
+            'groups'          => $groups,
+            'scoring_version' => 'b1',
+            'stats'           => [
                 'words'       => $word_count,
                 'description' => $desc_len,
                 'images'      => $img_count,
@@ -901,21 +1519,39 @@ final class Bankai_SEO_Engine
         ];
     }
 
-    private function check(string $key, string $label, bool $passed, string $message, string $group = 'basic'): array
+    /**
+     * Build a checklist item. Keeps legacy `passed` for UI/REST consumers.
+     *
+     * @param array<string,mixed> $extra status, severity, evidence, recommendation, auto_fixable
+     * @return array<string,mixed>
+     */
+    private function check(string $key, string $label, bool $passed, string $message, string $group = 'basic', array $extra = []): array
     {
-        return compact('key', 'label', 'passed', 'message', 'group');
+        $status = (string) ($extra['status'] ?? ($passed ? 'pass' : 'fail'));
+        // Align passed with status when status is authoritative
+        if ($status === 'pass') {
+            $passed = true;
+        } elseif (in_array($status, ['fail', 'warning', 'unknown', 'not_applicable'], true)) {
+            // not_applicable: passed=false but excluded from score
+            $passed = false;
+        }
+
+        return [
+            'key'            => $key,
+            'id'             => $key,
+            'label'          => $label,
+            'passed'         => $passed,
+            'status'         => $status,
+            'severity'       => (string) ($extra['severity'] ?? ($passed ? 'info' : 'medium')),
+            'message'        => $message,
+            'evidence'       => is_array($extra['evidence'] ?? null) ? $extra['evidence'] : [],
+            'recommendation' => (string) ($extra['recommendation'] ?? ''),
+            'auto_fixable'  => (bool) ($extra['auto_fixable'] ?? false),
+            'group'          => $group,
+        ];
     }
 
 
-    /**
-     * 301 redirect for single posts with redirect meta set.
-     */
-
-    /**
-     * Lightweight related posts by keyword / title for on-save suggestions.
-     *
-     * @return list<array{id:int,title:string,permalink:string}>
-     */
     public function quick_related_posts(int $post_id, string $keyword, int $limit = 5): array
     {
         $keyword = trim($keyword);
@@ -1536,216 +2172,355 @@ final class Bankai_SEO_Engine
 
     public function api_suggest_internal_links(WP_REST_Request $request): WP_REST_Response
     {
-        $params   = $request->get_json_params() ?: [];
-        $post_id  = absint($params['post_id'] ?? 0);
-        $keywords = $params['keywords'] ?? [];
-        $content  = isset($params['content']) ? (string) $params['content'] : '';
+        $params  = $request->get_json_params() ?: $request->get_params();
+        if (!is_array($params)) {
+            $params = [];
+        }
+        $post_id = absint($params['post_id'] ?? 0);
+        $limit   = min(15, max(1, absint($params['limit'] ?? 8)));
 
-        if (!is_array($keywords)) {
-            $keywords = preg_split('/[,،]+/u', (string) $keywords) ?: [];
+        if ($post_id > 0 && !current_user_can('edit_post', $post_id)) {
+            return new WP_REST_Response(['success' => false, 'message' => 'Permission denied'], 403);
         }
 
-        $keywords = array_values(array_filter(array_map(static fn($k) => sanitize_text_field(trim((string) $k)), $keywords)));
-
-        if ($post_id > 0 && empty($keywords)) {
-            $focus = (string) get_post_meta($post_id, self::META_KEYWORD, true);
-            if ($focus !== '') {
-                $keywords[] = $focus;
-            }
-            $kw_raw = (string) get_post_meta($post_id, self::META_KEYWORDS, true);
-            if ($kw_raw !== '') {
-                $decoded = json_decode($kw_raw, true);
-                if (is_array($decoded)) {
-                    $keywords = array_merge($keywords, $decoded);
-                }
-            }
-        }
-
-        $fixed = $this->get_fixed_keywords_list();
-
-        if ($content === '' && $post_id > 0) {
-            $post    = get_post($post_id);
-            $content = $post ? $post->post_content : '';
-        }
-
-        $clean_content = wp_strip_all_tags($content);
-        $suggestions   = [];
-        $seen_ids      = [$post_id => true];
-
-        // Optimized single query search
-        $search_terms = array_slice(array_filter($keywords, static fn($k) => mb_strlen($k) >= 2), 0, 5);
-        if (!empty($search_terms)) {
-            $found_posts = get_posts([
-                'post_type'      => ['post', 'page'],
-                'post_status'    => 'publish',
-                'posts_per_page' => 15,
-                'post__not_in'   => array_keys($seen_ids),
-                's'              => implode(' ', $search_terms),
-            ]);
-
-            foreach ($found_posts as $p) {
-                if (isset($seen_ids[$p->ID])) {
-                    continue;
-                }
-                $seen_ids[$p->ID] = true;
-                $target_kw        = (string) get_post_meta($p->ID, self::META_KEYWORD, true);
-                $anchor           = $target_kw !== '' ? $target_kw : get_the_title($p);
-
-                $anchor_in_content = null;
-                foreach (array_merge([$anchor, get_the_title($p)], $keywords) as $cand) {
-                    $cand = trim((string) $cand);
-                    if ($cand !== '' && mb_stripos($clean_content, $cand) !== false) {
-                        $anchor_in_content = $cand;
-                        break;
-                    }
-                }
-
-                $suggestions[] = [
-                    'id'               => $p->ID,
-                    'title'            => get_the_title($p),
-                    'permalink'        => get_permalink($p),
-                    'focus_keyword'    => $target_kw,
-                    'suggested_anchor' => $anchor_in_content ?: $anchor,
-                    'in_content'       => $anchor_in_content !== null,
-                ];
-            }
-        }
+        $result = $this->suggest_ranked_internal_links($post_id, [
+            'keywords' => $params['keywords'] ?? [],
+            'content'  => isset($params['content']) ? (string) $params['content'] : '',
+            'title'    => isset($params['title']) ? sanitize_text_field((string) $params['title']) : '',
+            'limit'    => $limit,
+        ]);
 
         return new WP_REST_Response([
             'success' => true,
-            'data'    => [
-                'suggestions' => $suggestions,
-                'keywords'    => $keywords,
-                'fixed'       => $fixed,
-            ],
+            'data'    => $result,
         ]);
     }
 
-    public function maybe_create_views_table(): void
+    /**
+     * Phase E — ranked internal link suggestions (deterministic).
+     *
+     * @param array{keywords?:mixed,content?:string,title?:string,limit?:int} $opts
+     * @return array{suggestions:list<array<string,mixed>>,keywords:list<string>,source:array<string,mixed>,limits:array<string,int>}
+     */
+    public function suggest_ranked_internal_links(int $post_id, array $opts = []): array
     {
-        if (get_option('bankai_views_table_ver') === '1') {
-            return;
+        $limit = min(15, max(1, absint($opts['limit'] ?? 8)));
+        $post  = $post_id > 0 ? get_post($post_id) : null;
+
+        $title = (string) ($opts['title'] ?? '');
+        if ($title === '' && $post) {
+            $title = get_the_title($post);
         }
-
-        global $wpdb;
-        $table   = $wpdb->prefix . 'bankai_post_views';
-        $charset = $wpdb->get_charset_collate();
-
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        $sql = "CREATE TABLE {$table} (
-            post_id BIGINT UNSIGNED NOT NULL,
-            view_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
-            last_viewed_at DATETIME NULL,
-            PRIMARY KEY (post_id),
-            KEY view_count (view_count)
-        ) {$charset};";
-
-        dbDelta($sql);
-        update_option('bankai_views_table_ver', '1', false);
-    }
-
-    public function get_views_map(array $ids): array
-    {
-        $ids = array_filter(array_map('absint', $ids));
-        if (empty($ids)) {
-            return [];
+        $content = (string) ($opts['content'] ?? '');
+        if ($content === '' && $post) {
+            $content = (string) $post->post_content;
         }
+        $clean = wp_strip_all_tags($content);
 
-        global $wpdb;
-        $table  = $wpdb->prefix . 'bankai_post_views';
-        $in_sql = implode(',', $ids);
-
-        // Cached query execution
-        $rows = $wpdb->get_results("SELECT post_id, view_count FROM {$table} WHERE post_id IN ({$in_sql})", OBJECT_K);
-
-        $map = [];
-        foreach ($ids as $id) {
-            $map[$id] = isset($rows[$id]) ? (int) $rows[$id]->view_count : (int) get_post_meta($id, self::META_VIEWS, true);
+        $keywords = $opts['keywords'] ?? [];
+        if (!is_array($keywords)) {
+            $keywords = preg_split('/[,،]+/u', (string) $keywords) ?: [];
         }
-        return $map;
-    }
+        $keywords = array_values(array_filter(array_map(static fn($k) => sanitize_text_field(trim((string) $k)), $keywords)));
 
-    public function api_track_view(WP_REST_Request $request): WP_REST_Response
-    {
-        $post_id = absint($request['id']);
-        if ($post_id <= 0 || get_post_status($post_id) !== 'publish') {
-            return new WP_REST_Response(['counted' => false], 200);
+        $focus = '';
+        $secondary = [];
+        if ($post_id > 0) {
+            $focus = trim((string) get_post_meta($post_id, self::META_KEYWORD, true));
+            $kw_raw = get_post_meta($post_id, self::META_KEYWORDS, true);
+            if (is_array($kw_raw)) {
+                $secondary = $kw_raw;
+            } elseif (is_string($kw_raw) && $kw_raw !== '') {
+                $decoded = json_decode($kw_raw, true);
+                $secondary = is_array($decoded) ? $decoded : array_filter(array_map('trim', explode(',', $kw_raw)));
+            }
         }
+        if ($focus === '' && $keywords) {
+            $focus = (string) $keywords[0];
+        }
+        foreach ($keywords as $k) {
+            if ($k !== '' && $k !== $focus) {
+                $secondary[] = $k;
+            }
+        }
+        $secondary = array_values(array_unique(array_filter(array_map('strval', $secondary))));
 
-        $ua   = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
-        $bots = ['googlebot', 'bingbot', 'yandex', 'baiduspider', 'duckduckbot', 'slurp', 'bot/', 'crawler', 'spider'];
-        foreach ($bots as $b) {
-            if (str_contains($ua, $b)) {
-                return new WP_REST_Response(['counted' => false, 'reason' => 'bot'], 200);
+        // Extract headings
+        preg_match_all('/<h[2-6]\b[^>]*>(.*?)<\/h[2-6]>/is', $content, $hm);
+        $headings = array_map(static fn($h) => trim(wp_strip_all_tags($h)), $hm[1] ?? []);
+
+        // Existing internal destinations (URLs) — resolve post IDs robustly
+        $extracted = $this->extract_links_from_html($content);
+        $existing_urls = [];
+        $existing_ids = [];
+        foreach ($extracted['internal'] as $item) {
+            $href = (string) ($item['href'] ?? '');
+            if ($href === '' || str_starts_with($href, '#')) {
+                continue;
+            }
+            $existing_urls[] = $href;
+            $tid = $this->resolve_internal_href_to_post_id($href);
+            if ($tid > 0) {
+                $existing_ids[$tid] = true;
             }
         }
 
-        $ip      = $_SERVER['REMOTE_ADDR'] ?? '0';
-        $ip_hash = md5($ip . gmdate('Y-m-d'));
-        $tkey    = "bankai_view_{$post_id}_{$ip_hash}";
-
-        if (get_transient($tkey)) {
-            return new WP_REST_Response(['counted' => false, 'reason' => 'dedupe'], 200);
+        $src_cats = $post_id ? wp_get_post_terms($post_id, 'category', ['fields' => 'names']) : [];
+        $src_tags = $post_id ? wp_get_post_terms($post_id, 'post_tag', ['fields' => 'names']) : [];
+        if (is_wp_error($src_cats)) {
+            $src_cats = [];
         }
-        set_transient($tkey, 1, DAY_IN_SECONDS);
-
-        global $wpdb;
-        $table = $wpdb->prefix . 'bankai_post_views';
-        
-        $wpdb->query($wpdb->prepare(
-            "INSERT INTO {$table} (post_id, view_count, last_viewed_at) VALUES (%d, 1, %s)
-             ON DUPLICATE KEY UPDATE view_count = view_count + 1, last_viewed_at = VALUES(last_viewed_at)",
-            $post_id,
-            current_time('mysql', true)
-        ));
-
-        $count = (int) get_post_meta($post_id, self::META_VIEWS, true) + 1;
-        update_post_meta($post_id, self::META_VIEWS, $count);
-
-        return new WP_REST_Response(['counted' => true, 'views' => $count], 200);
-    }
-
-    public function print_view_tracker(): void
-    {
-        if (!is_singular(['post', 'page'])) {
-            return;
+        if (is_wp_error($src_tags)) {
+            $src_tags = [];
         }
-        $id = get_queried_object_id();
-        if ($id <= 0) {
-            return;
+
+        $source = [
+            'title'      => $title,
+            'content'    => $clean,
+            'focus'      => $focus,
+            'secondary'  => $secondary,
+            'headings'   => $headings,
+            'categories' => array_values((array) $src_cats),
+            'tags'       => array_values((array) $src_tags),
+            'existing_urls' => $existing_urls,
+        ];
+
+        // Candidate discovery: limited, publish-only, exclude self
+        $candidate_ids = $this->discover_link_candidates($post_id, $focus, $secondary, $title, 40);
+        $scored = [];
+
+        foreach ($candidate_ids as $cid) {
+            $cid = (int) $cid;
+            if ($cid <= 0 || $cid === $post_id) {
+                continue;
+            }
+            if (isset($existing_ids[$cid])) {
+                continue; // already linked
+            }
+            $tp = get_post($cid);
+            if (!$tp || $tp->post_status !== 'publish') {
+                continue;
+            }
+            if (!in_array($tp->post_type, ['post', 'page'], true)) {
+                continue;
+            }
+            if (function_exists('is_post_publicly_viewable') && !is_post_publicly_viewable($tp)) {
+                continue;
+            }
+
+            $t_clean = wp_strip_all_tags((string) $tp->post_content);
+            preg_match_all('/<h[2-6]\b[^>]*>(.*?)<\/h[2-6]>/is', (string) $tp->post_content, $thm);
+            $t_heads = array_map(static fn($h) => trim(wp_strip_all_tags($h)), $thm[1] ?? []);
+
+            $t_focus = trim((string) get_post_meta($cid, self::META_KEYWORD, true));
+            $t_sec_raw = get_post_meta($cid, self::META_KEYWORDS, true);
+            $t_sec = [];
+            if (is_array($t_sec_raw)) {
+                $t_sec = $t_sec_raw;
+            } elseif (is_string($t_sec_raw) && $t_sec_raw !== '') {
+                $d = json_decode($t_sec_raw, true);
+                $t_sec = is_array($d) ? $d : [];
+            }
+
+            $t_cats = wp_get_post_terms($cid, 'category', ['fields' => 'names']);
+            $t_tags = wp_get_post_terms($cid, 'post_tag', ['fields' => 'names']);
+            if (is_wp_error($t_cats)) {
+                $t_cats = [];
+            }
+            if (is_wp_error($t_tags)) {
+                $t_tags = [];
+            }
+
+            $permalink = get_permalink($cid);
+            if (!$permalink) {
+                continue;
+            }
+
+            $target = [
+                'id'         => $cid,
+                'title'      => get_the_title($tp),
+                'content'    => $t_clean,
+                'focus'      => $t_focus,
+                'secondary'  => array_values(array_filter(array_map('strval', $t_sec))),
+                'headings'   => $t_heads,
+                'categories' => array_values((array) $t_cats),
+                'tags'       => array_values((array) $t_tags),
+                'permalink'  => $permalink,
+            ];
+
+            $rank = class_exists('Bankai_SEO_Link_Ranker')
+                ? Bankai_SEO_Link_Ranker::score($source, $target)
+                : ['score' => 0.0, 'factors' => [], 'reasons' => [], 'anchor' => $t_focus ?: get_the_title($tp), 'evidence' => []];
+
+            // Minimum relevance gate: avoid title-only noise
+            if ((float) ($rank['score'] ?? 0) < 12.0) {
+                continue;
+            }
+
+            $anchor = (string) ($rank['anchor'] ?? '');
+            $anchor_in_source = !empty($rank['evidence']['anchor_in_source']);
+            $scored[] = [
+                'id'                 => $cid,
+                'target_post_id'     => $cid,
+                'title'              => $target['title'],
+                'target_title'       => $target['title'],
+                'permalink'          => $permalink,
+                'target_url'         => $permalink,
+                'focus_keyword'      => $t_focus,
+                'suggested_anchor'   => $anchor,
+                'keyword'            => $anchor, // backward compat for JS
+                'anchor_in_content'  => $anchor_in_source,
+                'in_content'         => $anchor_in_source,
+                'score'              => (float) ($rank['score'] ?? 0),
+                'factors'            => $rank['factors'] ?? [],
+                'reasons'            => $rank['reasons'] ?? [],
+                'reason'             => implode(' ', $rank['reasons'] ?? []),
+                'evidence'           => $rank['evidence'] ?? [],
+                'link_status'        => 'new',
+                'requires_approval'  => true,
+                'insertion_confidence' => $anchor_in_source ? 'high' : 'low',
+            ];
         }
-        $url = esc_url_raw(rest_url('bankai/v1/track-view/' . $id));
-        printf(
-            "<script>(function(){try{fetch(%s,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'});}catch(e){}})();</script>\n",
-            wp_json_encode($url)
-        );
+
+        usort($scored, static function ($a, $b) {
+            return ($b['score'] <=> $a['score']);
+        });
+        $scored = array_slice($scored, 0, $limit);
+
+        return [
+            'suggestions' => $scored,
+            'keywords'    => array_values(array_filter(array_merge($focus !== '' ? [$focus] : [], $secondary))),
+            'source'      => [
+                'post_id' => $post_id,
+                'focus'   => $focus,
+                'title'   => $title,
+            ],
+            'limits'      => [
+                'candidates_scanned' => count($candidate_ids),
+                'returned'           => count($scored),
+                'max'                => $limit,
+            ],
+        ];
     }
 
     /**
-     * Helper to merge and deduplicate keyword arrays (Unicode Aware)
+     * Discover candidate post IDs (publish only, capped).
+     *
+     * @param list<string> $secondary
+     * @return list<int>
      */
-    private function merge_unique_keywords(array $keywords): array
+    private function discover_link_candidates(int $exclude_id, string $focus, array $secondary, string $title, int $cap = 40): array
     {
-        $seen   = [];
-        $merged = [];
-        foreach ($keywords as $kw) {
-            $kw = trim((string) $kw);
-            if ($kw === '') {
-                continue;
-            }
-            $lower = mb_strtolower($kw);
-            if (isset($seen[$lower])) {
-                continue;
-            }
-            $seen[$lower] = true;
-            $merged[]     = $kw;
+        $ids = [];
+        $terms = array_values(array_filter(array_merge(
+            $focus !== '' ? [$focus] : [],
+            array_slice($secondary, 0, 4),
+            $title !== '' ? [mb_substr($title, 0, 40)] : []
+        )));
+        if (!$terms) {
+            // No keywords: recent related by category only if exclude_id has cats
+            $q = new \WP_Query([
+                'post_type'              => ['post', 'page'],
+                'post_status'            => 'publish',
+                'posts_per_page'         => min(15, $cap),
+                'post__not_in'           => $exclude_id > 0 ? [$exclude_id] : [],
+                'orderby'                => 'modified',
+                'order'                  => 'DESC',
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'ignore_sticky_posts'    => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => true,
+            ]);
+            return array_map('intval', $q->posts ?: []);
         }
-        return $merged;
+
+        foreach (array_slice($terms, 0, 5) as $term) {
+            if (count($ids) >= $cap) {
+                break;
+            }
+            $q = new \WP_Query([
+                'post_type'              => ['post', 'page'],
+                'post_status'            => 'publish',
+                's'                      => $term,
+                'posts_per_page'         => 12,
+                'post__not_in'           => array_values(array_unique(array_merge($exclude_id > 0 ? [$exclude_id] : [], array_map('intval', array_keys($ids))))),
+                'orderby'                => 'relevance', // WP core search ranking when `s` is set; not semantic ML
+                'order'                  => 'DESC',
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'ignore_sticky_posts'    => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+            ]);
+            foreach ($q->posts ?: [] as $pid) {
+                $ids[(int) $pid] = true;
+                if (count($ids) >= $cap) {
+                    break 2;
+                }
+            }
+        }
+
+        // Meta keyword match (focus keyword of others)
+        if ($focus !== '' && count($ids) < $cap) {
+            $q = new \WP_Query([
+                'post_type'              => ['post', 'page'],
+                'post_status'            => 'publish',
+                'posts_per_page'         => 15,
+                'post__not_in'           => array_values(array_unique(array_merge($exclude_id > 0 ? [$exclude_id] : [], array_keys($ids)))),
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'meta_query'             => [
+                    [
+                        'key'     => self::META_KEYWORD,
+                        'value'   => $focus,
+                        'compare' => 'LIKE',
+                    ],
+                ],
+            ]);
+            foreach ($q->posts ?: [] as $pid) {
+                $ids[(int) $pid] = true;
+                if (count($ids) >= $cap) {
+                    break;
+                }
+            }
+        }
+
+        return array_keys($ids);
     }
 
+
     /**
-     * Extract internal / external links from HTML (Gutenberg + classic).
+     * Resolve an internal href (absolute, relative, or pretty permalink) to a post ID.
+     * Phase E.2 — stronger than raw url_to_postid alone.
      */
+    private function resolve_internal_href_to_post_id(string $href): int
+    {
+        $href = trim(html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($href === '' || str_starts_with($href, '#') || str_starts_with($href, 'mailto:') || str_starts_with($href, 'tel:')) {
+            return 0;
+        }
+        $tid = url_to_postid($href);
+        if ($tid > 0) {
+            return $tid;
+        }
+        // Relative path → absolute
+        if (str_starts_with($href, '/') && !str_starts_with($href, '//')) {
+            $tid = url_to_postid(home_url($href));
+            if ($tid > 0) {
+                return $tid;
+            }
+        }
+        if (str_starts_with($href, '//')) {
+            $tid = url_to_postid('https:' . $href);
+            if ($tid > 0) {
+                return $tid;
+            }
+        }
+        // Path-only match against known query is expensive; skip unbounded scans.
+        return 0;
+    }
+
     private function extract_links_from_html(string $content): array
     {
         $internal = [];
@@ -1835,6 +2610,36 @@ final class Bankai_SEO_Engine
         return $home_host !== '' && $host === $home_host;
     }
 
+
+    /**
+     * Merge keyword lists, case-insensitive unique, preserve first occurrence order.
+     *
+     * @param list<mixed> $keywords
+     * @return list<string>
+     */
+    private function merge_unique_keywords(array $keywords): array
+    {
+        $out = [];
+        $seen = [];
+        foreach ($keywords as $kw) {
+            if (!is_scalar($kw)) {
+                continue;
+            }
+            $kw = trim((string) $kw);
+            if ($kw === '') {
+                continue;
+            }
+            $key = function_exists('mb_strtolower')
+                ? mb_strtolower($kw, 'UTF-8')
+                : strtolower($kw);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[] = $kw;
+        }
+        return $out;
+    }
 
     private function resolve_pretty_permalink(int $post_id, $post = null): string
     {

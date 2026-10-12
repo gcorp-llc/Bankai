@@ -739,6 +739,73 @@ final class Bankai_AI_Studio
         return array_key_first($catalog) ?: 'openrouter';
     }
 
+
+    /**
+     * Phase D — text Provider for SEO assistant: always central default.
+     * Client-supplied provider is ignored (cannot override settings).
+     */
+    public function resolve_central_text_provider(string $client_provider = ''): string
+    {
+        $central = $this->get_default_provider();
+        // Intentionally ignore $client_provider
+        return is_string($central) ? $central : '';
+    }
+
+    /**
+     * Phase D — image Provider for SEO assistant: always central image default.
+     */
+    public function resolve_central_image_provider(string $client_provider = ''): string
+    {
+        $central = $this->get_default_image_provider();
+        if ($central === '') {
+            $keys = $this->get_image_keys();
+            foreach ($keys as $pid => $k) {
+                if (is_string($k) && trim($k) !== '') {
+                    return (string) $pid;
+                }
+            }
+        }
+        return is_string($central) ? $central : '';
+    }
+
+    /**
+     * Human-readable readiness error for text provider, or empty if OK.
+     */
+    public function text_provider_readiness_error(string $provider = ''): string
+    {
+        if ($provider === '') {
+            $provider = $this->get_default_provider();
+        }
+        if ($provider === '') {
+            return 'هیچ موتور متنی پیش‌فرضی در تنظیمات مرکزی AI انتخاب نشده است. از استودیو هوش مصنوعی یک Provider پیش‌فرض تنظیم کنید.';
+        }
+        $keys = $this->get_keys();
+        if (empty($keys[$provider]) || !is_string($keys[$provider]) || trim($keys[$provider]) === '') {
+            $name = self::all_providers_catalog()[$provider]['name'] ?? $provider;
+            return sprintf('کلید API برای موتور متنی «%s» در تنظیمات مرکزی تنظیم نشده است.', $name);
+        }
+        return '';
+    }
+
+    /**
+     * Human-readable readiness error for image provider, or empty if OK.
+     */
+    public function image_provider_readiness_error(string $provider = ''): string
+    {
+        if ($provider === '') {
+            $provider = $this->resolve_central_image_provider();
+        }
+        if ($provider === '') {
+            return 'هیچ موتور تصویری در تنظیمات مرکزی پیکربندی نشده است. از استودیو AI → تب تصویر یک Provider تنظیم کنید.';
+        }
+        $keys = $this->get_image_keys();
+        if (empty($keys[$provider]) || !is_string($keys[$provider]) || trim($keys[$provider]) === '') {
+            return 'کلید API موتور تصویر پیش‌فرض در تنظیمات مرکزی موجود نیست.';
+        }
+        return '';
+    }
+
+
     public function provider_status_list(): array
     {
         $keys    = $this->get_keys();
@@ -766,7 +833,378 @@ final class Bankai_AI_Studio
      * AJAX: SEO task
      * ----------------------------------------------------------------*/
 
+
+    /**
+     * Phase C — Generate SEO title/description, validate via Bankai_SEO_Engine::analyze(),
+     * repair up to 2 times. Never mutates post content/meta by itself.
+     *
+     * @param array<string,mixed> $ctx post_id, title, content, focus_keyword, locale, provider, mode(title|description|both)
+     * @return array<string,mixed>
+     */
+    public function run_meta_generation_pipeline(array $ctx): array
+    {
+        $post_id  = absint($ctx['post_id'] ?? 0);
+        $title    = sanitize_text_field((string) ($ctx['title'] ?? ''));
+        $content  = (string) ($ctx['content'] ?? '');
+        $focus    = sanitize_text_field((string) ($ctx['focus_keyword'] ?? ''));
+        $locale   = sanitize_text_field((string) ($ctx['locale'] ?? 'fa_IR'));
+        $provider = sanitize_key((string) ($ctx['provider'] ?? ''));
+        $mode     = sanitize_key((string) ($ctx['mode'] ?? 'both')); // title|description|both
+
+        // Phase D: always central text provider (ignore client)
+        $provider = $this->resolve_central_text_provider((string) $provider);
+        $ready_err = $this->text_provider_readiness_error($provider);
+        if ($ready_err !== '') {
+            return [
+                'seo_title' => '',
+                'title' => '',
+                'description' => '',
+                'meta_description' => '',
+                'generation_status' => 'error',
+                'validation_status' => 'failed',
+                'attempts' => 0,
+                'failed_checks' => [],
+                'analysis' => [],
+                'baseline_score' => 0,
+                'score' => 0,
+                'message' => $ready_err,
+                'provider_error' => $ready_err,
+                'validated' => false,
+                'needs_review' => false,
+            ];
+        }
+
+        $is_fa = $this->detect_is_fa($title, $content, $locale);
+
+        // Baseline analysis (deterministic)
+        $baseline = $this->run_deterministic_analyze($post_id, [
+            'seo_title'      => (string) ($ctx['current_seo_title'] ?? ''),
+            'description'    => (string) ($ctx['current_description'] ?? ''),
+            'focus_keyword'  => $focus,
+            'content'        => $content,
+        ]);
+
+        $seo_title   = '';
+        $description = '';
+        $attempts    = 0;
+        $max_attempts = 3; // 1 initial + 2 repairs
+        $last_failed = [];
+        $generation_status = 'error';
+        $validation_status = 'failed';
+        $provider_error = '';
+
+        $need_title = in_array($mode, ['title', 'both', 'meta_title'], true);
+        $need_desc  = in_array($mode, ['description', 'both', 'meta_description', 'meta'], true);
+
+        while ($attempts < $max_attempts) {
+            $attempts++;
+            try {
+                if ($need_title) {
+                    $extra = [
+                        'failed_checks' => $last_failed,
+                        'attempt'       => $attempts,
+                        'repair'        => $attempts > 1,
+                    ];
+                    $prompts = $this->build_seo_prompts('meta_title', $title, $content, $focus, $is_fa, $extra);
+                    if (!$prompts) {
+                        $provider_error = 'Unknown meta_title task';
+                        break;
+                    }
+                    if ($attempts > 1 && $last_failed) {
+                        $prompts['user'] .= "\n\n" . $this->format_repair_instructions($last_failed, 'title', $is_fa);
+                        $prompts['temperature'] = 0.25;
+                    }
+                    $raw = $this->chat($provider, $prompts['system'], $prompts['user'], [
+                        'temperature' => $prompts['temperature'] ?? 0.45,
+                        'max_tokens'  => $prompts['max_tokens'] ?? 90,
+                    ]);
+                    $parsed = $this->parse_seo_response('meta_title', (string) $raw, $focus, $is_fa);
+                    $cand = trim((string) ($parsed['seo_title'] ?? $parsed['text'] ?? ''));
+                    if ($cand === '' || $this->looks_like_instruction_echo($cand)) {
+                        if ($attempts >= $max_attempts) {
+                            $provider_error = $provider_error ?: 'خروجی عنوان خالی یا نامعتبر بود';
+                        }
+                        // keep previous good candidate if any
+                    } else {
+                        $seo_title = $cand;
+                        $generation_status = 'success';
+                    }
+                }
+
+                if ($need_desc) {
+                    $extra = [
+                        'failed_checks' => $last_failed,
+                        'attempt'       => $attempts,
+                        'repair'        => $attempts > 1,
+                    ];
+                    $prompts = $this->build_seo_prompts('meta_description', $title, $content, $focus, $is_fa, $extra);
+                    if (!$prompts) {
+                        $provider_error = 'Unknown meta_description task';
+                        break;
+                    }
+                    if ($attempts > 1 && $last_failed) {
+                        $prompts['user'] .= "\n\n" . $this->format_repair_instructions($last_failed, 'description', $is_fa);
+                        $prompts['temperature'] = 0.25;
+                    }
+                    $raw = $this->chat($provider, $prompts['system'], $prompts['user'], [
+                        'temperature' => $prompts['temperature'] ?? 0.45,
+                        'max_tokens'  => $prompts['max_tokens'] ?? 180,
+                    ]);
+                    $parsed = $this->parse_seo_response('meta_description', (string) $raw, $focus, $is_fa);
+                    $cand = trim((string) ($parsed['description'] ?? $parsed['text'] ?? ''));
+                    if ($cand === '' || $this->looks_like_instruction_echo($cand)) {
+                        if ($attempts >= $max_attempts) {
+                            $provider_error = $provider_error ?: 'خروجی توضیحات متا خالی یا نامعتبر بود';
+                        }
+                    } else {
+                        $description = $cand;
+                        $generation_status = 'success';
+                    }
+                }
+            } catch (\Throwable $e) {
+                $provider_error = $e->getMessage();
+                $generation_status = 'error';
+                // Do not wipe candidates already produced
+                break;
+            }
+
+            if ($seo_title === '' && $need_title) {
+                continue;
+            }
+            if ($description === '' && $need_desc) {
+                continue;
+            }
+
+            $analysis = $this->run_deterministic_analyze($post_id, [
+                'seo_title'     => $need_title ? $seo_title : (string) ($ctx['current_seo_title'] ?? ''),
+                'description'   => $need_desc ? $description : (string) ($ctx['current_description'] ?? ''),
+                'focus_keyword' => $focus,
+                'content'       => $content,
+            ]);
+
+            $last_failed = $this->extract_meta_failures($analysis, $need_title, $need_desc);
+            // Soft criteria (title_has_number) never block success
+            $blocking = array_values(array_filter($last_failed, static function ($f) {
+                return ($f['key'] ?? '') !== 'title_has_number';
+            }));
+
+            if (!$blocking) {
+                $validation_status = 'passed';
+                break;
+            }
+
+            if ($attempts >= $max_attempts) {
+                $validation_status = 'needs_review';
+                break;
+            }
+            // else repair loop continues with $last_failed
+        }
+
+        if ($generation_status === 'error' && $seo_title === '' && $description === '') {
+            $validation_status = 'failed';
+        } elseif ($validation_status !== 'passed' && ($seo_title !== '' || $description !== '')) {
+            if ($validation_status !== 'needs_review') {
+                $validation_status = 'needs_review';
+            }
+        }
+
+        $final_analysis = $this->run_deterministic_analyze($post_id, [
+            'seo_title'     => $seo_title !== '' ? $seo_title : (string) ($ctx['current_seo_title'] ?? ''),
+            'description'   => $description !== '' ? $description : (string) ($ctx['current_description'] ?? ''),
+            'focus_keyword' => $focus,
+            'content'       => $content,
+        ]);
+
+        if ($validation_status === 'passed') {
+            $message = 'تولید و اعتبارسنجی موفق بود.';
+        } elseif ($validation_status === 'needs_review') {
+            $message = 'خروجی تولید شد اما برخی معیارهای سئو هنوز نیازمند بازبینی هستند.';
+        } else {
+            $message = $provider_error !== '' ? $provider_error : 'تولید یا اعتبارسنجی ناموفق بود.';
+        }
+
+        return [
+            'seo_title'          => $seo_title,
+            'title'              => $seo_title,
+            'description'        => $description,
+            'meta_description'   => $description,
+            'generation_status'  => $generation_status,
+            'validation_status'  => $validation_status,
+            'attempts'           => $attempts,
+            'failed_checks'      => $last_failed,
+            'analysis'           => $final_analysis,
+            'baseline_score'     => (int) ($baseline['score'] ?? 0),
+            'score'              => (int) ($final_analysis['score'] ?? 0),
+            'message'            => $message,
+            'provider_error'     => $provider_error,
+            // Backward-compatible flags
+            'validated'          => $validation_status === 'passed',
+            'needs_review'       => $validation_status === 'needs_review',
+        ];
+    }
+
+    private function detect_is_fa(string $title, string $content, string $locale): bool
+    {
+        $sample = $title . ' ' . mb_substr(wp_strip_all_tags($content), 0, 800);
+        $persian_chars = preg_match_all('/[\x{0600}-\x{06FF}]/u', $sample);
+        $latin_chars = preg_match_all('/[A-Za-z]/', $sample);
+        if ($persian_chars >= 8 && $persian_chars >= $latin_chars) {
+            return true;
+        }
+        if ($latin_chars >= 20 && $latin_chars > $persian_chars * 2) {
+            return false;
+        }
+        return (stripos($locale, 'fa') !== false || stripos($locale, 'persian') !== false);
+    }
+
+    /**
+     * @param array<string,mixed> $overrides
+     * @return array<string,mixed>
+     */
+    private function run_deterministic_analyze(int $post_id, array $overrides = []): array
+    {
+        if ($post_id > 0 && class_exists('Bankai_SEO_Engine')) {
+            try {
+                return Bankai_SEO_Engine::instance()->analyze($post_id, $overrides);
+            } catch (\Throwable $e) {
+                // fall through
+            }
+        }
+        return $this->offline_meta_analysis($overrides);
+    }
+
+    /**
+     * Offline subset for title/description when engine unavailable (tests / edge).
+     *
+     * @param array<string,mixed> $o
+     * @return array<string,mixed>
+     */
+    private function offline_meta_analysis(array $o): array
+    {
+        $N = class_exists('Bankai_SEO_Text_Normalizer') ? 'Bankai_SEO_Text_Normalizer' : null;
+        $title = (string) ($o['seo_title'] ?? '');
+        $desc  = (string) ($o['description'] ?? '');
+        $kw    = trim((string) ($o['focus_keyword'] ?? ''));
+        $checks = [];
+
+        $contains = static function (string $hay, string $needle) use ($N): bool {
+            if ($needle === '') {
+                return false;
+            }
+            return $N ? $N::contains($hay, $needle) : (mb_stripos($hay, $needle) !== false);
+        };
+
+        if ($kw === '') {
+            $checks[] = ['key' => 'focus_keyword', 'status' => 'fail', 'passed' => false, 'message' => 'no keyword'];
+            $checks[] = ['key' => 'kw_in_title', 'status' => 'unknown', 'passed' => false, 'message' => 'unknown'];
+            $checks[] = ['key' => 'kw_in_desc', 'status' => 'unknown', 'passed' => false, 'message' => 'unknown'];
+        } else {
+            $checks[] = ['key' => 'focus_keyword', 'status' => 'pass', 'passed' => true, 'message' => 'ok'];
+            $t_ok = $contains($title, $kw);
+            $checks[] = ['key' => 'kw_in_title', 'status' => $t_ok ? 'pass' : 'fail', 'passed' => $t_ok, 'message' => $t_ok ? 'ok' : 'missing kw'];
+            $d_ok = $contains($desc, $kw);
+            $checks[] = ['key' => 'kw_in_desc', 'status' => $d_ok ? 'pass' : 'fail', 'passed' => $d_ok, 'message' => $d_ok ? 'ok' : 'missing kw'];
+        }
+
+        $tlen = mb_strlen($title);
+        $tlen_ok = $tlen >= 30 && $tlen <= 60;
+        $checks[] = ['key' => 'title_length', 'status' => $tlen_ok ? 'pass' : 'warning', 'passed' => $tlen_ok, 'message' => "len=$tlen"];
+
+        $dlen = mb_strlen($desc);
+        if ($desc === '') {
+            $checks[] = ['key' => 'desc_length', 'status' => 'fail', 'passed' => false, 'message' => 'empty'];
+        } else {
+            $dlen_ok = $dlen >= 120 && $dlen <= 160;
+            $checks[] = ['key' => 'desc_length', 'status' => $dlen_ok ? 'pass' : 'warning', 'passed' => $dlen_ok, 'message' => "len=$dlen"];
+        }
+
+        $pass = 0;
+        $total = 0;
+        foreach ($checks as $c) {
+            if (($c['status'] ?? '') === 'not_applicable') {
+                continue;
+            }
+            $total++;
+            if (($c['status'] ?? '') === 'pass') {
+                $pass++;
+            }
+        }
+        return [
+            'score'  => $total ? (int) round($pass / $total * 100) : 0,
+            'passed' => $pass,
+            'total'  => $total,
+            'checks' => $checks,
+            'groups' => [],
+            'stats'  => [],
+        ];
+    }
+
+    /**
+     * @param array<string,mixed> $analysis
+     * @return list<array{key:string,status:string,message:string}>
+     */
+    private function extract_meta_failures(array $analysis, bool $need_title, bool $need_desc): array
+    {
+        $keys = [];
+        if ($need_title) {
+            $keys = array_merge($keys, ['kw_in_title', 'title_length', 'kw_start_title']);
+        }
+        if ($need_desc) {
+            $keys = array_merge($keys, ['kw_in_desc', 'desc_length']);
+        }
+        $failed = [];
+        foreach ($analysis['checks'] ?? [] as $c) {
+            $key = (string) ($c['key'] ?? $c['id'] ?? '');
+            if (!in_array($key, $keys, true)) {
+                continue;
+            }
+            $st = (string) ($c['status'] ?? ($c['passed'] ? 'pass' : 'fail'));
+            if (in_array($st, ['pass', 'not_applicable'], true)) {
+                continue;
+            }
+            // kw_start_title is soft: only fail if explicit fail and keyword set
+            if ($key === 'kw_start_title' && $st === 'warning') {
+                continue;
+            }
+            $failed[] = [
+                'key'     => $key,
+                'status'  => $st,
+                'message' => (string) ($c['message'] ?? ''),
+                'label'   => (string) ($c['label'] ?? $key),
+            ];
+        }
+        return $failed;
+    }
+
+    /**
+     * @param list<array{key?:string,message?:string}> $failed
+     */
+    private function format_repair_instructions(array $failed, string $kind, bool $is_fa): string
+    {
+        $lines = [];
+        foreach ($failed as $f) {
+            $k = $f['key'] ?? '';
+            $m = $f['message'] ?? '';
+            if ($kind === 'title' && in_array($k, ['kw_in_title', 'title_length', 'kw_start_title'], true)) {
+                $lines[] = "- {$k}: {$m}";
+            }
+            if ($kind === 'description' && in_array($k, ['kw_in_desc', 'desc_length'], true)) {
+                $lines[] = "- {$k}: {$m}";
+            }
+        }
+        if (!$lines) {
+            return '';
+        }
+        if ($is_fa) {
+            return "اصلاح الزامی — خروجی قبلی این معیارها را رد کرد:\n" . implode("\n", $lines)
+                . "\nفقط خروجی نهایی را بنویس. برای عنوان: ۳۰ تا ۶۰ کاراکتر و شامل کلمه کلیدی. برای توضیحات: ۱۲۰ تا ۱۶۰ کاراکتر و شامل کلمه کلیدی. بدون توضیح اضافه.";
+        }
+        return "Required fix — previous output failed:\n" . implode("\n", $lines)
+            . "\nOutput only the final text. Title: 30–60 chars with focus keyword. Description: 120–160 chars with focus keyword.";
+    }
+
     public function ajax_seo_task(): void
+
     {
         check_ajax_referer('bankai_admin_nonce', 'nonce');
 
@@ -784,16 +1222,38 @@ final class Bankai_AI_Studio
 
         $task          = sanitize_key(wp_unslash($_POST['task'] ?? ''));
 
-        // سازگاری با پایپ‌لاین مقالات بدون سئو: task=meta → هر دو عنوان و متا
-        if ($task === 'meta' || $task === 'met') {
-            $title_res = $this->run_seo_task_inline('meta_title', $_POST);
-            $desc_res  = $this->run_seo_task_inline('meta_description', $_POST);
-            wp_send_json_success([
-                'seo_title'   => $title_res['seo_title'] ?? ($title_res['text'] ?? ''),
-                'title'       => $title_res['seo_title'] ?? ($title_res['text'] ?? ''),
-                'description' => $desc_res['description'] ?? ($desc_res['text'] ?? ''),
-                'meta_description' => $desc_res['description'] ?? ($desc_res['text'] ?? ''),
+        // Phase C pipeline: meta / meta_title / meta_description with deterministic validation
+        if (in_array($task, ['meta', 'met', 'meta_title', 'meta_description', 'title', 'description'], true)) {
+            $post_id = absint($_POST['post_id'] ?? $_POST['id'] ?? 0);
+            if ($post_id && !current_user_can('edit_post', $post_id)) {
+                wp_send_json_error(['message' => 'Permission denied for this post'], 403);
+            }
+            $mode = 'both';
+            if (in_array($task, ['meta_title', 'title'], true)) {
+                $mode = 'title';
+            } elseif (in_array($task, ['meta_description', 'description'], true)) {
+                $mode = 'description';
+            }
+            $result = $this->run_meta_generation_pipeline([
+                'post_id'              => $post_id,
+                'title'                => sanitize_text_field(wp_unslash($_POST['title'] ?? '')),
+                'content'              => wp_unslash($_POST['content'] ?? ''),
+                'focus_keyword'        => sanitize_text_field(wp_unslash($_POST['focus_keyword'] ?? '')),
+                'locale'               => sanitize_text_field(wp_unslash($_POST['locale'] ?? get_user_locale())),
+                'provider'             => sanitize_key(wp_unslash($_POST['provider'] ?? '')),
+                'mode'                 => $mode,
+                'current_seo_title'    => sanitize_text_field(wp_unslash($_POST['seo_title'] ?? $_POST['current_seo_title'] ?? '')),
+                'current_description'  => sanitize_text_field(wp_unslash($_POST['description'] ?? $_POST['current_description'] ?? '')),
             ]);
+            if (($result['generation_status'] ?? '') === 'error' && ($result['seo_title'] ?? '') === '' && ($result['description'] ?? '') === '') {
+                wp_send_json_error([
+                    'message' => $result['message'] ?? 'AI generation failed',
+                    'generation_status' => 'error',
+                    'validation_status' => $result['validation_status'] ?? 'failed',
+                    'attempts' => $result['attempts'] ?? 0,
+                ], 500);
+            }
+            wp_send_json_success($result);
         }
         // alias لینک داخلی
         if ($task === 'internal_links') {
@@ -809,8 +1269,11 @@ final class Bankai_AI_Studio
         $articles_data = wp_unslash($_POST['articles'] ?? $_POST['site_articles'] ?? '');
         $rewrite_style = sanitize_key(wp_unslash($_POST['rewrite_style'] ?? 'seo'));
 
-        if ($provider === '') {
-            $provider = $this->get_default_provider();
+        // Phase D: SEO assistant always uses central text provider
+        $provider = $this->resolve_central_text_provider($provider);
+        $ready_err = $this->text_provider_readiness_error($provider);
+        if ($ready_err !== '') {
+            wp_send_json_error(['message' => $ready_err, 'generation_status' => 'error'], 400);
         }
 
         if ($task === 'rewrite') {
@@ -959,7 +1422,7 @@ final class Bankai_AI_Studio
                 if ($is_fa) {
                     return [
                         'system' => 'نقش تو: نویسنده عنوان سئو فارسی. پاسخ تو باید فقط یک خط عنوان فارسی باشد. هرگز انگلیسی ننویس. هرگز دستورالعمل، توضیح، یا جمله‌ای مثل We need / Must / length ننویس. فقط عنوان نهایی.',
-                        'user'   => "عنوان سئو بنویس.\nقوانین: فقط فارسی | ۴۵ تا ۶۰ کاراکتر | کلمه کلیدی نزدیک ابتدا | بدون گیومه\nکلمه کلیدی: {$focus}\nموضوع/عنوان: {$title}\nخلاصه محتوا: " . mb_substr($snippet, 0, 600) . "\n\nعنوان:",
+                        'user'   => "عنوان سئو بنویس.\nقوانین: فقط فارسی | ۳۰ تا ۶۰ کاراکتر | کلمه کلیدی نزدیک ابتدا | بدون گیومه | بدون تکرار مصنوعی کلمه کلیدی\nکلمه کلیدی: {$focus}\nموضوع/عنوان: {$title}\nخلاصه محتوا: " . mb_substr($snippet, 0, 600) . "\n\nعنوان:",
                         'temperature' => 0.35,
                         'max_tokens'  => 90,
                     ];
@@ -976,14 +1439,14 @@ final class Bankai_AI_Studio
                 if ($is_fa) {
                     return [
                         'system' => 'نقش تو: نویسنده متا دیسکریپشن فارسی. پاسخ تو باید فقط همان متن توضیحات باشد. هرگز انگلیسی ننویس. هرگز دستورالعمل یا جمله We need / Must / length ننویس.',
-                        'user'   => "متا دیسکریپشن بنویس.\nقوانین: فقط فارسی | ۱۴۰ تا ۱۶۰ کاراکتر | شامل کلمه کلیدی | دعوت به کلیک | بدون گیومه\nکلمه کلیدی: {$focus}\nعنوان: {$title}\nخلاصه: " . mb_substr($snippet, 0, 800) . "\n\nتوضیحات:",
+                        'user'   => "متا دیسکریپشن بنویس.\nقوانین: فقط فارسی | ۱۲۰ تا ۱۶۰ کاراکتر | شامل کلمه کلیدی به‌صورت طبیعی | خلاصهٔ واقعی محتوا | بدون وعدهٔ نادرست | بدون گیومه\nکلمه کلیدی: {$focus}\nعنوان: {$title}\nخلاصه: " . mb_substr($snippet, 0, 800) . "\n\nتوضیحات:",
                         'temperature' => 0.4,
                         'max_tokens'  => 180,
                     ];
                 }
                 return [
                     'system' => 'You write SEO meta descriptions. Reply with ONLY the final description. No instructions or preamble.',
-                    'user'   => "Meta description (140-160 chars) including focus keyword.\nFocus: {$focus}\nTitle: {$title}\nExcerpt: " . mb_substr($snippet, 0, 800) . "\n\nDescription:",
+                    'user'   => "Meta description (120-160 chars) including focus keyword.\nFocus: {$focus}\nTitle: {$title}\nExcerpt: " . mb_substr($snippet, 0, 800) . "\n\nDescription:",
                     'temperature' => 0.45,
                     'max_tokens'  => 160,
                 ];
@@ -3341,22 +3804,13 @@ Existing site titles + keywords (inspiration only):
         if ($prompt === '') {
             wp_send_json_error(['message' => 'پرامپت خالی است']);
         }
-        if ($provider === '') {
-            $provider = $this->get_default_image_provider();
+        // Phase D: image generation from editor uses central image provider only
+        $provider = $this->resolve_central_image_provider($provider);
+        $img_err = $this->image_provider_readiness_error($provider);
+        if ($img_err !== '') {
+            wp_send_json_error(['message' => $img_err, 'generation_status' => 'error']);
         }
-        // Fallback to first image provider that has a key
         $img_keys = $this->get_image_keys();
-        if ($provider === '' || empty($img_keys[$provider])) {
-            foreach ($img_keys as $pid => $k) {
-                if (is_string($k) && trim($k) !== '') {
-                    $provider = $pid;
-                    break;
-                }
-            }
-        }
-        if ($provider === '' || empty($img_keys[$provider])) {
-            wp_send_json_error(['message' => 'هیچ کلید API تصویری تنظیم نشده است. از استودیو هوش مصنوعی → تب تصویر یک موتور را پیکربندی کنید.']);
-        }
 
         $size = $purpose === 'cover' ? ['width' => 1280, 'height' => 720] : ['width' => 1024, 'height' => 1024];
         try {

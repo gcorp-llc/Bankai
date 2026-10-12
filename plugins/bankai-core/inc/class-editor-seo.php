@@ -339,35 +339,76 @@ class Bankai_Editor_SEO
     private function localize_editor_seo(int $post_id, string $ver): void
     {
         $ai_providers = [];
-        $ai_default = 'gemini';
+        $ai_default = 'openrouter';
         $image_providers = [];
         $image_default = '';
         if (class_exists('Bankai_AI_Studio')) {
-            $studio = Bankai_AI_Studio::instance();
-            $ai_default = $studio->get_default_provider();
-            foreach ($studio->provider_status_list() as $p) {
-                if (!empty($p['has_key'])) {
-                    $ai_providers[] = [
-                        'id'   => $p['id'],
-                        'name' => $p['name'],
-                    ];
-                }
-            }
-            if (method_exists($studio, 'image_provider_status_list')) {
-                foreach ($studio->image_provider_status_list() as $p) {
-                    if (!empty($p['has_key'])) {
-                        $image_providers[] = [
-                            'id'   => $p['id'],
-                            'name' => $p['name'],
+            try {
+                $studio = Bankai_AI_Studio::instance();
+                $ai_default = method_exists($studio, 'get_default_provider')
+                    ? (string) $studio->get_default_provider()
+                    : $ai_default;
+
+                // Include ALL text providers (with readiness), not only has_key —
+                // so the SEO assistant can show the central default even if key lookup is delayed.
+                if (method_exists($studio, 'provider_status_list')) {
+                    foreach ($studio->provider_status_list() as $p) {
+                        $ai_providers[] = [
+                            'id'      => $p['id'] ?? '',
+                            'name'    => $p['name'] ?? ($p['id'] ?? ''),
+                            'has_key' => !empty($p['has_key']),
+                            'ready'   => !empty($p['has_key']),
                         ];
                     }
                 }
-            }
-            if (method_exists($studio, 'get_default_image_provider')) {
-                $image_default = (string) $studio->get_default_image_provider();
-            }
-            if ($image_default === '' && $image_providers) {
-                $image_default = $image_providers[0]['id'];
+                // Ensure default appears even if catalog iteration missed it
+                if ($ai_default !== '') {
+                    $found = false;
+                    foreach ($ai_providers as $p) {
+                        if (($p['id'] ?? '') === $ai_default) {
+                            $found = true;
+                            break;
+                        }
+                    }
+                    if (!$found && method_exists('Bankai_AI_Studio', 'all_providers_catalog')) {
+                        $cat = Bankai_AI_Studio::all_providers_catalog();
+                        $meta = $cat[$ai_default] ?? null;
+                        $ai_providers[] = [
+                            'id'      => $ai_default,
+                            'name'    => is_array($meta) ? (string) ($meta['name'] ?? $ai_default) : $ai_default,
+                            'has_key' => false,
+                            'ready'   => false,
+                        ];
+                    }
+                }
+
+                if (method_exists($studio, 'image_provider_status_list')) {
+                    foreach ($studio->image_provider_status_list() as $p) {
+                        $image_providers[] = [
+                            'id'      => $p['id'] ?? '',
+                            'name'    => $p['name'] ?? ($p['id'] ?? ''),
+                            'has_key' => !empty($p['has_key']),
+                            'ready'   => !empty($p['has_key']),
+                        ];
+                    }
+                } elseif (method_exists($studio, 'image_providers_catalog') || method_exists('Bankai_AI_Studio', 'image_providers_catalog')) {
+                    foreach (Bankai_AI_Studio::image_providers_catalog() as $id => $meta) {
+                        $image_providers[] = [
+                            'id'      => $id,
+                            'name'    => is_array($meta) ? (string) ($meta['name'] ?? $id) : (string) $id,
+                            'has_key' => false,
+                            'ready'   => false,
+                        ];
+                    }
+                }
+                if (method_exists($studio, 'get_default_image_provider')) {
+                    $image_default = (string) $studio->get_default_image_provider();
+                }
+                if ($image_default === '' && $image_providers) {
+                    $image_default = (string) $image_providers[0]['id'];
+                }
+            } catch (Throwable $e) {
+                // Keep empty lists; editor still works without AI.
             }
         }
 
@@ -406,6 +447,23 @@ class Bankai_Editor_SEO
             'aiProviders'       => $ai_providers,
             'defaultImageProvider' => $image_default,
             'imageProviders'    => $image_providers,
+            // Display names only — never API keys
+            'defaultAiProviderName' => (static function ($id, $list) {
+                foreach ($list as $p) {
+                    if (($p['id'] ?? '') === $id) {
+                        return (string) ($p['name'] ?? $id);
+                    }
+                }
+                return (string) $id;
+            })($ai_default, $ai_providers),
+            'defaultImageProviderName' => (static function ($id, $list) {
+                foreach ($list as $p) {
+                    if (($p['id'] ?? '') === $id) {
+                        return (string) ($p['name'] ?? $id);
+                    }
+                }
+                return (string) $id;
+            })($image_default, $image_providers),
             'fixedKeywords'     => $fixed_kw,
             'seoFixedKeywords'  => $fixed_kw,
             'i18n'              => [

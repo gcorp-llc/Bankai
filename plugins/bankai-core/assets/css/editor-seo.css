@@ -3126,3 +3126,19 @@
         transition-duration: .01ms !important;
     }
 }
+
+
+/* Phase B — checklist status variants */
+#bankai-seo-sidebar .bk-check.is-na,
+#bankai-seo-sidebar-gb .bk-check.is-na {
+  opacity: 0.72;
+  border-color: rgba(148, 163, 184, 0.45);
+}
+#bankai-seo-sidebar .bk-check.is-unknown,
+#bankai-seo-sidebar-gb .bk-check.is-unknown {
+  border-color: rgba(59, 130, 246, 0.45);
+}
+#bankai-seo-sidebar .bk-check.is-na .bk-check-status,
+#bankai-seo-sidebar .bk-check.is-unknown .bk-check-status {
+  color: #64748b;
+}
