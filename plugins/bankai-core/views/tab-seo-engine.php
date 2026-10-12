@@ -93,18 +93,24 @@ if ($post_id && !$post) {
             </div>
         </div>
 
-        <!-- TABS -->
-        <nav class="bk-tabs">
-            <button type="button" :class="{ 'is-active': activeTab === 'seo' }" @click="activeTab = 'seo'">چک‌لیست</button>
-            <button type="button" :class="{ 'is-active': activeTab === 'aeo_geo' }" @click="activeTab = 'aeo_geo'">AEO & GEO</button>
-            <button type="button" :class="{ 'is-active': activeTab === 'links' }" @click="activeTab = 'links'; loadLinks()">لینک‌ها</button>
-            <button type="button" :class="{ 'is-active': activeTab === 'media' }" @click="activeTab = 'media'; scanPostImages()">تصاویر</button>
-            <button type="button" :class="{ 'is-active': activeTab === 'schema' }" @click="activeTab = 'schema'">اسکیما</button>
-            <button type="button" :class="{ 'is-active': activeTab === 'social' }" @click="activeTab = 'social'">سوشال</button>
-            <button type="button" class="bk-tab-ai" :class="{ 'is-active': activeTab === 'ai' }" @click="openAiModal()">
-                دستیار AI
-                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
-            </button>
+        <!-- TABS (2 Rows) -->
+        <nav class="bk-tabs-nav">
+            <!-- Row 1: Checklist, AEO & GEO, Links, Images -->
+            <div class="bk-tabs-row">
+                <button type="button" :class="{ 'is-active': activeTab === 'seo' || activeTab === 'checklist' }" @click="activeTab = 'seo'">چک‌لیست</button>
+                <button type="button" :class="{ 'is-active': activeTab === 'aeo_geo' || activeTab === 'aeogeo' }" @click="activeTab = 'aeo_geo'">AEO & GEO</button>
+                <button type="button" :class="{ 'is-active': activeTab === 'links' }" @click="activeTab = 'links'; loadLinks()">لینک‌ها</button>
+                <button type="button" :class="{ 'is-active': activeTab === 'media' }" @click="activeTab = 'media'; scanPostImages()">تصاویر</button>
+            </div>
+            <!-- Row 2: Schema, Social, AI Assistant -->
+            <div class="bk-tabs-row">
+                <button type="button" :class="{ 'is-active': activeTab === 'schema' }" @click="activeTab = 'schema'">اسکیما</button>
+                <button type="button" :class="{ 'is-active': activeTab === 'social' }" @click="activeTab = 'social'">سوشال</button>
+                <button type="button" class="bk-tab-ai" :class="{ 'is-active': activeTab === 'ai' }" @click="activeTab = 'ai'; openAiModal()">
+                    دستیار AI
+                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
+                </button>
+            </div>
         </nav>
     </header>
 
@@ -378,7 +384,7 @@ if ($post_id && !$post) {
 
 
         <!-- ========== 3. AEO & GEO TAB ========== -->
-        <section x-show="activeTab === 'aeogeo'" class="bk-panel">
+        <section x-show="activeTab === 'aeo_geo' || activeTab === 'aeogeo'" class="bk-panel">
 
             <!-- AEO READINESS CARD -->
             <div class="bk-card bk-aeo-card">
@@ -655,22 +661,102 @@ if ($post_id && !$post) {
         </section>
 
 
-        <!-- ========== 8. AI ASSISTANT TAB / MODAL ========== -->
+        <!-- ========== 8. AI ASSISTANT TAB ========== -->
         <section x-show="activeTab === 'ai'" class="bk-panel bk-ai-engine-readonly">
-            <div class="bk-card">
-                <div class="bk-card-head">
-                    <svg class="solar-icon bk-purple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
-                    <span>دستیار هوشمند سئوی بنکای</span>
+            <div class="bk-card bk-ai-dashboard-card">
+                <div class="bk-card-head" style="margin-bottom:12px">
+                    <div class="bk-ai-logo-icon">
+                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
+                    </div>
+                    <div>
+                        <strong style="font-size:13px;display:block">دستیار هوشمند سئوی بنکای</strong>
+                        <small style="color:#64748b;font-size:10px">ابزارهای حرفه‌ای بهینه‌سازی تولید محتوا و سئو با یک کلیک</small>
+                    </div>
                 </div>
-                <p class="bk-card-desc">تنظیمات مرکزی هوش مصنوعی از طریق پنل مدیریت بنکای اعمال می‌شوند. تولید سریع و هوشمند عناصر مقاله بر اساس محتوای متنی و کلیدواژه‌ها:</p>
 
-                <div class="bk-ai-quick-actions">
-                    <button type="button" class="bk-btn-ghost bk-full" @click="openAiModal('title')">تولید عنوان سئو (Title Tag)</button>
-                    <button type="button" class="bk-btn-ghost bk-full" @click="openAiModal('description')">تولید متا دیسکریپشن</button>
-                    <button type="button" class="bk-btn-ghost bk-full" @click="openAiModal('focus_keyword')">استخراج کلمه کلیدی اصلی</button>
-                    <button type="button" class="bk-btn-ghost bk-full" @click="openAiModal('keywords')">پیشنهاد کلیدواژه‌های فرعی</button>
-                    <button type="button" class="bk-btn-ghost bk-full" @click="generateAeoFaq()">تولید بخش سوالات متداول (AEO FAQ)</button>
-                    <button type="button" class="bk-btn-ghost bk-full" @click="generateGeoSummary()">تولید خلاصه نکات کلیدی (GEO Summary)</button>
+                <!-- HERO ONE-CLICK AUTO OPTIMIZE -->
+                <div class="bk-action-card bk-hero-action-card" @click="openAiModal('auto_all')" style="margin-bottom:14px;cursor:pointer">
+                    <div class="bk-action-badge">پیشنهادی 🚀</div>
+                    <div class="bk-action-content">
+                        <h4 style="margin-bottom:4px">بهینه‌سازی یک‌پارچه مقاله (Auto-Optimize All)</h4>
+                        <p style="margin-bottom:10px;font-size:11px">اجرای کامل تحلیل مقاله، اصلاح عنوان و متادیسکریپشن، استخراج کلیدواژه‌ها، پیشنهاد لینک داخلی، سئوی تصاویر و اسکیما با AI.</p>
+                    </div>
+                    <button type="button" class="bk-btn-primary bk-full" :disabled="aiLoading">
+                        شروع بهینه‌سازی هوشمند
+                    </button>
+                </div>
+
+                <!-- AI TOOLS DASHBOARD GRID -->
+                <div class="bk-ai-tools-list" style="display:flex;flex-direction:column;gap:8px">
+                    <button type="button" class="bk-ai-tool-item" @click="openAiModal('meta')">
+                        <div class="bk-ai-tool-icon bk-icon-blue">
+                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7V5h16v2M12 5v14M9 19h6"/></svg>
+                        </div>
+                        <div class="bk-ai-tool-info">
+                            <strong>تولید عنوان و متا دیسکریپشن سئو</strong>
+                            <small>ایجاد متاداده‌های استاندارد و جذاب با الگوریتم سئو</small>
+                        </div>
+                    </button>
+
+                    <button type="button" class="bk-ai-tool-item" @click="openAiModal('keywords')">
+                        <div class="bk-ai-tool-icon bk-icon-purple">
+                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/></svg>
+                        </div>
+                        <div class="bk-ai-tool-info">
+                            <strong>استخراج کلمه کلیدی اصلی و فرعی</strong>
+                            <small>شناسایی کلیدواژه‌های پرجستجو و ادغام با کلیدواژه‌های ثابت</small>
+                        </div>
+                    </button>
+
+                    <button type="button" class="bk-ai-tool-item" @click="generateAeoFaq()" :disabled="aiLoading">
+                        <div class="bk-ai-tool-icon bk-icon-emerald">
+                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <div class="bk-ai-tool-info">
+                            <strong>تولید بخش سوالات متداول (AEO FAQ)</strong>
+                            <small>ساخت پرسش‌های واقعی کاربر جهت جلب پاسخ برجسته گوگل</small>
+                        </div>
+                    </button>
+
+                    <button type="button" class="bk-ai-tool-item" @click="generateGeoSummary()" :disabled="aiLoading">
+                        <div class="bk-ai-tool-icon bk-icon-amber">
+                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        </div>
+                        <div class="bk-ai-tool-info">
+                            <strong>تولید خلاصه نکات کلیدی (GEO Takeaways)</strong>
+                            <small>چکیده مطالب جهت نقل‌قول توسط موتورهای مولد مثل ChatGPT</small>
+                        </div>
+                    </button>
+
+                    <button type="button" class="bk-ai-tool-item" @click="openAiModal('links')">
+                        <div class="bk-ai-tool-icon bk-icon-blue">
+                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
+                        </div>
+                        <div class="bk-ai-tool-info">
+                            <strong>لینک‌سازی هوشمند داخلی</strong>
+                            <small>پیشنهاد انکورتکست و مقالات مرتبط بر اساس محتوا</small>
+                        </div>
+                    </button>
+
+                    <button type="button" class="bk-ai-tool-item" @click="openAiModal('images')">
+                        <div class="bk-ai-tool-icon bk-icon-amber">
+                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                        </div>
+                        <div class="bk-ai-tool-info">
+                            <strong>تولید Alt Text تصاویر مقاله</strong>
+                            <small>تولید متن جایگزین سئوشده بر اساس محتوای پیرامونی</small>
+                        </div>
+                    </button>
+
+                    <button type="button" class="bk-ai-tool-item" @click="openAiModal('rewrite')">
+                        <div class="bk-ai-tool-icon bk-icon-purple">
+                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                        </div>
+                        <div class="bk-ai-tool-info">
+                            <strong>بازنویسی کامل مقاله با AI</strong>
+                            <small>روان‌سازی و ارتقای لحن محتوا با حفظ تگ‌های HTML</small>
+                        </div>
+                    </button>
                 </div>
             </div>
         </section>

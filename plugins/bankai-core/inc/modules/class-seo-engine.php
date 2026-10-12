@@ -1689,6 +1689,9 @@ final class Bankai_SEO_Engine
 
         return [
             'score'           => $score,
+            'seo_score'       => $seo_score,
+            'aeo_score'       => $aeo_score,
+            'geo_score'       => $geo_score,
             'sub_scores'      => [
                 'seo' => min(100, max(0, $seo_sub)),
                 'aeo' => min(100, max(0, $aeo_sub)),
