@@ -3467,6 +3467,11 @@
     border-color: #ff8182;
     background: #fff8f8;
 }
+.bk-check-card.is-na,
+.bk-check-card.is-unknown {
+    border-color: #d0d7de;
+    background: #f6f8fa;
+}
 .bk-check-head-row {
     display: flex;
     align-items: center;
@@ -3494,6 +3499,11 @@
 .bk-check-icon.is-fail {
     background: #ffebe9;
     color: #cf222e;
+}
+.bk-check-icon.is-na,
+.bk-check-icon.is-unknown {
+    background: #eaeef2;
+    color: #57606a;
 }
 .bk-check-badges {
     display: flex;

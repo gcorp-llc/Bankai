@@ -101,6 +101,7 @@
 
         // AI Modal & Automation State
         aiOpen: false,
+        aiModalOpen: false,
         aiProvider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || '',
         aiImageProvider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultImageProvider) || '',
         aiLoading: false,
@@ -251,22 +252,22 @@
 
         checkStatusClass(check) {
             const st = (check && check.status) ? check.status : (check && check.passed ? 'pass' : 'fail');
-            if (st === 'pass') return 'is-ok';
+            if (st === 'pass') return 'is-pass';
             if (st === 'not_applicable') return 'is-na';
             if (st === 'unknown') return 'is-unknown';
             if (st === 'warning') return 'is-warn';
-            return 'is-warn';
+            return 'is-fail';
         },
         checkStatusLabel(check) {
             const st = (check && check.status) ? check.status : (check && check.passed ? 'pass' : 'fail');
             const map = {
                 pass: 'تایید',
                 fail: 'رد',
-                warning: 'توجه',
+                warning: 'هشدار',
                 not_applicable: 'نامرتبط',
                 unknown: 'نامشخص'
             };
-            return map[st] || (check && check.passed ? 'تایید' : 'توجه');
+            return map[st] || (check && check.passed ? 'تایید' : 'هشدار');
         },
 
         allChecksList() {
@@ -284,10 +285,10 @@
             return this.allChecksList().filter(c => c.group === pillar);
         },
         failedChecksList() {
-            return this.allChecksList().filter(c => !c.passed);
+            return this.allChecksList().filter(c => (c.status === 'fail' || c.status === 'warning' || (!c.passed && c.status !== 'not_applicable' && c.status !== 'unknown')));
         },
         passedChecksList() {
-            return this.allChecksList().filter(c => c.passed);
+            return this.allChecksList().filter(c => c.passed || c.status === 'pass');
         },
         filteredChecklistItems() {
             const all = this.allChecksList();
@@ -301,10 +302,10 @@
                 return all.filter(c => c.group === 'geo');
             }
             if (this.checklistFilter === 'failed') {
-                return all.filter(c => !c.passed);
+                return this.failedChecksList();
             }
             if (this.checklistFilter === 'passed') {
-                return all.filter(c => c.passed);
+                return this.passedChecksList();
             }
             return all;
         },
@@ -1216,6 +1217,7 @@
         // ---- AI Modal & Automation Workflow ----
         openAiModal(action = '') {
             this.aiOpen = true;
+            this.aiModalOpen = true;
             if (!this.aiImageProvider) {
                 const list = (window.bankaiEditorSeo && bankaiEditorSeo.imageProviders) || [];
                 this.aiImageProvider = (window.bankaiEditorSeo && bankaiEditorSeo.defaultImageProvider) || (list[0] && list[0].id) || '';
