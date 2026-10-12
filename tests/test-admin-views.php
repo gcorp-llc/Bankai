@@ -44,6 +44,9 @@ if (!function_exists('bankai_get_option')) { function bankai_get_option($k='', $
 if (!function_exists('bankai_seo_score_color')) { function bankai_seo_score_color($s) { return '#10B981'; } }
 if (!function_exists('get_categories')) { function get_categories($args=[]) { return [(object)['term_id' => 1, 'name' => 'General']]; } }
 if (!function_exists('get_users')) { function get_users($args=[]) { return [(object)['ID' => 1, 'display_name' => 'Admin']]; } }
+if (!function_exists('get_site_icon_url')) { function get_site_icon_url($s=512, $d='', $blog_id=0) { return $d; } }
+if (!function_exists('wp_count_posts')) { function wp_count_posts($type='post') { return (object)['publish' => 10, 'draft' => 2]; } }
+if (!function_exists('wp_parse_url')) { function wp_parse_url($url, $component=-1) { return parse_url($url, $component); } }
 
 // Load Bankai_AI_Studio class if available, or mock
 if (file_exists(BANKAI_CORE_DIR . 'inc/modules/class-ai-studio.php')) {

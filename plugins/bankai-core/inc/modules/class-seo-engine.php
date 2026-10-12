@@ -1499,8 +1499,44 @@ final class Bankai_SEO_Engine
         }
         $score = $scored_total > 0 ? (int) round(($pass_count / $scored_total) * 100) : 0;
 
+        $seo_pass = 0; $seo_total = 0;
+        $aeo_pass = 0; $aeo_total = 0;
+        $geo_pass = 0; $geo_total = 0;
+
+        foreach ($checks as $c) {
+            $st = (string) ($c['status'] ?? '');
+            if ($st === 'not_applicable') {
+                continue;
+            }
+            $g = (string) ($c['group'] ?? 'basic');
+            $k = (string) ($c['key'] ?? '');
+            $is_pass = ($st === 'pass');
+
+            if (in_array($g, ['basic', 'title'], true) || str_contains($k, 'kw') || str_contains($k, 'desc') || str_contains($k, 'url') || str_contains($k, 'title')) {
+                $seo_total++;
+                if ($is_pass) $seo_pass++;
+            }
+            if ($g === 'content' || str_contains($k, 'list') || str_contains($k, 'heading') || str_contains($k, 'para') || str_contains($k, 'sentence') || str_contains($k, 'faq')) {
+                $aeo_total++;
+                if ($is_pass) $aeo_pass++;
+            }
+            if ($g === 'advanced' || str_contains($k, 'media') || str_contains($k, 'unique') || str_contains($k, 'density') || str_contains($k, 'length')) {
+                $geo_total++;
+                if ($is_pass) $geo_pass++;
+            }
+        }
+
+        $seo_sub = $seo_total > 0 ? (int) round(($seo_pass / $seo_total) * 100) : $score;
+        $aeo_sub = $aeo_total > 0 ? (int) round(($aeo_pass / $aeo_total) * 100) : max(0, $score - 5);
+        $geo_sub = $geo_total > 0 ? (int) round(($geo_pass / $geo_total) * 100) : (int) round($score * 0.9);
+
         return [
             'score'           => $score,
+            'sub_scores'      => [
+                'seo' => min(100, max(0, $seo_sub)),
+                'aeo' => min(100, max(0, $aeo_sub)),
+                'geo' => min(100, max(0, $geo_sub)),
+            ],
             'passed'          => $pass_count,
             'total'           => $scored_total,
             'checks'          => $checks,
