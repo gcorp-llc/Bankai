@@ -37,37 +37,66 @@ if ($post_id && !$post) {
                 </svg>
                 <span class="bk-score-num" x-text="analysis.score">0</span>
             </div>
-            <div class="bk-header-info">
-                <div class="bk-header-title">
-                    <strong>سئوی بنکای</strong>
-                    <span class="bk-ver-badge">v2.0</span>
-                </div>
-                <!-- Sub-score badges for SEO / AEO / GEO -->
-                <div class="bk-subscores-pills">
-                    <span class="bk-subscore-pill" title="امتیاز سئوی کلاسیک">
-                        <em class="bk-dot bk-dot-seo"></em>
-                        SEO: <strong x-text="(analysis.seo_score ?? analysis.score) + '%'"></strong>
-                    </span>
-                    <span class="bk-subscore-pill" title="امتیاز بهینه‌سازی موتورهای پاسخ">
-                        <em class="bk-dot bk-dot-aeo"></em>
-                        AEO: <strong x-text="(analysis.aeo_score ?? analysis.score) + '%'"></strong>
-                    </span>
-                    <span class="bk-subscore-pill" title="امتیاز بهینه‌سازی هوش مصنوعی">
-                        <em class="bk-dot bk-dot-geo"></em>
-                        GEO: <strong x-text="(analysis.geo_score ?? analysis.score) + '%'"></strong>
-                    </span>
-                </div>
+            <div class="bk-header-text">
+                <strong>سئو بنکای</strong>
             </div>
             <button type="button" class="bk-icon-btn" @click="analyze(true)" :disabled="loading" title="تازه‌سازی و آنالیز مجدد">
                 <svg class="solar-icon" :class="{ 'bk-spin': loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.1-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
             </button>
         </div>
 
-        <!-- TABS NAV -->
-        <nav class="bk-tabs bk-tabs-scroll">
-            <button type="button" :class="{ 'is-active': activeTab === 'seo' }" @click="activeTab = 'seo'">سئو</button>
-            <button type="button" :class="{ 'is-active': activeTab === 'checklist' }" @click="activeTab = 'checklist'">چک‌لیست</button>
-            <button type="button" :class="{ 'is-active': activeTab === 'aeogeo' }" @click="activeTab = 'aeogeo'">AEO & GEO</button>
+        <!-- SUB-SCORES (SEO, AEO, GEO Circular Progress Bars Side-by-Side) -->
+        <div class="bk-subscores-row">
+            <div class="bk-subscore-card">
+                <div class="bk-subscore-ring">
+                    <svg viewBox="0 0 32 32">
+                        <circle class="bk-track" cx="16" cy="16" r="12" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+                        <circle class="bk-progress" cx="16" cy="16" r="12" fill="none"
+                            :stroke="subScoreColor(subScores.seo)" stroke-width="3"
+                            stroke-linecap="round"
+                            :stroke-dasharray="2 * Math.PI * 12"
+                            :stroke-dashoffset="subScoreOffset(subScores.seo)"/>
+                    </svg>
+                    <span class="bk-subscore-num" :style="{ color: subScoreColor(subScores.seo) }" x-text="(subScores.seo || 0) + '%'">0%</span>
+                </div>
+                <span class="bk-subscore-label">SEO</span>
+            </div>
+
+            <div class="bk-subscore-card">
+                <div class="bk-subscore-ring">
+                    <svg viewBox="0 0 32 32">
+                        <circle class="bk-track" cx="16" cy="16" r="12" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+                        <circle class="bk-progress" cx="16" cy="16" r="12" fill="none"
+                            :stroke="subScoreColor(subScores.aeo)" stroke-width="3"
+                            stroke-linecap="round"
+                            :stroke-dasharray="2 * Math.PI * 12"
+                            :stroke-dashoffset="subScoreOffset(subScores.aeo)"/>
+                    </svg>
+                    <span class="bk-subscore-num" :style="{ color: subScoreColor(subScores.aeo) }" x-text="(subScores.aeo || 0) + '%'">0%</span>
+                </div>
+                <span class="bk-subscore-label">AEO</span>
+            </div>
+
+            <div class="bk-subscore-card">
+                <div class="bk-subscore-ring">
+                    <svg viewBox="0 0 32 32">
+                        <circle class="bk-track" cx="16" cy="16" r="12" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+                        <circle class="bk-progress" cx="16" cy="16" r="12" fill="none"
+                            :stroke="subScoreColor(subScores.geo)" stroke-width="3"
+                            stroke-linecap="round"
+                            :stroke-dasharray="2 * Math.PI * 12"
+                            :stroke-dashoffset="subScoreOffset(subScores.geo)"/>
+                    </svg>
+                    <span class="bk-subscore-num" :style="{ color: subScoreColor(subScores.geo) }" x-text="(subScores.geo || 0) + '%'">0%</span>
+                </div>
+                <span class="bk-subscore-label">GEO</span>
+            </div>
+        </div>
+
+        <!-- TABS -->
+        <nav class="bk-tabs">
+            <button type="button" :class="{ 'is-active': activeTab === 'seo' }" @click="activeTab = 'seo'">چک‌لیست</button>
+            <button type="button" :class="{ 'is-active': activeTab === 'aeo_geo' }" @click="activeTab = 'aeo_geo'">AEO & GEO</button>
             <button type="button" :class="{ 'is-active': activeTab === 'links' }" @click="activeTab = 'links'; loadLinks()">لینک‌ها</button>
             <button type="button" :class="{ 'is-active': activeTab === 'media' }" @click="activeTab = 'media'; scanPostImages()">تصاویر</button>
             <button type="button" :class="{ 'is-active': activeTab === 'schema' }" @click="activeTab = 'schema'">اسکیما</button>

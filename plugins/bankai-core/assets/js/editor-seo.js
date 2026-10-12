@@ -194,6 +194,61 @@
             return c - (c * s / 100);
         },
 
+        get subScores() {
+            if (this.analysis && this.analysis.sub_scores) {
+                return this.analysis.sub_scores;
+            }
+            const checks = (this.analysis && this.analysis.checks) || [];
+            let seoPass = 0, seoTot = 0;
+            let aeoPass = 0, aeoTot = 0;
+            let geoPass = 0, geoTot = 0;
+
+            checks.forEach(c => {
+                if (c.status === 'not_applicable') return;
+                const grp = c.group || 'basic';
+                const key = c.key || '';
+                const isPass = c.passed || c.status === 'pass';
+
+                if (grp === 'basic' || grp === 'title' || key.includes('kw') || key.includes('desc') || key.includes('url') || key.includes('title')) {
+                    seoTot++;
+                    if (isPass) seoPass++;
+                }
+                if (grp === 'content' || key.includes('list') || key.includes('heading') || key.includes('para') || key.includes('sentence') || key.includes('faq')) {
+                    aeoTot++;
+                    if (isPass) aeoPass++;
+                }
+                if (grp === 'advanced' || key.includes('media') || key.includes('unique') || key.includes('density') || key.includes('length')) {
+                    geoTot++;
+                    if (isPass) geoPass++;
+                }
+            });
+
+            const mainScore = this.analysis ? (this.analysis.score || 0) : 0;
+            const seoScore = seoTot > 0 ? Math.round((seoPass / seoTot) * 100) : mainScore;
+            const aeoScore = aeoTot > 0 ? Math.round((aeoPass / aeoTot) * 100) : Math.max(0, mainScore - 5);
+            const geoScore = geoTot > 0 ? Math.round((geoPass / geoTot) * 100) : Math.round(mainScore * 0.9);
+
+            return {
+                seo: Math.min(100, Math.max(0, seoScore)),
+                aeo: Math.min(100, Math.max(0, aeoScore)),
+                geo: Math.min(100, Math.max(0, geoScore))
+            };
+        },
+
+        subScoreOffset(val) {
+            const c = 2 * Math.PI * 12;
+            const s = Math.min(100, Math.max(0, Number(val) || 0));
+            return c - (c * s / 100);
+        },
+
+        subScoreColor(val) {
+            const s = Number(val) || 0;
+            if (s < 20) return '#ef4444';
+            if (s < 50) return '#f59e0b';
+            if (s < 80) return '#3b82f6';
+            return '#10b981';
+        },
+
         checkStatusClass(check) {
             const st = (check && check.status) ? check.status : (check && check.passed ? 'pass' : 'fail');
             if (st === 'pass') return 'is-ok';
@@ -2110,6 +2165,12 @@
             this.aiReviewOpen = false;
             this.aiOpen = false;
             this.showToast('تغییرات تاییدشده سئو با موفقیت اعمال شدند', 'success');
+            // Live real-time re-analysis & score refresh
+            this.analyze(false).then(() => {
+                if (typeof this.emitScore === 'function') {
+                    this.emitScore(this.analysis.score || 0);
+                }
+            });
             // Refresh media list so new Alts appear in cards
             if (this.activeTab === 'media' || (this.postImages && this.postImages.length)) {
                 try { this.scanPostImages(); } catch (e) {}
@@ -2223,6 +2284,22 @@
 
 
         
+        insertKeyTakeawaysBox() {
+            const title = this.seo.seo_title || this.seo.title || 'مقاله';
+            const kw = this.seo.focus_keyword || 'موضوع اصلی';
+            const boxHtml = `<div class="bankai-key-takeaways" style="background:#f8fafc;border-right:4px solid #0969da;padding:12px 16px;border-radius:8px;margin-bottom:16px;">` +
+                `<strong style="display:block;font-size:13px;color:#0f172a;margin-bottom:6px;">📌 نکات کلیدی و خلاصه (Key Takeaways):</strong>` +
+                `<ul style="margin:8px 0 0;padding-inline-start:20px;font-size:12px;color:#334155;">` +
+                `<li>بررسی جامع ${title} و پاسخ به پرسش‌های اصلی کاربران.</li>` +
+                `<li>نکات عملی و کاربردی درباره ${kw}.</li>` +
+                `</ul></div>\n\n`;
+
+            let html = this.getEditorRawContent() || '';
+            this.setEditorRawContent(boxHtml + html);
+            this.showToast('باکس نکات کلیدی در ابتدای متن درج شد', 'success');
+            this.analyze(false);
+        },
+
         autoSplitLongParagraphs() {
             let html = this.getEditorRawContent();
             if (!html) {
