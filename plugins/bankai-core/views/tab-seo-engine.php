@@ -24,7 +24,7 @@ if ($post_id && !$post) {
     dir="rtl"
 >
 
-    <!-- HEADER (compact) -->
+    <!-- HEADER (Scores Overview) -->
     <header class="bk-header">
         <div class="bk-header-main">
             <div class="bk-score-ring" :style="'--score-color:' + scoreColor">
@@ -37,43 +37,64 @@ if ($post_id && !$post) {
                 </svg>
                 <span class="bk-score-num" x-text="analysis.score">0</span>
             </div>
-            <div class="bk-header-text">
-                <strong>سئوی بنکای</strong>
+            <div class="bk-header-info">
+                <div class="bk-header-title">
+                    <strong>سئوی بنکای</strong>
+                    <span class="bk-ver-badge">v2.0</span>
+                </div>
+                <!-- Sub-score badges for SEO / AEO / GEO -->
+                <div class="bk-subscores-pills">
+                    <span class="bk-subscore-pill" title="امتیاز سئوی کلاسیک">
+                        <em class="bk-dot bk-dot-seo"></em>
+                        SEO: <strong x-text="(analysis.seo_score ?? analysis.score) + '%'"></strong>
+                    </span>
+                    <span class="bk-subscore-pill" title="امتیاز بهینه‌سازی موتورهای پاسخ">
+                        <em class="bk-dot bk-dot-aeo"></em>
+                        AEO: <strong x-text="(analysis.aeo_score ?? analysis.score) + '%'"></strong>
+                    </span>
+                    <span class="bk-subscore-pill" title="امتیاز بهینه‌سازی هوش مصنوعی">
+                        <em class="bk-dot bk-dot-geo"></em>
+                        GEO: <strong x-text="(analysis.geo_score ?? analysis.score) + '%'"></strong>
+                    </span>
+                </div>
             </div>
-            <button type="button" class="bk-icon-btn" @click="analyze(true)" :disabled="loading" title="تازه‌سازی">
+            <button type="button" class="bk-icon-btn" @click="analyze(true)" :disabled="loading" title="تازه‌سازی و آنالیز مجدد">
                 <svg class="solar-icon" :class="{ 'bk-spin': loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.1-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
             </button>
         </div>
 
-        <!-- TABS -->
-        <nav class="bk-tabs bk-tabs-6">
+        <!-- TABS NAV -->
+        <nav class="bk-tabs bk-tabs-scroll">
             <button type="button" :class="{ 'is-active': activeTab === 'seo' }" @click="activeTab = 'seo'">سئو</button>
+            <button type="button" :class="{ 'is-active': activeTab === 'checklist' }" @click="activeTab = 'checklist'">چک‌لیست</button>
+            <button type="button" :class="{ 'is-active': activeTab === 'aeogeo' }" @click="activeTab = 'aeogeo'">AEO & GEO</button>
             <button type="button" :class="{ 'is-active': activeTab === 'links' }" @click="activeTab = 'links'; loadLinks()">لینک‌ها</button>
             <button type="button" :class="{ 'is-active': activeTab === 'media' }" @click="activeTab = 'media'; scanPostImages()">تصاویر</button>
             <button type="button" :class="{ 'is-active': activeTab === 'schema' }" @click="activeTab = 'schema'">اسکیما</button>
             <button type="button" :class="{ 'is-active': activeTab === 'social' }" @click="activeTab = 'social'">سوشال</button>
             <button type="button" class="bk-tab-ai" :class="{ 'is-active': activeTab === 'ai' }" @click="openAiModal()">
-                AI <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
+                دستیار AI
+                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
             </button>
         </nav>
     </header>
 
-    <!-- BODY (no inner scroll — page scrolls) -->
+    <!-- BODY CONTENT -->
     <div class="bk-body">
 
-        <!-- ========== SEO TAB ========== -->
+        <!-- ========== 1. SEO TAB ========== -->
         <section x-show="activeTab === 'seo'" class="bk-panel">
 
-            <!-- SERP -->
+            <!-- SERP PREVIEW -->
             <div class="bk-card">
                 <div class="bk-card-head">
                     <svg class="solar-icon bk-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
                     <span>پیش‌نمایش SERP</span>
                     <div class="bk-seg">
-                        <button type="button" :class="{ 'is-on': !serpMobile }" @click="serpMobile = false">
+                        <button type="button" :class="{ 'is-on': !serpMobile }" @click="serpMobile = false" title="دسکتاپ">
                             <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
                         </button>
-                        <button type="button" :class="{ 'is-on': serpMobile }" @click="serpMobile = true">
+                        <button type="button" :class="{ 'is-on': serpMobile }" @click="serpMobile = true" title="موبایل">
                             <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M12 18h.01"/></svg>
                         </button>
                     </div>
@@ -102,7 +123,7 @@ if ($post_id && !$post) {
                 </div>
             </div>
 
-            <!-- Sync from Rank Math / Yoast -->
+            <!-- SYNC FROM RANK MATH / YOAST -->
             <div class="bk-card" style="padding:10px 12px;">
                 <button type="button"
                     class="bk-btn-primary bk-btn-sm bk-sync-legacy-btn"
@@ -110,23 +131,15 @@ if ($post_id && !$post) {
                     :class="{ 'is-loading': legacySyncBusy, 'is-done': legacySyncDone }"
                     @click="syncFromLegacySeo()"
                     :disabled="legacySyncBusy">
-                    <!-- loading spinner -->
                     <svg x-show="legacySyncBusy" class="solar-icon bk-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity=".25"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>
-                    <!-- success check -->
                     <svg x-show="!legacySyncBusy && legacySyncDone" class="solar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-                    <!-- chart icon default -->
                     <svg x-show="!legacySyncBusy && !legacySyncDone" class="solar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 16v-5M12 16V8M17 16v-3"/></svg>
-                    <span x-text="legacySyncBusy ? 'در حال همگام‌سازی…' : (legacySyncDone ? 'همگام‌سازی انجام شد' : 'همگام‌سازی')"></span>
+                    <span x-text="legacySyncBusy ? 'در حال همگام‌سازی…' : (legacySyncDone ? 'همگام‌سازی انجام شد' : 'همگام‌سازی از سایر افزونه‌ها')"></span>
                 </button>
-                <p class="bk-hint" style="margin:6px 0 0;font-size:11px;">ورود یک‌کلیکه متا از Rank Math / Yoast در صورت وجود داده قبلی.</p>
+                <p class="bk-hint" style="margin:6px 0 0;font-size:11px;">همگام‌سازی یک‌کلیکه متا از Rank Math / Yoast در صورت وجود داده قبلی.</p>
             </div>
-            <style>
-                .bk-sync-legacy-btn.is-done { background:#16a34a !important; border-color:#16a34a !important; color:#fff !important; }
-                .bk-sync-legacy-btn.is-loading { opacity:.9; }
-                .bk-spin { animation: bk-spin 0.8s linear infinite; }
-                @keyframes bk-spin { to { transform: rotate(360deg); } }
-            </style>
-            <!-- KEYWORDS (Rank Math style) -->
+
+            <!-- KEYWORDS SECTION -->
             <div class="bk-card">
                 <div class="bk-card-head">
                     <span>کلیدواژه‌ها</span>
@@ -138,12 +151,9 @@ if ($post_id && !$post) {
 
                 <div class="bk-kw-box" @click="$refs.kwInput.focus()">
                     <template x-for="(kw, i) in keywordList" :key="i">
-                        <span class="bk-chip" :class="{ 'is-primary': i === 0 }">
-                            <span
-                                x-text="kw"
-                                @dblclick="editKeyword(i)"
-                                contenteditable="false"
-                            ></span>
+                        <span class="bk-chip" :class="{ 'is-primary': i === 0, 'is-fixed': isFixedKeyword(kw) }">
+                            <span x-show="isFixedKeyword(kw)" title="کلمه کلیدی ثابت سایت">📌 </span>
+                            <span x-text="kw" @dblclick="editKeyword(i)"></span>
                             <em x-show="i === 0" class="bk-chip-badge">اصلی</em>
                             <button type="button" class="bk-chip-x" @click.stop="removeKeyword(i)" title="حذف">
                                 <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -154,107 +164,69 @@ if ($post_id && !$post) {
                         x-ref="kwInput"
                         type="text"
                         class="bk-kw-input"
-                        placeholder="کلیدواژه + Enter"
+                        x-model="keywordInput"
                         @keydown.enter.prevent="addKeywordFromInput()"
-                        @keydown.,.prevent="addKeywordFromInput()"
-                        x-model="kwDraft"
+                        @keydown.backspace="if(!keywordInput && keywordList.length) removeKeyword(keywordList.length - 1)"
+                        placeholder="افزودن کلیدواژه + اینتر…"
                     >
                 </div>
+
                 <div class="bk-kw-stats" x-show="seo.focus_keyword">
-                    <span>چگالی: <strong x-text="(analysis.stats?.density ?? 0) + '%'"></strong></span>
-                    <span class="ok" x-show="analysis.stats?.density >= 0.5 && analysis.stats?.density <= 2.5">توزیع امن</span>
-                    <span class="warn" x-show="analysis.stats?.density < 0.5 || analysis.stats?.density > 2.5">نیاز به تنظیم</span>
+                    <span>چگالی کلیدواژه اصلی: <strong x-text="(analysis.stats?.density ?? 0) + '%'"></strong></span>
+                    <span class="ok" x-show="analysis.stats?.density >= 0.5 && analysis.stats?.density <= 2.5">مناسب (۰٫۵٪ تا ۲٫۵٪)</span>
+                    <span class="warn" x-show="analysis.stats?.density < 0.5 || analysis.stats?.density > 2.5">نیازمند تنظیم</span>
                 </div>
             </div>
 
             <!-- SEO TITLE -->
             <div class="bk-card bk-field-card">
                 <div class="bk-field-head">
-                    <label>عنوان سئو</label>
+                    <label>عنوان سئو (Title Tag)</label>
                     <div class="bk-field-actions">
                         <span class="bk-counter" :class="seoTitleClass" x-text="(seo.seo_title || '').length + '/60'"></span>
                         <button type="button" class="bk-link-btn" @click="openAiModal('title')">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 20V10M18 20V4M6 20v-4M10 20V8"/></svg>
-                            AI
+                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/></svg>
+                            تولید AI
                         </button>
                     </div>
                 </div>
-                <input type="text" x-model="seo.seo_title" @input.debounce.400ms="onFieldChange()" maxlength="70">
+                <input type="text" x-model="seo.seo_title" @input.debounce.400ms="onFieldChange()" maxlength="70" placeholder="عنوان سئو مقاله...">
                 <div class="bk-bar"><div :style="'width:' + titleBarPct + '%;background:' + titleBarColor"></div></div>
             </div>
 
             <!-- META DESCRIPTION -->
             <div class="bk-card bk-field-card">
                 <div class="bk-field-head">
-                    <label>توضیحات متا</label>
+                    <label>توضیحات متا (Meta Description)</label>
                     <div class="bk-field-actions">
                         <span class="bk-counter" :class="descClass" x-text="(seo.description || '').length + '/160'"></span>
                         <button type="button" class="bk-link-btn" @click="openAiModal('description')">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
-                            AI
+                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/></svg>
+                            تولید AI
                         </button>
                     </div>
                 </div>
-                <textarea x-model="seo.description" @input.debounce.400ms="onFieldChange()" maxlength="170" rows="3"></textarea>
+                <textarea x-model="seo.description" @input.debounce.400ms="onFieldChange()" maxlength="170" rows="3" placeholder="توضیحات جذاب متا شامل کلمه کلیدی اصلی..."></textarea>
                 <div class="bk-bar"><div :style="'width:' + descBarPct + '%;background:' + descBarColor"></div></div>
             </div>
 
-            <!-- ANALYSIS -->
+            <!-- ROBOTS & INDEXING -->
             <div class="bk-card">
-                <div class="bk-card-head">
-                    <span>تحلیل سئو</span>
-                    <span class="bk-badge" :style="'background:' + scoreColor + '22;color:' + scoreColor + ';border-color:' + scoreColor">
-                        <span x-text="analysis.passed"></span>/<span x-text="analysis.total"></span>
-                    </span>
-                </div>
-
-                <template x-for="(group, gkey) in analysis.groups" :key="gkey">
-                    <div class="bk-acc" x-show="group.items && group.items.length">
-                        <button type="button" class="bk-acc-head" @click="toggleGroup(gkey)">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg><!--group status-->
-                            <span x-text="group.label"></span>
-                            <span class="bk-acc-count" x-text="groupPassedCount(group) + '/' + group.items.length"></span>
-                            <svg class="solar-icon bk-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-                        </button>
-                        <div class="bk-acc-body" x-show="openGroups[gkey]">
-                            <template x-for="check in group.items" :key="check.key">
-                                <div class="bk-check" :class="checkStatusClass(check)">
-                                    <template x-if="check.passed"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></template><template x-if="!check.passed"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></template>
-                                    <div class="bk-check-main">
-                                        <strong x-text="check.label"></strong>
-                                        <small x-text="check.message"></small>
-                                        <template x-if="check.key === 'short_paragraphs' && !check.passed">
-                                            <button type="button" class="bk-btn-sm bk-fix-para-btn" @click="autoSplitLongParagraphs()">
-                                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h12a3 3 0 0 1 0 6h-3"/><path d="M15 15l-3 3 3 3M3 18h5"/></svg>
-                                                کوتاه‌سازی خودکار پاراگراف‌ها
-                                            </button>
-                                        </template>
-                                    </div>
-                                    <span class="bk-check-status" x-text="checkStatusLabel(check)"></span>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </template>
-            </div>
-
-            <!-- ROBOTS -->
-            <div class="bk-card">
-                <div class="bk-card-head"><span>ایندکس و Robots</span></div>
+                <div class="bk-card-head"><span>تنظیمات ایندکس و Robots</span></div>
                 <label class="bk-switch-row">
-                    <span>اجازه ایندکس</span>
+                    <span>اجازه ایندکس (Index)</span>
                     <input type="checkbox" x-model="seo.robots.index" @change="onFieldChange()">
                 </label>
                 <label class="bk-switch-row">
-                    <span>دنبال کردن لینک‌ها</span>
+                    <span>دنبال کردن لینک‌ها (Follow)</span>
                     <input type="checkbox" x-model="seo.robots.follow" @change="onFieldChange()">
                 </label>
                 <label class="bk-switch-row">
-                    <span>noarchive (عدم آرشیو)</span>
+                    <span>عدم آرشیو (noarchive)</span>
                     <input type="checkbox" x-model="seo.robots.noarchive" @change="onFieldChange()">
                 </label>
                 <label class="bk-switch-row">
-                    <span>nosnippet</span>
+                    <span>عدم نمایش اسنیپت (nosnippet)</span>
                     <input type="checkbox" x-model="seo.robots.nosnippet" @change="onFieldChange()">
                 </label>
                 <label class="bk-switch-row">
@@ -262,19 +234,7 @@ if ($post_id && !$post) {
                     <input type="checkbox" x-model="seo.robots.hide_date" @change="onFieldChange()">
                 </label>
                 <div class="bk-field" style="margin-top:8px">
-                    <label>max-image-preview</label>
-                    <select x-model="seo.robots.max_image_preview" @change="onFieldChange()">
-                        <option value="large">large</option>
-                        <option value="standard">standard</option>
-                        <option value="none">none</option>
-                    </select>
-                </div>
-                <div class="bk-field">
-                    <label>max-snippet (−۱ = بدون محدودیت)</label>
-                    <input type="number" x-model.number="seo.robots.max_snippet" @change="onFieldChange()" min="-1" max="9999">
-                </div>
-                <div class="bk-field" style="margin-top:8px">
-                    <label>Canonical URL</label>
+                    <label>آدرس کانونی (Canonical URL)</label>
                     <div class="bk-input-with-action">
                         <input type="url" dir="ltr" x-model="seo.canonical" @input.debounce.500ms="onFieldChange()" placeholder="https://…">
                         <a class="bk-icon-action" :href="seo.canonical || '#'" target="_blank" rel="noopener" title="مشاهده لینک" :class="{ 'is-disabled': !seo.canonical }" @click="if(!seo.canonical)$event.preventDefault()">
@@ -285,380 +245,318 @@ if ($post_id && !$post) {
                 <div class="bk-field" style="margin-top:10px">
                     <label>ریدایرکت ۳۰۱ (اختیاری)</label>
                     <input type="url" dir="ltr" x-model="seo.redirect" @input.debounce.500ms="onFieldChange()" placeholder="https://example.com/new-url">
-                    <p class="bk-hint" style="margin-top:6px">در صورت پر بودن، بازدید این صفحه با کد ۳۰۱ به آدرس بالا منتقل می‌شود.</p>
+                    <p class="bk-hint" style="margin-top:6px">در صورت تنظیم، بازدیدکنندگان به آدرس جدید هدایت می‌شوند.</p>
                 </div>
             </div>
         </section>
 
-        <!-- ========== LINKS TAB (Enhanced Side-box) ========== -->
+
+        <!-- ========== 2. CHECKLIST TAB ========== -->
+        <section x-show="activeTab === 'checklist'" class="bk-panel">
+            <div class="bk-card">
+                <div class="bk-card-head">
+                    <span>چک‌لیست آنالیز سئو و هوش مصنوعی</span>
+                    <span class="bk-badge" :style="'background:' + scoreColor + '22;color:' + scoreColor + ';border-color:' + scoreColor">
+                        <span x-text="analysis.passed"></span>/<span x-text="analysis.total"></span> موارد تایید شده
+                    </span>
+                </div>
+
+                <!-- FILTER CHIPS -->
+                <div class="bk-filter-chips">
+                    <button type="button" class="bk-fchip" :class="{ 'is-active': checklistFilter === 'all' }" @click="checklistFilter = 'all'">همه (<span x-text="allChecksList().length"></span>)</button>
+                    <button type="button" class="bk-fchip" :class="{ 'is-active': checklistFilter === 'seo' }" @click="checklistFilter = 'seo'">سئو (<span x-text="filterChecksByPillar('seo').length"></span>)</button>
+                    <button type="button" class="bk-fchip" :class="{ 'is-active': checklistFilter === 'aeo' }" @click="checklistFilter = 'aeo'">AEO (<span x-text="filterChecksByPillar('aeo').length"></span>)</button>
+                    <button type="button" class="bk-fchip" :class="{ 'is-active': checklistFilter === 'geo' }" @click="checklistFilter = 'geo'">GEO (<span x-text="filterChecksByPillar('geo').length"></span>)</button>
+                    <button type="button" class="bk-fchip bk-fchip-warn" :class="{ 'is-active': checklistFilter === 'failed' }" @click="checklistFilter = 'failed'">خطادار (<span x-text="failedChecksList().length"></span>)</button>
+                    <button type="button" class="bk-fchip bk-fchip-ok" :class="{ 'is-active': checklistFilter === 'passed' }" @click="checklistFilter = 'passed'">پاس‌شده (<span x-text="passedChecksList().length"></span>)</button>
+                </div>
+
+                <!-- CHECKLIST ITEMS CARDS -->
+                <div class="bk-checklist-items">
+                    <template x-for="check in filteredChecklistItems()" :key="check.key || check.id">
+                        <div class="bk-check-card" :class="checkStatusClass(check)">
+                            <div class="bk-check-head-row">
+                                <div class="bk-check-title-group">
+                                    <template x-if="check.passed">
+                                        <span class="bk-check-icon is-pass">
+                                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+                                        </span>
+                                    </template>
+                                    <template x-if="!check.passed">
+                                        <span class="bk-check-icon is-fail">
+                                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+                                        </span>
+                                    </template>
+                                    <strong class="bk-check-label" x-text="check.label"></strong>
+                                </div>
+                                <div class="bk-check-badges">
+                                    <span class="bk-pillar-badge" x-text="(check.group === 'aeo' ? 'AEO' : (check.group === 'geo' ? 'GEO' : 'SEO'))"></span>
+                                    <span class="bk-sev-badge" :class="'sev-' + (check.severity || 'medium')" x-text="check.severity === 'high' ? 'ضروری' : (check.severity === 'low' ? 'پیشنهاد' : 'مهم')"></span>
+                                </div>
+                            </div>
+
+                            <p class="bk-check-msg" x-text="check.message"></p>
+
+                            <template x-if="check.recommendation && !check.passed">
+                                <div class="bk-check-rec">
+                                    <strong>راهکار بهبود:</strong> <span x-text="check.recommendation"></span>
+                                </div>
+                            </template>
+
+                            <!-- 1-CLICK ACTION BUTTONS -->
+                            <div class="bk-check-actions" x-show="!check.passed">
+                                <template x-if="check.key === 'short_paragraphs'">
+                                    <button type="button" class="bk-btn-primary bk-btn-xs" @click="autoSplitLongParagraphs()">
+                                        کوتاه‌سازی خودکار پاراگراف‌ها
+                                    </button>
+                                </template>
+                                <template x-if="check.key === 'aeo_faq_structure'">
+                                    <button type="button" class="bk-btn-primary bk-btn-xs" @click="generateAeoFaq()">
+                                        تولید بخش FAQ با AI
+                                    </button>
+                                </template>
+                                <template x-if="check.key === 'geo_summary_conclusion'">
+                                    <button type="button" class="bk-btn-primary bk-btn-xs" @click="generateGeoSummary()">
+                                        تولید خلاصه نکات کلیدی با AI
+                                    </button>
+                                </template>
+                                <template x-if="check.key === 'kw_in_title' || check.key === 'title_length'">
+                                    <button type="button" class="bk-btn-primary bk-btn-xs" @click="openAiModal('title')">
+                                        تولید عنوان سئو با AI
+                                    </button>
+                                </template>
+                                <template x-if="check.key === 'kw_in_desc' || check.key === 'desc_length'">
+                                    <button type="button" class="bk-btn-primary bk-btn-xs" @click="openAiModal('description')">
+                                        تولید متا دیسکریپشن با AI
+                                    </button>
+                                </template>
+                                <template x-if="check.key === 'kw_in_alt'">
+                                    <button type="button" class="bk-btn-primary bk-btn-xs" @click="activeTab='media'; scanPostImages()">
+                                        تنظیم Alt تصاویر
+                                    </button>
+                                </template>
+                                <template x-if="check.key === 'internal_links'">
+                                    <button type="button" class="bk-btn-primary bk-btn-xs" @click="activeTab='links'; loadLinks()">
+                                        افزودن لینک داخلی
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ========== 3. AEO & GEO TAB ========== -->
+        <section x-show="activeTab === 'aeogeo'" class="bk-panel">
+
+            <!-- AEO READINESS CARD -->
+            <div class="bk-card bk-aeo-card">
+                <div class="bk-card-head">
+                    <span class="bk-pill-tag bk-tag-aeo">AEO</span>
+                    <span>بهینه‌سازی موتورهای پاسخ (Voice & Direct Answers)</span>
+                    <span class="bk-score-badge" x-text="(analysis.aeo_score ?? analysis.score) + '%'"></span>
+                </div>
+                <p class="bk-card-desc">موتورهای پاسخ مانند Google Assistant، Siri و Featured Snippets پاسخ‌های کوتاه، صریح و ساختاریافته را ترجیح می‌دهند.</p>
+
+                <div class="bk-aeo-tools">
+                    <button type="button" class="bk-btn-primary bk-btn-sm bk-full" @click="generateAeoFaq()" :disabled="aiBusy">
+                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
+                        تولید خودکار بخش سوالات متداول (FAQ) با AI
+                    </button>
+                </div>
+            </div>
+
+            <!-- GEO READINESS CARD -->
+            <div class="bk-card bk-geo-card">
+                <div class="bk-card-head">
+                    <span class="bk-pill-tag bk-tag-geo">GEO</span>
+                    <span>بهینه‌سازی هوش مصنوعی (ChatGPT, Perplexity, AI Overview)</span>
+                    <span class="bk-score-badge" x-text="(analysis.geo_score ?? analysis.score) + '%'"></span>
+                </div>
+                <p class="bk-card-desc">موتورهای جستجوی مولد مطالب دارای استناد به منبع، خلاصه نکات کلیدی، ساختار مقایسه‌ای و داده‌های ساختاریافته شفاف را نقل‌قول می‌کنند.</p>
+
+                <div class="bk-geo-tools">
+                    <button type="button" class="bk-btn-primary bk-btn-sm bk-full" @click="generateGeoSummary()" :disabled="aiBusy">
+                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
+                        تولید خلاصه نکات کلیدی (TL;DR) با AI
+                    </button>
+                </div>
+            </div>
+
+            <!-- AEO/GEO CHECKLIST HIGHLIGHTS -->
+            <div class="bk-card">
+                <div class="bk-card-head"><span>معیارهای آمادگی هوش مصنوعی</span></div>
+                <div class="bk-checklist-items">
+                    <template x-for="check in [...filterChecksByPillar('aeo'), ...filterChecksByPillar('geo')]" :key="check.key">
+                        <div class="bk-check-card" :class="checkStatusClass(check)">
+                            <div class="bk-check-head-row">
+                                <strong><span x-text="check.label"></span></strong>
+                                <span class="bk-pillar-badge" x-text="check.group.toUpperCase()"></span>
+                            </div>
+                            <p class="bk-check-msg" x-text="check.message"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ========== 4. LINKS TAB ========== -->
         <section x-show="activeTab === 'links'" class="bk-panel">
-            
-            <!-- Link Stats Header Card -->
+
             <div class="bk-card">
                 <div class="bk-card-head"><span>آمار لینک‌های مقاله</span></div>
                 <div class="bk-link-stats">
                     <div class="bk-stat">
                         <strong x-text="linkData.counts?.internal ?? 0">0</strong>
-                        <span>داخلی</span>
+                        <small>لینک داخلی</small>
                     </div>
                     <div class="bk-stat">
                         <strong x-text="linkData.counts?.external ?? 0">0</strong>
-                        <span>خارجی</span>
+                        <small>لینک خارجی</small>
                     </div>
-                </div>
-
-                <!-- Sub-tabs: Active vs Pending AI Links -->
-                <div class="bk-subtabs-row" style="margin-top:12px;display:flex;gap:6px;border-bottom:1px solid #E2E8F0;padding-bottom:8px;">
-                    <button type="button" class="bk-subtab-btn" :class="{ 'is-active': linksSubTab === 'active' }" @click="linksSubTab = 'active'">
-                        لینک‌های فعال (<span x-text="(linkData.internal?.length || 0) + (linkData.external?.length || 0)">0</span>)
-                    </button>
-                    <button type="button" class="bk-subtab-btn" :class="{ 'is-active': linksSubTab === 'pending' }" @click="linksSubTab = 'pending'">
-                        پیشنهادهای هوشمند (<span x-text="pendingAiLinks.length">0</span>)
-                        <span class="bk-badge-dot" x-show="pendingAiLinks.length"></span>
-                    </button>
                 </div>
             </div>
 
-            <!-- Pending AI Link Suggestions Box -->
-            <div x-show="linksSubTab === 'pending'" x-cloak class="bk-pending-links-container">
-                <div class="bk-card">
-                    <div class="bk-card-head" style="justify-content:space-between;">
-                        <span style="display:flex;align-items:center;gap:6px;">
-                            <svg class="solar-icon bk-purple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
-                            <span>پیشنهادهای هوشمند در انتظار تایید</span>
-                        </span>
-                        <button type="button" class="bk-btn-ghost bk-btn-xs" @click="approveAllPendingLinks()" x-show="pendingAiLinks.length">
-                            تایید و درج همگی
-                        </button>
-                    </div>
+            <!-- INTERNAL LINK SUGGESTIONS -->
+            <div class="bk-card bk-link-builder-card">
+                <div class="bk-card-head">
+                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    <span>پیشنهاد لینک داخلی هوشمند</span>
+                    <button type="button" class="bk-btn-ghost bk-btn-ai bk-btn-xs" style="margin-inline-start:auto" @click="loadSmartLinkSuggestions()" :disabled="linkBusy">
+                        پیشنهاد هوشمند AI
+                    </button>
+                </div>
 
-                    <template x-if="!pendingAiLinks.length">
-                        <div class="bk-empty-state" style="text-align:center;padding:16px;color:#64748B;font-size:12px;">
-                            هیچ پیشنهاد لینکی در انتظار تایید وجود ندارد.
-                            <button type="button" class="bk-link-btn" @click="openAiModal('links')" style="display:block;margin:8px auto 0;">اجرای لینک‌سازی هوشمند با AI</button>
-                        </div>
-                    </template>
+                <div class="bk-search-combo bk-search-combo-inline">
+                    <input type="text" x-model="linkAnchor" placeholder="کلیدواژه / انکر تکست…" @keydown.enter.prevent="runInternalSearch()">
+                    <button type="button" class="bk-search-icon-btn" @click="runInternalSearch()" :disabled="linkBusy" title="جستجو">
+                        <svg class="solar-icon" :class="{ 'bk-spin': linkBusy }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                    </button>
+                </div>
 
-                    <template x-for="link in pendingAiLinks" :key="link.id">
-                        <div class="bk-pending-link-card bk-link-card-stack">
-                            <div class="bk-link-title-only" x-text="link.target_title || link.keyword" :title="link.target_title || link.keyword"></div>
-                            <div class="bk-hint" style="margin:4px 0" x-show="link.keyword">انکر: <span x-text="link.keyword"></span></div>
-                            <div class="bk-hint" style="margin:2px 0" x-show="link.score">امتیاز ارتباط: <strong x-text="Math.round(link.score)"></strong>
-                                <span x-show="link.insertion_confidence==='low'" style="color:#b45309"> — محل درج نامطمئن؛ فقط پس از بررسی دستی اعمال شود</span>
+                <!-- Suggested list -->
+                <div class="bk-match-section" x-show="autoLinkSuggestions.length" x-cloak>
+                    <div class="bk-card-head"><span>پیشنهادهای هوشمند AI</span></div>
+                    <template x-for="(s, linkIdx) in autoLinkSuggestions" :key="s.target_post_id || s.id || linkIdx">
+                        <div class="bk-search-result-item bk-link-card-stack">
+                            <div class="bk-link-title-only">
+                                <strong x-text="s.target_title || s.title"></strong>
+                                <small class="bk-hint" x-text="'انکر پیشنهادی: ' + (s.suggested_anchor || s.keyword)"></small>
+                                <small class="bk-hint" x-show="s.reason || (typeof link !== 'undefined' && link.reason)" x-text="s.reason || (typeof link !== 'undefined' ? link.reason : '')"></small>
+                                <span class="bk-score-tag" x-show="s.score || (typeof link !== 'undefined' && link.score)" x-text="'امتیاز: ' + (s.score || (typeof link !== 'undefined' ? link.score : ''))"></span>
                             </div>
-                            <div class="bk-hint" style="margin:2px 0;color:#475569" x-show="link.reason" x-text="link.reason"></div>
                             <div class="bk-pending-actions bk-link-actions-below">
-                                <button type="button" class="bk-btn-primary bk-btn-xs" @click="acceptPendingLink(link)" title="تایید و درج">تأیید و درج</button>
-                                <a class="bk-btn-ghost bk-btn-xs" :href="link.target_url || '#'" target="_blank" rel="noopener">نمایش مقاله</a>
-                                <button type="button" class="bk-btn-ghost bk-btn-xs bk-btn-danger" @click="rejectPendingLink(link)" title="رد">رد</button>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </div>
-
-            <div class="bk-card" x-show="autoLinkSuggestions.length" x-cloak>
-                <div class="bk-card-head"><span>پیشنهاد لینک داخلی (پس از ذخیره)</span></div>
-                <template x-for="s in autoLinkSuggestions" :key="'als'+s.id">
-                    <div class="bk-search-result-item bk-link-card-stack">
-                        <div class="bk-link-title-only" x-text="s.title" :title="s.title"></div>
-                        <div class="bk-link-actions-below">
-                            <button type="button" class="bk-btn-primary bk-btn-xs" @click="linkAnchor = seo.focus_keyword || linkAnchor; insertLinkIntoEditor(linkAnchor || s.title, s.permalink, s.title, false, true); showToast('لینک درج شد', 'success'); loadLinks()">تایید</button>
-                            <a class="bk-btn-ghost bk-btn-xs" :href="s.permalink" target="_blank" rel="noopener">نمایش مقاله</a>
-                        </div>
-                    </div>
-                </template>
-            </div>
-
-            <!-- Active Links List -->
-            <div x-show="linksSubTab === 'active'">
-                <!-- Internal Search & Manual Insert -->
-                <div class="bk-card bk-link-builder-card">
-                    <div class="bk-card-head">
-                        <svg class="solar-icon bk-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
-                        <span>لینک‌ساز داخلی</span>
-                        <button type="button" class="bk-btn-ghost bk-btn-ai bk-btn-xs" style="margin-inline-start:auto" @click="openAiModal('links')" title="پیشنهاد با هوش مصنوعی">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
-                            AI
-                        </button>
-                    </div>
-                    <p class="bk-hint">۱) کلیدواژه را جستجو کنید → ۲) مقالات مرتبط را تایید کنید → ۳) محل لینک در متن را انتخاب کنید → ۴) اعمال</p>
-                    <div class="bk-search-combo bk-search-combo-inline">
-                        <input type="text" x-model="linkAnchor" placeholder="کلیدواژه / انکر تکست…" @keydown.enter.prevent="runInternalSearch()">
-                        <button type="button" class="bk-search-icon-btn" @click="runInternalSearch()" :disabled="linkBusy" title="جستجو">
-                            <svg class="solar-icon" :class="{ 'bk-spin': linkBusy }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-                        </button>
-                    </div>
-
-                    <!-- Step 1: Related articles -->
-                    <div class="bk-match-section" x-show="postResults.length" x-cloak>
-                        <div class="bk-card-head">
-                            <span>مقالات مرتبط</span>
-                            <button type="button" class="bk-link-btn" @click="acceptAllInternalPosts(); loadInternalContentMatches()" x-show="postResults.length">همه تایید</button>
-                        </div>
-                        <template x-for="p in postResults" :key="p.id">
-                            <div class="bk-search-result-item bk-article-pick bk-link-card-stack" :class="{ 'is-accepted': p.accepted, 'is-rejected': p.rejected }">
-                                <div class="bk-link-title-only" x-text="p.title" :title="p.title"></div>
-                                <div class="bk-pending-actions bk-link-actions-below">
-                                    <button type="button" class="bk-btn-primary bk-btn-xs" @click="p.accepted=true; p.rejected=false; loadInternalContentMatches()" title="تایید">تایید</button>
-                                    <a class="bk-btn-ghost bk-btn-xs" :href="p.permalink" target="_blank" rel="noopener">نمایش مقاله</a>
-                                    <button type="button" class="bk-btn-ghost bk-btn-xs bk-btn-danger" @click="p.accepted=false; p.rejected=true" title="رد">رد</button>
-                                </div>
-                            </div>
-                        </template>
-                        <div class="bk-ext-actions-row" x-show="acceptedInternalPosts().length">
-                            <button type="button" class="bk-btn-ghost bk-btn-sm" @click="loadInternalContentMatches()">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="M21 21l-4.3-4.3M14 14l6 6"/></svg>
-                                یافتن محل لینک در متن
-                            </button>
-                            <button type="button" class="bk-btn-ghost bk-btn-sm" @click="applyInternalRandom()" x-show="acceptedInternalPosts().length > 1">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
-                                لینک تصادفی
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Step 2: Content matches + assign article -->
-                    <div class="bk-match-section" x-show="contentMatchesInternal.length" x-cloak>
-                        <div class="bk-card-head"><span>تطابق در متن مقاله — انتخاب محل لینک</span></div>
-                        <template x-for="(m, i) in contentMatchesInternal" :key="'cmi'+i">
-                            <div class="bk-match-pick bk-match-assign">
-                                <label class="bk-match-pick-label">
-                                    <input type="checkbox" x-model="m.selected">
-                                    <span x-text="m.snippet"></span>
-                                </label>
-                                <select x-show="m.selected" x-model="m.targetId">
-                                    <option value="">انتخاب مقاله مقصد…</option>
-                                    <template x-for="p in acceptedInternalPosts()" :key="'opt'+p.id">
-                                        <option :value="String(p.id)" x-text="p.title"></option>
-                                    </template>
-                                </select>
-                            </div>
-                        </template>
-                        <button type="button" class="bk-btn-primary bk-full" style="margin-top:10px"
-                            @click="confirmInternalLinking()" :disabled="linkBusy">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
-                            ایجاد لینک داخلی (بولد + target=_blank + follow)
-                        </button>
-                    </div>
-                </div>
-
-                <div class="bk-card bk-link-builder-card">
-                    <div class="bk-card-head">
-                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
-                        <span>افزودن لینک خارجی</span>
-                    </div>
-                    <div class="bk-field">
-                        <label>انکر / عبارت برای جستجو در متن</label>
-                        <input type="text" x-model="extAnchor" placeholder="عبارت داخل مقاله" @keydown.enter.prevent="findExternalMatches()">
-                    </div>
-                    <div class="bk-field">
-                        <label>آدرس مقصد</label>
-                        <input type="url" dir="ltr" x-model="extUrl" placeholder="https://…">
-                    </div>
-                    <div class="bk-ext-actions-row">
-                        <label class="bk-check-inline">
-                            <input type="radio" name="bk_ext_rel" :checked="!extNofollow" @change="extNofollow=false"> follow
-                        </label>
-                        <label class="bk-check-inline">
-                            <input type="radio" name="bk_ext_rel" :checked="extNofollow" @change="extNofollow=true"> nofollow
-                        </label>
-                        <button type="button" class="bk-btn-ghost bk-btn-sm" @click="findExternalMatches()">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-                            یافتن در متن
-                        </button>
-                    </div>
-                    <div class="bk-match-section" x-show="contentMatchesExternal.length" x-cloak>
-                        <div class="bk-card-head"><span>تطابق در متن مقاله</span></div>
-                        <template x-for="(m, i) in contentMatchesExternal" :key="'cme'+i">
-                            <label class="bk-match-pick">
-                                <input type="checkbox" x-model="m.selected">
-                                <span x-text="m.snippet"></span>
-                            </label>
-                        </template>
-                        <button type="button" class="bk-btn-primary bk-full" style="margin-top:10px" @click="confirmExternalLinking()">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
-                            ایجاد لینک خارجی (بولد + پنجره جدید)
-                        </button>
-                    </div>
-                </div>
-
-
-                <!-- Existing Links List -->
-                <div class="bk-card">
-                    <div class="bk-card-head">
-                        <span>لینک‌های موجود در مقاله</span>
-                        <button type="button" class="bk-link-btn" @click="loadLinks()" title="تازه‌سازی">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.1-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
-                        </button>
-                    </div>
-                    <template x-if="!((linkData.internal?.length || 0) + (linkData.external?.length || 0))">
-                        <div class="bk-empty-state">هنوز لینکی در متن مقاله ثبت نشده است.</div>
-                    </template>
-                    <template x-for="(l, idx) in (linkData.internal || [])" :key="'li'+idx+l.href">
-                        <div class="bk-link-item bk-link-item-row">
-                            <span class="bk-tag internal">داخلی</span>
-                            <div class="bk-link-item-main">
-                                <strong x-text="l.text || '—'"></strong>
-                                <a class="bk-link-url" :href="l.href" target="_blank" rel="noopener" dir="ltr" x-text="l.href"></a>
-                            </div>
-                            <div class="bk-link-item-actions">
-                                <a class="bk-icon-action" :href="l.href" target="_blank" rel="noopener" title="مشاهده لینک">
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7M10 14L21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
-                                </a>
-                                <button type="button" class="bk-icon-action is-danger" @click="removeLinkFromContent(l)" title="حذف لینک از متن">
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1"/><path d="M2 2l20 20"/></svg>
+                                <button type="button" class="bk-btn-primary bk-btn-xs" @click="insertSuggestedLink(s)">
+                                    افزودن لینک به متن
                                 </button>
+                                <a class="bk-btn-ghost bk-btn-xs" :href="s.permalink || s.target_url" target="_blank" rel="noopener">نمایش</a>
                             </div>
                         </div>
                     </template>
-                    <template x-for="(l, idx) in (linkData.external || [])" :key="'le'+idx+l.href">
-                        <div class="bk-link-item bk-link-item-row">
-                            <span class="bk-tag external">خارجی</span>
-                            <div class="bk-link-item-main">
-                                <strong x-text="l.text || '—'"></strong>
-                                <a class="bk-link-url" :href="l.href" target="_blank" rel="noopener" dir="ltr" x-text="l.href"></a>
-                            </div>
-                            <div class="bk-link-item-actions">
-                                <a class="bk-icon-action" :href="l.href" target="_blank" rel="noopener" title="مشاهده لینک">
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7M10 14L21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
-                                </a>
-                                <button type="button" class="bk-icon-action is-danger" @click="removeLinkFromContent(l)" title="حذف لینک از متن">
-                                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1"/><path d="M2 2l20 20"/></svg>
-                                </button>
+                </div>
+
+                <!-- Manual search results -->
+                <div class="bk-match-section" x-show="postResults.length" x-cloak>
+                    <div class="bk-card-head"><span>مقالات مرتبط یافت‌شده</span></div>
+                    <template x-for="p in postResults" :key="p.id">
+                        <div class="bk-search-result-item bk-article-pick bk-link-card-stack" :class="{ 'is-accepted': p.accepted, 'is-rejected': p.rejected }">
+                            <div class="bk-link-title-only" x-text="p.title" :title="p.title"></div>
+                            <div class="bk-pending-actions bk-link-actions-below">
+                                <button type="button" class="bk-btn-primary bk-btn-xs" @click="p.accepted=true; p.rejected=false; loadInternalContentMatches()">تایید</button>
+                                <a class="bk-btn-ghost bk-btn-xs" :href="p.permalink" target="_blank" rel="noopener">نمایش</a>
                             </div>
                         </div>
                     </template>
                 </div>
             </div>
 
-        </section>
-
-        <!-- ========== MEDIA / OPTIMIZE TAB ========== -->
-        <section x-show="activeTab === 'media'" class="bk-panel bk-media-panel">
-            <div class="bk-media-hero">
-                <div class="bk-media-hero__text">
-                    <span class="bk-media-hero__tag">Images</span>
-                    <strong>بهینه‌سازی تصاویر مقاله</strong>
-                    <p>اسکن، واترمارک، ابعاد ثابت، Alt و فشرده‌سازی — روی کاور و تصاویر محتوا.</p>
-                </div>
-                <button type="button" class="bk-media-btn bk-media-btn-icon" @click="scanPostImages()" :disabled="optBusy" title="اسکن تصاویر">
-                    <svg class="solar-icon" :class="{ 'bk-spin': optBusy }" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10M1 14l5.36 5.36A9 9 0 0 0 20.49 15"/></svg>
-                </button>
-            </div>
-
-            <div class="bk-media-stats" x-show="(postImages||[]).length">
-                <div class="bk-media-stat"><span x-text="(postImages||[]).length"></span><small>تصویر</small></div>
-                <div class="bk-media-stat"><span x-text="(postImages||[]).filter(i=>!(i.alt||i.new_alt)).length"></span><small>بدون Alt</small></div>
-                <div class="bk-media-stat"><span x-text="(postImages||[]).filter(i=>i.watermarked).length"></span><small>واترمارک</small></div>
-            </div>
-
-            <div class="bk-media-tools">
-                <label class="bk-media-tool" :class="{ 'is-on': !!optOptions.convertWebp }">
-                    <input type="checkbox" x-model="optOptions.convertWebp">
-                    <span class="bk-media-tool__ico">🗜️</span>
-                    <span class="bk-media-tool__lab">WebP / فشرده</span>
-                    <small>تبدیل و کاهش حجم</small>
-                </label>
-                <label class="bk-media-tool" :class="{ 'is-on': !!optOptions.resize }">
-                    <input type="checkbox" x-model="optOptions.resize">
-                    <span class="bk-media-tool__ico">📐</span>
-                    <span class="bk-media-tool__lab">ابعاد ثابت</span>
-                    <small>عرض / ارتفاع حداکثر</small>
-                </label>
-                <label class="bk-media-tool" :class="{ 'is-on': !!optOptions.watermark }">
-                    <input type="checkbox" x-model="optOptions.watermark">
-                    <span class="bk-media-tool__ico">💧</span>
-                    <span class="bk-media-tool__lab">واترمارک</span>
-                    <small>اعمال روی تصاویر</small>
-                </label>
-                <label class="bk-media-tool" :class="{ 'is-on': !!optOptions.fillAlt }">
-                    <input type="checkbox" x-model="optOptions.fillAlt">
-                    <span class="bk-media-tool__ico">🔤</span>
-                    <span class="bk-media-tool__lab">Alt خودکار</span>
-                    <small>تکمیل متن جایگزین</small>
-                </label>
-            </div>
-
-            <div class="bk-media-sliders">
-                <div class="bk-media-field">
-                    <label>حداکثر عرض <em x-text="(optOptions.maxWidth||1600)+'px'"></em></label>
-                    <input type="range" min="320" max="2560" step="40" x-model.number="optOptions.maxWidth">
-                </div>
-                <div class="bk-media-field">
-                    <label>حداکثر ارتفاع <em x-text="(optOptions.maxHeight||0) ? (optOptions.maxHeight+'px') : 'آزاد'"></em></label>
-                    <input type="range" min="0" max="2000" step="40" x-model.number="optOptions.maxHeight">
-                </div>
-                <div class="bk-media-field">
-                    <label>کیفیت فشرده‌سازی <em x-text="(optOptions.quality||82)+'%'"></em></label>
-                    <input type="range" min="40" max="95" step="1" x-model.number="optOptions.quality">
-                </div>
-            </div>
-
-            <div class="bk-media-alt-bar bk-media-alt-bar--full">
-                <input type="text" x-model="optOptions.defaultAlt" placeholder="Alt پیش‌فرض برای تصاویر بدون متن جایگزین">
-                <button type="button" class="bk-media-btn bk-media-btn-icon" @click="openAiModal('images')" title="ایجاد Alt با هوش مصنوعی">
-                    <svg class="solar-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
-                </button>
-            </div>
-
-            <div class="bk-media-actions">
-                <button type="button" class="bk-media-btn bk-media-btn-primary" @click="runOptimizeImages()" :disabled="optBusy || !(postImages||[]).length">
-                    <span x-text="optBusy ? 'در حال بهینه‌سازی…' : 'اجرای بهینه‌سازی گروهی'"></span>
-                </button>
-            </div>
-
-            <div class="bk-media-list" x-show="(postImages||[]).length">
-                <div class="bk-media-list__head">گزارش تصاویر</div>
-                <template x-for="(img, idx) in postImages" :key="img.id || img.src || idx">
-                    <div class="bk-media-card">
-                        <div class="bk-media-card__thumb">
-                            <img :src="img.src || img.original_src" alt="" loading="lazy">
-                        </div>
-                        <div class="bk-media-card__body">
-                            <div class="bk-media-card__meta">
-                                <span class="bk-media-io" x-show="img.format_before || img.size_before">
-                                    <em>قبل</em>
-                                    <span x-text="(img.format_before || '—') + (img.size_before ? (' · ' + img.size_before) : '')"></span>
-                                </span>
-                                <span class="bk-media-io is-after" x-show="img.format_after || img.size_after || img.format || img.size">
-                                    <em>بعد</em>
-                                    <span x-text="(img.format_after || img.format || '—') + ((img.size_after || img.size) ? (' · ' + (img.size_after || img.size)) : '')"></span>
-                                </span>
-                                <span class="bk-media-badge is-wm" x-show="img.watermarked">واترمارک</span>
-                                <span class="bk-media-badge is-ok" x-show="img.alt || img.new_alt">Alt</span>
-                                <span class="bk-media-badge is-warn" x-show="!(img.alt || img.new_alt)">بدون Alt</span>
-                            </div>
-                            <input type="text" class="bk-media-alt-input"
-                                :value="img.new_alt || img.alt || ''"
-                                @change="updateImageAlt(img, $event.target.value)"
-                                placeholder="متن جایگزین (Alt)">
-                            <div class="bk-media-card__actions">
-                                <button type="button" class="bk-media-btn bk-media-btn-sm" @click="watermarkSingleImage(img)" :disabled="optBusy">واترمارک</button>
-                                <button type="button" class="bk-media-btn bk-media-btn-sm is-danger" x-show="img.watermarked" @click="removeImageWatermark(img)" :disabled="optBusy">حذف واترمارک</button>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </div>
-            <div class="bk-media-empty" x-show="!(postImages||[]).length">
-                تصویری یافت نشد — مقاله را ذخیره کنید یا آیکن اسکن را بزنید.
-            </div>
-        </section>
-
-<section x-show="activeTab === 'schema'" class="bk-panel">
+            <!-- EXISTING LINKS LIST -->
             <div class="bk-card">
-                <div class="bk-card-head"><span>نوع اسکیما</span></div>
+                <div class="bk-card-head">
+                    <span>لینک‌های موجود در مقاله</span>
+                    <button type="button" class="bk-link-btn" @click="loadLinks()" title="تازه‌سازی">
+                        <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.1-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
+                    </button>
+                </div>
+                <template x-if="!((linkData.internal?.length || 0) + (linkData.external?.length || 0))">
+                    <div class="bk-empty-state">هنوز لینکی در متن مقاله ثبت نشده است.</div>
+                </template>
+                <template x-for="(l, idx) in (linkData.internal || [])" :key="'li'+idx+l.href">
+                    <div class="bk-link-item bk-link-item-row">
+                        <span class="bk-tag internal">داخلی</span>
+                        <div class="bk-link-item-info">
+                            <strong x-text="l.text || 'بدون انکر'"></strong>
+                            <small dir="ltr" x-text="l.href"></small>
+                        </div>
+                    </div>
+                </template>
+                <template x-for="(l, idx) in (linkData.external || [])" :key="'le'+idx+l.href">
+                    <div class="bk-link-item bk-link-item-row">
+                        <span class="bk-tag external">خارجی</span>
+                        <div class="bk-link-item-info">
+                            <strong x-text="l.text || 'بدون انکر'"></strong>
+                            <small dir="ltr" x-text="l.href"></small>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
+
+
+        <!-- ========== 5. MEDIA / IMAGES TAB ========== -->
+        <section x-show="activeTab === 'media'" class="bk-panel">
+            <div class="bk-card">
+                <div class="bk-card-head">
+                    <span>تصاویر مقاله</span>
+                    <button type="button" class="bk-link-btn" @click="scanPostImages()">اسکن مجدد</button>
+                </div>
+
+                <div class="bk-media-list" x-show="(postImages||[]).length">
+                    <template x-for="(img, idx) in postImages" :key="img.id || img.src || idx">
+                        <div class="bk-media-card">
+                            <div class="bk-media-card__thumb">
+                                <img :src="img.src || img.original_src" alt="" loading="lazy">
+                            </div>
+                            <div class="bk-media-card__body">
+                                <div class="bk-media-card__meta">
+                                    <span class="bk-media-badge is-ok" x-show="img.alt || img.new_alt">Alt دارد</span>
+                                    <span class="bk-media-badge is-warn" x-show="!(img.alt || img.new_alt)">بدون Alt</span>
+                                </div>
+                                <input type="text" class="bk-media-alt-input"
+                                    :value="img.new_alt || img.alt || ''"
+                                    @change="updateImageAlt(img, $event.target.value)"
+                                    placeholder="متن جایگزین (Alt)">
+                                <button type="button" class="bk-btn-ghost bk-btn-xs" style="margin-top:6px" @click="generateSingleImageAlt(img)" :disabled="aiBusy">
+                                    تولید Alt با AI
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <div class="bk-media-empty" x-show="!(postImages||[]).length">
+                    تصویری در بدنه مقاله یافت نشد.
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ========== 6. SCHEMA TAB ========== -->
+        <section x-show="activeTab === 'schema'" class="bk-panel">
+            <div class="bk-card">
+                <div class="bk-card-head"><span>نوع داده ساختاریافته (Schema)</span></div>
                 <select x-model="schemaType" @change="onSchemaTypeChange()">
-                    <option value="Article">Article</option>
-                    <option value="BlogPosting">BlogPosting</option>
-                    <option value="WebPage">WebPage</option>
-                    <option value="FAQPage">FAQPage</option>
-                    <option value="HowTo">HowTo</option>
-                    <option value="Product">Product</option>
-                    <option value="Organization">Organization</option>
+                    <option value="Article">Article (مقاله)</option>
+                    <option value="BlogPosting">BlogPosting (پست بلاگ)</option>
+                    <option value="WebPage">WebPage (صفحه وب)</option>
+                    <option value="FAQPage">FAQPage (سوالات متداول)</option>
+                    <option value="HowTo">HowTo (راهنمای گام‌به‌گام)</option>
+                    <option value="Product">Product (محصول)</option>
+                    <option value="Organization">Organization (سازمان)</option>
                 </select>
-                <p class="bk-hint" style="margin-top:8px">BreadcrumbList به‌صورت خودکار در خروجی صفحه اضافه می‌شود.</p>
+                <p class="bk-hint" style="margin-top:8px">BreadcrumbList و Article به‌صورت خودکار در خروجی کد اضافه می‌شود.</p>
             </div>
 
             <div class="bk-card" x-show="schemaType === 'FAQPage'" x-cloak>
@@ -675,39 +573,26 @@ if ($post_id && !$post) {
                 </template>
             </div>
 
-            <div class="bk-card" x-show="schemaType === 'HowTo'" x-cloak>
-                <div class="bk-card-head">
-                    <span>مراحل HowTo</span>
-                    <button type="button" class="bk-link-btn" @click="howToSteps.push({name:'',text:''})">+ مرحله</button>
-                </div>
-                <template x-for="(step, i) in howToSteps" :key="'ht'+i">
-                    <div class="bk-schema-row">
-                        <input type="text" :placeholder="'عنوان مرحله ' + (i+1)" x-model="step.name" @input.debounce.400ms="syncSchemaFromForms()">
-                        <textarea rows="2" placeholder="توضیح مرحله" x-model="step.text" @input.debounce.400ms="syncSchemaFromForms()"></textarea>
-                        <button type="button" class="bk-icon-action is-danger" @click="howToSteps.splice(i,1); syncSchemaFromForms()" title="حذف">×</button>
-                    </div>
-                </template>
-            </div>
-
             <div class="bk-card">
                 <div class="bk-card-head">
-                    <span>JSON-LD</span>
-                    <button type="button" class="bk-link-btn" @click="rebuildSchema()">بازنشانی از فرم</button>
+                    <span>پیش‌نمایش JSON-LD</span>
+                    <button type="button" class="bk-link-btn" @click="rebuildSchema()">بازنشانی</button>
                 </div>
                 <textarea
                     class="bk-code"
                     dir="ltr"
-                    rows="12"
+                    rows="10"
                     x-model="seo.schema"
                     @input.debounce.600ms="onFieldChange()"
                 ></textarea>
             </div>
         </section>
 
-        <!-- ========== SOCIAL TAB ========== -->
+
+        <!-- ========== 7. SOCIAL TAB ========== -->
         <section x-show="activeTab === 'social'" class="bk-panel">
             <div class="bk-card">
-                <div class="bk-card-head"><span>پیش‌نمایش Open Graph</span></div>
+                <div class="bk-card-head"><span>پیش‌نمایش Open Graph (شبکه‌های اجتماعی)</span></div>
                 <div class="bk-og-preview">
                     <div class="bk-og-img" :style="(seo.og_image || seo.x_image) ? ('background-image:url(' + (seo.og_image || seo.x_image) + ')') : ''">
                         <span x-show="!(seo.og_image || seo.x_image)">بدون تصویر</span>
@@ -721,7 +606,7 @@ if ($post_id && !$post) {
             </div>
 
             <div class="bk-card">
-                <div class="bk-card-head"><span>Open Graph</span></div>
+                <div class="bk-card-head"><span>تنظیمات Open Graph</span></div>
                 <div class="bk-field">
                     <label>عنوان OG</label>
                     <input type="text" x-model="seo.og_title" @input.debounce.400ms="onFieldChange()">
@@ -738,378 +623,57 @@ if ($post_id && !$post) {
                     </div>
                 </div>
             </div>
+        </section>
 
-            <div class="bk-card">
-                <div class="bk-card-head"><span>پیش‌نمایش X / Twitter</span></div>
-                <div class="bk-x-preview">
-                    <div class="bk-x-img" x-show="seo.x_image || seo.og_image" :style="'background-image:url(' + (seo.x_image || seo.og_image) + ')'"></div>
-                    <strong x-text="seo.x_title || seo.og_title || seo.seo_title || seo.title || 'عنوان'"></strong>
-                    <p x-text="seo.x_description || seo.og_description || seo.description || ''"></p>
-                </div>
-            </div>
 
+        <!-- ========== 8. AI ASSISTANT TAB / MODAL ========== -->
+        <section x-show="activeTab === 'ai'" class="bk-panel bk-ai-engine-readonly">
             <div class="bk-card">
-                <div class="bk-card-head"><span>Twitter / X</span></div>
-                <div class="bk-field">
-                    <label>عنوان X</label>
-                    <input type="text" x-model="seo.x_title" @input.debounce.400ms="onFieldChange()">
+                <div class="bk-card-head">
+                    <svg class="solar-icon bk-purple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
+                    <span>دستیار هوشمند سئوی بنکای</span>
                 </div>
-                <div class="bk-field">
-                    <label>توضیحات X</label>
-                    <textarea rows="3" x-model="seo.x_description" @input.debounce.400ms="onFieldChange()"></textarea>
-                </div>
-                <div class="bk-field">
-                    <label>تصویر X</label>
-                    <div class="bk-input-with-action">
-                        <input type="url" dir="ltr" x-model="seo.x_image" @input.debounce.400ms="onFieldChange()" placeholder="https://…">
-                        <button type="button" class="bk-btn-ghost bk-btn-sm" @click="pickMedia('x_image')">رسانه</button>
-                    </div>
+                <p class="bk-card-desc">تنظیمات مرکزی هوش مصنوعی از طریق پنل مدیریت بنکای اعمال می‌شوند. تولید سریع و هوشمند عناصر مقاله بر اساس محتوای متنی و کلیدواژه‌ها:</p>
+
+                <div class="bk-ai-quick-actions">
+                    <button type="button" class="bk-btn-ghost bk-full" @click="openAiModal('title')">تولید عنوان سئو (Title Tag)</button>
+                    <button type="button" class="bk-btn-ghost bk-full" @click="openAiModal('description')">تولید متا دیسکریپشن</button>
+                    <button type="button" class="bk-btn-ghost bk-full" @click="openAiModal('focus_keyword')">استخراج کلمه کلیدی اصلی</button>
+                    <button type="button" class="bk-btn-ghost bk-full" @click="openAiModal('keywords')">پیشنهاد کلیدواژه‌های فرعی</button>
+                    <button type="button" class="bk-btn-ghost bk-full" @click="generateAeoFaq()">تولید بخش سوالات متداول (AEO FAQ)</button>
+                    <button type="button" class="bk-btn-ghost bk-full" @click="generateGeoSummary()">تولید خلاصه نکات کلیدی (GEO Summary)</button>
                 </div>
             </div>
         </section>
 
     </div>
 
-    <!-- ========== AI ASSISTANT MODAL (Redesigned Action Grid & Automation Workflow) ========== -->
-    <div class="bk-modal-backdrop" x-show="aiOpen" x-cloak @click.self="aiOpen = false" dir="rtl">
-        <div class="bk-modal bk-ai-modal" role="dialog" aria-modal="true">
-            
-            <!-- Modal Header -->
-            <header class="bk-modal-head">
-                <div class="bk-modal-title">
-                    <div class="bk-ai-logo-icon">
-                        <svg class="solar-icon bk-purple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
-                    </div>
-                    <div>
-                        <strong>دستیار هوشمند سئو و محتوا Bankai</strong>
-                        <small>بهینه‌سازی خودکار متا، کلیدواژه‌ها، لینک‌سازی داخلی، سئوی تصاویر و دسته/برچسب</small>
-                    </div>
-                </div>
-
-                <button type="button" class="bk-icon-btn bk-modal-close-btn" @click="aiOpen = false" title="بستن">
-                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-            </header>
-
-            <!-- Phase D: read-only central providers (no local selectors) -->
-            <div class="bk-ai-engine-bar bk-ai-engine-readonly">
-                <div class="bk-ai-engine-label">موتورهای فعال (تنظیمات مرکزی)</div>
-                <div class="bk-ai-central-info" style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 0;">
-                    <div class="bk-ai-engine-card is-active" style="cursor:default;pointer-events:none;">
-                        <span class="bk-ai-engine-name">متن: <span x-text="centralTextProviderName || 'تنظیم نشده'"></span></span>
-                        <span class="bk-ai-engine-status" x-text="centralTextProviderReady ? 'آماده' : 'نیاز به کلید'"></span>
-                    </div>
-                    <div class="bk-ai-engine-card is-active" style="cursor:default;pointer-events:none;">
-                        <span class="bk-ai-engine-name">تصویر: <span x-text="centralImageProviderName || 'تنظیم نشده'"></span></span>
-                        <span class="bk-ai-engine-status" x-text="centralImageProviderReady ? 'آماده' : 'نیاز به کلید'"></span>
-                    </div>
-                </div>
-                <p style="margin:0;font-size:11px;color:#64748b;line-height:1.5;">
-                    برای تغییر موتور، از <strong>استودیو هوش مصنوعی</strong> در پنل بنکای استفاده کنید. انتخاب در این بخش غیرفعال است.
-                </p>
+    <!-- AI MODAL -->
+    <div class="bk-modal-backdrop" x-show="aiModalOpen" x-cloak @keydown.escape.window="aiModalOpen = false">
+        <div class="bk-modal" @click.away="aiModalOpen = false">
+            <div class="bk-modal-head">
+                <strong x-text="aiModalTitle || 'دستیار AI سئو'"></strong>
+                <button type="button" class="bk-icon-action" @click="aiModalOpen = false">×</button>
             </div>
-
-
-            <!-- Modal Body -->
             <div class="bk-modal-body">
-
-                <!-- Progress Bar & Status (Shown when loading or active) -->
-                <div class="bk-progress-card" x-show="aiLoading || aiProgress > 0" x-cloak>
-                    <div class="bk-progress-head">
-                        <span class="bk-progress-text" x-text="aiStepText || 'در حال پردازش عملیات...'"></span>
-                        <span class="bk-progress-pct" x-text="aiProgress + '%'"></span>
-                    </div>
-                    <div class="bk-progress-track">
-                        <div class="bk-progress-bar" :style="{ width: aiProgress + '%' }"></div>
-                    </div>
-
-                    <!-- Interactive Checklist -->
-                    <div class="bk-checklist-grid">
-                        <template x-for="step in aiChecklist" :key="step.id">
-                            <div class="bk-checklist-item" :class="'is-' + step.status">
-                                <div class="bk-chk-icon">
-                                    <template x-if="step.status === 'success'">
-                                        <svg class="solar-icon bk-text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
-                                    </template>
-                                    <template x-if="step.status === 'loading'">
-                                        <svg class="solar-icon bk-spin bk-text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.1-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
-                                    </template>
-                                    <template x-if="step.status === 'pending'">
-                                        <svg class="solar-icon bk-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>
-                                    </template>
-                                    <template x-if="step.status === 'error'">
-                                        <svg class="solar-icon bk-text-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
-                                    </template>
-                                </div>
-                                <span class="bk-chk-label" x-text="step.label"></span>
-                            </div>
-                        </template>
-                    </div>
+                <div class="bk-field" x-show="aiTask === 'title' || aiTask === 'description' || aiTask === 'rewrite'">
+                    <label>سبک بازنویسی / تولید</label>
+                    <select x-model="aiOptions.style">
+                        <option value="seo">سئو استاندارد (پیش‌فرض)</option>
+                        <option value="engaging">جذاب و کلیک‌خور (High CTR)</option>
+                        <option value="formal">رسمی و حرفه‌ای</option>
+                        <option value="simple">ساده و روان</option>
+                    </select>
                 </div>
 
-                <!-- Dashboard / Actions Grid -->
-                <div class="bk-actions-dashboard" x-show="!aiReviewOpen">
-                    <h3 class="bk-grid-section-title">کارت‌های اقدام سریع (Quick Actions)</h3>
-                    
-                    <!-- Hero Auto-Optimize All Card -->
-                    <div class="bk-action-card bk-hero-action-card" @click="runAiAction('auto_all')" :class="{ 'is-disabled': aiLoading }">
-                        <div class="bk-action-badge">پیشنهادی 🚀</div>
-                        <div class="bk-action-icon">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.5c-1.5 1.3-2 3.5-2 3.5s2.2-.5 3.5-2c1-1 1.1-2.3.4-3.1-.8-.7-2.1-.6-3.1.4z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.9A12.4 12.4 0 0 1 22 2c0 2.7-.8 5.6-2.4 7.9A22 22 0 0 1 15 12l-3 3z"/><path d="M9 12H4s.5-1 2-2c1.4-.9 2.5-.5 3 0"/><path d="M12 15v5s1-.5 2-2c.9-1.4.5-2.5 0-3"/></svg>
-                        </div>
-                        <div class="bk-action-content">
-                            <h4>اجرای یک‌پارچه تمام موارد (Auto-Optimize All)</h4>
-                            <p>تحلیل مقاله، عنوان و متا، لینک‌سازی، Alt تصاویر و در صورت امکان تولید کاور با AI.</p>
-                        </div>
-                        <button type="button" class="bk-btn-primary bk-action-btn" :disabled="aiLoading">
-                            <span x-show="!aiLoading">شروع بهینه‌سازی کامل</span>
-                            <span x-show="aiLoading">در حال پردازش...</span>
-                        </button>
-                    </div>
-
-                    <!-- Quick Action Cards Grid -->
-                    <div class="bk-quick-cards-grid">
-                        
-                        <!-- Full Rewrite -->
-                        <div class="bk-action-card" @click="runAiAction('rewrite')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-purple">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>بازنویسی کامل مقاله</h4>
-                                <p>ارتقای لحن و روان‌سازی محتوا با حفظ تگ‌های HTML و ساختار هدینگ‌ها.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">بازنویسی با AI</button>
-                        </div>
-
-                        <!-- Auto Metas & Keywords -->
-                        <div class="bk-action-card" @click="runAiAction('meta')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-blue">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V5h16v2M12 5v14M9 19h6"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>تولید خودکار متاها</h4>
-                                <p>ایجاد عنوان سئو، متادیسکریپشن جذاب و استخراج کلمات کلیدی + ادغام کلیدواژه‌های ثابت.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">تولید متا و کلیدواژه</button>
-                        </div>
-
-                        <!-- Smart Internal Links -->
-                        <div class="bk-action-card" @click="runAiAction('links')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-emerald">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>لینک‌سازی هوشمند داخلی</h4>
-                                <p>شناسایی کلمات کلیدی محتوا و پیشنهاد بهترین مقالات مرتبط سایت برای لینک‌سازی.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">پیشنهاد لینک داخلی</button>
-                        </div>
-
-                        
-                        <!-- Categories & Tags -->
-                        <div class="bk-action-card" @click="runAiAction('terms')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-amber">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>تولید دسته و برچسب</h4>
-                                <p>استخراج یا ایجاد دسته‌بندی و برچسب‌های سئو بر اساس کلمات کلیدی مقاله.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">اجرا</button>
-                        </div>
-
-                        <!-- AI Cover -->
-                        <div class="bk-action-card" @click="runAiAction('cover_image')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-purple">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>تولید کاور با AI</h4>
-                                <p>ساخت تصویر شاخص از عنوان + دو پاراگراف ابتدایی مقاله (معرف دقیق مطلب).</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">اجرا</button>
-                        </div>
-
-                        <!-- AI Content Image -->
-                        <div class="bk-action-card" @click="runAiAction('content_image')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 9v6M9 12h6"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>تصاویر درون محتوا با AI</h4>
-                                <p>تا ۲۰۰۰ کلمه: ۲ تصویر | بیش از ۲۰۰۰: ۳ تصویر — هر کدام هماهنگ با پاراگراف‌های اطراف.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">اجرا</button>
-                        </div>
-
-                        <!-- CTA system -->
-                        <div class="bk-cta-panel" style="margin-top:12px;padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;">
-                            <div style="font-weight:600;margin-bottom:8px;">کال‌تو‌اکشن (CTA) در محتوا</div>
-                            <label style="display:block;font-size:12px;margin-bottom:4px;">لینک CTA</label>
-                            <input type="url" x-model="cta.url" placeholder="https://..." style="width:100%;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;">
-                            <label style="display:block;font-size:12px;margin-bottom:4px;">متن دکمه</label>
-                            <input type="text" x-model="cta.label" placeholder="همین حالا اقدام کنید" style="width:100%;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;">
-                            <label style="display:block;font-size:12px;margin-bottom:4px;">کد سفارشی HTML (اختیاری — جایگزین دکمه)</label>
-                            <textarea x-model="cta.code" rows="2" placeholder='&lt;div class="bankai-cta"&gt;...&lt;/div&gt;' style="width:100%;margin-bottom:8px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;font-family:monospace;font-size:12px;"></textarea>
-                            <label style="display:block;font-size:12px;margin-bottom:4px;">هر چند پاراگراف یک‌بار؟</label>
-                            <select x-model="cta.every" style="width:100%;margin-bottom:10px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;">
-                                <option value="2">هر ۲ پاراگراف</option>
-                                <option value="3">هر ۳ پاراگراف</option>
-                                <option value="4">هر ۴ پاراگراف</option>
-                            </select>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <button type="button" class="bk-btn-primary" @click="runAiAction('cta_auto')" :disabled="aiLoading">درج خودکار در کل محتوا</button>
-                                <button type="button" class="bk-btn-ghost" @click="runAiAction('cta_once')" :disabled="aiLoading">درج یک‌بار (موقعیت فعلی)</button>
-                            </div>
-                        </div>
-
-                        <!-- Image SEO Alt -->
-                        <div class="bk-action-card" @click="runAiAction('images')" :class="{ 'is-disabled': aiLoading }">
-                            <div class="bk-action-icon bk-icon-blue">
-                                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>
-                            </div>
-                            <div class="bk-action-content">
-                                <h4>سئوی تصاویر مقاله</h4>
-                                <p>شناسایی تصاویر فاقد Alt و تولید متن جایگزین سئوشده بر اساس محتوا.</p>
-                            </div>
-                            <button type="button" class="bk-btn-ghost bk-action-btn">تولید Alt</button>
-                        </div>
-
-
-                    </div>
-                </div>
-
-                <!-- Review & Approve Summary View (خلاصه تغییرات جهت تایید نهایی) -->
-                <div class="bk-review-summary-card" x-show="aiReviewOpen" x-cloak>
-                    <div class="bk-review-head">
-                        <div>
-                            <h3>خلاصه نتایج و تغییرات هوش مصنوعی (Review & Approve)</h3>
-                            <p>تغییرات مورد نظر را بررسی و تایید کنید تا روی مقاله و متاداده‌ها اعمال شوند.</p>
-                        </div>
-                        <button type="button" class="bk-btn-ghost bk-btn-sm" @click="aiReviewOpen = false">بازگشت به منوی اکشن‌ها</button>
-                    </div>
-
-                    <div class="bk-review-list">
-                        
-                        <!-- Meta Review -->
-                        <div class="bk-review-item" x-show="aiDraft.title || aiDraft.description">
-                            <label class="bk-review-label">
-                                <input type="checkbox" x-model="aiReviewSelection.applyMeta">
-                                <strong>عنوان سئو و متا دیسکریپشن</strong>
-                            </label>
-                            <div class="bk-review-box" x-show="aiReviewSelection.applyMeta">
-                                <div class="bk-review-field">
-                                    <small>عنوان سئو پیشنهادی:</small>
-                                    <input type="text" x-model="aiDraft.title" class="bk-input-sm">
-                                </div>
-                                <div class="bk-review-field" style="margin-top:8px;">
-                                    <small>متادیسکریپشن پیشنهادی:</small>
-                                    <textarea rows="2" x-model="aiDraft.description" class="bk-input-sm" @input="metaValidationStatus=''; metaValidationMessage=''; if (typeof analyze==='function') analyze(false)"></textarea>
-                                </div>
-                                <div class="bk-meta-validation" style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(15,23,42,.04);font-size:12px;" x-show="metaValidationStatus || metaGenerationStatus">
-                                    <div><strong>وضعیت تولید:</strong>
-                                        <span x-text="metaGenerationStatus==='success' ? 'تولید موفق شد' : (metaGenerationStatus==='error' ? 'خطای تولید' : (metaGenerationStatus || '—'))"></span>
-                                    </div>
-                                    <div style="margin-top:4px;"><strong>وضعیت اعتبارسنجی سئو:</strong>
-                                        <span x-text="metaValidationStatus==='passed' ? 'اعتبارسنجی موفق شد' : (metaValidationStatus==='needs_review' ? 'نیازمند بازبینی' : (metaValidationStatus==='failed' ? 'ناموفق' : '—'))"></span>
-                                    </div>
-                                    <div style="margin-top:4px;color:#64748b;" x-show="metaValidationMessage" x-text="metaValidationMessage"></div>
-                                    <template x-if="metaFailedChecks && metaFailedChecks.length">
-                                        <ul style="margin:6px 0 0;padding-inline-start:18px;color:#b45309;">
-                                            <template x-for="fc in metaFailedChecks" :key="fc.key">
-                                                <li><span x-text="fc.label || fc.key"></span>: <span x-text="fc.message || fc.status"></span></li>
-                                            </template>
-                                        </ul>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Keywords Review -->
-                        <div class="bk-review-item" x-show="aiDraft.keywords && aiDraft.keywords.length">
-                            <label class="bk-review-label">
-                                <input type="checkbox" x-model="aiReviewSelection.applyKeywords">
-                                <strong>کلمات کلیدی پیشنهادی (<span x-text="aiDraft.keywords.length"></span> مورد)</strong>
-                            </label>
-                            <div class="bk-review-box" x-show="aiReviewSelection.applyKeywords">
-                                <div class="bk-chips-flex">
-                                    <template x-for="kw in aiDraft.keywords" :key="kw">
-                                        <span class="bk-chip" :class="{ 'is-fixed': isFixedKeyword(kw) }">
-                                            <span x-show="isFixedKeyword(kw)" title="کلمه کلیدی ثابت سایت">📌 </span>
-                                            <span x-text="kw"></span>
-                                        </span>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Smart Links Review -->
-                        <div class="bk-review-item" x-show="aiDraft.smartLinks && aiDraft.smartLinks.length">
-                            <label class="bk-review-label">
-                                <input type="checkbox" x-model="aiReviewSelection.applyLinks">
-                                <strong>لینک‌های داخلی هوشمند پیشنهادی (<span x-text="aiDraft.smartLinks.length"></span> مورد)</strong>
-                            </label>
-                            <div class="bk-review-box" x-show="aiReviewSelection.applyLinks">
-                                <template x-for="l in aiDraft.smartLinks" :key="l.target_url">
-                                    <div class="bk-review-subitem">
-                                        <div>
-                                             انکر: <strong x-text="l.keyword"></strong> ➔ مقصد: <strong x-text="l.target_title"></strong>
-                                            <div class="bk-hint" x-text="l.reason"></div>
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Alt Text Review -->
-                        <div class="bk-review-item" x-show="aiDraft.altTexts && aiDraft.altTexts.length">
-                            <label class="bk-review-label">
-                                <input type="checkbox" x-model="aiReviewSelection.applyImages">
-                                <strong>متن‌های جایگزین (Alt Text) تصاویر مقاله (<span x-text="aiDraft.altTexts.length"></span> تصویر)</strong>
-                            </label>
-                            <div class="bk-review-box" x-show="aiReviewSelection.applyImages">
-                                <template x-for="img in aiDraft.altTexts" :key="img.src">
-                                    <div class="bk-review-field" style="margin-bottom:8px;">
-                                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                                            <img :src="img.src" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">
-                                            <small dir="ltr" style="font-size:10px;color:#64748B;" x-text="img.src.split('/').pop()"></small>
-                                        </div>
-                                        <input type="text" x-model="img.suggestedAlt" class="bk-input-sm" placeholder="متن جایگزین...">
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Rewrite Review -->
-                        <div class="bk-review-item" x-show="aiDraft.rewrite">
-                            <label class="bk-review-label">
-                                <input type="checkbox" x-model="aiReviewSelection.applyRewrite">
-                                <strong>جایگزینی متن بازنویسی‌شده در مقاله</strong>
-                            </label>
-                            <div class="bk-review-box" x-show="aiReviewSelection.applyRewrite">
-                                <textarea rows="6" x-model="aiDraft.rewrite" class="bk-input-sm"></textarea>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <!-- Modal Actions -->
-                    <div class="bk-modal-actions" style="margin-top:20px;justify-content:flex-end;">
-                        <button type="button" class="bk-btn-ghost" @click="aiReviewOpen = false">ویرایش مجدد</button>
-                        <button type="button" class="bk-btn-primary" @click="applyApprovedAiChanges()">
-                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
-                            اعمال تغییرات تاییدشده
-                        </button>
-                    </div>
-
-                </div>
-
+                <button type="button" class="bk-btn-primary bk-full" @click="runAiGeneration()" :disabled="aiBusy">
+                    <span x-text="aiBusy ? 'در حال تولید با AI…' : 'شروع تولید'"></span>
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Toast -->
+    <!-- TOAST -->
     <div class="bk-toast" x-show="toast.show" x-cloak
          :class="'is-' + (toast.type === 'warn' ? 'warning' : toast.type)"
          role="status"
@@ -1121,6 +685,5 @@ if ($post_id && !$post) {
             <template x-if="toast.type === 'info' || !toast.type"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg></template>
         </span>
         <span class="bk-toast-msg" x-text="toast.message"></span>
-        <span class="bk-toast-bar" :style="'--toast-ms:' + (toast.duration || 3600) + 'ms'"></span>
     </div>
 </div>

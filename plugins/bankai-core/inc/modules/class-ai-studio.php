@@ -1571,6 +1571,40 @@ final class Bankai_AI_Studio
                     'max_tokens'  => 1000,
                 ];
 
+            case 'aeo_faq':
+            case 'faq':
+                if ($is_fa) {
+                    return [
+                        'system' => $base_sys . ' تو قطعه HTML شامل یک بخش سوالات متداول تولید می‌کنی. فقط تگ‌های <section class="bankai-faq">, <h2>سوالات متداول</h2>, <h3>پرسش؟</h3>, <p>پاسخ کوتاه و صریح...</p> خروجی بده. بدون markdown و بدون ```.',
+                        'user'   => "برای این مقاله یک بخش سوالات متداول (۲ تا ۴ پرسش و پاسخ صریح) بنویس.\nعنوان مقاله: {$title}\nکلمه کلیدی: {$focus}\nگزیده محتوا:\n{$snippet}",
+                        'temperature' => 0.45,
+                        'max_tokens'  => 1200,
+                    ];
+                }
+                return [
+                    'system' => $base_sys . ' Output ONLY HTML fragment for FAQ section with <section class="bankai-faq">, <h2>FAQ</h2>, <h3>Question?</h3>, <p>Direct answer...</p>. No markdown fences.',
+                    'user'   => "Generate FAQ section (2-4 QA pairs) for this article.\nTitle: {$title}\nFocus: {$focus}\nSnippet:\n{$snippet}",
+                    'temperature' => 0.5,
+                    'max_tokens'  => 1200,
+                ];
+
+            case 'geo_summary':
+            case 'summary':
+                if ($is_fa) {
+                    return [
+                        'system' => $base_sys . ' تو قطعه HTML خلاصه نکات کلیدی تولید می‌کنی. فقط تگ‌های <div class="bankai-summary">, <h2>خلاصه نکات کلیدی</h2>, <ul>, <li>نکته...</li> خروجی بده. بدون markdown.',
+                        'user'   => "یک خلاصه نکات کلیدی (۳ تا ۵ مورد مهم) برای موتورهای هوش مصنوعی بنویس.\nعنوان مقاله: {$title}\nکلمه کلیدی: {$focus}\nگزیده محتوا:\n{$snippet}",
+                        'temperature' => 0.4,
+                        'max_tokens'  => 800,
+                    ];
+                }
+                return [
+                    'system' => $base_sys . ' Output ONLY HTML fragment for Key Takeaways summary with <div class="bankai-summary">, <h2>Key Takeaways</h2>, <ul>, <li>...</li>. No markdown fences.',
+                    'user'   => "Generate Key Takeaways summary for AI engines.\nTitle: {$title}\nFocus: {$focus}\nSnippet:\n{$snippet}",
+                    'temperature' => 0.45,
+                    'max_tokens'  => 800,
+                ];
+
             default:
                 return null;
         }
@@ -1668,6 +1702,18 @@ final class Bankai_AI_Studio
                 $alt = $this->clean_one_line($text, 130);
                 $out['alt_text'] = $alt;
                 $out['text'] = $alt;
+                break;
+
+            case 'aeo_faq':
+            case 'faq':
+                $out['faq_html'] = $text;
+                $out['content'] = $text;
+                break;
+
+            case 'geo_summary':
+            case 'summary':
+                $out['summary_html'] = $text;
+                $out['content'] = $text;
                 break;
 
             case 'smart_internal_links':

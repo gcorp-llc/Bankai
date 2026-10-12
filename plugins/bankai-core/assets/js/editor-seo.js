@@ -96,8 +96,14 @@
         contentMatchesInternal: [],
         contentMatchesExternal: [],
 
+        checklistFilter: 'all',
+        aiBusy: false,
+
         // AI Modal & Automation State
         aiOpen: false,
+        aiModalOpen: false,
+        aiTask: '',
+        aiOptions: {},
         aiProvider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || '',
         aiImageProvider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultImageProvider) || '',
         aiLoading: false,
@@ -210,6 +216,172 @@
             };
             return map[st] || (check && check.passed ? 'تایید' : 'توجه');
         },
+
+        allChecksList() {
+            const list = [];
+            if (this.analysis && this.analysis.groups) {
+                Object.values(this.analysis.groups).forEach(g => {
+                    if (g && Array.isArray(g.items)) {
+                        g.items.forEach(i => list.push(i));
+                    }
+                });
+            }
+            return list;
+        },
+        filterChecksByPillar(pillar) {
+            return this.allChecksList().filter(c => c.group === pillar);
+        },
+        failedChecksList() {
+            return this.allChecksList().filter(c => !c.passed);
+        },
+        passedChecksList() {
+            return this.allChecksList().filter(c => c.passed);
+        },
+        filteredChecklistItems() {
+            const all = this.allChecksList();
+            if (this.checklistFilter === 'seo') {
+                return all.filter(c => !c.group || c.group === 'basic' || c.group === 'advanced' || c.group === 'title' || c.group === 'content' || c.group === 'seo');
+            }
+            if (this.checklistFilter === 'aeo') {
+                return all.filter(c => c.group === 'aeo');
+            }
+            if (this.checklistFilter === 'geo') {
+                return all.filter(c => c.group === 'geo');
+            }
+            if (this.checklistFilter === 'failed') {
+                return all.filter(c => !c.passed);
+            }
+            if (this.checklistFilter === 'passed') {
+                return all.filter(c => c.passed);
+            }
+            return all;
+        },
+        async generateAeoFaq() {
+            if (this.aiLoading || this.aiBusy) return;
+            this.aiLoading = true;
+            this.aiBusy = true;
+            this.showToast('در حال تولید بخش سوالات متداول (AEO FAQ)...', 'info');
+            try {
+                const ctx = this.getEditorContext();
+                const res = await this.callSeoAi('aeo_faq', ctx);
+                if (res && res.success && (res.data?.faq_html || res.data?.content || res.data?.text)) {
+                    const faqHtml = res.data.faq_html || res.data.content || res.data.text;
+                    this.insertContentIntoEditor(faqHtml, 'append');
+                    this.showToast('بخش سوالات متداول با موفقیت به مقاله اضافه شد.', 'success');
+                    await this.analyze(false);
+                } else {
+                    this.showToast((res && res.data && res.data.message) || 'خطا در تولید بخش FAQ', 'error');
+                }
+            } catch (e) {
+                this.showToast('خطا در ارتباط با هوش مصنوعی', 'error');
+            } finally {
+                this.aiLoading = false;
+                this.aiBusy = false;
+            }
+        },
+        async generateGeoSummary() {
+            if (this.aiLoading || this.aiBusy) return;
+            this.aiLoading = true;
+            this.aiBusy = true;
+            this.showToast('در حال تولید خلاصه نکات کلیدی (GEO Summary)...', 'info');
+            try {
+                const ctx = this.getEditorContext();
+                const res = await this.callSeoAi('geo_summary', ctx);
+                if (res && res.success && (res.data?.summary_html || res.data?.content || res.data?.text)) {
+                    const summaryHtml = res.data.summary_html || res.data.content || res.data.text;
+                    this.insertContentIntoEditor(summaryHtml, 'prepend');
+                    this.showToast('خلاصه نکات کلیدی با موفقیت به مقاله اضافه شد.', 'success');
+                    await this.analyze(false);
+                } else {
+                    this.showToast((res && res.data && res.data.message) || 'خطا در تولید خلاصه نکات کلیدی', 'error');
+                }
+            } catch (e) {
+                this.showToast('خطا در ارتباط با هوش مصنوعی', 'error');
+            } finally {
+                this.aiLoading = false;
+                this.aiBusy = false;
+            }
+        },
+        insertContentIntoEditor(html, position = 'append') {
+            if (!html) return;
+            if (window.wp && wp.data && wp.data.dispatch && wp.data.select) {
+                try {
+                    const ed = wp.data.select('core/editor');
+                    const disp = wp.data.dispatch('core/editor');
+                    if (ed && disp && typeof ed.getEditedPostContent === 'function') {
+                        const current = ed.getEditedPostContent() || '';
+                        let updated = current;
+                        if (position === 'prepend') {
+                            updated = html + "\n\n" + current;
+                        } else {
+                            updated = current + "\n\n" + html;
+                        }
+                        if (wp.blocks && typeof wp.blocks.parse === 'function' && typeof disp.resetBlocks === 'function') {
+                            disp.resetBlocks(wp.blocks.parse(updated));
+                            return;
+                        }
+                    }
+                } catch (e) {}
+            }
+            const el = document.getElementById('content');
+            if (el) {
+                if (position === 'prepend') {
+                    el.value = html + "\n\n" + el.value;
+                } else {
+                    el.value = el.value + "\n\n" + html;
+                }
+            }
+        },
+        async loadSmartLinkSuggestions() {
+            if (this.linkBusy) return;
+            this.linkBusy = true;
+            this.showToast('در حال دریافت پیشنهادهای لینک داخلی...', 'info');
+            try {
+                const ctx = this.getEditorContext();
+                const res = await this.callSeoAi('smart_internal_links', ctx);
+                if (res && res.success && Array.isArray(res.data?.smartLinks || res.data?.links)) {
+                    this.autoLinkSuggestions = res.data.smartLinks || res.data.links;
+                    this.showToast('پیشنهادهای لینک داخلی دریافت شد.', 'success');
+                } else {
+                    this.showToast('پیشنهاد جدیدی یافت نشد.', 'info');
+                }
+            } catch (e) {
+                this.showToast('خطا در بارگیری لینک‌ها', 'error');
+            } finally {
+                this.linkBusy = false;
+            }
+        },
+        insertSuggestedLink(s) {
+            if (!s) return;
+            const anchor = s.suggested_anchor || s.keyword || '';
+            const url = s.permalink || s.target_url || '#';
+            if (!anchor || !url) return;
+            const linkTag = `<a href="${url}" target="_blank" rel="noopener"><strong>${anchor}</strong></a>`;
+            this.insertContentIntoEditor(linkTag, 'append');
+            this.showToast(`لینک «${anchor}» اضافه شد.`, 'success');
+            this.analyze(false);
+        },
+        async generateSingleImageAlt(img) {
+            if (!img || this.aiBusy) return;
+            this.aiBusy = true;
+            this.showToast('در حال تولید Alt تصویر با AI...', 'info');
+            try {
+                const ctx = this.getEditorContext();
+                const res = await this.callSeoAi('alt_text', ctx, { img_url: img.src || img.original_src || '' });
+                if (res && res.success && (res.data?.alt_text || res.data?.text)) {
+                    const alt = res.data.alt_text || res.data.text;
+                    img.new_alt = alt;
+                    img.alt = alt;
+                    this.updateImageAlt(img, alt);
+                    this.showToast('متن جایگزین تصویر ثبت شد.', 'success');
+                }
+            } catch (e) {
+                this.showToast('خطا در تولید Alt', 'error');
+            } finally {
+                this.aiBusy = false;
+            }
+        },
+
         get scoreColor() {
 
             const s = this.analysis.score || 0;

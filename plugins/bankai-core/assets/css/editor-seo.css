@@ -3142,3 +3142,71 @@
 #bankai-seo-sidebar .bk-check.is-unknown .bk-check-status {
   color: #64748b;
 }
+
+/* SEO / AEO / GEO Pillar Sub-Scores & Chips */
+.bk-pillar-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.bk-pillar-badge.seo {
+  background: rgba(9, 105, 218, 0.1);
+  color: #0969da;
+  border: 1px solid rgba(9, 105, 218, 0.2);
+}
+.bk-pillar-badge.aeo {
+  background: rgba(130, 80, 223, 0.1);
+  color: #8250df;
+  border: 1px solid rgba(130, 80, 223, 0.2);
+}
+.bk-pillar-badge.geo {
+  background: rgba(31, 136, 61, 0.1);
+  color: #1f883d;
+  border: 1px solid rgba(31, 136, 61, 0.2);
+}
+
+.bk-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.bk-chip-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--bankai-border, #d0d7de);
+  background: var(--bankai-bg-subtle, #f6f8fa);
+  color: var(--bankai-fg, #1f2328);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.bk-chip-btn:hover {
+  background: #eaeef2;
+}
+.bk-chip-btn.active {
+  background: var(--bankai-accent, #0969da);
+  color: #ffffff;
+  border-color: var(--bankai-accent, #0969da);
+}
+
+.bk-recommendation-box {
+  background: #f0f7ff;
+  border: 1px solid #c8e1ff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #1f2328;
+}
+.bk-recommendation-box header {
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #0969da;
+}
