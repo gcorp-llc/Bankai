@@ -97,7 +97,7 @@ if ($post_id && !$post) {
         <nav class="bk-tabs-nav">
             <!-- Row 1: Checklist, AEO & GEO, Links, Images -->
             <div class="bk-tabs-row">
-                <button type="button" :class="{ 'is-active': activeTab === 'seo' || activeTab === 'checklist' }" @click="activeTab = 'seo'">چک‌لیست</button>
+                <button type="button" :class="{ 'is-active': activeTab === 'checklist' }" @click="activeTab = 'checklist'">چک‌لیست</button>
                 <button type="button" :class="{ 'is-active': activeTab === 'aeo_geo' || activeTab === 'aeogeo' }" @click="activeTab = 'aeo_geo'">AEO & GEO</button>
                 <button type="button" :class="{ 'is-active': activeTab === 'links' }" @click="activeTab = 'links'; loadLinks()">لینک‌ها</button>
                 <button type="button" :class="{ 'is-active': activeTab === 'media' }" @click="activeTab = 'media'; scanPostImages()">تصاویر</button>
@@ -106,7 +106,7 @@ if ($post_id && !$post) {
             <div class="bk-tabs-row">
                 <button type="button" :class="{ 'is-active': activeTab === 'schema' }" @click="activeTab = 'schema'">اسکیما</button>
                 <button type="button" :class="{ 'is-active': activeTab === 'social' }" @click="activeTab = 'social'">سوشال</button>
-                <button type="button" class="bk-tab-ai" :class="{ 'is-active': activeTab === 'ai' }" @click="activeTab = 'ai'; openAiModal()">
+                <button type="button" class="bk-tab-ai" :class="{ 'is-active': activeTab === 'ai' }" @click="activeTab = 'ai'">
                     دستیار AI
                     <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
                 </button>
@@ -312,13 +312,23 @@ if ($post_id && !$post) {
                         <div class="bk-check-card" :class="checkStatusClass(check)">
                             <div class="bk-check-head-row">
                                 <div class="bk-check-title-group">
-                                    <template x-if="check.passed">
-                                        <span class="bk-check-icon is-pass">
+                                    <template x-if="check.status === 'pass' || check.passed">
+                                        <span class="bk-check-icon is-pass" title="پاس‌شده">
                                             <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
                                         </span>
                                     </template>
-                                    <template x-if="!check.passed">
-                                        <span class="bk-check-icon is-fail">
+                                    <template x-if="check.status === 'not_applicable'">
+                                        <span class="bk-check-icon is-na" title="نامرتبط">
+                                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M5 12h14"/></svg>
+                                        </span>
+                                    </template>
+                                    <template x-if="check.status === 'unknown'">
+                                        <span class="bk-check-icon is-unknown" title="نامشخص">
+                                            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                                        </span>
+                                    </template>
+                                    <template x-if="!check.passed && check.status !== 'pass' && check.status !== 'not_applicable' && check.status !== 'unknown'">
+                                        <span class="bk-check-icon is-fail" title="رد شده">
                                             <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
                                         </span>
                                     </template>
@@ -332,14 +342,14 @@ if ($post_id && !$post) {
 
                             <p class="bk-check-msg" x-text="check.message"></p>
 
-                            <template x-if="check.recommendation && !check.passed">
+                            <template x-if="check.recommendation && !check.passed && check.status !== 'not_applicable'">
                                 <div class="bk-check-rec">
                                     <strong>راهکار بهبود:</strong> <span x-text="check.recommendation"></span>
                                 </div>
                             </template>
 
                             <!-- 1-CLICK ACTION BUTTONS -->
-                            <div class="bk-check-actions" x-show="!check.passed">
+                            <div class="bk-check-actions" x-show="!check.passed && check.status !== 'not_applicable' && check.status !== 'unknown'">
                                 <template x-if="check.key === 'short_paragraphs'">
                                     <button type="button" class="bk-btn-primary bk-btn-xs" @click="autoSplitLongParagraphs()">
                                         کوتاه‌سازی خودکار پاراگراف‌ها
@@ -764,11 +774,11 @@ if ($post_id && !$post) {
     </div>
 
     <!-- AI MODAL -->
-    <div class="bk-modal-backdrop" x-show="aiModalOpen" x-cloak @keydown.escape.window="aiModalOpen = false">
-        <div class="bk-modal" @click.away="aiModalOpen = false">
+    <div class="bk-modal-backdrop" x-show="aiModalOpen || aiOpen" x-cloak @keydown.escape.window="aiModalOpen = false; aiOpen = false">
+        <div class="bk-modal" @click.away="aiModalOpen = false; aiOpen = false">
             <div class="bk-modal-head">
                 <strong x-text="aiModalTitle || 'دستیار AI سئو'"></strong>
-                <button type="button" class="bk-icon-action" @click="aiModalOpen = false">×</button>
+                <button type="button" class="bk-icon-action" @click="aiModalOpen = false; aiOpen = false">×</button>
             </div>
             <div class="bk-modal-body">
                 <div class="bk-field" x-show="aiTask === 'title' || aiTask === 'description' || aiTask === 'rewrite'">
