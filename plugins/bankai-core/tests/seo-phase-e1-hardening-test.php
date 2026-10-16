@@ -16,7 +16,15 @@ function assert_true($c, $m) {
 
 $engine = file_get_contents(dirname(__DIR__) . '/inc/modules/class-seo-engine.php');
 $js = file_get_contents(dirname(__DIR__) . '/assets/js/editor-seo.js');
-$view = file_get_contents(dirname(__DIR__) . '/views/tab-seo-engine.php');
+$view_path = file_exists(dirname(__DIR__) . '/views/tabs/tab-seo-engine.php')
+    ? dirname(__DIR__) . '/views/tabs/tab-seo-engine.php'
+    : (file_exists(dirname(__DIR__) . '/views/admin/tab-seo-engine.php')
+        ? dirname(__DIR__) . '/views/admin/tab-seo-engine.php'
+        : dirname(__DIR__) . '/views/tab-seo-engine.php');
+$view = file_get_contents($view_path);
+if (strpos($view, 'link.score') === false && file_exists(dirname(__DIR__) . '/views/tabs/tab-seo-engine.php')) {
+    $view = file_get_contents(dirname(__DIR__) . '/views/tabs/tab-seo-engine.php');
+}
 
 // REST permission method exists
 assert_true(strpos($engine, 'function permission_suggest_links') !== false, 'permission_suggest_links present');

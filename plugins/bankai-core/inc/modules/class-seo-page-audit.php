@@ -242,6 +242,7 @@ final class Bankai_SEO_Page_Audit
             wp_send_json_error(['message' => 'Permission denied'], 403);
         }
         $post_id = absint($_POST['post_id'] ?? 0);
+        $force   = !empty($_POST['force']);
         if ($post_id <= 0) {
             wp_send_json_error(['message' => 'Invalid post'], 400);
         }
@@ -312,16 +313,35 @@ final class Bankai_SEO_Page_Audit
         if (!is_array($data)) {
             wp_send_json_success([
                 'has_report' => false,
-                'seo_audit' => (int) get_post_meta($post_id, '_bankai_audit_seo', true),
-                'aeo_audit' => (int) get_post_meta($post_id, '_bankai_audit_aeo', true),
-                'geo_audit' => (int) get_post_meta($post_id, '_bankai_audit_geo', true),
-                'score' => (int) get_post_meta($post_id, '_bankai_audit_score', true),
+                'seo_audit'  => (int) get_post_meta($post_id, '_bankai_audit_seo', true),
+                'aeo_audit'  => (int) get_post_meta($post_id, '_bankai_audit_aeo', true),
+                'geo_audit'  => (int) get_post_meta($post_id, '_bankai_audit_geo', true),
+                'score'      => (int) get_post_meta($post_id, '_bankai_audit_score', true),
             ]);
             return;
         }
+
+        $seo_title = (string) get_post_meta($post_id, '_bankai_seo_title', true);
+        $seo_desc  = (string) get_post_meta($post_id, '_bankai_seo_description', true);
+        $focus_kw  = (string) get_post_meta($post_id, '_bankai_seo_focus_keyword', true);
+        $canonical = (string) get_post_meta($post_id, '_bankai_seo_canonical', true);
+        $title     = get_the_title($post_id);
+        $content   = (string) get_post_field('post_content', $post_id);
+        $modified  = get_post_modified_time('Y-m-d H:i:s', true, $post_id);
+
+        $cur_fp   = md5("{$post_id}|{$title}|{$content}|{$modified}|{$seo_title}|{$seo_desc}|{$focus_kw}|{$canonical}");
+        $saved_fp = $data['fingerprint'] ?? (get_post_meta($post_id, '_bankai_audit_fingerprint', true) ?: '');
+        $saved_at = (int) ($data['at'] ?? (get_post_meta($post_id, '_bankai_audit_at', true) ?: 0));
+
+        $is_fresh = ($saved_fp === $cur_fp) && ((time() - $saved_at) < 600);
+
         $data['has_report'] = true;
-        $data['url'] = get_permalink($post_id) ?: '';
-        $data['title'] = get_the_title($post_id);
+        $data['is_fresh']   = $is_fresh && !$force;
+        $data['stale_reason'] = ($saved_fp !== $cur_fp) ? 'content_changed' : ((time() - $saved_at >= 600) ? 'expired' : 'none');
+        $data['saved_at_formatted'] = $saved_at ? date_i18n('Y-m-d H:i', $saved_at) : '';
+        $data['url']        = get_permalink($post_id) ?: '';
+        $data['title']      = $title;
+
         wp_send_json_success($data);
     }
 
@@ -437,6 +457,18 @@ final class Bankai_SEO_Page_Audit
             $seo_s = (int) $this->score_group($seo);
             $aeo_s = (int) $this->score_group($aeo);
             $geo_s = (int) $this->score_group($geo);
+
+            $seo_title = (string) get_post_meta($post_id, '_bankai_seo_title', true);
+            $seo_desc  = (string) get_post_meta($post_id, '_bankai_seo_description', true);
+            $focus_kw  = (string) get_post_meta($post_id, '_bankai_seo_focus_keyword', true);
+            $canonical = (string) get_post_meta($post_id, '_bankai_seo_canonical', true);
+            $title     = get_the_title($post_id);
+            $content   = (string) get_post_field('post_content', $post_id);
+            $modified  = get_post_modified_time('Y-m-d H:i:s', true, $post_id);
+
+            $fp  = md5("{$post_id}|{$title}|{$content}|{$modified}|{$seo_title}|{$seo_desc}|{$focus_kw}|{$canonical}");
+            $now = time();
+
             update_post_meta($post_id, '_bankai_audit_seo', $seo_s);
             update_post_meta($post_id, '_bankai_audit_aeo', $aeo_s);
             update_post_meta($post_id, '_bankai_audit_geo', $geo_s);
@@ -445,22 +477,26 @@ final class Bankai_SEO_Page_Audit
             update_post_meta($post_id, '_bankai_seo_score', $seo_s);
             update_post_meta($post_id, '_bankai_aeo_score', $aeo_s);
             update_post_meta($post_id, '_bankai_geo_score', $geo_s);
-            update_post_meta($post_id, '_bankai_audit_at', time());
+            update_post_meta($post_id, '_bankai_audit_at', $now);
+            update_post_meta($post_id, '_bankai_audit_fingerprint', $fp);
+
             update_post_meta($post_id, '_bankai_audit_report', wp_json_encode([
-                'score' => $score,
-                'seo' => $seo,
-                'aeo' => $aeo,
-                'geo' => $geo,
-                'summary' => [
-                    'seo' => $this->score_group($seo),
-                    'aeo' => $this->score_group($aeo),
-                    'geo' => $this->score_group($geo),
+                'post_id'     => $post_id,
+                'fingerprint' => $fp,
+                'at'          => $now,
+                'score'       => $score,
+                'seo'         => $seo,
+                'aeo'         => $aeo,
+                'geo'         => $geo,
+                'summary'     => [
+                    'seo'        => $seo_s,
+                    'aeo'        => $aeo_s,
+                    'geo'        => $geo_s,
                     'seo_issues' => count(array_filter($seo, static fn($i) => empty($i['pass']))),
                     'aeo_issues' => count(array_filter($aeo, static fn($i) => empty($i['pass']))),
                     'geo_issues' => count(array_filter($geo, static fn($i) => empty($i['pass']))),
                 ],
-                'engines' => $this->engine_readiness($ctx, $aeo, $geo),
-                'at' => time(),
+                'engines'     => $this->engine_readiness($ctx, $aeo, $geo),
             ]));
         }
 

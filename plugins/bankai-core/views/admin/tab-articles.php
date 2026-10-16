@@ -36,7 +36,7 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
                 <span class="bk-capsule-label">سئو محتوا</span>
             </button>
             <button type="button" class="bk-capsule-tab" :class="{'is-active': panel==='generate'}" @click="panel='generate'">
-                <span class="bk-capsule-label">تولید با AI</span>
+                <span class="bk-capsule-label">تولید محتوا با AI</span>
             </button>
         </div>
 
@@ -469,35 +469,183 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
             </div>
         </div>
 
-        <!-- GENERATE -->
+        <!-- GENERATE (AI CONTENT PUBLISHING WORKFLOW) -->
         <div class="bk-art-card" x-show="panel==='generate'" x-cloak>
-            <h3 style="margin:0 0 8px">ویزارد هوشمند تولید مقاله</h3>
-            <p style="margin:0 0 12px;font-size:12px;color:#64748b">از ایده تا پیش‌نویس سئوشده</p>
-            <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px">موضوع / کلمه کلیدی</label>
-            <textarea x-model="wiz.topic" rows="3" placeholder="مثلاً: راهنمای انتخاب هاست وردپرس…" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;box-sizing:border-box"></textarea>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-                <button type="button" class="bk-btn bk-btn-primary" @click="suggestTitles()" :disabled="wizBusy">دریافت پیشنهاد عنوان از AI</button>
-                <button type="button" class="bk-btn" @click="addManualTitle()">افزودن عنوان دستی</button>
+            <div class="bk-gen-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+                <div>
+                    <h3 style="margin:0 0 4px;font-size:16px;font-weight:700">کارگاه هوشمند تولید و انتشار محتوا (AI Publishing Hub)</h3>
+                    <p style="margin:0;font-size:12px;color:#64748b">برنامه‌ریزی، خوشه‌بندی، تعیین لحن، تولید سئوشده و انتشار زمان‌بندی‌شده مقالات</p>
+                </div>
+                <div class="bk-capsule-tabs bk-sub-tabs">
+                    <button type="button" class="bk-capsule-tab" :class="{'is-active': wiz.subTab==='planning'}" @click="wiz.subTab='planning'">
+                        <span class="bk-capsule-label">۱. پیشنهاد و خوشه‌بندی</span>
+                    </button>
+                    <button type="button" class="bk-capsule-tab" :class="{'is-active': wiz.subTab==='guidelines'}" @click="wiz.subTab='guidelines'">
+                        <span class="bk-capsule-label">۲. دستورالعمل و لحن</span>
+                    </button>
+                    <button type="button" class="bk-capsule-tab" :class="{'is-active': wiz.subTab==='wizard'}" @click="wiz.subTab='wizard'">
+                        <span class="bk-capsule-label">۳. ویزارد تولید</span>
+                    </button>
+                    <button type="button" class="bk-capsule-tab" :class="{'is-active': wiz.subTab==='dashboard'}" @click="wiz.subTab='dashboard'">
+                        <span class="bk-capsule-label">۴. داشبورد و صف تولید</span>
+                    </button>
+                </div>
             </div>
-            <div x-show="(wiz.selected||[]).length" style="margin-top:16px">
-                <template x-for="(item, idx) in wiz.selected" :key="'ws'+idx">
-                    <div style="padding:10px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px">
-                        <input type="text" x-model="item.title" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;box-sizing:border-box">
+
+            <!-- SUBTAB 1: TOPIC PLANNING -->
+            <div x-show="wiz.subTab==='planning'" x-cloak>
+                <div class="bk-planning-grid" style="display:grid;grid-template-columns:1fr 2fr;gap:16px">
+                    <div class="bk-card" style="padding:14px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc">
+                        <strong style="display:block;font-size:13px;margin-bottom:8px">ایجاد استراتژی موضوعی جدید</strong>
+                        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">موضوع اصلی / حوزه فعالیت</label>
+                        <textarea x-model="wiz.topic" rows="3" placeholder="مثلاً: طراحی سایت شرکتی و راهکارهای افزایش فروش آنلاین…" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box;margin-bottom:10px"></textarea>
+
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+                            <div>
+                                <label style="display:block;font-size:11px;font-weight:600;margin-bottom:2px">تعداد پیشنهادات</label>
+                                <select class="bk-select" x-model="wiz.count">
+                                    <option value="5">۵ عنوان</option>
+                                    <option value="10">۱۰ عنوان</option>
+                                    <option value="15">۱۵ عنوان</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:11px;font-weight:600;margin-bottom:2px">موتور هوش مصنوعی</label>
+                                <select class="bk-select" x-model="aiProvider">
+                                    <option value="">پیش‌فرض سیستم</option>
+                                    <template x-for="p in aiProvidersList()" :key="p.id">
+                                        <option :value="p.id" x-text="p.label || p.name || p.id"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="button" class="bk-btn bk-btn-primary bk-full" @click="suggestTitles()" :disabled="wizBusy" :class="{ 'is-loading': wizBusy }">
+                            <span>پیشنهاد عناوین با هوش مصنوعی</span>
+                        </button>
+                    </div>
+
+                    <div class="bk-card" style="padding:14px;border:1px solid #e2e8f0;border-radius:10px;background:#fff">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                            <strong style="font-size:13px">عناوین پیشنهادی و خوشه‌بندی محتوا</strong>
+                            <button type="button" class="bk-btn-sm" @click="addManualTitle()">+ افزودن عنوان دستی</button>
+                        </div>
+                        <template x-if="!wiz.selected || !wiz.selected.length">
+                            <div style="text-align:center;padding:32px;color:#94a3b8;font-size:12px">
+                                هنوز عنوانی ثبت نشده است. موضوع خود را در فرم مقابل وارد کنید و دکمه پیشنهاد را بزنید.
+                            </div>
+                        </template>
+                        <template x-for="(item, idx) in wiz.selected" :key="'ws'+idx">
+                            <div style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;background:#f8fafc;display:flex;gap:10px;align-items:center">
+                                <input type="checkbox" x-model="item.approved" style="margin:0">
+                                <div style="flex:1">
+                                    <input type="text" x-model="item.title" style="width:100%;padding:6px;border:1px solid #cbd5e1;border-radius:6px;box-sizing:border-box;font-size:13px;font-weight:600">
+                                </div>
+                                <button type="button" class="bk-chip-x" @click="wiz.selected.splice(idx, 1)" title="حذف">×</button>
+                            </div>
+                        </template>
+                        <div x-show="(wiz.selected||[]).length" style="margin-top:12px;text-align:left">
+                            <button type="button" class="bk-btn bk-btn-primary" @click="wiz.subTab='guidelines'">تایید و تنظیم دستورالعمل‌ها ←</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBTAB 2: GUIDELINES & TONE -->
+            <div x-show="wiz.subTab==='guidelines'" x-cloak>
+                <div style="max-width:700px;margin:0 auto;background:#fff;padding:16px;border:1px solid #e2e8f0;border-radius:12px">
+                    <h4 style="margin:0 0 12px;font-size:14px">دستورالعمل‌ها، لحن و الزامات تولید محتوا</h4>
+
+                    <div style="margin-bottom:12px">
+                        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">دستورالعمل عمومی سایت</label>
+                        <textarea x-model="wiz.guidelines.siteWide" rows="3" class="bk-textarea" style="width:100%;box-sizing:border-box"></textarea>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">سبک و لحن نگارش</label>
+                            <select class="bk-select" x-model="wiz.guidelines.tone">
+                                <option value="seo">سئو استاندارد و جامع</option>
+                                <option value="engaging">جذاب، داستانی و کلیک‌خور</option>
+                                <option value="formal">رسمی، آکادمیک و حرفه‌ای</option>
+                                <option value="simple">ساده، روان و عامه‌فهم</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">طول هدف مقاله</label>
+                            <select class="bk-select" x-model="wiz.guidelines.wordCount">
+                                <option value="1500">حدود ۱۵۰۰ کلمه</option>
+                                <option value="2500">حدود ۲۵۰۰ کلمه (پیش‌فرض)</option>
+                                <option value="4000">طولانی (۴۰۰۰ کلمه)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+                        <button type="button" class="bk-btn" @click="wiz.subTab='planning'">→ قبلی</button>
+                        <button type="button" class="bk-btn bk-btn-primary" @click="wiz.subTab='wizard'">رفتن به ویزارد انتشار ←</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBTAB 3: WIZARD & PUBLISHING -->
+            <div x-show="wiz.subTab==='wizard'" x-cloak>
+                <div style="max-width:700px;margin:0 auto;background:#fff;padding:16px;border:1px solid #e2e8f0;border-radius:12px">
+                    <h4 style="margin:0 0 12px;font-size:14px">تنظیمات انتشار و زمان‌بندی</h4>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">وضعیت انتشار نهایی</label>
+                            <select class="bk-select" x-model="wiz.status">
+                                <option value="draft">پیش‌نویس (Draft)</option>
+                                <option value="pending">در انتظار بازبینی (Pending Review)</option>
+                                <option value="future">زمان‌بندی شده (Scheduled)</option>
+                                <option value="publish">انتشار مستقیم (Publish)</option>
+                            </select>
+                        </div>
+                        <div x-show="wiz.status==='future'">
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">تاریخ و زمان انتشار</label>
+                            <input type="datetime-local" class="bk-input" x-model="wiz.publishDate" style="width:100%;box-sizing:border-box">
+                        </div>
+                    </div>
+
+                    <div style="padding:12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:16px;font-size:12px;color:#475569">
+                        تعداد مقالات آماده تولید: <strong x-text="(wiz.selected||[]).filter(x=>x.approved).length"></strong> عنوان
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <button type="button" class="bk-btn" @click="wiz.subTab='guidelines'">→ قبلی</button>
+                        <button type="button" class="bk-btn bk-btn-primary bk-btn-3d" @click="startProduce()" :disabled="batchBusy || !(wiz.selected||[]).filter(x=>x.approved).length" :class="{ 'is-loading': batchBusy }">
+                            شروع تولید و ایجاد در دیتابیس 🚀
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBTAB 4: BATCH QUEUE & DASHBOARD -->
+            <div x-show="wiz.subTab==='dashboard'" x-cloak>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <strong style="font-size:14px">پیشرفت صف تولید دسته‌ای مقالات</strong>
+                    <span style="font-size:12px;color:#64748b" x-text="'تعداد کارهای صف: ' + (wiz.queue||[]).length"></span>
+                </div>
+                <template x-if="!wiz.queue || !wiz.queue.length">
+                    <div style="text-align:center;padding:36px;color:#94a3b8;font-size:12px;border:1px dashed #cbd5e1;border-radius:10px">
+                        هیچ عملیات تولیدی در صف اجرا نیست. از تب ۱ موضوعات را انتخاب کرده و از تب ۳ شروع تولید را بزنید.
                     </div>
                 </template>
-                <button type="button" class="bk-btn bk-btn-primary" @click="startProduce()" :disabled="batchBusy">شروع تولید</button>
-            </div>
-            <div x-show="wiz.phase==='produce'" style="margin-top:16px">
                 <template x-for="(job, ji) in wiz.queue" :key="'jq'+ji">
-                    <div style="padding:10px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px">
-                        <strong x-text="job.title"></strong>
-                        <div style="font-size:12px;color:#64748b" x-text="job.stepLabel || job.status"></div>
-                        <div style="height:6px;background:#e2e8f0;border-radius:99px;margin-top:6px;overflow:hidden">
-                            <div :style="'width:'+(job.progress||0)+'%;height:100%;background:#6366f1'"></div>
+                    <div style="padding:12px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:10px;background:#fff">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                            <strong x-text="job.title" style="font-size:13px"></strong>
+                            <span class="bk-status-pill" :class="'is-' + (job.status==='done'?'publish':(job.status==='run'?'pending':'draft'))" x-text="job.stepLabel || job.status"></span>
+                        </div>
+                        <div style="height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden">
+                            <div :style="'width:'+(job.progress||0)+'%;height:100%;background:linear-gradient(90deg,#6366f1,#4f46e5)'"></div>
                         </div>
                     </div>
                 </template>
             </div>
+
         </div>
     </div>
 
