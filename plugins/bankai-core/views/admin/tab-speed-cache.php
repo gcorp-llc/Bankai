@@ -37,7 +37,15 @@ $cfg_json = wp_json_encode($cfg, JSON_UNESCAPED_UNICODE);
                 <p>کش صفحه، بهینه‌سازی CSS/JS، LazyLoad، Redis و پاکسازی دیتابیس</p>
             </div>
         </div>
-        <div class="bk-wm-hero__actions">
+        <div class="bk-wm-hero__actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button type="button" class="bk-btn" @click="rebuildAssets()" :disabled="busyRebuild" style="background:rgba(255,255,255,.2);color:#fff;border-color:rgba(255,255,255,.3);font-size:12px">
+                <span class="bk-btn-spin" x-show="busyRebuild" x-cloak></span>
+                بازسازی فایل‌های بهینه‌شده
+            </button>
+            <button type="button" class="bk-btn" @click="benchmarkVitals()" :disabled="busyBenchmark" style="background:rgba(255,255,255,.2);color:#fff;border-color:rgba(255,255,255,.3);font-size:12px">
+                <span class="bk-btn-spin" x-show="busyBenchmark" x-cloak></span>
+                بنچمارک Vitals
+            </button>
             <div class="bk-gh-stats" style="gap:6px">
                 <div class="bk-gh-stat" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);min-width:70px;padding:6px 10px"><span style="color:rgba(255,255,255,.7)">TTFB</span><strong style="color:#fff;font-size:12px" x-text="speedStats.ttfb || '—'">—</strong></div>
                 <div class="bk-gh-stat" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);min-width:70px;padding:6px 10px"><span style="color:rgba(255,255,255,.7)">Hit</span><strong style="color:#fff;font-size:12px" x-text="speedStats.hit_ratio || '—'">—</strong></div>
@@ -115,7 +123,10 @@ $cfg_json = wp_json_encode($cfg, JSON_UNESCAPED_UNICODE);
                             <label class="chk"><input type="checkbox" x-model="cfg.asset_optimization.defer_js"> Defer JS</label>
                             <label class="chk"><input type="checkbox" x-model="cfg.asset_optimization.delay_js"> Delay JS</label>
                             <label class="chk"><input type="checkbox" x-model="cfg.asset_optimization.remove_unused_css"> Unused CSS</label>
-                            <div class="bk-gh-actions full"><button type="button" class="bk-gh-btn-primary" :disabled="busySave[opt.id]" @click="saveOpt('asset_optimization')">ذخیره</button></div>
+                            <div class="bk-gh-actions full">
+                                <button type="button" class="bk-gh-btn-primary" :disabled="busySave[opt.id]" @click="saveOpt('asset_optimization')">ذخیره</button>
+                                <button type="button" class="bk-gh-btn" :disabled="busyRebuild" @click="rebuildAssets()">بازسازی فایل‌های بهینه‌شده</button>
+                            </div>
                         </div>
                     </template>
                     <template x-if="opt.id === 'cwv_lighthouse'">

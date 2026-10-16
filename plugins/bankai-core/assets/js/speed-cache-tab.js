@@ -13,6 +13,8 @@
       cfg: {},
       busySave: {},
       busyPurge: false,
+      busyRebuild: false,
+      busyBenchmark: false,
       busyDb: false,
       busyRedisTest: false,
       busyRedisSave: false,
@@ -132,6 +134,36 @@
           .then(r => r.json())
           .then(res => this.toast(res.success ? 'کش پاک شد' : 'خطا', res.success ? 'success' : 'error'))
           .finally(() => { this.busyPurge = false; });
+      },
+      rebuildAssets() {
+        this.busyRebuild = true;
+        const data = new FormData();
+        data.append('action', 'bankai_rebuild_assets');
+        data.append('nonce', (window.bankaiCoreData && window.bankaiCoreData.adminNonce) || window.bankaiAdminNonce || '');
+        fetch((window.bankaiCoreData && window.bankaiCoreData.ajaxUrl) || window.ajaxurl || '', { method: 'POST', body: data, credentials: 'same-origin' })
+          .then(r => r.json())
+          .then(res => this.toast(res.success ? (res.data.message || 'فایل‌های بهینه‌شده بازسازی شدند') : 'خطا', res.success ? 'success' : 'error'))
+          .catch(() => this.toast('خطای شبکه', 'error'))
+          .finally(() => { this.busyRebuild = false; });
+      },
+      benchmarkVitals() {
+        this.busyBenchmark = true;
+        const data = new FormData();
+        data.append('action', 'bankai_benchmark_vitals');
+        data.append('nonce', (window.bankaiCoreData && window.bankaiCoreData.adminNonce) || window.bankaiAdminNonce || '');
+        fetch((window.bankaiCoreData && window.bankaiCoreData.ajaxUrl) || window.ajaxurl || '', { method: 'POST', body: data, credentials: 'same-origin' })
+          .then(r => r.json())
+          .then(res => {
+            if (res.success && res.data && res.data.vitals) {
+              var r = rootData();
+              if (r) r.speedStats = Object.assign({}, r.speedStats || {}, { vitals: res.data.vitals, ttfb: res.data.vitals.ttfb });
+              this.toast('بنچمارک انجام شد — TTFB: ' + res.data.vitals.ttfb, 'success');
+            } else {
+              this.toast((res.data && res.data.message) || 'خطا در بنچمارک', 'error');
+            }
+          })
+          .catch(() => this.toast('خطای شبکه', 'error'))
+          .finally(() => { this.busyBenchmark = false; });
       },
       runDbOptimize() {
         this.busyDb = true;

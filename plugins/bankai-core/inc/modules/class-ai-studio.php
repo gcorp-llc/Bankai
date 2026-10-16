@@ -54,6 +54,9 @@ final class Bankai_AI_Studio
         add_action('bankai_publish_scheduled_ai_post', [$this, 'cron_publish_scheduled'], 10, 1);
         add_action('save_post', [$this, 'on_save_post_modules'], 40, 3);
         add_action('add_attachment', [$this, 'on_add_attachment_alt'], 20);
+        add_action('wp_ajax_bankai_get_site_guidelines', [$this, 'ajax_get_site_guidelines']);
+        add_action('wp_ajax_bankai_save_site_guidelines', [$this, 'ajax_save_site_guidelines']);
+        add_action('wp_ajax_bankai_preview_ai_prompt', [$this, 'ajax_preview_ai_prompt']);
         add_action('wp_ajax_bankai_set_default_provider', [$this, 'ajax_set_default_provider']);
         add_action('wp_ajax_bankai_save_custom_provider', [$this, 'ajax_save_custom_provider']);
         add_action('wp_ajax_bankai_delete_custom_provider', [$this, 'ajax_delete_custom_provider']);
@@ -66,6 +69,122 @@ final class Bankai_AI_Studio
         add_action('wp_ajax_bankai_set_default_image_provider', [$this, 'ajax_set_default_image_provider']);
         add_action('wp_ajax_bankai_add_image_model', [$this, 'ajax_add_image_model']);
         add_action('wp_ajax_bankai_remove_image_model', [$this, 'ajax_remove_image_model']);
+    }
+
+    public static function default_site_guidelines(): array
+    {
+        return [
+            'language'             => 'fa_IR',
+            'site_domain'          => 'طراحی سایت، سئو، فناوری و کسب‌وکار آنلاین',
+            'target_audience'      => 'مدیران کسب‌وکار، وبمستران و علاقه‌مندان به بازاریابی دیجیتال',
+            'brand_tone'           => 'seo',
+            'formality'            => 'میانه (حرفه‌ای و صمیمی)',
+            'heading_rules'        => 'یک H1 یکتا، استفاده منظم از H2 برای بخش‌های اصلی و H3 برای زیربخش‌ها. پرهیز از پرش سطح.',
+            'intro_outro_rules'    => 'مقدمه جذاب با پاسخ صریح در ۲–۳ پاراگراف؛ جمع‌بندی کاربردی با دعوت به اقدام.',
+            'keyword_policy'       => 'استفاده طبیعی از کلمه کلیدی اصلی در مقدمه، یک H2 و نتیجه‌گیری (چگالی ~۱٪). پرهیز از تکرار مصنوعی.',
+            'internal_link_policy' => 'پیشنهاد ۲ تا ۵ لینک داخلی با انکر تکست توصیفی و مرتبط.',
+            'external_link_policy' => 'ارجاع به منابع معتبر فقط در صورت لزوم.',
+            'factual_policy'       => 'عدم ادعای بدون مدرک؛ حفظ صحت فنی.',
+            'faq_aeo_geo_rules'    => 'ارائه پاسخ‌های کوتاه، مستقیم و ساختاریافته برای AEO و GEO همراه با اسکیما.',
+            'forbidden_phrases'    => 'عبارات کلیشه‌ای مانند: در دنیای امروز، بدون شک، حتما می‌دانید، امروزه با پیشرفت علم.',
+            'custom_notes'         => 'محتوا باید جامع، کاملاً کاربردی و قابل اعتماد باشد.',
+        ];
+    }
+
+    public static function get_site_guidelines(): array
+    {
+        $saved = get_option('bankai_ai_site_guidelines', []);
+        if (!is_array($saved)) {
+            $saved = [];
+        }
+        return array_merge(self::default_site_guidelines(), $saved);
+    }
+
+    public static function format_guidelines_prompt_context(): string
+    {
+        $g = self::get_site_guidelines();
+        $lines = [
+            "=== دستورالعمل عمومی تولید محتوای سایت ===",
+            "- حوزه و موضوع سایت: " . $g['site_domain'],
+            "- مخاطب هدف: " . $g['target_audience'],
+            "- لحن و شخصیت برند: " . $g['brand_tone'] . " (" . $g['formality'] . ")",
+            "- قواعد هدینگ‌ها: " . $g['heading_rules'],
+            "- قواعد مقدمه و نتیجه‌گیری: " . $g['intro_outro_rules'],
+            "- سیاست کلیدواژه: " . $g['keyword_policy'],
+            "- لینک‌سازی داخلی/خارجی: " . $g['internal_link_policy'],
+            "- قواعد FAQ، AEO و GEO: " . $g['faq_aeo_geo_rules'],
+            "- عبارات و سبک‌های ممنوع: " . $g['forbidden_phrases'],
+        ];
+        if (!empty($g['custom_notes'])) {
+            $lines[] = "- نکات اختصاصی مدیر: " . $g['custom_notes'];
+        }
+        return implode("\n", $lines);
+    }
+
+    public function ajax_get_site_guidelines(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        wp_send_json_success(['guidelines' => self::get_site_guidelines()]);
+    }
+
+    public function ajax_save_site_guidelines(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $raw = wp_unslash($_POST['guidelines'] ?? []);
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $defaults = self::default_site_guidelines();
+        $clean = [];
+        foreach ($defaults as $k => $v) {
+            $clean[$k] = sanitize_textarea_field((string) ($raw[$k] ?? $v));
+        }
+        update_option('bankai_ai_site_guidelines', $clean, false);
+        wp_send_json_success([
+            'message'    => __('دستورالعمل عمومی با موفقیت ذخیره شد.', 'bankai-core'),
+            'guidelines' => $clean,
+        ]);
+    }
+
+    public function ajax_preview_ai_prompt(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        $topic = sanitize_text_field(wp_unslash($_POST['topic'] ?? 'موضوع نمونه'));
+        $focus = sanitize_text_field(wp_unslash($_POST['focus'] ?? 'کلمه کلیدی نمونه'));
+        $task  = sanitize_key(wp_unslash($_POST['task'] ?? 'article'));
+
+        $layer1 = "Layer 1 (System Safety & Core Rules): OpenAI / Anthropic / Gemini safety policies and language constraints.";
+        $layer2 = self::format_guidelines_prompt_context();
+        $layer3 = "Layer 3 (Topic Cluster / Strategy Context): Pillar content relationships, taxonomy alignment, and site post deduplication.";
+        $layer4 = "Layer 4 (Article Brief & Target Outline):\n- Topic: {$topic}\n- Focus Keyword: {$focus}\n- Task: {$task}";
+        $layer5 = "Layer 5 (User Command / Custom Operation): Specific user request for this generation pass.";
+
+        $full_prompt = implode("\n\n", [$layer1, $layer2, $layer3, $layer4, $layer5]);
+
+        wp_send_json_success([
+            'topic'       => $topic,
+            'task'        => $task,
+            'full_prompt' => $full_prompt,
+            'layers'      => [
+                'layer1' => $layer1,
+                'layer2' => $layer2,
+                'layer3' => $layer3,
+                'layer4' => $layer4,
+                'layer5' => $layer5,
+            ]
+        ]);
     }
 
     public static function mask_key(string $key): string
@@ -1404,14 +1523,15 @@ final class Bankai_AI_Studio
         $snippet = $content !== '' ? mb_substr($content, 0, $snip_len) : '(خالی)';
         $style = sanitize_key((string) ($extra['rewrite_style'] ?? 'seo'));
 
+        $guidelines_ctx = self::format_guidelines_prompt_context();
         if ($is_fa) {
             $lang_rule = 'زبان خروجی فقط فارسی (پارسی ایران) است. هیچ کلمه انگلیسی، لاتین یا ترجمه انگلیسی ننویس مگر نام برند یا URL. از اعداد فارسی در متن عادی استفاده نکن مگر ضروری.';
-            $base_sys = "تو «دستیار سئوی بنکای» هستی؛ متخصص سئو و نویسندگی برای وردپرس فارسی. {$lang_rule} "
+            $base_sys = "تو «دستیار سئوی بنکای» هستی؛ متخصص سئو و نویسندگی برای وردپرس فارسی. {$lang_rule}\n{$guidelines_ctx}\n"
                 . 'بر اساس نیت جستجو بنویس، کلمه کلیدی را طبیعی به کار ببر، پر کردن کلمه کلیدی نکن، و واقعیت خارج از محتوا اختراع نکن. '
                 . 'فقط خروجی خواسته‌شده را بده؛ بدون توضیح اضافه، بدون markdown و بدون ```.';
         } else {
             $lang_rule = 'Respond only in English.';
-            $base_sys = "You are Bankai SEO Agent for WordPress. {$lang_rule} "
+            $base_sys = "You are Bankai SEO Agent for WordPress. {$lang_rule}\n{$guidelines_ctx}\n"
                 . 'Follow search intent, use the focus keyword naturally, no keyword stuffing, no invented facts. '
                 . 'Output only what is asked. No markdown fences.';
         }

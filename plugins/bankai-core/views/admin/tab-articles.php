@@ -553,37 +553,82 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
 
             <!-- SUBTAB 2: GUIDELINES & TONE -->
             <div x-show="wiz.subTab==='guidelines'" x-cloak>
-                <div style="max-width:700px;margin:0 auto;background:#fff;padding:16px;border:1px solid #e2e8f0;border-radius:12px">
-                    <h4 style="margin:0 0 12px;font-size:14px">دستورالعمل‌ها، لحن و الزامات تولید محتوا</h4>
-
-                    <div style="margin-bottom:12px">
-                        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">دستورالعمل عمومی سایت</label>
-                        <textarea x-model="wiz.guidelines.siteWide" rows="3" class="bk-textarea" style="width:100%;box-sizing:border-box"></textarea>
+                <div style="max-width:850px;margin:0 auto;background:#fff;padding:20px;border:1px solid #d0d7de;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #d0d7de">
+                        <div>
+                            <h4 style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1f2328">دستورالعمل عمومی تولید محتوا (Site-Wide AI Guidelines)</h4>
+                            <p style="margin:0;font-size:12px;color:#656d76">اصول ثابت برند، لحن، ساختار هدینگ‌ها، قوانین سئو و سیاست‌های محتوایی که تمام هوش مصنوعی‌ها از آن پیروی می‌کنند.</p>
+                        </div>
+                        <button type="button" class="bk-btn bk-btn-primary" @click="saveSiteGuidelines()" :disabled="guidelinesSaving" :class="{ 'is-loading': guidelinesSaving }">
+                            📌 ذخیره دستورالعمل عمومی
+                        </button>
                     </div>
 
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
                         <div>
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">سبک و لحن نگارش</label>
-                            <select class="bk-select" x-model="wiz.guidelines.tone">
-                                <option value="seo">سئو استاندارد و جامع</option>
-                                <option value="engaging">جذاب، داستانی و کلیک‌خور</option>
-                                <option value="formal">رسمی، آکادمیک و حرفه‌ای</option>
-                                <option value="simple">ساده، روان و عامه‌فهم</option>
-                            </select>
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">حوزه فعالیت / موضوع کلان سایت</label>
+                            <input type="text" class="bk-input" x-model="siteGuidelines.site_domain" placeholder="مثلاً: طراحی سایت، سئو، فناوری و کسب‌وکار آنلاین" style="width:100%;box-sizing:border-box">
                         </div>
                         <div>
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">طول هدف مقاله</label>
-                            <select class="bk-select" x-model="wiz.guidelines.wordCount">
-                                <option value="1500">حدود ۱۵۰۰ کلمه</option>
-                                <option value="2500">حدود ۲۵۰۰ کلمه (پیش‌فرض)</option>
-                                <option value="4000">طولانی (۴۰۰۰ کلمه)</option>
-                            </select>
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">مخاطب هدف</label>
+                            <input type="text" class="bk-input" x-model="siteGuidelines.target_audience" placeholder="مثلاً: مدیران کسب‌وکار، وبمستران و علاقه‌مندان به مارکتینگ" style="width:100%;box-sizing:border-box">
                         </div>
                     </div>
 
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
-                        <button type="button" class="bk-btn" @click="wiz.subTab='planning'">→ قبلی</button>
-                        <button type="button" class="bk-btn bk-btn-primary" @click="wiz.subTab='wizard'">رفتن به ویزارد انتشار ←</button>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">لحن اصلی برند (Brand Tone)</label>
+                            <select class="bk-select" x-model="siteGuidelines.brand_tone" style="width:100%">
+                                <option value="seo">سئو استاندارد، تخصصی و جامع</option>
+                                <option value="engaging">جذاب، داستانی و پرانرژی</option>
+                                <option value="formal">رسمی، آکادمیک و موثق</option>
+                                <option value="simple">ساده، صمیمی و روان</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">سطح رسمیت</label>
+                            <input type="text" class="bk-input" x-model="siteGuidelines.formality" placeholder="مثلاً: میانه (حرفه‌ای و صمیمی)" style="width:100%;box-sizing:border-box">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:14px">
+                        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">قواعد هدینگ‌ها و ساختار متن (Heading Structure)</label>
+                        <textarea x-model="siteGuidelines.heading_rules" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box"></textarea>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">قواعد کلیدواژه‌ها (Keyword Policy)</label>
+                            <textarea x-model="siteGuidelines.keyword_policy" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box"></textarea>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">عبارات و کلمات ممنوعه (Forbidden Phrases)</label>
+                            <textarea x-model="siteGuidelines.forbidden_phrases" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box" placeholder="مثلاً: در دنیای امروز، بدون شک، حتما می‌دانید…"></textarea>
+                        </div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">سیاست لینک‌دهی داخلی</label>
+                            <textarea x-model="siteGuidelines.internal_link_policy" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box"></textarea>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">قواعد AEO و GEO (FAQ و پاسخ صریح)</label>
+                            <textarea x-model="siteGuidelines.faq_aeo_geo_rules" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box"></textarea>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:16px">
+                        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">یادداشت‌های اختصاصی مدیر (Custom Notes)</label>
+                        <textarea x-model="siteGuidelines.custom_notes" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box" placeholder="هرگونه دستور ویژه دیگر که باید در تمامی پرامپت‌ها اعمال شود…"></textarea>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid #d0d7de">
+                        <button type="button" class="bk-btn" @click="wiz.subTab='planning'">→ قبلی (برنامه‌ریزی)</button>
+                        <div style="display:flex;gap:8px">
+                            <button type="button" class="bk-btn bk-btn-secondary" @click="previewAiPrompt()">🔍 پیش‌نمایش پرامپت هوش مصنوعی</button>
+                            <button type="button" class="bk-btn bk-btn-primary" @click="wiz.subTab='wizard'">رفتن به ویزارد انتشار ←</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -648,6 +693,40 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
 
         </div>
     </div>
+
+    <!-- Prompt Preview Modal -->
+    <template x-teleport="body">
+        <div>
+            <div class="bk-modal-ai-backdrop" x-show="promptPreviewOpen" x-cloak @click="promptPreviewOpen = false"></div>
+            <div class="bk-modal-ai-flow bk-modal-ai-wide" x-show="promptPreviewOpen" x-cloak @click.stop="" style="max-width:800px">
+                <div class="bk-modal-head">
+                    <div>
+                        <strong style="font-size:15px;color:#1f2328">پیش‌نمایش پرامپت هوش مصنوعی</strong>
+                        <small style="display:block;font-size:11px;color:#656d76">بررسی دقیق لایه‌های دستورالعمل ترکیبی قبل از ارسال به مدل</small>
+                    </div>
+                    <button type="button" class="bk-abtn-icon" @click="promptPreviewOpen = false">×</button>
+                </div>
+                <div class="bk-modal-body" style="padding:16px">
+                    <div style="margin-bottom:12px;padding:10px;background:#f6f8fa;border:1px solid #d0d7de;border-radius:8px">
+                        <strong style="display:block;font-size:12px;color:#0969da;margin-bottom:4px">لایه‌های فعال دستورالعمل:</strong>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px">
+                            <span class="bk-chip is-primary">۱. محدودیت‌های امنیتی سیستم</span>
+                            <span class="bk-chip">۲. دستورالعمل عمومی سایت (ذخیره‌شده)</span>
+                            <span class="bk-chip">۳. لحن و طول هدف مقاله</span>
+                            <span class="bk-chip">۴. عنوان و پرامپت اختصاصی کاربر</span>
+                        </div>
+                    </div>
+
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:#1f2328">متن کامل پرامپت سیستمی و کاربر:</label>
+                    <textarea readonly rows="12" class="bk-textarea" style="width:100%;font-family:monospace;font-size:11px;line-height:1.5;background:#1f2328;color:#f6f8fa;padding:12px;border-radius:8px;box-sizing:border-box;direction:ltr" x-text="promptPreviewData.full_prompt || 'در حال بارگذاری…'"></textarea>
+
+                    <div style="display:flex;justify-content:flex-end;margin-top:14px">
+                        <button type="button" class="bk-btn bk-btn-primary" @click="promptPreviewOpen = false">متوجه شدم</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
 
     <!-- AI Modal backdrop + modal -->
     <template x-teleport="body">
