@@ -30,7 +30,21 @@
         auditBusyId: 0,
         wizBusy: false,
         batchBusy: false,
-        wiz: { topic: '', selected: [], queue: [], phase: 'setup' },
+        wiz: {
+          subTab: 'planning',
+          topic: '',
+          count: '5',
+          selected: [],
+          queue: [],
+          phase: 'setup',
+          status: 'draft',
+          publishDate: '',
+          guidelines: {
+            siteWide: 'محتوای جامع و کامل با لحن حرفه‌ای و رعایت اصول سئو و هدینگ‌ها.',
+            tone: 'seo',
+            wordCount: '2500'
+          }
+        },
         auditDrawer: {
           open: false, title: '', uiTab: 'analysis', result: null, summary: null,
           phase: 'idle', progress: 0, step: '', view: 'list',
@@ -62,6 +76,16 @@
 
         init() {
           this.loadArticles();
+          var self = this;
+          window.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' || e.keyCode === 27) {
+              if (self.aiModalOpen && !self.aiBusy) {
+                self.closeAiModal();
+              } else if (self.auditDrawer && self.auditDrawer.open && !self.auditBusyId) {
+                self.closeAuditPanel();
+              }
+            }
+          });
         },
 
         adminNonce() { return nonce(); },
@@ -232,33 +256,29 @@
         },
 
         closeAuditPanel() {
+          if (this.auditBusyId) return;
           this.auditDrawer.open = false;
           this.auditDrawer.phase = 'idle';
         },
 
-
         async switchAuditTab(tab) {
           this.auditDrawer.uiTab = tab;
           if (tab === 'analysis') {
-            this.ensureAnalysisLoaded();
+            this.ensureAnalysisLoaded(false);
           }
         },
         async ensureAnalysisLoaded(force) {
-          var id = this.auditDrawer.postId;
+          var id = Number(this.auditDrawer.postId);
           if (!id) return;
-          if (!force && this.auditDrawer.phase === 'done' && this.auditDrawer.result &&
+          if (!force && this.auditDrawer.phase === 'done' && this.auditDrawer.isFresh && this.auditDrawer.result &&
               ((this.auditDrawer.result.seo || []).length || (this.auditDrawer.result.aeo || []).length || (this.auditDrawer.result.geo || []).length)) {
-            return; // already have saved analysis
+            return; // already have fresh analysis
           }
           if (this.auditBusyId) return;
           // try load saved report first
-          await this.fetchAuditReport(id);
-          var has = this.auditDrawer.result && (
-            (this.auditDrawer.result.seo || []).length ||
-            (this.auditDrawer.result.aeo || []).length ||
-            (this.auditDrawer.result.geo || []).length
-          );
-          if (has && !force) {
+          var rep = await this.fetchAuditReport(id, force);
+          if (Number(this.auditDrawer.postId) !== id) return;
+          if (rep && rep.has_report && rep.is_fresh && !force) {
             this.auditDrawer.phase = 'done';
             if (this.auditDrawer.summary) this.patchArticleScores(id, this.auditDrawer.summary);
             return;
@@ -588,16 +608,26 @@
             return { key: x.key, label: x.label, state: x.pass ? 'pass' : 'fail', message: x.message, group: 'geo' };
           });
         },
-        async fetchAuditReport(id) {
+        async fetchAuditReport(id, force) {
           try {
             var fd = new FormData();
             fd.append('action', 'bankai_seo_page_audit_report');
             fd.append('nonce', nonce());
             fd.append('post_id', String(id));
+            if (force) fd.append('force', '1');
             var r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin' });
             var j = await r.json();
-            if (j && j.success && j.data) this.applyAuditResult(j.data);
+            if (j && j.success && j.data && Number(this.auditDrawer.postId) === Number(id)) {
+              this.auditDrawer.isFresh = !!j.data.is_fresh;
+              this.auditDrawer.staleReason = j.data.stale_reason || 'none';
+              this.auditDrawer.savedAtFormatted = j.data.saved_at_formatted || '';
+              if (j.data.has_report) {
+                this.applyAuditResult(j.data);
+                return j.data;
+              }
+            }
           } catch (e) {}
+          return null;
         },
         async rerunAudit(force) {
           var id = this.auditDrawer.postId;
@@ -1088,48 +1118,55 @@
           }
         },
         async startProduce() {
-          const items = (this.wiz.selected || []).filter(function (s) { return s.title && s.title.trim(); });
-          if (!items.length) return;
+          const items = (this.wiz.selected || []).filter(function (s) { return s.approved && s.title && s.title.trim(); });
+          if (!items.length) {
+            if (window.showToast) window.showToast('لطفاً حداقل یک عنوان را تایید کنید', 'warning');
+            return;
+          }
           this.batchBusy = true;
+          this.wiz.subTab = 'dashboard';
           this.wiz.phase = 'produce';
           this.wiz.queue = items.map(function (s) {
-            return { title: s.title.trim(), status: 'pending', progress: 0, stepLabel: 'آماده', post_id: 0 };
+            return { title: s.title.trim(), status: 'pending', progress: 0, stepLabel: 'در صف انتشار', post_id: 0 };
           });
           for (let i = 0; i < this.wiz.queue.length; i++) {
             const job = this.wiz.queue[i];
             job.status = 'run';
-            job.stepLabel = 'تولید محتوا…';
-            job.progress = 10;
+            job.stepLabel = 'تولید محتوای سئوشده…';
+            job.progress = 15;
             try {
               const fd = new FormData();
               fd.append('action', 'bankai_ai_generate_article');
               fd.append('nonce', nonce());
               fd.append('topic', job.title);
               fd.append('focus', this.wiz.topic || '');
-              fd.append('length', '2000');
-              fd.append('status', 'draft');
+              fd.append('length', String(this.wiz.guidelines ? this.wiz.guidelines.wordCount || 2500 : 2500));
+              fd.append('status', this.wiz.status || 'draft');
+              if (this.wiz.status === 'future' && this.wiz.publishDate) {
+                fd.append('publish_date', this.wiz.publishDate);
+              }
               fd.append('do_seo', '1');
               const r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin' });
               const text = await r.text();
               let j = null;
-              try { j = JSON.parse(text); } catch (e) { throw new Error('پاسخ نامعتبر'); }
+              try { j = JSON.parse(text); } catch (e) { throw new Error('پاسخ نامعتبر سرور'); }
               if (j && j.success) {
                 job.progress = 100;
                 job.status = 'done';
-                job.stepLabel = 'تکمیل شد';
+                job.stepLabel = 'مقاله ایجاد شد';
                 job.post_id = (j.data && j.data.post_id) || 0;
               } else {
                 job.status = 'error';
-                job.stepLabel = (j && j.data && j.data.message) || 'خطا';
+                job.stepLabel = (j && j.data && j.data.message) || 'خطا در تولید';
               }
             } catch (e) {
               job.status = 'error';
-              job.stepLabel = (e && e.message) || 'خطا';
+              job.stepLabel = (e && e.message) || 'خطای شبکه';
             }
           }
           this.batchBusy = false;
           this.loadArticles();
-          if (window.showToast) window.showToast('صف تولید پایان یافت', 'success');
+          if (window.showToast) window.showToast('صف تولید با موفقیت به پایان رسید', 'success');
         }
       };
     });

@@ -318,7 +318,7 @@ if ($post_id && !$post) {
                     <template x-for="link in pendingAiLinks" :key="link.id">
                         <div class="bk-pending-link-card">
                             <div class="bk-pending-link-info">
-                                <div>انکر: <strong x-text="link.keyword"></strong></div>
+                                <div>انکر: <strong x-text="link.keyword"></strong> <span class="bk-score-pill" x-show="link.score" x-text="'(امتیاز: ' + link.score + ')'"></span></div>
                                 <div>مقصد: <strong x-text="link.target_title"></strong></div>
                                 <div class="bk-hint" x-text="link.reason"></div>
                             </div>
