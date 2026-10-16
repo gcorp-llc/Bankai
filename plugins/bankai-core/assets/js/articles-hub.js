@@ -30,6 +30,25 @@
         auditBusyId: 0,
         wizBusy: false,
         batchBusy: false,
+        siteGuidelines: {
+          language: 'fa_IR',
+          site_domain: 'طراحی سایت، سئو، فناوری و کسب‌وکار آنلاین',
+          target_audience: 'مدیران کسب‌وکار، وبمستران و علاقه‌مندان به بازاریابی دیجیتال',
+          brand_tone: 'seo',
+          formality: 'میانه (حرفه‌ای و صمیمی)',
+          heading_rules: 'یک H1 یکتا، استفاده منظم از H2 برای بخش‌های اصلی و H3 برای زیربخش‌ها. پرهیز از پرش سطح.',
+          intro_outro_rules: 'مقدمه جذاب با پاسخ صریح در ۲–۳ پاراگراف؛ جمع‌بندی کاربردی با دعوت به اقدام.',
+          keyword_policy: 'استفاده طبیعی از کلمه کلیدی اصلی در مقدمه، یک H2 و نتیجه‌گیری (چگالی ~۱٪). پرهیز از تکرار مصنوعی.',
+          internal_link_policy: 'پیشنهاد ۲ تا ۵ لینک داخلی با انکر تکست توصیفی و مرتبط.',
+          external_link_policy: 'ارجاع به منابع معتبر فقط در صورت لزوم.',
+          factual_policy: 'عدم ادعای بدون مدرک؛ حفظ صحت فنی.',
+          faq_aeo_geo_rules: 'ارائه پاسخ‌های کوتاه، مستقیم و ساختاریافته برای AEO و GEO همراه با اسکیما.',
+          forbidden_phrases: 'عبارات کلیشه‌ای مانند: در دنیای امروز، بدون شک، حتما می‌دانید، امروزه با پیشرفت علم.',
+          custom_notes: 'محتوا باید جامع، کاملاً کاربردی و قابل اعتماد باشد.'
+        },
+        guidelinesSaving: false,
+        promptPreviewOpen: false,
+        promptPreviewData: { topic: '', task: '', full_prompt: '', layers: {} },
         wiz: {
           subTab: 'planning',
           topic: '',
@@ -76,6 +95,7 @@
 
         init() {
           this.loadArticles();
+          this.loadSiteGuidelines();
           var self = this;
           window.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' || e.keyCode === 27) {
@@ -83,9 +103,67 @@
                 self.closeAiModal();
               } else if (self.auditDrawer && self.auditDrawer.open && !self.auditBusyId) {
                 self.closeAuditPanel();
+              } else if (self.promptPreviewOpen) {
+                self.promptPreviewOpen = false;
               }
             }
           });
+        },
+
+        async loadSiteGuidelines() {
+          try {
+            const fd = new FormData();
+            fd.append('action', 'bankai_get_site_guidelines');
+            fd.append('nonce', nonce());
+            const r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin' });
+            const j = await r.json();
+            if (j && j.success && j.data && j.data.guidelines) {
+              this.siteGuidelines = Object.assign({}, this.siteGuidelines, j.data.guidelines);
+            }
+          } catch (e) {}
+        },
+        async saveSiteGuidelines() {
+          this.guidelinesSaving = true;
+          this.setBtnBusy('saveGuidelines', true);
+          try {
+            const fd = new FormData();
+            fd.append('action', 'bankai_save_site_guidelines');
+            fd.append('nonce', nonce());
+            fd.append('guidelines', JSON.stringify(this.siteGuidelines));
+            const r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin' });
+            const j = await r.json();
+            if (j && j.success) {
+              if (window.showToast) window.showToast('دستورالعمل عمومی سایت با موفقیت ذخیره شد', 'success');
+            } else if (window.showToast) {
+              window.showToast((j && j.data && j.data.message) || 'خطا در ذخیره', 'error');
+            }
+          } catch (e) {
+            if (window.showToast) window.showToast('خطای شبکه', 'error');
+          } finally {
+            this.guidelinesSaving = false;
+            this.setBtnBusy('saveGuidelines', false);
+          }
+        },
+        async previewAiPrompt() {
+          this.setBtnBusy('previewPrompt', true);
+          try {
+            const fd = new FormData();
+            fd.append('action', 'bankai_preview_ai_prompt');
+            fd.append('nonce', nonce());
+            fd.append('topic', this.wiz.topic || 'طراحی سایت و سئو');
+            fd.append('focus', (this.wiz.selected && this.wiz.selected[0] && this.wiz.selected[0].title) || '');
+            fd.append('task', 'article');
+            const r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin' });
+            const j = await r.json();
+            if (j && j.success && j.data) {
+              this.promptPreviewData = j.data;
+              this.promptPreviewOpen = true;
+            }
+          } catch (e) {
+            if (window.showToast) window.showToast('خطا در دریافت پیش‌نمایش', 'error');
+          } finally {
+            this.setBtnBusy('previewPrompt', false);
+          }
         },
 
         adminNonce() { return nonce(); },

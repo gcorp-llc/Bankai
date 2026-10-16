@@ -33,6 +33,7 @@ class Bankai_Speed_Cache
 
         add_action('wp_ajax_bankai_purge_speed_cache', [$this, 'handle_purge_speed_cache']);
         add_action('wp_ajax_bankai_purge_page_cache', [$this, 'handle_purge_speed_cache']);
+        add_action('wp_ajax_bankai_rebuild_assets', [$this, 'handle_rebuild_assets']);
         add_action('wp_ajax_bankai_optimize_database', [$this, 'handle_optimize_database']);
         add_action('wp_ajax_bankai_benchmark_vitals', [$this, 'handle_benchmark_vitals']);
         add_action('wp_ajax_bankai_save_speed_settings', [$this, 'handle_save_speed_settings']);
@@ -50,6 +51,8 @@ class Bankai_Speed_Cache
             add_action('init', [$this, 'optimize_wp_default_scripts'], 20);
             add_action('wp_enqueue_scripts', [$this, 'optimize_css_enqueue'], 999);
             add_action('wp_enqueue_scripts', [$this, 'optimize_script_enqueue'], 1000);
+            add_filter('style_loader_src', [$this, 'maybe_minify_style_src'], 20, 2);
+            add_filter('script_loader_src', [$this, 'maybe_minify_script_src'], 20, 2);
             add_filter('style_loader_tag', [$this, 'filter_style_loader_tag'], 10, 4);
             add_filter('script_loader_tag', [$this, 'filter_script_loader_tag'], 10, 3);
             add_action('wp_head', [$this, 'print_css_preload_hints'], 1);
@@ -80,6 +83,13 @@ class Bankai_Speed_Cache
             add_action('comment_post', [$this, 'page_cache_purge_on_comment'], 20, 1);
             add_action('switch_theme', [$this, 'page_cache_purge_all']);
             add_action('wp_update_nav_menu', [$this, 'page_cache_purge_all']);
+            add_action('created_term', [$this, 'page_cache_purge_all']);
+            add_action('edited_term', [$this, 'page_cache_purge_all']);
+            add_action('delete_term', [$this, 'page_cache_purge_all']);
+            add_action('update_option_bankai_speed_config', [$this, 'page_cache_purge_all']);
+            add_action('update_option_bankai_speed_modules', [$this, 'page_cache_purge_all']);
+            add_action('update_option_bankai_cache_ttl', [$this, 'page_cache_purge_all']);
+            add_action('update_option_bankai_cache_exclusions', [$this, 'page_cache_purge_all']);
         }
 
         // Head cleanup + heartbeat + revision limits (always-on light wins when asset opt is on)
@@ -123,6 +133,183 @@ class Bankai_Speed_Cache
             return true;
         }
         return (bool) $mods[$id];
+    }
+
+    public static function assets_cache_dir(): string
+    {
+        $dir = WP_CONTENT_DIR . '/cache/bankai-assets';
+        if (!is_dir($dir)) {
+            wp_mkdir_p($dir);
+        }
+        return $dir;
+    }
+
+    public static function assets_cache_url(): string
+    {
+        return content_url('/cache/bankai-assets');
+    }
+
+    public function maybe_minify_style_src(string $src, string $handle): string
+    {
+        if (is_admin() || !$this->is_sub_active('asset_optimization')) {
+            return $src;
+        }
+        $cfg = $this->get_speed_cfg('asset_optimization');
+        if (empty($cfg['minify_css'])) {
+            return $src;
+        }
+        return $this->get_minified_asset_url($src, 'css');
+    }
+
+    public function maybe_minify_script_src(string $src, string $handle): string
+    {
+        if (is_admin() || !$this->is_sub_active('asset_optimization')) {
+            return $src;
+        }
+        $cfg = $this->get_speed_cfg('asset_optimization');
+        if (empty($cfg['minify_js'])) {
+            return $src;
+        }
+        if (in_array($handle, ['jquery', 'jquery-core', 'jquery-migrate'], true)) {
+            return $src;
+        }
+        return $this->get_minified_asset_url($src, 'js');
+    }
+
+    public function get_minified_asset_url(string $url, string $type): string
+    {
+        if ($url === '' || str_contains($url, '.min.' . $type)) {
+            return $url;
+        }
+        $path = $this->url_to_local_path($url);
+        if (!$path || !is_readable($path) || !is_file($path)) {
+            return $url;
+        }
+
+        $mtime = filemtime($path);
+        $hash = md5($path . ':' . $mtime . ':' . filesize($path));
+        $cache_dir = self::assets_cache_dir();
+        $cache_url = self::assets_cache_url();
+        $min_file = $cache_dir . '/' . $hash . '.min.' . $type;
+        $min_url = $cache_url . '/' . $hash . '.min.' . $type;
+
+        if (is_readable($min_file) && filesize($min_file) > 0) {
+            return $min_url;
+        }
+
+        $raw = @file_get_contents($path);
+        if ($raw === false || trim($raw) === '') {
+            return $url;
+        }
+
+        $minified = ($type === 'css') ? self::minify_css_string($raw) : self::minify_js_string($raw);
+        if ($minified === '') {
+            return $url;
+        }
+
+        $tmp = $min_file . '.' . getmypid() . '.tmp';
+        if (@file_put_contents($tmp, $minified, LOCK_EX) !== false) {
+            if (@rename($tmp, $min_file)) {
+                return $min_url;
+            }
+        }
+        @unlink($tmp);
+        return $url;
+    }
+
+    private function url_to_local_path(string $url): string
+    {
+        $url = strtok($url, '?');
+        $site_url = site_url();
+
+        $parsed_asset = wp_parse_url($url);
+        $parsed_site  = wp_parse_url($site_url);
+
+        if (!empty($parsed_asset['host']) && !empty($parsed_site['host'])) {
+            if (strcasecmp($parsed_asset['host'], $parsed_site['host']) !== 0) {
+                return '';
+            }
+        }
+
+        $rel = $parsed_asset['path'] ?? '';
+        if ($rel === '') {
+            return '';
+        }
+
+        if (str_contains($rel, '/wp-content/')) {
+            $sub = substr($rel, strpos($rel, '/wp-content/') + strlen('/wp-content/'));
+            $path = WP_CONTENT_DIR . '/' . ltrim($sub, '/');
+            return is_file($path) ? $path : '';
+        }
+
+        if (str_contains($rel, '/wp-includes/')) {
+            $sub = substr($rel, strpos($rel, '/wp-includes/') + strlen('/wp-includes/'));
+            $path = ABSPATH . WPINC . '/' . ltrim($sub, '/');
+            return is_file($path) ? $path : '';
+        }
+
+        return '';
+    }
+
+    public static function minify_css_string(string $css): string
+    {
+        $css = preg_replace('!/\*.*?\*/!s', '', $css) ?? $css;
+        $css = preg_replace('/\s*([{}|;:,])\s*/', '$1', $css) ?? $css;
+        $css = preg_replace('/;}/', '}', $css) ?? $css;
+        $css = preg_replace('/\s+/', ' ', $css) ?? $css;
+        return trim($css);
+    }
+
+    public static function minify_js_string(string $js): string
+    {
+        $js = preg_replace('!/\*.*?\*/!s', '', $js) ?? $js;
+        $lines = explode("\n", $js);
+        $clean_lines = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '//')) {
+                continue;
+            }
+            if (str_contains($line, '//') && !preg_match('/["\'].*?\/\/.*?["\']/', $line)) {
+                $line = preg_replace('#\s*//.*$#', '', $line) ?? $line;
+            }
+            $line = trim($line);
+            if ($line !== '') {
+                $clean_lines[] = $line;
+            }
+        }
+        $js = implode("\n", $clean_lines);
+        $js = preg_replace('/[ \t]+/', ' ', $js) ?? $js;
+        return trim($js);
+    }
+
+    public function handle_rebuild_assets(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('دسترسی مجاز نیست.', 'bankai-core')], 403);
+        }
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+
+        $dir = self::assets_cache_dir();
+        $n = 0;
+        if (is_dir($dir)) {
+            $files = glob($dir . '/*');
+            if (is_array($files)) {
+                foreach ($files as $f) {
+                    if (is_file($f)) {
+                        @unlink($f);
+                        $n++;
+                    }
+                }
+            }
+        }
+
+        $this->page_cache_purge_all();
+
+        wp_send_json_success([
+            'message' => __('فایل‌های بهینه‌شده بازسازی شدند و کش صفحات پاک گردید.', 'bankai-core'),
+            'cleared' => $n,
+        ]);
     }
 
     public function maybe_send_cache_headers(): void
