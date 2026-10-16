@@ -95,40 +95,47 @@ class Bankai_Media_Watermark
     public function get_settings(): array
     {
         $defaults = [
-            'enabled'         => true,
-            'type'            => 'text', // text | image
-            'position'        => 'bottom-right',
-            'opacity'         => 75,
-            'text'            => '© BANKAI MEDIA',
-            'text_size'       => 18,
-            'text_color'      => '#FFFFFF',
-            'text_font'       => 'default',
-            'box_enabled'     => true,
-            'box_padding'     => 8,
-            'box_radius'      => 6,
-            'box_color'       => '#000000',
-            'box_opacity'     => 45,
-            'image_id'        => 0,
-            'image_url'       => '',
-            'image_scale'     => 20,
-            'quality'         => 82,
-            'min_dimension'   => 0,
-            'custom_fonts'    => [],
-            'custom_font_url' => '',
-            'custom_font_name'=> '',
-            'custom_font_path'=> '',
-            'exclude_patterns'=> "logo
+            'enabled'            => true,
+            'type'               => 'text', // text | image
+            'position'           => 'bottom-right',
+            'opacity'            => 75,
+            'text'               => '© BANKAI MEDIA',
+            'text_size_type'     => 'scale', // scale | fixed
+            'text_scale_percent' => 3.5,
+            'min_font_size'      => 12,
+            'max_font_size'      => 72,
+            'margin_percent'     => 2.0,
+            'text_size'          => 18,
+            'text_color'         => '#FFFFFF',
+            'text_font'          => 'default',
+            'text_cover'         => 'none', // none | width | height | banner
+            'box_enabled'        => true,
+            'box_style'          => 'solid', // solid | gradient | none
+            'box_padding'        => 8,
+            'box_radius'         => 6,
+            'box_color'          => '#000000',
+            'box_opacity'        => 45,
+            'image_id'           => 0,
+            'image_url'          => '',
+            'image_scale'        => 20,
+            'quality'            => 82,
+            'min_dimension'      => 0,
+            'custom_fonts'       => [],
+            'custom_font_url'    => '',
+            'custom_font_name'   => '',
+            'custom_font_path'   => '',
+            'exclude_patterns'   => "logo
 banner
 icon
 sprite
 favicon
 watermark",
-            'apply_upload'    => true,
-            'apply_content'   => false,
-            'lazy_load'       => true,
-            'strip_exif'      => true,
-            'convert_webp'    => true,
-            'keep_original'   => true,
+            'apply_upload'       => true,
+            'apply_content'      => false,
+            'lazy_load'          => true,
+            'strip_exif'         => true,
+            'convert_webp'       => true,
+            'keep_original'      => true,
         ];
 
         $saved = get_option('bankai_watermark_settings', []);
@@ -206,6 +213,23 @@ watermark",
         if (!$img) {
             return;
         }
+        // Rotate image based on EXIF orientation if JPEG
+        if ($mime === 'image/jpeg' && function_exists('exif_read_data')) {
+            $exif = @exif_read_data($file);
+            if (!empty($exif['Orientation'])) {
+                switch ((int) $exif['Orientation']) {
+                    case 3:
+                        $img = imagerotate($img, 180, 0);
+                        break;
+                    case 6:
+                        $img = imagerotate($img, -90, 0);
+                        break;
+                    case 8:
+                        $img = imagerotate($img, 90, 0);
+                        break;
+                }
+            }
+        }
         $this->save_image($img, $file, $mime, 90);
         imagedestroy($img);
     }
@@ -231,19 +255,40 @@ watermark",
      */
     public function apply_watermark(string $file_path, ?array $settings = null): bool
     {
+        if (!file_exists($file_path) || !is_writable($file_path)) {
+            return false;
+        }
+
+        $s = $settings ?? $this->get_settings();
+
         // Backup original once for restore
-        if (!empty(($settings ?? $this->get_settings())['keep_original'] ?? true)) {
+        if (!empty($s['keep_original'] ?? true)) {
             $bak = $file_path . '.bk-orig';
-            if (!file_exists($bak) && file_exists($file_path)) {
+            if (!file_exists($bak)) {
                 @copy($file_path, $bak);
             }
         }
-        return $this->apply_watermark_inner($file_path, $settings);
+
+        // Process on temporary working file first to guarantee atomic write & non-destructive failure
+        $tmp_file = $file_path . '.tmp-' . wp_generate_password(6, false);
+        if (!@copy($file_path, $tmp_file)) {
+            return false;
+        }
+
+        $ok = $this->apply_watermark_inner($tmp_file, $s, $file_path);
+        if ($ok && file_exists($tmp_file) && filesize($tmp_file) > 0) {
+            @rename($tmp_file, $file_path);
+            return true;
+        }
+
+        if (file_exists($tmp_file)) {
+            @unlink($tmp_file);
+        }
+        return false;
     }
 
-    private function apply_watermark_inner(string $file_path, ?array $settings = null): bool
+    private function apply_watermark_inner(string $file_path, array $s, string $original_ref_path = ''): bool
     {
-        $s = $settings ?? $this->get_settings();
         $text_cover = $s['text_cover'] ?? 'none';
         $box_style = $s['box_style'] ?? 'solid';
         $info = @getimagesize($file_path);
@@ -257,7 +302,8 @@ watermark",
         }
 
         // Skip files matching exclude patterns (logo, banner, …)
-        if ($this->path_is_excluded($file_path, $s)) {
+        $ref_for_exclude = $original_ref_path !== '' ? $original_ref_path : $file_path;
+        if ($this->path_is_excluded($ref_for_exclude, $s)) {
             return false;
         }
 
@@ -281,21 +327,27 @@ watermark",
 
         $type = $s['type'] ?? 'text';
 
+        // Margin calculation: percentage of host image width (default 2%) with max bound
+        $margin_pct = (float) ($s['margin_percent'] ?? 2.0);
+        $margin = (int) max(4, round($width * ($margin_pct / 100)));
+
         if ($type === 'image' && !empty($s['image_id'])) {
             $wm_path = get_attached_file((int) $s['image_id']);
-            if ($wm_path && file_exists($wm_path)) {
+            // Prevent source image self-watermarking
+            if ($wm_path && file_exists($wm_path) && realpath($wm_path) !== realpath($ref_for_exclude)) {
                 $wm_info = @getimagesize($wm_path);
                 if ($wm_info) {
                     $wm = $this->load_image($wm_path, $wm_info['mime']);
                     if ($wm) {
                         $ww = imagesx($wm);
                         $wh = imagesy($wm);
-                        // Scale watermark to ~20% of host width
                         $pct = max(5, min(50, (int) ($s['image_scale'] ?? 20)));
-                        $target_w = max(40, (int) ($width * ($pct / 100)));
+                        $target_w = max(20, (int) ($width * ($pct / 100)));
+                        // Cap watermark width so it doesn't overflow
+                        $target_w = min($target_w, max(10, $width - ($margin * 2)));
                         $scale    = $target_w / max(1, $ww);
-                        $nw       = (int) ($ww * $scale);
-                        $nh       = (int) ($wh * $scale);
+                        $nw       = (int) max(10, round($ww * $scale));
+                        $nh       = (int) max(10, round($wh * $scale));
                         $wm_scaled = imagecreatetruecolor($nw, $nh);
                         imagealphablending($wm_scaled, false);
                         imagesavealpha($wm_scaled, true);
@@ -304,14 +356,14 @@ watermark",
                         imagecopyresampled($wm_scaled, $wm, 0, 0, 0, 0, $nw, $nh, $ww, $wh);
                         imagedestroy($wm);
 
-                        [$x, $y] = $this->calc_position($s['position'] ?? 'bottom-right', $width, $height, $nw, $nh, 15);
+                        [$x, $y] = $this->calc_position($s['position'] ?? 'bottom-right', $width, $height, $nw, $nh, $margin);
                         $this->imagecopymerge_alpha($image, $wm_scaled, $x, $y, 0, 0, $nw, $nh, $opacity);
                         imagedestroy($wm_scaled);
                     }
                 }
             }
         } else {
-            $this->draw_text_watermark($image, $width, $height, $s, $alpha);
+            $this->draw_text_watermark($image, $width, $height, $s, $alpha, $margin);
         }
 
         $ok = $this->save_image($image, $file_path, $mime, (int) ($s['quality'] ?? 88));
@@ -657,19 +709,33 @@ watermark",
         return implode('', array_reverse($shaped));
     }
 
-    private function draw_text_watermark($image, int $width, int $height, array $s, int $alpha): void
+    private function draw_text_watermark($image, int $width, int $height, array $s, int $alpha, int $margin = 15): void
     {
         $text = (string) ($s['text'] ?? 'BANKAI');
         if ($text === '') {
             return;
         }
         $text = $this->shape_rtl_text($text);
-        $size = max(10, min(72, (int) ($s['text_size'] ?? 18)));
+
+        // Scalable font calculation algorithm: fontSize = clamp(imageWidth * fontScalePercent / 100, minFont, maxFont)
+        $size_type = (string) ($s['text_size_type'] ?? 'scale');
+        $min_font = (int) max(8, ($s['min_font_size'] ?? 12));
+        $max_font = (int) min(180, ($s['max_font_size'] ?? 72));
+
+        if ($size_type === 'scale') {
+            $scale_pct = (float) ($s['text_scale_percent'] ?? 3.5);
+            $calculated = (int) round($width * ($scale_pct / 100));
+            $size = max($min_font, min($max_font, $calculated));
+        } else {
+            $size = max($min_font, min($max_font, (int) ($s['text_size'] ?? 18)));
+        }
+
         $font_key = (string) ($s['text_font'] ?? 'default');
         $font_path = $this->resolve_font_path($font_key);
         [$tr, $tg, $tb] = $this->parse_hex_color((string) ($s['text_color'] ?? '#FFFFFF'));
-        $pad = max(2, min(40, (int) ($s['box_padding'] ?? 8)));
+        $pad = max(2, min(50, (int) ($s['box_padding'] ?? 8)));
         $box_on = !empty($s['box_enabled']);
+        $box_style = (string) ($s['box_style'] ?? 'solid');
         $box_op = max(0, min(100, (int) ($s['box_opacity'] ?? 45)));
         [$br, $bg, $bb] = $this->parse_hex_color((string) ($s['box_color'] ?? '#000000'));
 
@@ -684,15 +750,15 @@ watermark",
         }
         if ($tw <= 0) {
             $gd = min(5, max(1, (int) round($size / 6)));
-            $tw = imagefontwidth($gd) * strlen($text);
+            $tw = imagefontwidth($gd) * mb_strlen($text, 'UTF-8');
             $th = imagefontheight($gd);
         }
 
-        $box_w = $tw + ($box_on ? $pad * 2 : 0);
-        $box_h = $th + ($box_on ? $pad * 2 : 0);
-        [$x, $y] = $this->calc_position($s['position'] ?? 'bottom-right', $width, $height, $box_w, $box_h, 15);
+        $box_w = $tw + ($box_on && $box_style !== 'none' ? $pad * 2 : 0);
+        $box_h = $th + ($box_on && $box_style !== 'none' ? $pad * 2 : 0);
+        [$x, $y] = $this->calc_position($s['position'] ?? 'bottom-right', $width, $height, $box_w, $box_h, $margin);
 
-        if ($box_on) {
+        if ($box_on && $box_style !== 'none') {
             $box_alpha = (int) round((100 - $box_op) / 100 * 127);
             $box_col = imagecolorallocatealpha($image, $br, $bg, $bb, $box_alpha);
             if ($box_col !== false) {
@@ -700,15 +766,14 @@ watermark",
             }
         }
 
-        $tx = (int) ($x + ($box_on ? $pad : 0));
-        $ty = (int) ($y + ($box_on ? $pad : 0));
+        $tx = (int) ($x + ($box_on && $box_style !== 'none' ? $pad : 0));
+        $ty = (int) ($y + ($box_on && $box_style !== 'none' ? $pad : 0));
         $text_col = imagecolorallocatealpha($image, $tr, $tg, $tb, $alpha);
         if ($text_col === false) {
             $text_col = imagecolorallocate($image, $tr, $tg, $tb);
         }
 
         if ($font_path && $bbox && function_exists('imagettftext')) {
-            // imagettftext uses baseline
             $baseline = $ty + $th;
             @imagettftext($image, $size, 0, $tx, $baseline, $text_col, $font_path, $text);
         } else {
@@ -758,10 +823,69 @@ watermark",
     private function imagecopymerge_alpha($dst, $src, $dst_x, $dst_y, $src_x, $src_y, $src_w, $src_h, $pct): void
     {
         $pct = max(0, min(100, $pct));
+        if ($pct >= 100) {
+            imagecopy($dst, $src, $dst_x, $dst_y, $src_x, $src_y, $src_w, $src_h);
+            return;
+        }
+
         $cut = imagecreatetruecolor($src_w, $src_h);
+        imagealphablending($cut, false);
+        imagesavealpha($cut, true);
+
+        // Copy destination snippet into cut
         imagecopy($cut, $dst, 0, 0, $dst_x, $dst_y, $src_w, $src_h);
-        imagecopy($cut, $src, 0, 0, $src_x, $src_y, $src_w, $src_h);
-        imagecopymerge($dst, $cut, $dst_x, $dst_y, 0, 0, $src_w, $src_h, $pct);
+
+        // Blend source over cut with global opacity
+        $opacity_factor = $pct / 100;
+        for ($x = 0; $x < $src_w; $x++) {
+            for ($y = 0; $y < $src_h; $y++) {
+                $src_color = imagecolorat($src, $x + $src_x, $y + $src_y);
+                $src_a = ($src_color >> 24) & 0x7F; // 0=opaque, 127=transparent
+                if ($src_a >= 127) {
+                    continue;
+                }
+                $src_r = ($src_color >> 16) & 0xFF;
+                $src_g = ($src_color >> 8) & 0xFF;
+                $src_b = $src_color & 0xFF;
+
+                // Adjust alpha with pct
+                $effective_alpha = 127 - (int) round((127 - $src_a) * $opacity_factor);
+                $effective_alpha = max(0, min(127, $effective_alpha));
+
+                $dst_color = imagecolorat($cut, $x, $y);
+                $dst_a = ($dst_color >> 24) & 0x7F;
+                $dst_r = ($dst_color >> 16) & 0xFF;
+                $dst_g = ($dst_color >> 8) & 0xFF;
+                $dst_b = $dst_color & 0xFF;
+
+                // Simple alpha composite
+                $sa = (127 - $effective_alpha) / 127;
+                $da = (127 - $dst_a) / 127;
+                $out_a_val = $sa + $da * (1 - $sa);
+
+                if ($out_a_val <= 0) {
+                    $out_color = imagecolorallocatealpha($cut, 0, 0, 0, 127);
+                } else {
+                    $out_r = (int) round(($src_r * $sa + $dst_r * $da * (1 - $sa)) / $out_a_val);
+                    $out_g = (int) round(($src_g * $sa + $dst_g * $da * (1 - $sa)) / $out_a_val);
+                    $out_b = (int) round(($src_b * $sa + $dst_b * $da * (1 - $sa)) / $out_a_val);
+                    $out_a = 127 - (int) round($out_a_val * 127);
+
+                    $out_r = max(0, min(255, $out_r));
+                    $out_g = max(0, min(255, $out_g));
+                    $out_b = max(0, min(255, $out_b));
+                    $out_a = max(0, min(127, $out_a));
+
+                    $out_color = imagecolorallocatealpha($cut, $out_r, $out_g, $out_b, $out_a);
+                }
+
+                if ($out_color !== false) {
+                    imagesetpixel($cut, $x, $y, $out_color);
+                }
+            }
+        }
+
+        imagecopy($dst, $cut, $dst_x, $dst_y, 0, 0, $src_w, $src_h);
         imagedestroy($cut);
     }
 
@@ -986,44 +1110,57 @@ watermark",
         $image_id = isset($_POST['image_id']) ? absint($_POST['image_id']) : 0;
         $image_url = $image_id ? (string) wp_get_attachment_url($image_id) : '';
 
-        $text_size = max(10, min(72, absint($_POST['text_size'] ?? 18)));
+        $text_size_type = isset($_POST['text_size_type']) ? sanitize_key(wp_unslash($_POST['text_size_type'])) : 'scale';
+        if (!in_array($text_size_type, ['scale', 'fixed'], true)) {
+            $text_size_type = 'scale';
+        }
+        $text_scale_percent = isset($_POST['text_scale_percent']) ? max(0.5, min(25.0, (float) $_POST['text_scale_percent'])) : 3.5;
+        $min_font_size = isset($_POST['min_font_size']) ? max(8, min(100, absint($_POST['min_font_size']))) : 12;
+        $max_font_size = isset($_POST['max_font_size']) ? max(12, min(200, absint($_POST['max_font_size']))) : 72;
+        $margin_percent = isset($_POST['margin_percent']) ? max(0.0, min(15.0, (float) $_POST['margin_percent'])) : 2.0;
+
+        $text_size = max(10, min(120, absint($_POST['text_size'] ?? 18)));
         $text_color = sanitize_hex_color(wp_unslash($_POST['text_color'] ?? '#FFFFFF')) ?: '#FFFFFF';
         $text_font = sanitize_key(wp_unslash($_POST['text_font'] ?? 'default'));
         $box_enabled = !empty($_POST['box_enabled']);
-        $box_padding = max(2, min(40, absint($_POST['box_padding'] ?? 8)));
-        $box_radius = max(0, min(24, absint($_POST['box_radius'] ?? 6)));
+        $box_padding = max(2, min(50, absint($_POST['box_padding'] ?? 8)));
+        $box_radius = max(0, min(25, absint($_POST['box_radius'] ?? 6)));
         $box_color = sanitize_hex_color(wp_unslash($_POST['box_color'] ?? '#000000')) ?: '#000000';
         $box_opacity = max(0, min(100, absint($_POST['box_opacity'] ?? 45)));
         $image_scale = max(5, min(50, absint($_POST['image_scale'] ?? 20)));
         $exclude_patterns = sanitize_textarea_field(wp_unslash($_POST['exclude_patterns'] ?? ''));
 
-
         $settings = [
-            'enabled'       => !empty($_POST['enabled']),
-            'type'          => $type,
-            'position'      => $position,
-            'opacity'       => $opacity,
-            'text'          => $text,
-            'image_id'      => $image_id,
-            'image_url'     => $image_url,
-            'image_scale'   => $image_scale,
-            'text_size'     => $text_size,
-            'text_color'    => $text_color,
-            'text_font'     => $text_font,
-            'box_enabled'   => $box_enabled,
-            'box_padding'   => $box_padding,
-            'box_radius'    => $box_radius,
-            'box_color'     => $box_color,
-            'box_opacity'   => $box_opacity,
-            'exclude_patterns' => $exclude_patterns,
-            'quality'       => $quality,
-            'min_dimension' => $min_dim,
-            'apply_upload'  => !empty($_POST['apply_upload']),
-            'apply_content' => !empty($_POST['apply_content']),
-            'lazy_load'     => !empty($_POST['lazy_load']),
-            'strip_exif'    => !empty($_POST['strip_exif']),
-            'convert_webp'  => !empty($_POST['convert_webp']),
-            'keep_original' => !empty($_POST['keep_original']),
+            'enabled'            => !empty($_POST['enabled']),
+            'type'               => $type,
+            'position'           => $position,
+            'opacity'            => $opacity,
+            'text'               => $text,
+            'text_size_type'     => $text_size_type,
+            'text_scale_percent' => $text_scale_percent,
+            'min_font_size'      => $min_font_size,
+            'max_font_size'      => $max_font_size,
+            'margin_percent'     => $margin_percent,
+            'image_id'           => $image_id,
+            'image_url'          => $image_url,
+            'image_scale'        => $image_scale,
+            'text_size'          => $text_size,
+            'text_color'         => $text_color,
+            'text_font'          => $text_font,
+            'box_enabled'        => $box_enabled,
+            'box_padding'        => $box_padding,
+            'box_radius'         => $box_radius,
+            'box_color'          => $box_color,
+            'box_opacity'        => $box_opacity,
+            'exclude_patterns'   => $exclude_patterns,
+            'quality'            => $quality,
+            'min_dimension'      => $min_dim,
+            'apply_upload'       => !empty($_POST['apply_upload']),
+            'apply_content'      => !empty($_POST['apply_content']),
+            'lazy_load'          => !empty($_POST['lazy_load']),
+            'strip_exif'         => !empty($_POST['strip_exif']),
+            'convert_webp'       => !empty($_POST['convert_webp']),
+            'keep_original'      => !empty($_POST['keep_original']),
         ];
 
         // Preserve font library unless explicitly posted
