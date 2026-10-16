@@ -476,7 +476,7 @@ final class Bankai_SEO_Engine
         }
 
         $analysis = $this->analyze($post_id);
-        update_post_meta($post_id, self::META_SCORE, (int) ($analysis['score'] ?? 0));
+        $this->persist_analysis_scores($post_id, $analysis);
 
         $link_suggestions = [];
         try {
@@ -498,6 +498,28 @@ final class Bankai_SEO_Engine
         ]);
     }
 
+
+    /**
+     * Persist overall + SEO/AEO/GEO scores so editor sidebar and articles hub stay in sync.
+     */
+    public function persist_analysis_scores(int $post_id, array $analysis): void
+    {
+        if ($post_id <= 0) {
+            return;
+        }
+        $score = (int) ($analysis['score'] ?? 0);
+        $sub = is_array($analysis['sub_scores'] ?? null) ? $analysis['sub_scores'] : [];
+        $seo = (int) ($sub['seo'] ?? $analysis['seo_score'] ?? $score);
+        $aeo = (int) ($sub['aeo'] ?? $analysis['aeo_score'] ?? $score);
+        $geo = (int) ($sub['geo'] ?? $analysis['geo_score'] ?? $score);
+
+        update_post_meta($post_id, self::META_SCORE, $score);
+        update_post_meta($post_id, '_bankai_audit_score', $score);
+        update_post_meta($post_id, '_bankai_audit_seo', $seo);
+        update_post_meta($post_id, '_bankai_audit_aeo', $aeo);
+        update_post_meta($post_id, '_bankai_audit_geo', $geo);
+    }
+
     public function api_analyze(WP_REST_Request $request): WP_REST_Response
     {
         $post_id   = absint($request['id']);
@@ -516,10 +538,8 @@ final class Bankai_SEO_Engine
 
         $analysis = $this->analyze($post_id, $overrides);
 
-        // Always keep sidebar / list / toolbar score in sync
-        if ($post_id > 0) {
-            update_post_meta($post_id, self::META_SCORE, (int) ($analysis['score'] ?? 0));
-        }
+        // Keep sidebar rings + articles hub SEO/AEO/GEO columns in sync
+        $this->persist_analysis_scores($post_id, $analysis);
 
         return new WP_REST_Response([
             'success' => true,
@@ -2274,10 +2294,10 @@ final class Bankai_SEO_Engine
                 'views'          => (int) ($view_map[$id] ?? get_post_meta($id, self::META_VIEWS, true)),
                 'internal_links' => count($extracted['internal']),
                 'external_links' => count($extracted['external']),
-                'seo_audit'      => (int) get_post_meta($id, '_bankai_audit_seo', true),
+                'seo_audit'      => (int) (get_post_meta($id, '_bankai_audit_seo', true) ?: get_post_meta($id, self::META_SCORE, true)),
                 'aeo_audit'      => (int) get_post_meta($id, '_bankai_audit_aeo', true),
                 'geo_audit'      => (int) get_post_meta($id, '_bankai_audit_geo', true),
-                'audit_score'    => (int) get_post_meta($id, '_bankai_audit_score', true),
+                'audit_score'    => (int) (get_post_meta($id, '_bankai_audit_score', true) ?: get_post_meta($id, self::META_SCORE, true)),
                 'cover'          => get_the_post_thumbnail_url($id, 'thumbnail') ?: '',
                 'modified'       => get_the_modified_date('Y-m-d H:i', $p),
                 'date'           => get_the_date('Y-m-d H:i', $p),

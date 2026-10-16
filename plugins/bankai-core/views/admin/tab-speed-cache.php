@@ -44,25 +44,33 @@ $cfg_json = wp_json_encode($cfg, JSON_UNESCAPED_UNICODE);
             </div>
         </div>
     </div>
-    <nav class="bk-art-tabs bk-lg-tabs bk-gh-tabs" role="tablist">
-        <button type="button" class="bk-lg-tab bk-gh-tab" :class="{ 'is-active': speedTab === 'config' }" @click="speedTab = 'config'">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.812l2.02 1.212a.75.75 0 0 1-.75 1.298l-2.5-1.5A.75.75 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0Z"/></svg>
-            پیکربندی کش
+    <nav class="bk-capsule-tabs bk-art-tabs bk-gh-tabs" role="tablist">
+        <button type="button" class="bk-capsule-tab" :class="{ 'is-active': speedTab === 'config' }" @click="speedTab = 'config'" title="پیکربندی کش">
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span class="bk-capsule-label">پیکربندی کش</span>
         </button>
-        <button type="button" class="bk-lg-tab bk-gh-tab" :class="{ 'is-active': speedTab === 'redis' }" @click="speedTab = 'redis'; loadRedisSettings && loadRedisSettings(); testRedisQuiet && testRedisQuiet()">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25Z"/><path d="M7.25 8a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 7.25 8ZM4 8a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm0 3a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm6.25-3.25a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5Z"/></svg>
-            Redis
-            <span class="bk-gh-redis-badge" x-show="redisStatus.ok" x-cloak title="Redis فعال">
-                <i></i> فعال
-            </span>
-            <span class="bk-gh-redis-badge is-off" x-show="redisStatus.checked && !redisStatus.ok" x-cloak>
-                <i></i> خاموش
-            </span>
+        <button type="button" class="bk-capsule-tab" :class="{ 'is-active': speedTab === 'redis' }" @click="speedTab = 'redis'; loadRedisSettings && loadRedisSettings(); testRedisQuiet && testRedisQuiet()" title="Redis">
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+            <span class="bk-capsule-label">Redis</span>
+            <span class="bk-gh-redis-badge" x-show="redisStatus.ok" x-cloak title="Redis فعال"><i></i></span>
+            <span class="bk-gh-redis-badge is-off" x-show="redisStatus.checked && !redisStatus.ok" x-cloak><i></i></span>
         </button>
     </nav>
 
     
-    <div x-show="speedTab === 'config'" x-cloak class="bk-seo-mod-grid">
+    <div x-show="speedTab === 'config'" x-cloak>
+    <div class="bk-cwv-banner" style="margin:0 0 14px;padding:14px 16px;border-radius:12px;border:1px solid #c7d2fe;background:#eef2ff">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
+            <div style="min-width:200px;flex:1">
+                <strong style="display:block;font-size:13px;color:#312e81;margin-bottom:4px">پیشنهاد Lighthouse — اعمال یک‌کلیکه</strong>
+                <span style="font-size:12px;color:#64748b;line-height:1.5">Font-display، CLS تصاویر، Async CSS، Delay شخص‌ثالث، سقف Preconnect=۴، Minify و Defer JS</span>
+            </div>
+            <button type="button" class="bk-btn bk-btn-primary" @click="applyLighthouseDefaults()" :disabled="busySave['cwv_lighthouse']">
+                اعمال تنظیمات پیشنهادی
+            </button>
+        </div>
+    </div>
+    <div class="bk-seo-mod-grid">
         <template x-for="opt in speedOptions" :key="opt.id">
             <div class="bk-seo-mod-card" :class="{ 'is-on': isOptOn(opt.id) }">
                 <div>
@@ -108,6 +116,23 @@ $cfg_json = wp_json_encode($cfg, JSON_UNESCAPED_UNICODE);
                             <label class="chk"><input type="checkbox" x-model="cfg.asset_optimization.delay_js"> Delay JS</label>
                             <label class="chk"><input type="checkbox" x-model="cfg.asset_optimization.remove_unused_css"> Unused CSS</label>
                             <div class="bk-gh-actions full"><button type="button" class="bk-gh-btn-primary" :disabled="busySave[opt.id]" @click="saveOpt('asset_optimization')">ذخیره</button></div>
+                        </div>
+                    </template>
+                    <template x-if="opt.id === 'cwv_lighthouse'">
+                        <div class="bk-gh-fields">
+                            <p class="full" style="margin:0 0 8px;font-size:12px;color:#64748b;line-height:1.55">
+                                تنظیمات مبتنی بر گزارش Lighthouse شما: TBT، CLS، Font-display، Render-blocking، Preconnect و تصاویر بدون ابعاد.
+                            </p>
+                            <label class="chk"><input type="checkbox" x-model="cfg.cwv_lighthouse.font_display"> Font-display: swap</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.cwv_lighthouse.cls_images"> ابعاد صریح تصاویر (کاهش CLS)</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.cwv_lighthouse.async_css"> Async CSS غیرحیاتی</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.cwv_lighthouse.delay_third_party"> Delay اسکریپت‌های شخص‌ثالث</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.cwv_lighthouse.unused_css_js"> حذف CSS/JS استفاده‌نشده</label>
+                            <label class="chk"><input type="checkbox" x-model="cfg.cwv_lighthouse.composited_animations"> انیمیشن‌های Composited</label>
+                            <label>سقف Preconnect<input type="number" min="1" max="6" x-model.number="cfg.cwv_lighthouse.max_preconnect"></label>
+                            <div class="bk-gh-actions full">
+                                <button type="button" class="bk-gh-btn-primary" :disabled="busySave[opt.id]" @click="saveOpt('cwv_lighthouse')">ذخیره و اعمال</button>
+                            </div>
                         </div>
                     </template>
                     <template x-if="opt.id === 'media_lazy'">
@@ -166,6 +191,7 @@ $cfg_json = wp_json_encode($cfg, JSON_UNESCAPED_UNICODE);
                 </div>
             </div>
         </template>
+    </div>
     </div>
 
 <div x-show="speedTab === 'redis'" x-cloak class="bk-lg-card bk-gh-redis" style="padding:20px">

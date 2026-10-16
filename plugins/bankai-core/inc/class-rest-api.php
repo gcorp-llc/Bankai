@@ -86,6 +86,7 @@ class Bankai_Rest_API
         // AJAX fallback for environments where REST nonce fails
         add_action('wp_ajax_bankai_toggle_core_module', [$this, 'ajax_toggle_core_module']);
         add_action('wp_ajax_bankai_save_settings', [$this, 'ajax_save_settings']);
+        add_action('wp_ajax_bankai_articles_list', [$this, 'ajax_list_articles']);
     }
 
     public function register_routes(): void
@@ -129,6 +130,19 @@ class Bankai_Rest_API
         // Core engine modules → bankai_core_settings.active_modules
         
         // Articles list — always available (not gated by SEO module load)
+        register_rest_route($this->namespace, '/articles', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$this, 'api_articles_list'],
+            'permission_callback' => static fn(): bool => current_user_can('edit_posts'),
+            'args'                => [
+                'page'      => ['type' => 'integer', 'default' => 1, 'sanitize_callback' => 'absint'],
+                'per_page'  => ['type' => 'integer', 'default' => 20, 'sanitize_callback' => 'absint'],
+                'search'    => ['type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field'],
+                'orderby'   => ['type' => 'string', 'default' => 'date', 'sanitize_callback' => 'sanitize_key'],
+                'order'     => ['type' => 'string', 'default' => 'DESC', 'sanitize_callback' => 'sanitize_text_field'],
+                'post_type' => ['type' => 'string', 'default' => 'post', 'sanitize_callback' => 'sanitize_key'],
+            ],
+        ]);
         register_rest_route($this->namespace, '/seo/articles', [
             'methods'             => \WP_REST_Server::READABLE,
             'callback'            => [$this, 'api_articles_list'],
@@ -543,8 +557,17 @@ class Bankai_Rest_API
         $orderby  = sanitize_key((string) ($request->get_param('orderby') ?? 'date'));
         $order    = strtoupper(sanitize_text_field((string) ($request->get_param('order') ?? 'DESC'))) === 'ASC' ? 'ASC' : 'DESC';
 
+        $post_type = sanitize_key((string) ($request->get_param('post_type') ?? 'post'));
+        if ($post_type === 'any') {
+            $types = ['post', 'page'];
+        } elseif (in_array($post_type, ['post', 'page'], true)) {
+            $types = [$post_type];
+        } else {
+            $types = ['post', 'page'];
+        }
+
         $args = [
-            'post_type'              => ['post', 'page'],
+            'post_type'              => $types,
             'post_status'            => ['publish', 'draft', 'pending', 'future', 'private'],
             'posts_per_page'         => $per_page,
             'paged'                  => $page,
@@ -587,14 +610,17 @@ class Bankai_Rest_API
                 'type'           => $p->post_type,
                 'permalink'      => get_permalink($p),
                 'edit_url'       => get_edit_post_link($id, 'raw'),
+                'edit_link'      => get_edit_post_link($id, 'raw'),
                 'seo_title'      => (string) get_post_meta($id, '_bankai_seo_title', true),
                 'description'    => (string) get_post_meta($id, '_bankai_seo_description', true),
-                'focus_keyword'  => (string) get_post_meta($id, '_bankai_focus_keyword', true),
-                'score'          => (int) get_post_meta($id, '_bankai_seo_score', true),
+                'focus_keyword'  => (string) (get_post_meta($id, '_bankai_seo_focus_keyword', true) ?: get_post_meta($id, '_bankai_focus_keyword', true)),
                 'views'          => (int) get_post_meta($id, '_bankai_post_views', true),
-                'seo_audit'      => (int) get_post_meta($id, '_bankai_audit_seo', true),
-                'aeo_audit'      => (int) get_post_meta($id, '_bankai_audit_aeo', true),
-                'geo_audit'      => (int) get_post_meta($id, '_bankai_audit_geo', true),
+                // Unified scores: audit group scores are source of truth for SEO·AEO·GEO
+                'seo_audit'      => (int) (get_post_meta($id, '_bankai_audit_seo', true) ?: get_post_meta($id, '_bankai_seo_score', true)),
+                'aeo_audit'      => (int) (get_post_meta($id, '_bankai_audit_aeo', true) ?: get_post_meta($id, '_bankai_aeo_score', true)),
+                'geo_audit'      => (int) (get_post_meta($id, '_bankai_audit_geo', true) ?: get_post_meta($id, '_bankai_geo_score', true)),
+                'seo_score'      => (int) (get_post_meta($id, '_bankai_audit_seo', true) ?: get_post_meta($id, '_bankai_seo_score', true)),
+                'score'          => (int) (get_post_meta($id, '_bankai_audit_score', true) ?: get_post_meta($id, '_bankai_seo_score', true)),
                 'audit_score'    => (int) get_post_meta($id, '_bankai_audit_score', true),
                 'cover'          => get_the_post_thumbnail_url($id, 'thumbnail') ?: '',
                 'modified'       => get_the_modified_date('Y-m-d H:i', $p),
@@ -630,6 +656,7 @@ class Bankai_Rest_API
         $req->set_param('search', sanitize_text_field(wp_unslash($_POST['search'] ?? '')));
         $req->set_param('orderby', sanitize_key($_POST['orderby'] ?? 'date'));
         $req->set_param('order', sanitize_text_field($_POST['order'] ?? 'DESC'));
+        $req->set_param('post_type', sanitize_key($_POST['post_type'] ?? 'post'));
         $res = $this->api_articles_list($req);
         $data = $res->get_data();
         if (!empty($data['success'])) {

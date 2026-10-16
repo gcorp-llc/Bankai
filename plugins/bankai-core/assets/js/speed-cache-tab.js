@@ -20,6 +20,7 @@
       speedOptions: [
         { id: 'page_caching', badge: 'CACHE', badgeClass: 'is-green', title: 'کش صفحات', desc: 'صفحات HTML را به‌صورت استاتیک ذخیره می‌کند تا TTFB کاهش یابد. می‌توانید TTL، کاربران واردشده و آدرس‌های مستثنی را تنظیم کنید.', svg: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v12.5A1.75 1.75 0 0 1 14.25 16H1.75A1.75 1.75 0 0 1 0 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25ZM3.5 7.75a.75.75 0 0 1 .75-.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1-.75-.75Zm.75 2.25a.75.75 0 0 0 0 1.5h4a.75.75 0 0 0 0-1.5Z"/></svg>' },
         { id: 'asset_optimization', badge: 'ASSETS', badgeClass: 'is-blue', title: 'CSS و JS', desc: 'فشرده‌سازی و بهینه‌سازی فایل‌های CSS و JS: Minify، ترکیب، Defer/Delay و حذف CSS استفاده‌نشده برای بهبود نمره سرعت.', svg: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4.72 9.57 2.22 7.07a.75.75 0 0 1 0-1.06l2.5-2.5a.75.75 0 0 1 1.06 1.06L4.06 6.5h6.38a.75.75 0 0 1 0 1.5H4.06l1.72 1.72a.75.75 0 1 1-1.06 1.06Zm6.56-3.14 2.5 2.5a.75.75 0 0 1 0 1.06l-2.5 2.5a.75.75 0 1 1-1.06-1.06l1.72-1.72H5.56a.75.75 0 0 1 0-1.5h6.38L10.22 6.49a.75.75 0 0 1 1.06-1.06Z"/></svg>' },
+        { id: 'cwv_lighthouse', badge: 'CWV', badgeClass: 'is-violet', title: 'Core Web Vitals (Lighthouse)', desc: 'بهینه‌سازی هدفمند گزارش Lighthouse: Font-display، کاهش CLS با ابعاد تصویر، محدودسازی Preconnect، Async CSS، Delay اسکریپت‌های شخص‌ثالث و کاهش کار Main-thread.', svg: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.69l1.88 1.88a.75.75 0 1 1-1.06 1.06l-2.2-2.2A.75.75 0 0 1 7 8.75v-4a.75.75 0 0 1 1.5 0Z"/></svg>' },
         { id: 'media_lazy', badge: 'MEDIA', badgeClass: 'is-pink', title: 'LazyLoad رسانه', desc: 'بارگذاری تنبل تصاویر، iframe و پیش‌نمایش YouTube تا اولین رندر سریع‌تر شود و پهنای باند ذخیره گردد.', svg: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h.94a.75.75 0 0 1 0 1.5H1.75A1.75 1.75 0 0 1 0 13.25V2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15h-.94a.75.75 0 0 1 0-1.5h.94a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25Z"/></svg>' },
         { id: 'preload', badge: 'PRELOAD', badgeClass: 'is-violet', title: 'Preload / Prefetch', desc: 'Preload فونت‌های حیاتی، DNS-Prefetch و Preconnect به دامنه‌های خارجی برای کاهش تاخیر اتصال.', svg: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.75 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM3.75 13a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5Z"/></svg>' },
         { id: 'browser_cache', badge: 'BROWSER', badgeClass: 'is-blue', title: 'کش مرورگر', desc: 'هدرهای Cache-Control، ETag و فشرده‌سازی Gzip/Brotli برای دارایی‌های استاتیک در مرورگر کاربر.', svg: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm4.879-2.773 4.264 2.558a.25.25 0 0 1 0 .43l-4.264 2.558A.25.25 0 0 1 6 10.558V5.442a.25.25 0 0 1 .379-.215Z"/></svg>' },
@@ -37,7 +38,17 @@
       initSpeed() {
         const defaults = {
           page_caching: { enabled: true, ttl: 86400, skip_logged_in: '1', skip_query: '1', exclusions: '' },
-          asset_optimization: { enabled: true, minify_css: true, minify_js: true, combine_css: false, defer_js: true, delay_js: false, remove_unused_css: false, exclude_js: '', exclude_css: '' },
+          asset_optimization: { enabled: true, minify_css: true, minify_js: true, combine_css: false, defer_js: true, delay_js: true, remove_unused_css: true, exclude_js: '', exclude_css: '' },
+          cwv_lighthouse: {
+            enabled: true,
+            font_display: true,
+            cls_images: true,
+            async_css: true,
+            delay_third_party: true,
+            unused_css_js: true,
+            composited_animations: true,
+            max_preconnect: 4
+          },
           media_lazy: { enabled: true, images: true, iframes: true, youtube: true, threshold: 200 },
           preload: { enabled: true, fonts: true, links: false, dns: true, preconnect: 'https://fonts.gstatic.com' },
           browser_cache: { enabled: true, ttl: 31536000, etag: true, gzip: true },
@@ -60,6 +71,43 @@
         if (!this.cfg[id]) this.cfg[id] = { enabled: on };
         else this.cfg[id].enabled = on;
         this.saveOpt(id);
+      },
+      applyLighthouseDefaults() {
+        if (!this.cfg.cwv_lighthouse) this.cfg.cwv_lighthouse = {};
+        Object.assign(this.cfg.cwv_lighthouse, {
+          enabled: true,
+          font_display: true,
+          cls_images: true,
+          async_css: true,
+          delay_third_party: true,
+          unused_css_js: true,
+          composited_animations: true,
+          max_preconnect: 4
+        });
+        if (!this.cfg.asset_optimization) this.cfg.asset_optimization = {};
+        Object.assign(this.cfg.asset_optimization, {
+          enabled: true,
+          minify_css: true,
+          minify_js: true,
+          defer_js: true,
+          delay_js: true,
+          remove_unused_css: true
+        });
+        if (!this.cfg.media_lazy) this.cfg.media_lazy = {};
+        Object.assign(this.cfg.media_lazy, { enabled: true, images: true, iframes: true, youtube: true });
+        if (!this.cfg.preload) this.cfg.preload = {};
+        Object.assign(this.cfg.preload, { enabled: true, fonts: true, dns: true, preconnect: 'https://fonts.gstatic.com' });
+        // Save full config once
+        this.busySave['cwv_lighthouse'] = true;
+        const data = new FormData();
+        data.append('action', 'bankai_save_speed_settings');
+        data.append('nonce', (window.bankaiCoreData && window.bankaiCoreData.adminNonce) || window.bankaiAdminNonce || '');
+        data.append('speed_config', JSON.stringify(this.cfg));
+        fetch((window.bankaiCoreData && window.bankaiCoreData.ajaxUrl) || window.ajaxurl || '', { method: 'POST', body: data, credentials: 'same-origin' })
+          .then(r => r.json())
+          .then(res => this.toast(res.success ? 'تنظیمات Lighthouse اعمال شد — کش صفحه را پاک کنید' : ((res.data && res.data.message) || 'خطا'), res.success ? 'success' : 'error'))
+          .catch(() => this.toast('خطای شبکه', 'error'))
+          .finally(() => { this.busySave['cwv_lighthouse'] = false; });
       },
       saveOpt(id) {
         this.busySave[id] = true;

@@ -95,12 +95,12 @@ $is_on = static function (string $key) use ($active_map): bool {
                     <span><?php echo esc_html__('پیشخوان و سلامت', 'bankai-core'); ?></span>
                 </button>
 
-                <!-- 2. مدیریت مقالات -->
+                <!-- 2. مدیریت محتوا -->
                 <button type="button" id="nav-tab-articles" class="bankai-nav-btn"
                         :class="{ 'active': activeTab === 'articles' }"
                         @click="setTab('articles')">
                     <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h12a2 2 0 0 1 2 2v14l-4-2-4 2-4-2-4 2V6a2 2 0 0 1 2-2z"/><path d="M8 8h8M8 12h6"/></svg></div>
-                    <span><?php echo esc_html__('مدیریت مقالات', 'bankai-core'); ?></span>
+                    <span><?php echo esc_html__('مدیریت محتوا', 'bankai-core'); ?></span>
                 </button>
 
                 <!-- 3. موتور سئو و اسکیما -->

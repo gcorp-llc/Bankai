@@ -57,11 +57,23 @@ $page_count  = (int) wp_count_posts('page')->publish;
             </button>
         </div>
     </div>
-    <nav class="bk-art-tabs bk-lg-tabs bk-seo-tabs" role="tablist">
-        <button type="button" role="tab" class="bk-lg-tab bk-seo-tab" :class="{ 'is-active': seoPanel === 'tools' }" @click="seoPanel = 'tools'; if (!an._loaded) loadAnalyticsReport()">ماژول‌های سئو</button>
-        <button type="button" role="tab" class="bk-lg-tab bk-seo-tab" :class="{ 'is-active': seoPanel === 'analytics' }" @click="seoPanel = 'analytics'">گوگل آنالیتیکس</button>
-        <button type="button" role="tab" class="bk-lg-tab bk-seo-tab" :class="{ 'is-active': seoPanel === 'import' }" @click="seoPanel = 'import'; initSeoImport()">همگام‌سازی Rank Math / Yoast</button>
-        <button type="button" role="tab" class="bk-lg-tab bk-seo-tab" :class="{ 'is-active': seoPanel === 'sitewide' }" @click="seoPanel = 'sitewide'; loadSitewide()">سئوی سایت</button>
+    <nav class="bk-capsule-tabs bk-art-tabs bk-seo-tabs" role="tablist">
+        <button type="button" role="tab" class="bk-capsule-tab" :class="{ 'is-active': seoPanel === 'tools' }" @click="seoPanel = 'tools'; if (!an._loaded) loadAnalyticsReport()" title="ماژول‌های سئو">
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M4 19h16M7 19v-4M12 19v-7M17 19v-2"/></svg>
+            <span class="bk-capsule-label">ماژول‌های سئو</span>
+        </button>
+        <button type="button" role="tab" class="bk-capsule-tab" :class="{ 'is-active': seoPanel === 'analytics' }" @click="seoPanel = 'analytics'" title="گوگل آنالیتیکس">
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M4 19V9M4 19h16"/><path d="M8 15v-4"/><path d="M12 15V7"/><path d="M16 15v-6"/></svg>
+            <span class="bk-capsule-label">آنالیتیکس</span>
+        </button>
+        <button type="button" role="tab" class="bk-capsule-tab" :class="{ 'is-active': seoPanel === 'import' }" @click="seoPanel = 'import'; initSeoImport()" title="همگام‌سازی Rank Math / Yoast">
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.1-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
+            <span class="bk-capsule-label">همگام‌سازی</span>
+        </button>
+        <button type="button" role="tab" class="bk-capsule-tab" :class="{ 'is-active': seoPanel === 'sitewide' }" @click="seoPanel = 'sitewide'; loadSitewide()" title="سئوی سایت">
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+            <span class="bk-capsule-label">سئوی سایت</span>
+        </button>
     </nav>
 
     <!-- Site Analytics inside SEO modules -->

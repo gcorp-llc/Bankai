@@ -434,10 +434,17 @@ final class Bankai_SEO_Page_Audit
         $score = count($all) > 0 ? (int) round(($pass / count($all)) * 100) : 0;
 
         if ($post_id > 0) {
-            update_post_meta($post_id, '_bankai_audit_seo', (int) ($this->score_group($seo)));
-            update_post_meta($post_id, '_bankai_audit_aeo', (int) ($this->score_group($aeo)));
-            update_post_meta($post_id, '_bankai_audit_geo', (int) ($this->score_group($geo)));
+            $seo_s = (int) $this->score_group($seo);
+            $aeo_s = (int) $this->score_group($aeo);
+            $geo_s = (int) $this->score_group($geo);
+            update_post_meta($post_id, '_bankai_audit_seo', $seo_s);
+            update_post_meta($post_id, '_bankai_audit_aeo', $aeo_s);
+            update_post_meta($post_id, '_bankai_audit_geo', $geo_s);
             update_post_meta($post_id, '_bankai_audit_score', $score);
+            // Keep editor/sidebar main score in sync with audit SEO group
+            update_post_meta($post_id, '_bankai_seo_score', $seo_s);
+            update_post_meta($post_id, '_bankai_aeo_score', $aeo_s);
+            update_post_meta($post_id, '_bankai_geo_score', $geo_s);
             update_post_meta($post_id, '_bankai_audit_at', time());
             update_post_meta($post_id, '_bankai_audit_report', wp_json_encode([
                 'score' => $score,

@@ -659,7 +659,34 @@ final class Bankai_SEO_Import
             $keywords = [];
         }
         $schema = wp_unslash($_POST['schema'] ?? '');
-        $content = isset($_POST['content']) ? wp_kses_post(wp_unslash($_POST['content'])) : null;
+        
+        $faq_raw = wp_unslash($_POST['faq'] ?? '');
+        $takeaways_raw = wp_unslash($_POST['takeaways'] ?? '');
+        $faq_text = sanitize_textarea_field(wp_unslash($_POST['faq_text'] ?? ''));
+        $takeaways_text = sanitize_textarea_field(wp_unslash($_POST['takeaways_text'] ?? ''));
+        if ($faq_raw !== '') {
+            $faq_data = json_decode($faq_raw, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                update_post_meta($post_id, '_bankai_seo_faq', wp_json_encode($faq_data, JSON_UNESCAPED_UNICODE));
+            } else {
+                update_post_meta($post_id, '_bankai_seo_faq', sanitize_textarea_field($faq_raw));
+            }
+        }
+        if ($faq_text !== '') {
+            update_post_meta($post_id, '_bankai_seo_faq_text', $faq_text);
+        }
+        if ($takeaways_raw !== '') {
+            $tk = json_decode($takeaways_raw, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                update_post_meta($post_id, '_bankai_seo_takeaways', wp_json_encode($tk, JSON_UNESCAPED_UNICODE));
+            } else {
+                update_post_meta($post_id, '_bankai_seo_takeaways', sanitize_textarea_field($takeaways_raw));
+            }
+        }
+        if ($takeaways_text !== '') {
+            update_post_meta($post_id, '_bankai_seo_takeaways_text', $takeaways_text);
+        }
+$content = isset($_POST['content']) ? wp_kses_post(wp_unslash($_POST['content'])) : null;
 
         if ($title !== '') {
             update_post_meta($post_id, Bankai_SEO_Engine::META_TITLE, $title);
@@ -669,10 +696,24 @@ final class Bankai_SEO_Import
         }
         if ($focus !== '') {
             update_post_meta($post_id, Bankai_SEO_Engine::META_KEYWORD, $focus);
+            update_post_meta($post_id, '_bankai_focus_keyword', $focus);
+            update_post_meta($post_id, '_bankai_seo_focus_keyword', $focus);
         }
         if ($keywords) {
             $clean = array_values(array_filter(array_map('sanitize_text_field', $keywords)));
-            update_post_meta($post_id, Bankai_SEO_Engine::META_KEYWORDS, wp_json_encode($clean, JSON_UNESCAPED_UNICODE));
+            $json = wp_json_encode($clean, JSON_UNESCAPED_UNICODE);
+            if (defined('Bankai_SEO_Engine::META_KEYWORDS') || (class_exists('Bankai_SEO_Engine') && defined('Bankai_SEO_Engine::META_KEYWORDS'))) {
+                update_post_meta($post_id, Bankai_SEO_Engine::META_KEYWORDS, $json);
+            }
+            update_post_meta($post_id, '_bankai_seo_keywords', $json);
+            update_post_meta($post_id, '_bankai_keywords', $clean);
+        }
+        // also mirror title/desc common aliases used by audit UI
+        if ($title !== '') {
+            update_post_meta($post_id, '_bankai_seo_title', $title);
+        }
+        if ($desc !== '') {
+            update_post_meta($post_id, '_bankai_seo_description', $desc);
         }
         if (is_string($schema) && $schema !== '') {
             update_post_meta($post_id, Bankai_SEO_Engine::META_SCHEMA, $schema);
@@ -682,6 +723,26 @@ final class Bankai_SEO_Import
                 'ID' => $post_id,
                 'post_content' => $content,
             ]);
+        }
+
+        // Append FAQ / Takeaways block to post content (AEO · GEO)
+        $append = isset($_POST['content_append']) ? wp_kses_post(wp_unslash($_POST['content_append'])) : '';
+        $do_append = !empty($_POST['append_content']) || $append !== '';
+        if ($do_append && $append !== '') {
+            $post = get_post($post_id);
+            if ($post) {
+                $existing = (string) $post->post_content;
+                // avoid duplicating identical block
+                if (strpos($existing, $append) === false) {
+                    $merged = rtrim($existing) . "
+
+" . $append;
+                    wp_update_post([
+                        'ID' => $post_id,
+                        'post_content' => $merged,
+                    ]);
+                }
+            }
         }
 
         $cover_id = absint($_POST['cover_id'] ?? 0);

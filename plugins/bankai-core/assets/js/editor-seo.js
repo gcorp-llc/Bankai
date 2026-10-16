@@ -50,7 +50,7 @@
             stats: {}
         },
 
-        openGroups: { basic: true, advanced: true, title: false, content: false },
+        openGroups: { basic: true, advanced: false, title: false, content: false, aeo: true, geo: true },
         schemaType: 'Article',
         faqItems: [{ q: '', a: '' }],
         howToSteps: [{ name: '', text: '' }],
@@ -60,6 +60,15 @@
         pendingAiLinks: [],
         linkApplyBusy: false,
         linksSubTab: 'active', // 'active' | 'pending'
+        linkTypeTab: 'internal', // 'internal' | 'external'
+        linkSourceMode: null, // 'ai' | 'manual' | null — mutually exclusive panels
+        ctaText: '',
+        ctaUrl: '',
+        ctaAlign: 'right',
+        ctaBold: true,
+        ctaPlacements: [],
+        showBulkAltPanel: false,
+        bulkAltText: '',
         linkAnchor: '',
         postResults: [],
         extAnchor: '',
@@ -102,6 +111,9 @@
         // AI Modal & Automation State
         aiOpen: false,
         aiModalOpen: false,
+        aiTask: '',
+        aiModalTitle: 'دستیار AI سئو',
+        aiOptions: { style: 'seo', count: '5' },
         aiProvider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || '',
         aiImageProvider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultImageProvider) || '',
         aiLoading: false,
@@ -146,6 +158,9 @@
             inlineId: 0
         },
         aiReviewOpen: false,
+        aiPhase: 'setup', // setup | running | review
+        aiRunChecklist: [],
+
         aiReviewSelection: {
             applyMeta: true,
             applyKeywords: true,
@@ -244,10 +259,14 @@
 
         subScoreColor(val) {
             const s = Number(val) || 0;
-            if (s < 20) return '#ef4444';
-            if (s < 50) return '#f59e0b';
-            if (s < 80) return '#3b82f6';
-            return '#10b981';
+            if (s < 25) return '#ef4444';
+            if (s < 40) return '#f97316';
+            if (s < 55) return '#f59e0b';
+            if (s < 65) return '#eab308';
+            if (s < 75) return '#3b82f6';
+            if (s < 85) return '#06b6d4';
+            if (s < 95) return '#10b981';
+            return '#22c55e';
         },
 
         checkStatusClass(check) {
@@ -317,16 +336,16 @@
             try {
                 const ctx = this.getEditorContext();
                 const res = await this.callSeoAi('aeo_faq', ctx);
-                if (res && res.success && (res.data?.faq_html || res.data?.content || res.data?.text)) {
-                    const faqHtml = res.data.faq_html || res.data.content || res.data.text;
+                const faqHtml = (res && (res.faq_html || res.content || res.text || res.html)) || '';
+                if (faqHtml) {
                     this.insertContentIntoEditor(faqHtml, 'append');
                     this.showToast('بخش سوالات متداول با موفقیت به مقاله اضافه شد.', 'success');
                     await this.analyze(false);
                 } else {
-                    this.showToast((res && res.data && res.data.message) || 'خطا در تولید بخش FAQ', 'error');
+                    this.showToast((res && res.message) || 'خطا در تولید بخش FAQ', 'error');
                 }
             } catch (e) {
-                this.showToast('خطا در ارتباط با هوش مصنوعی', 'error');
+                this.showToast((e && e.message) || 'خطا در ارتباط با هوش مصنوعی', 'error');
             } finally {
                 this.aiLoading = false;
                 this.aiBusy = false;
@@ -340,16 +359,16 @@
             try {
                 const ctx = this.getEditorContext();
                 const res = await this.callSeoAi('geo_summary', ctx);
-                if (res && res.success && (res.data?.summary_html || res.data?.content || res.data?.text)) {
-                    const summaryHtml = res.data.summary_html || res.data.content || res.data.text;
+                const summaryHtml = (res && (res.summary_html || res.content || res.text || res.html)) || '';
+                if (summaryHtml) {
                     this.insertContentIntoEditor(summaryHtml, 'prepend');
                     this.showToast('خلاصه نکات کلیدی با موفقیت به مقاله اضافه شد.', 'success');
                     await this.analyze(false);
                 } else {
-                    this.showToast((res && res.data && res.data.message) || 'خطا در تولید خلاصه نکات کلیدی', 'error');
+                    this.showToast((res && res.message) || 'خطا در تولید خلاصه نکات کلیدی', 'error');
                 }
             } catch (e) {
-                this.showToast('خطا در ارتباط با هوش مصنوعی', 'error');
+                this.showToast((e && e.message) || 'خطا در ارتباط با هوش مصنوعی', 'error');
             } finally {
                 this.aiLoading = false;
                 this.aiBusy = false;
@@ -388,14 +407,32 @@
         async loadSmartLinkSuggestions() {
             if (this.linkBusy) return;
             this.linkBusy = true;
+            this.postResults = [];
+            this.linkSourceMode = 'ai';
             this.showToast('در حال دریافت پیشنهادهای لینک داخلی...', 'info');
             try {
                 const ctx = this.getEditorContext();
                 const res = await this.callSeoAi('smart_internal_links', ctx);
-                if (res && res.success && Array.isArray(res.data?.smartLinks || res.data?.links)) {
-                    this.autoLinkSuggestions = res.data.smartLinks || res.data.links;
-                    this.showToast('پیشنهادهای لینک داخلی دریافت شد.', 'success');
+                const list = (res && (res.smartLinks || res.links || res.suggestions)) || [];
+                const arr = Array.isArray(list) ? list : [];
+                if (arr.length) {
+                    const kws = (this.keywordList || []).slice();
+                    if (this.seo && this.seo.focus_keyword) kws.unshift(this.seo.focus_keyword);
+                    this.autoLinkSuggestions = arr.map((s, i) => {
+                        let anchor = s.suggested_anchor || s.keyword || s.anchor || '';
+                        if (!anchor && kws.length) anchor = kws[i % kws.length];
+                        if (!anchor) anchor = this.pickRandomAnchor() || s.target_title || s.title || '';
+                        return Object.assign({}, s, {
+                            suggested_anchor: String(anchor).trim(),
+                            keyword: String(anchor).trim(),
+                            target_url: s.target_url || s.permalink || s.url || '',
+                            target_title: s.target_title || s.title || '',
+                            selected: false
+                        });
+                    });
+                    this.showToast(this.autoLinkSuggestions.length + ' پیشنهاد لینک بر اساس کلیدواژه دریافت شد', 'success');
                 } else {
+                    this.autoLinkSuggestions = [];
                     this.showToast('پیشنهاد جدیدی یافت نشد.', 'info');
                 }
             } catch (e) {
@@ -404,15 +441,114 @@
                 this.linkBusy = false;
             }
         },
+        startAiLinkMode() {
+            this.linkSourceMode = 'ai';
+            this.postResults = [];
+            this.loadSmartLinkSuggestions();
+        },
+        startManualLinkSearch() {
+            this.linkSourceMode = 'manual';
+            this.autoLinkSuggestions = [];
+            return this.runInternalSearch();
+        },
+        allAiSelected() {
+            const list = this.autoLinkSuggestions || [];
+            return list.length > 0 && list.every((s) => s.selected);
+        },
+        toggleAllAi(on) {
+            (this.autoLinkSuggestions || []).forEach((s) => { s.selected = !!on; });
+        },
+        allManualSelected() {
+            const list = this.postResults || [];
+            return list.length > 0 && list.every((p) => p.accepted);
+        },
+        toggleAllManual(on) {
+            (this.postResults || []).forEach((p) => {
+                p.accepted = !!on;
+                p.rejected = !on;
+            });
+        },
+        confirmSelectedAiLinks() {
+            const selected = (this.autoLinkSuggestions || []).filter((s) => s.selected);
+            if (!selected.length) {
+                this.showToast('حداقل یک مورد را انتخاب کنید', 'warn');
+                return;
+            }
+            let n = 0;
+            selected.forEach((s) => {
+                const before = n;
+                this.insertSuggestedLink(s);
+                n++;
+            });
+            this.showToast(n + ' لینک اعمال شد', 'success');
+            this.autoLinkSuggestions = (this.autoLinkSuggestions || []).filter((s) => !s.selected);
+            if (!this.autoLinkSuggestions.length) this.linkSourceMode = null;
+            this.loadLinks();
+        },
+        confirmSelectedManualLinks() {
+            const selected = (this.postResults || []).filter((p) => p.accepted && !p.rejected);
+            if (!selected.length) {
+                this.showToast('حداقل یک مورد را انتخاب کنید', 'warn');
+                return;
+            }
+            let n = 0;
+            selected.forEach((p, i) => {
+                const kws = (this.keywordList || []).slice();
+                if (this.seo && this.seo.focus_keyword && !kws.includes(this.seo.focus_keyword)) kws.unshift(this.seo.focus_keyword);
+                const anchor = (this.linkAnchor && this.linkAnchor.trim())
+                    || (kws.length ? kws[i % kws.length] : '')
+                    || this.pickRandomAnchor()
+                    || p.title;
+                if (this.insertLinkIntoEditor(String(anchor).trim(), p.permalink, p.title, false, true)) n++;
+            });
+            if (n) {
+                this.showToast(n + ' لینک اعمال شد', 'success');
+                this.postResults = (this.postResults || []).filter((p) => !p.accepted);
+                if (!this.postResults.length) this.linkSourceMode = null;
+                this.loadLinks();
+                this.analyze(false);
+            } else {
+                this.showToast('درج لینک ممکن نشد', 'error');
+            }
+        },
+        pickRandomAnchor() {
+            const pool = [];
+            if (this.seo && this.seo.focus_keyword) pool.push(String(this.seo.focus_keyword).trim());
+            (this.keywordList || []).forEach((k) => {
+                const s = String(k || '').trim();
+                if (s && !pool.includes(s)) pool.push(s);
+            });
+            if (this.linkAnchor && String(this.linkAnchor).trim()) {
+                const a = String(this.linkAnchor).trim();
+                if (!pool.includes(a)) pool.push(a);
+            }
+            if (!pool.length) return '';
+            return pool[Math.floor(Math.random() * pool.length)];
+        },
         insertSuggestedLink(s) {
             if (!s) return;
-            const anchor = s.suggested_anchor || s.keyword || '';
-            const url = s.permalink || s.target_url || '#';
-            if (!anchor || !url) return;
-            const linkTag = `<a href="${url}" target="_blank" rel="noopener"><strong>${anchor}</strong></a>`;
-            this.insertContentIntoEditor(linkTag, 'append');
-            this.showToast(`لینک «${anchor}» اضافه شد.`, 'success');
-            this.analyze(false);
+            const anchor = s.suggested_anchor || s.keyword || this.pickRandomAnchor() || s.target_title || s.title || '';
+            const url = s.permalink || s.target_url || '';
+            if (!anchor || !url) {
+                this.showToast('انکر یا آدرس نامعتبر است', 'error');
+                return;
+            }
+            const ok = this.insertLinkIntoEditor(anchor, url, s.target_title || s.title || '', false, true);
+            if (ok) {
+                this.showToast('لینک «' + anchor + '» اضافه شد', 'success');
+                this.loadLinks();
+                this.analyze(false);
+            } else {
+                // fallback append
+                const linkTag = '<a href="' + url + '" target="_blank" rel="noopener"><strong>' + anchor + '</strong></a>';
+                if (typeof this.insertContentIntoEditor === 'function') {
+                    this.insertContentIntoEditor(linkTag, 'append');
+                    this.showToast('لینک «' + anchor + '» اضافه شد', 'success');
+                    this.loadLinks();
+                } else {
+                    this.showToast('درج لینک ممکن نشد', 'error');
+                }
+            }
         },
         async generateSingleImageAlt(img) {
             if (!img || this.aiBusy) return;
@@ -494,6 +630,9 @@
         },
 
         init() {
+            this.aiModalOpen = false;
+            this.aiOpen = false;
+            this.aiTask = '';
             this.initFixedKeywords();
             this.initCentralProviders();
             this.loadSeo();
@@ -762,6 +901,9 @@
                     : null;
                 if (data) {
                     this.analysis = Object.assign({}, this.analysis, data);
+                    if (data.sub_scores && typeof data.sub_scores === 'object') {
+                        this.analysis.sub_scores = data.sub_scores;
+                    }
                     if (typeof data.score !== 'undefined') {
                         this.emitScore(data.score || 0);
                     }
@@ -930,6 +1072,9 @@
             this.extAnchor = '';
             this.extUrl = '';
             this.loadLinks();
+        },
+        addExternalLink() {
+            return this.insertExternalLink();
         },
 
         async acceptPendingLink(link) {
@@ -1216,8 +1361,15 @@
 
         // ---- AI Modal & Automation Workflow ----
         openAiModal(action = '') {
+            // Open modal UI only — do not lock editor without explicit task
             this.aiOpen = true;
             this.aiModalOpen = true;
+            this.aiReviewOpen = false;
+            this.aiPhase = 'setup';
+            this.aiBusy = false;
+            this.aiLoading = false;
+            this.aiProgress = 0;
+            this.aiStepText = '';
             if (!this.aiImageProvider) {
                 const list = (window.bankaiEditorSeo && bankaiEditorSeo.imageProviders) || [];
                 this.aiImageProvider = (window.bankaiEditorSeo && bankaiEditorSeo.defaultImageProvider) || (list[0] && list[0].id) || '';
@@ -1226,10 +1378,305 @@
                 const list = (window.bankaiEditorSeo && bankaiEditorSeo.aiProviders) || [];
                 this.aiProvider = (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || (list[0] && list[0].id) || '';
             }
-            this.aiReviewOpen = false;
             this.resetAiChecklist();
             if (action) {
-                this.runAiAction(action);
+                this.selectAiTask(action);
+            } else {
+                this.aiTask = '';
+                this.aiModalTitle = 'دستیار AI سئو';
+            }
+        },
+
+        closeAiModal() {
+            if (this.aiBusy || this.aiLoading) return;
+            this.aiModalOpen = false;
+            this.aiOpen = false;
+            this.aiTask = '';
+            this.aiStepText = '';
+            this.aiProgress = 0;
+            this.aiPhase = 'setup';
+            this.aiRunChecklist = [];
+        },
+
+        selectAiTask(task) {
+            const titles = {
+                meta: 'تولید عنوان و توضیحات متا',
+                title: 'تولید عنوان سئو',
+                description: 'تولید توضیحات متا',
+                keywords: 'استخراج کلمات کلیدی',
+                links: 'لینک‌سازی داخلی هوشمند',
+                images: 'تولید Alt تصاویر',
+                faq: 'تولید FAQ برای AEO',
+                takeaways: 'نکات کلیدی GEO',
+                rewrite: 'بازنویسی مقاله با AI',
+                auto_all: 'بهینه‌سازی یک‌پارچه مقاله',
+                cover: 'تولید کاور مقاله',
+                schema: 'تولید اسکیما',
+                aeo: 'بهبود AEO با هوش مصنوعی',
+                geo: 'بهبود GEO با هوش مصنوعی',
+                faq: 'بهبود AEO با هوش مصنوعی',
+                takeaways: 'بهبود GEO با هوش مصنوعی'
+            };
+            this.aiTask = task || '';
+            this.aiModalTitle = titles[task] || 'دستیار AI سئو';
+            this.aiOpen = true;
+            this.aiModalOpen = true;
+            this.aiPhase = 'setup';
+            this.aiProgress = 0;
+            this.aiStepText = '';
+            this.aiReviewOpen = false;
+            this.resetAiChecklist();
+            this.aiRunChecklist = this.plannedChecklist().map((x) => Object.assign({}, x, { status: 'pending' }));
+        },
+
+
+        async fixAeoWithAi() {
+            this.activeTab = 'aeo_geo';
+            this.selectAiTask('faq');
+            this.aiModalTitle = 'بهبود AEO با هوش مصنوعی';
+            this.aiOpen = true;
+            this.aiModalOpen = true;
+            this.aiPhase = 'setup';
+        },
+
+        async fixGeoWithAi() {
+            this.activeTab = 'aeo_geo';
+            this.selectAiTask('takeaways');
+            this.aiModalTitle = 'بهبود GEO با هوش مصنوعی';
+            this.aiOpen = true;
+            this.aiModalOpen = true;
+            this.aiPhase = 'setup';
+        },
+
+
+        aiPhaseIndex() {
+            return { setup: 0, running: 1, review: 2 }[this.aiPhase] || 0;
+        },
+        aiPhaseLabel() {
+            return ({ setup: 'مرحله ۱ — تنظیم و انتخاب AI', running: 'مرحله ۲ — اجرای فرایند', review: 'مرحله ۳ — بازبینی و تایید' })[this.aiPhase] || '';
+        },
+        aiTaskBlurb() {
+            const map = {
+                auto_all: 'تمام گام‌های سئو، کلیدواژه، لینک، تصویر و اسکیما به‌صورت یک‌پارچه اجرا می‌شود.',
+                faq: 'ساختار پاسخ‌محور و FAQ برای Featured Snippet و موتورهای پاسخ‌گو ساخته می‌شود.',
+                aeo: 'ساختار پاسخ‌محور و FAQ برای Featured Snippet و موتورهای پاسخ‌گو ساخته می‌شود.',
+                takeaways: 'چکیده و نکات کلیدی برای نقل‌قول توسط ChatGPT و موتورهای مولد تولید می‌شود.',
+                geo: 'چکیده و نکات کلیدی برای نقل‌قول توسط ChatGPT و موتورهای مولد تولید می‌شود.',
+                meta: 'عنوان سئو و متا دیسکریپشن استاندارد و جذاب تولید می‌شود.',
+                keywords: 'کلمه کلیدی اصلی و فرعی استخراج و با ثابت‌های سایت ادغام می‌شود.',
+                links: 'پیشنهاد لینک داخلی هوشمند بر اساس محتوا و کلیدواژه‌ها.',
+                images: 'متن جایگزین (Alt) تصاویر مقاله تولید می‌شود.',
+                rewrite: 'بازنویسی هوشمند محتوا با حفظ ساختار و سئو.',
+                schema: 'داده ساختاریافته JSON-LD تولید می‌شود.'
+            };
+            return map[this.aiTask] || 'دستیار هوش مصنوعی سئوی بنکای آماده اجراست.';
+        },
+        plannedChecklist() {
+            const t = this.aiTask || '';
+            if (t === 'auto_all') {
+                return [
+                    { id: 'analyze', label: 'تحلیل محتوا و ساختار مقاله' },
+                    { id: 'meta', label: 'تولید عنوان سئو و متا دیسکریپشن' },
+                    { id: 'keywords', label: 'استخراج کلمات کلیدی' },
+                    { id: 'links', label: 'پیشنهاد لینک داخلی' },
+                    { id: 'images', label: 'سئوی تصاویر و Alt' },
+                    { id: 'optimize_images', label: 'فشرده‌سازی تصاویر' },
+                    { id: 'schema', label: 'تولید اسکیما' },
+                    { id: 'terms', label: 'دسته و برچسب' }
+                ];
+            }
+            if (t === 'faq' || t === 'aeo') {
+                return [
+                    { id: 'analyze', label: 'تحلیل آمادگی پاسخ‌محور (AEO)' },
+                    { id: 'faq_gen', label: 'تولید سوالات متداول ساختاریافته' },
+                    { id: 'faq_schema', label: 'آماده‌سازی اسکیما FAQ' },
+                    { id: 'review', label: 'آماده‌سازی پیش‌نمایش برای تایید' }
+                ];
+            }
+            if (t === 'takeaways' || t === 'geo') {
+                return [
+                    { id: 'analyze', label: 'تحلیل آمادگی موتورهای مولد (GEO)' },
+                    { id: 'geo_sum', label: 'تولید خلاصه نکات کلیدی' },
+                    { id: 'geo_meta', label: 'بهینه‌سازی متا برای نقل‌قول AI' },
+                    { id: 'review', label: 'آماده‌سازی پیش‌نمایش برای تایید' }
+                ];
+            }
+            if (t === 'meta' || t === 'title' || t === 'description') {
+                return [
+                    { id: 'analyze', label: 'تحلیل عنوان و توضیحات فعلی' },
+                    { id: 'meta', label: 'تولید عنوان و متا با AI' },
+                    { id: 'review', label: 'آماده‌سازی برای تایید' }
+                ];
+            }
+            if (t === 'keywords') {
+                return [
+                    { id: 'analyze', label: 'تحلیل محتوا' },
+                    { id: 'keywords', label: 'استخراج و ادغام کلیدواژه‌ها' },
+                    { id: 'review', label: 'آماده‌سازی برای تایید' }
+                ];
+            }
+            if (t === 'links') {
+                return [
+                    { id: 'analyze', label: 'تحلیل لینک‌های موجود' },
+                    { id: 'links', label: 'رتبه‌بندی پیشنهادهای داخلی' },
+                    { id: 'review', label: 'آماده‌سازی برای تایید' }
+                ];
+            }
+            if (t === 'images') {
+                return [
+                    { id: 'analyze', label: 'اسکن تصاویر بدون Alt' },
+                    { id: 'images', label: 'تولید Alt با AI' },
+                    { id: 'review', label: 'آماده‌سازی برای تایید' }
+                ];
+            }
+            if (t === 'rewrite') {
+                return [
+                    { id: 'analyze', label: 'تحلیل ساختار مقاله' },
+                    { id: 'rewrite', label: 'بازنویسی هوشمند' },
+                    { id: 'review', label: 'آماده‌سازی برای تایید' }
+                ];
+            }
+            return (this.aiChecklist || []).map((x) => ({ id: x.id, label: x.label }));
+        },
+        activeRunChecklist() {
+            return (this.aiRunChecklist && this.aiRunChecklist.length)
+                ? this.aiRunChecklist
+                : this.plannedChecklist().map((x) => Object.assign({}, x, { status: 'pending' }));
+        },
+        aiStatusFa(st) {
+            return ({ pending: 'در صف', loading: 'در حال اجرا', success: 'انجام شد', done: 'انجام شد', error: 'خطا' })[st] || 'در صف';
+        },
+        setRunCheck(id, status) {
+            if (!this.aiRunChecklist) this.aiRunChecklist = [];
+            const item = this.aiRunChecklist.find((i) => i.id === id);
+            if (item) item.status = status;
+            if (typeof this.setChecklistStatus === 'function') {
+                try { this.setChecklistStatus(id, status === 'success' ? 'success' : (status === 'loading' ? 'loading' : status)); } catch (e) {}
+            }
+        },
+        async startAiWorkflow() {
+            this.aiPhase = 'running';
+            this.aiProgress = 0;
+            this.aiStepText = 'شروع فرایند…';
+            this.aiRunChecklist = this.plannedChecklist().map((x) => Object.assign({}, x, { status: 'pending' }));
+            this.aiBusy = true;
+            this.aiLoading = true;
+            try {
+                await this.runAiGeneration();
+            } finally {
+                // runAiGeneration handles busy flags; ensure review phase
+                if (this.aiReviewOpen || this.aiProgress >= 100) {
+                    this.aiPhase = 'review';
+                } else if (!this.aiBusy) {
+                    // if still no review, stay or go review with whatever we have
+                    this.aiPhase = 'review';
+                }
+            }
+        },
+        async rewriteAiWorkflow() {
+            this.aiPhase = 'setup';
+            this.aiProgress = 0;
+            this.aiStepText = '';
+            this.aiReviewOpen = false;
+            this.aiDraft = Object.assign({}, this.aiDraft, {
+                title: '', description: '', rewrite: '', faqText: '', faqHtml: '', geoText: '', takeaways: ''
+            });
+            // user clicks start again
+        },
+        applyAiReview() {
+            try {
+                if (this.aiDraft.title) this.seo.seo_title = this.aiDraft.title;
+                if (this.aiDraft.description) this.seo.description = this.aiDraft.description;
+                if (this.aiDraft.focus_keyword) {
+                    this.seo.focus_keyword = this.aiDraft.focus_keyword;
+                    if (!this.keywordList.includes(this.aiDraft.focus_keyword)) {
+                        this.keywordList.unshift(this.aiDraft.focus_keyword);
+                    }
+                }
+                if (Array.isArray(this.aiDraft.keywords) && this.aiDraft.keywords.length) {
+                    this.aiDraft.keywords.forEach((k) => {
+                        if (k && !this.keywordList.includes(k)) this.keywordList.push(k);
+                    });
+                    this.pushKeywordsToSeo && this.pushKeywordsToSeo();
+                }
+                if (this.aiDraft.rewrite && typeof this.setEditorRawContent === 'function') {
+                    this.setEditorRawContent(this.aiDraft.rewrite);
+                }
+                if (this.aiDraft.faqHtml || this.aiDraft.faqText) {
+                    const html = this.aiDraft.faqHtml || this.aiDraft.faqText;
+                    if (typeof this.insertContentIntoEditor === 'function') {
+                        this.insertContentIntoEditor(html, 'append');
+                    } else if (typeof this.setEditorRawContent === 'function') {
+                        const cur = this.getEditorRawContent() || '';
+                        this.setEditorRawContent(cur + '\n' + html);
+                    }
+                }
+                if (this.aiDraft.geoHtml) {
+                    if (typeof this.insertContentIntoEditor === 'function') {
+                        this.insertContentIntoEditor(this.aiDraft.geoHtml, 'prepend');
+                    }
+                } else if (this.aiDraft.geoText || this.aiDraft.takeaways) {
+                    const geo = this.aiDraft.geoText || this.aiDraft.takeaways;
+                    if (typeof this.insertContentIntoEditor === 'function') {
+                        this.insertContentIntoEditor('<div class="bankai-summary"><h2>خلاصه نکات کلیدی</h2><p>' + geo + '</p></div>', 'prepend');
+                    }
+                }
+                if (Array.isArray(this.aiDraft.altTexts)) {
+                    this.aiDraft.altTexts.forEach((a) => {
+                        if (a && (a.suggestedAlt || a.alt) && typeof this.updateImageAlt === 'function') {
+                            this.updateImageAlt(a, a.suggestedAlt || a.alt);
+                        }
+                    });
+                }
+                if (typeof this.onFieldChange === 'function') this.onFieldChange();
+                if (typeof this.analyze === 'function') this.analyze(false);
+                this.showToast('تغییرات AI اعمال شد', 'success');
+                this.closeAiModal();
+            } catch (e) {
+                this.showToast((e && e.message) || 'خطا در اعمال', 'error');
+            }
+        },
+
+        async runAiGeneration() {
+            let task = this.aiTask || this.aiActiveAction || '';
+            if (!task) {
+                task = 'meta';
+                this.selectAiTask('meta');
+            }
+            if (this.aiPhase === 'setup') this.aiPhase = 'running';
+            if (!this.aiRunChecklist || !this.aiRunChecklist.length) {
+                this.aiRunChecklist = this.plannedChecklist().map((x) => Object.assign({}, x, { status: 'pending' }));
+            }
+            // Map UI tasks to existing pipeline actions
+            const map = {
+                title: 'meta',
+                description: 'meta',
+                takeaways: 'takeaways',
+                geo: 'takeaways',
+                faq: 'faq',
+                aeo: 'faq'
+            };
+            const action = map[task] || task;
+            this.aiBusy = true;
+            this.aiLoading = true;
+            try {
+                if (action === 'faq' || action === 'aeo') {
+                    await this.runAeoWorkflow();
+                } else if (action === 'takeaways' || action === 'geo') {
+                    await this.runGeoWorkflow();
+                } else if (typeof this.runAiAction === 'function') {
+                    await this.runAiAction(action);
+                }
+                this.aiPhase = 'review';
+                this.aiReviewOpen = true;
+            } catch (e) {
+                console.warn('[Bankai SEO] AI generation error', e);
+                this.showToast((e && e.message) || 'خطا در تولید AI', 'error');
+                this.aiPhase = 'setup';
+                this.aiStepText = (e && e.message) || 'خطا — دوباره تلاش کنید';
+            } finally {
+                this.aiBusy = false;
+                this.aiLoading = false;
             }
         },
 
@@ -1245,6 +1692,10 @@
         setChecklistStatus(id, status) {
             const item = this.aiChecklist.find((i) => i.id === id);
             if (item) item.status = status;
+            if (this.aiRunChecklist && this.aiRunChecklist.length) {
+                const r = this.aiRunChecklist.find((i) => i.id === id);
+                if (r) r.status = status;
+            }
         },
 
         getEditorContext() {
@@ -1290,7 +1741,7 @@
             body.append('content', ctx.content || ctx.rawHtml || '');
             body.append('focus_keyword', ctx.focus_keyword || '');
             body.append('locale', ctx.locale || 'fa_IR');
-            body.append('provider', (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || ctx.provider || '');
+            body.append('provider', this.aiProvider || (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || ctx.provider || '');
             body.append('seo_title', ctx.seo_title || (this.seo && this.seo.seo_title) || '');
             body.append('description', ctx.description || (this.seo && this.seo.description) || '');
 
@@ -1300,7 +1751,7 @@
             });
 
             // Heavy tasks need longer client timeout (default was 60s → abort noise)
-            const heavy = ['rewrite', 'smart_internal_links', 'auto_all'].includes(String(task));
+            const heavy = ['rewrite', 'smart_internal_links', 'auto_all', 'aeo_faq', 'geo_summary', 'faq'].includes(String(task));
             const timeoutMs = parseInt(extraData._timeoutMs, 10)
                 || (heavy ? 240000 : 180000); // 4 min / 3 min
 
@@ -1675,6 +2126,149 @@
                 count = inserted;
             } catch (e2) {}
             return count;
+        },
+
+
+        async runAeoWorkflow() {
+            const ctx = this.getEditorContext();
+            if (!ctx.title && !ctx.content && !ctx.rawHtml) {
+                throw new Error('محتوای مقاله خالی است — ابتدا متن را ذخیره یا بنویسید');
+            }
+            this.setRunCheck('analyze', 'loading');
+            this.aiProgress = 8;
+            this.aiStepText = 'تحلیل آمادگی پاسخ‌محور (AEO)…';
+            await new Promise((r) => setTimeout(r, 250));
+            this.setRunCheck('analyze', 'success');
+            this.aiProgress = 20;
+
+            this.setRunCheck('faq_gen', 'loading');
+            this.aiStepText = 'ارسال پرامپت FAQ به هوش مصنوعی…';
+            let faqHtml = '';
+            let faqText = '';
+            try {
+                const res = await this.callSeoAi('aeo_faq', ctx, { _timeoutMs: 180000 });
+                faqHtml = (res && (res.faq_html || res.content || res.html || res.text)) || '';
+                // plain text fallback for review textarea
+                if (faqHtml) {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = faqHtml;
+                    faqText = (tmp.innerText || tmp.textContent || '').trim();
+                }
+            } catch (e) {
+                this.setRunCheck('faq_gen', 'error');
+                this.aiStepText = (e && e.message) || 'خطا در تولید FAQ';
+                throw e;
+            }
+            if (!faqHtml) {
+                this.setRunCheck('faq_gen', 'error');
+                throw new Error('پاسخ خالی از هوش مصنوعی برای FAQ');
+            }
+            this.aiDraft.faqHtml = faqHtml;
+            this.aiDraft.faqText = faqText;
+            this.setRunCheck('faq_gen', 'success');
+            this.aiProgress = 65;
+
+            this.setRunCheck('faq_schema', 'loading');
+            this.aiStepText = 'آماده‌سازی اسکیما FAQ…';
+            try {
+                this.schemaType = 'FAQPage';
+                // extract Q/A pairs into faqItems if possible
+                const qs = [];
+                try {
+                    const doc = new DOMParser().parseFromString(faqHtml, 'text/html');
+                    const hs = doc.querySelectorAll('h3');
+                    hs.forEach((h) => {
+                        const q = (h.textContent || '').trim();
+                        let a = '';
+                        let n = h.nextElementSibling;
+                        while (n && n.tagName && n.tagName.toLowerCase() !== 'h3') {
+                            if (n.tagName.toLowerCase() === 'p') a += (n.textContent || '') + ' ';
+                            n = n.nextElementSibling;
+                        }
+                        if (q) qs.push({ q, a: a.trim() });
+                    });
+                } catch (eParse) {}
+                if (qs.length) this.faqItems = qs;
+                if (typeof this.onSchemaTypeChange === 'function') this.onSchemaTypeChange();
+                this.setRunCheck('faq_schema', 'success');
+            } catch (e) {
+                this.setRunCheck('faq_schema', 'error');
+            }
+            this.aiProgress = 88;
+
+            this.setRunCheck('review', 'loading');
+            this.aiStepText = 'آماده‌سازی پیش‌نمایش…';
+            this.setRunCheck('review', 'success');
+            this.aiProgress = 100;
+            this.aiStepText = 'AEO آماده بازبینی است';
+            this.aiReviewOpen = true;
+            this.aiPhase = 'review';
+            this.showToast('FAQ با AI تولید شد — بازبینی کنید', 'success');
+        },
+
+        async runGeoWorkflow() {
+            const ctx = this.getEditorContext();
+            if (!ctx.title && !ctx.content && !ctx.rawHtml) {
+                throw new Error('محتوای مقاله خالی است — ابتدا متن را ذخیره یا بنویسید');
+            }
+            this.setRunCheck('analyze', 'loading');
+            this.aiProgress = 8;
+            this.aiStepText = 'تحلیل آمادگی موتورهای مولد (GEO)…';
+            await new Promise((r) => setTimeout(r, 250));
+            this.setRunCheck('analyze', 'success');
+            this.aiProgress = 18;
+
+            this.setRunCheck('geo_sum', 'loading');
+            this.aiStepText = 'ارسال پرامپت خلاصه به هوش مصنوعی…';
+            let summaryHtml = '';
+            let geoText = '';
+            try {
+                const res = await this.callSeoAi('geo_summary', ctx, { _timeoutMs: 180000 });
+                summaryHtml = (res && (res.summary_html || res.content || res.html || res.text)) || '';
+                if (summaryHtml) {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = summaryHtml;
+                    geoText = (tmp.innerText || tmp.textContent || '').trim();
+                }
+            } catch (e) {
+                this.setRunCheck('geo_sum', 'error');
+                this.aiStepText = (e && e.message) || 'خطا در تولید خلاصه GEO';
+                throw e;
+            }
+            if (!summaryHtml) {
+                this.setRunCheck('geo_sum', 'error');
+                throw new Error('پاسخ خالی از هوش مصنوعی برای GEO');
+            }
+            this.aiDraft.geoText = geoText;
+            this.aiDraft.takeaways = geoText;
+            this.aiDraft.faqHtml = this.aiDraft.faqHtml || ''; // keep separate
+            // store html for apply
+            this.aiDraft.geoHtml = summaryHtml;
+            this.setRunCheck('geo_sum', 'success');
+            this.aiProgress = 55;
+
+            this.setRunCheck('geo_meta', 'loading');
+            this.aiStepText = 'بهینه‌سازی متا برای نقل‌قول AI…';
+            try {
+                const metaRes = await this.callSeoAi('meta', ctx);
+                if (metaRes) {
+                    this.aiDraft.title = metaRes.seo_title || metaRes.title || this.aiDraft.title || '';
+                    this.aiDraft.description = metaRes.description || metaRes.meta_description || this.aiDraft.description || '';
+                }
+                this.setRunCheck('geo_meta', 'success');
+            } catch (e) {
+                this.setRunCheck('geo_meta', 'error');
+            }
+            this.aiProgress = 88;
+
+            this.setRunCheck('review', 'loading');
+            this.aiStepText = 'آماده‌سازی پیش‌نمایش…';
+            this.setRunCheck('review', 'success');
+            this.aiProgress = 100;
+            this.aiStepText = 'GEO آماده بازبینی است';
+            this.aiReviewOpen = true;
+            this.aiPhase = 'review';
+            this.showToast('خلاصه GEO با AI تولید شد — بازبینی کنید', 'success');
         },
 
         async runAiAction(actionKey) {
@@ -2080,6 +2674,7 @@
                     this.aiProgress = 100;
                     this.aiStepText = 'عملیات یک‌پارچه با موفقیت انجام شد!';
                     this.aiReviewOpen = true;
+                    this.aiPhase = 'review';
                     this.showToast('تمام بخش‌های سئو با هوش مصنوعی تحلیل و آماده تایید شد', 'success');
                 }
 
@@ -2180,18 +2775,35 @@
         },
 
 
+
+        checkPillar(check) {
+            if (!check) return 'seo';
+            if (check.pillar) return check.pillar;
+            const g = (check.group || '').toLowerCase();
+            if (g.indexOf('aeo') >= 0) return 'aeo';
+            if (g.indexOf('geo') >= 0) return 'geo';
+            const key = String(check.key || check.id || '').toLowerCase();
+            if (key.indexOf('aeo') >= 0 || key.indexOf('faq') >= 0) return 'aeo';
+            if (key.indexOf('geo') >= 0 || key.indexOf('schema') >= 0) return 'geo';
+            return 'seo';
+        },
+
         toggleGroup(gkey) {
             this.openGroups[gkey] = !this.openGroups[gkey];
         },
 
+        seoGroupKeys() {
+            return ['basic', 'title', 'content', 'advanced'];
+        },
+
         groupPassed(group) {
             if (!group || !group.items || !group.items.length) return true;
-            return group.items.every((c) => c.passed);
+            return group.items.every((c) => c.passed || c.status === 'pass');
         },
 
         groupPassedCount(group) {
             if (!group || !group.items) return 0;
-            return group.items.filter((c) => c.passed).length;
+            return group.items.filter((c) => c.passed || c.status === 'pass').length;
         },
 
         editKeyword(i) {
@@ -2475,6 +3087,8 @@
                 return;
             }
             this.linkBusy = true;
+            this.linkSourceMode = 'manual';
+            this.autoLinkSuggestions = [];
             this.contentMatchesInternal = [];
             this.selectedInternalPost = null;
             try {
@@ -2565,6 +3179,153 @@
             return (n / 1048576).toFixed(2) + ' MB';
         },
 
+        scrollToLinkInContent(link) {
+            if (!link || !link.href) return;
+            const href = String(link.href);
+            try {
+                // Gutenberg
+                if (window.wp && wp.data && wp.data.select('core/block-editor')) {
+                    const blocks = wp.data.select('core/block-editor').getBlocks();
+                    const find = (list) => {
+                        for (const b of list || []) {
+                            const html = (b.attributes && (b.attributes.content || b.attributes.url || '')) || '';
+                            if (String(html).indexOf(href) >= 0 || (b.attributes && b.attributes.url === href)) {
+                                wp.data.dispatch('core/block-editor').selectBlock(b.clientId);
+                                return true;
+                            }
+                            if (b.innerBlocks && find(b.innerBlocks)) return true;
+                        }
+                        return false;
+                    };
+                    if (find(blocks)) {
+                        this.showToast('لینک در ویرایشگر مشخص شد', 'info');
+                        return;
+                    }
+                }
+                // Classic / iframe fallback
+                const frames = document.querySelectorAll('iframe');
+                for (const f of frames) {
+                    try {
+                        const doc = f.contentDocument;
+                        if (!doc) continue;
+                        const a = doc.querySelector('a[href="' + href.replace(/"/g, '\\"') + '"]');
+                        if (a) {
+                            a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            a.style.outline = '2px solid #3b82f6';
+                            setTimeout(() => { a.style.outline = ''; }, 2000);
+                            this.showToast('لینک در محتوا مشخص شد', 'info');
+                            return;
+                        }
+                    } catch (e) {}
+                }
+                this.showToast('محل لینک در ویرایشگر پیدا نشد', 'warn');
+            } catch (e) {
+                this.showToast('خطا در یافتن لینک', 'error');
+            }
+        },
+
+        insertCtaBlocks() {
+            const text = String(this.ctaText || '').trim();
+            let url = String(this.ctaUrl || '').trim();
+            if (!text || !url) {
+                this.showToast('متن و لینک CTA را وارد کنید', 'warn');
+                return;
+            }
+            if (/^(javascript:|data:|vbscript:)/i.test(url)) {
+                this.showToast('آدرس نامعتبر است', 'error');
+                return;
+            }
+            if (!/^(https?:\/\/|\/|#)/i.test(url) && !url.startsWith('//')) {
+                this.showToast('آدرس باید http/https باشد', 'error');
+                return;
+            }
+            let html = this.getEditorRawContent();
+            if (!html) {
+                this.showToast('محتوای مقاله خالی است', 'error');
+                return;
+            }
+            try {
+                const doc = new DOMParser().parseFromString('<div id="bk-root">' + html + '</div>', 'text/html');
+                const root = doc.getElementById('bk-root') || doc.body;
+                const paras = Array.from(root.querySelectorAll('p'));
+                if (paras.length < 2) {
+                    this.showToast('حداقل ۲ پاراگراف برای درج CTA لازم است', 'warn');
+                    return;
+                }
+                const step = 3;
+                const placed = [];
+                const align = this.ctaAlign || 'right';
+                const bold = !!this.ctaBold;
+                for (let i = step - 1; i < paras.length; i += step) {
+                    const p = paras[i];
+                    if (!p || !p.parentNode) continue;
+                    const wrap = doc.createElement('p');
+                    wrap.setAttribute('class', 'bk-cta-block');
+                    wrap.setAttribute('data-bk-cta', '1');
+                    wrap.style.textAlign = align === 'left' ? 'left' : (align === 'center' ? 'center' : 'right');
+                    const a = doc.createElement('a');
+                    a.setAttribute('href', url);
+                    a.setAttribute('target', '_blank');
+                    a.setAttribute('rel', 'noopener');
+                    a.setAttribute('class', 'bk-cta-link');
+                    if (bold) {
+                        const strong = doc.createElement('strong');
+                        strong.textContent = text;
+                        a.appendChild(strong);
+                    } else {
+                        a.textContent = text;
+                    }
+                    wrap.appendChild(a);
+                    if (p.nextSibling) {
+                        p.parentNode.insertBefore(wrap, p.nextSibling);
+                    } else {
+                        p.parentNode.appendChild(wrap);
+                    }
+                    const id = 'cta_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+                    wrap.setAttribute('data-bk-cta-id', id);
+                    placed.push({
+                        id,
+                        text,
+                        url,
+                        afterParagraph: i + 1,
+                        align,
+                        bold,
+                        selected: false
+                    });
+                }
+                this.setEditorRawContent(root.innerHTML);
+                this.ctaPlacements = (this.ctaPlacements || []).concat(placed);
+                this.showToast(placed.length + ' CTA در مقاله درج شد', 'success');
+                this.loadLinks();
+            } catch (e) {
+                this.showToast((e && e.message) || 'خطا در درج CTA', 'error');
+            }
+        },
+
+        removeCtaPlacement(c) {
+            if (!c || !c.id) return;
+            let html = this.getEditorRawContent();
+            if (!html) return;
+            try {
+                const doc = new DOMParser().parseFromString('<div id="bk-root">' + html + '</div>', 'text/html');
+                const root = doc.getElementById('bk-root') || doc.body;
+                const el = root.querySelector('[data-bk-cta-id="' + c.id + '"]');
+                if (el && el.parentNode) el.parentNode.removeChild(el);
+                this.setEditorRawContent(root.innerHTML);
+                this.ctaPlacements = (this.ctaPlacements || []).filter((x) => x.id !== c.id);
+                this.showToast('CTA حذف شد', 'success');
+                this.loadLinks();
+            } catch (e) {
+                this.showToast('خطا در حذف CTA', 'error');
+            }
+        },
+
+        removeSelectedCtas() {
+            const selected = (this.ctaPlacements || []).filter((c) => c.selected);
+            if (!selected.length) return;
+            selected.forEach((c) => this.removeCtaPlacement(c));
+        },
+
         removeLinkFromContent(link) {
             if (!link || !link.href) return;
             let html = this.getEditorRawContent();
@@ -2590,8 +3351,16 @@
                 }
                 const next = doc.body ? doc.body.innerHTML : html;
                 this.setEditorRawContent(next);
+                const href = targetHref;
+                const internal = (this.linkData.internal || []).filter((x) => x && x.href !== href);
+                const external = (this.linkData.external || []).filter((x) => x && x.href !== href);
+                this.linkData = {
+                    internal,
+                    external,
+                    counts: { internal: internal.length, external: external.length }
+                };
                 this.showToast('لینک از متن حذف شد', 'success');
-                setTimeout(() => this.loadLinks(), 300);
+                setTimeout(() => { if (typeof this.loadLinks === 'function') this.loadLinks(); }, 400);
             } catch (e) {
                 this.showToast('خطا در حذف لینک', 'error');
             }
@@ -2619,6 +3388,7 @@
                 if (json && json.success && json.data && Array.isArray(json.data.images)) {
                     this.postImages = this.mergeCoverImage(json.data.images || []);
                 }
+                this.postImages = (this.postImages || []).map((img) => this.normalizeImageRow(img));
             } catch (e) {
                 console.warn(e);
             } finally {
@@ -2866,12 +3636,47 @@
                     actions: row.actions
                 }));
                 // Keep featured/cover in list even if server omitted it
-                this.postImages = this.mergeCoverImage(this.postImages);
+                this.postImages = this.mergeCoverImage(this.postImages).map((img) => this.normalizeImageRow(img));
                 this.showToast(data.message || 'بهینه‌سازی انجام شد', 'success');
             } catch (e) {
                 this.showToast((e && e.message) || 'خطا', 'error');
             } finally {
                 this.optBusy = false;
+            }
+        },
+
+        applyBulkAltText() {
+            const alt = String(this.bulkAltText || '').trim();
+            if (!alt) {
+                this.showToast('متن Alt را وارد کنید', 'warn');
+                return;
+            }
+            const list = this.postImages || [];
+            list.forEach((img) => {
+                img.new_alt = alt;
+                img.alt = alt;
+                this.updateImageAlt(img, alt);
+            });
+            this.showToast('Alt برای ' + list.length + ' تصویر اعمال شد', 'success');
+            this.showBulkAltPanel = false;
+        },
+
+        async generateAllAltsWithAi() {
+            const list = this.postImages || [];
+            if (!list.length) return;
+            this.aiBusy = true;
+            let n = 0;
+            try {
+                for (const img of list) {
+                    try {
+                        await this.generateSingleImageAlt(img);
+                        n++;
+                    } catch (e) {}
+                }
+                this.showToast(n + ' Alt با AI تولید شد', 'success');
+                this.showBulkAltPanel = false;
+            } finally {
+                this.aiBusy = false;
             }
         },
 
@@ -2924,6 +3729,25 @@
                 this.showToast(json.data.message || 'واترمارک حذف شد', 'success');
             } catch (e) {
                 this.showToast((e && e.message) || 'خطا', 'error');
+            }
+        },
+
+        async removeAllWatermarks() {
+            const list = (this.postImages || []).filter((img) => img && (img.watermarked || img.attachment_id || img.src));
+            if (!list.length) {
+                this.showToast('تصویری برای حذف واترمارک یافت نشد', 'info');
+                return;
+            }
+            this.optBusy = true;
+            try {
+                for (const img of list) {
+                    await this.removeImageWatermark(img);
+                }
+                this.showToast('واترمارک‌ها حذف شدند', 'success');
+            } catch (e) {
+                this.showToast((e && e.message) || 'خطا در حذف واترمارک', 'error');
+            } finally {
+                this.optBusy = false;
             }
         },
 

@@ -2834,14 +2834,32 @@ final class Bankai_AI_Studio
             wp_send_json_error(['message' => 'Permission denied'], 403);
         }
         $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
-        if (!isset(self::providers_catalog()[$provider])) {
-            wp_send_json_error(['message' => 'Invalid provider'], 400);
+        if ($provider === '') {
+            wp_send_json_error(['message' => __('ارائه‌دهنده خالی است', 'bankai-core')], 400);
+        }
+        // Accept built-in + custom agents
+        $catalog = self::all_providers_catalog();
+        if (!isset($catalog[$provider])) {
+            wp_send_json_error(['message' => __('ارائه‌دهنده نامعتبر است', 'bankai-core')], 400);
         }
         update_option(self::OPT_DEFAULT, $provider, false);
+        // Also mirror into core settings used by editor / SEO assistant
         if (function_exists('bankai_update_option')) {
             bankai_update_option('active_ai_provider', $provider);
         }
-        wp_send_json_success(['message' => __('پیش‌فرض ذخیره شد', 'bankai-core'), 'provider' => $provider]);
+        $core = get_option('bankai_core_settings', []);
+        if (!is_array($core)) {
+            $core = [];
+        }
+        $core['active_ai_provider'] = $provider;
+        $core['default_ai_provider'] = $provider;
+        update_option('bankai_core_settings', $core, false);
+
+        wp_send_json_success([
+            'message'  => __('پیش‌فرض ذخیره شد', 'bankai-core'),
+            'provider' => $provider,
+            'name'     => $catalog[$provider]['name'] ?? $provider,
+        ]);
     }
 
     private function mirror_keys_to_core(array $keys): void
@@ -3285,9 +3303,30 @@ final class Bankai_AI_Studio
 
     public function ajax_generate_article(): void
     {
-        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        // Long-running AI generation — survive proxy/gateway timeouts as far as PHP can
+        if (function_exists('ignore_user_abort')) {
+            @ignore_user_abort(true);
+        }
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(600);
+        }
+        if (function_exists('ini_set')) {
+            @ini_set('max_execution_time', '600');
+            @ini_set('memory_limit', '512M');
+        }
+        // Ensure JSON even if something echoes HTML later (best-effort)
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('X-Accel-Buffering: no');
+        }
+
+        try {
+            check_ajax_referer('bankai_admin_nonce', 'nonce');
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => 'نشست منقضی شده — صفحه را تازه کنید'], 403);
+        }
         if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Permission denied'], 403);
+            wp_send_json_error(['message' => 'دسترسی مجاز نیست'], 403);
         }
         $topic = sanitize_text_field(wp_unslash($_POST['topic'] ?? ''));
         $focus = sanitize_text_field(wp_unslash($_POST['focus'] ?? ''));
@@ -3316,22 +3355,57 @@ final class Bankai_AI_Studio
         if ($topic === '') {
             wp_send_json_error(['message' => 'موضوع خالی است']);
         }
-        $length = max(400, min(7000, $length));
-        $system = 'تو نویسنده ارشد سئو به زبان فارسی هستی. خروجی فقط HTML بدنه مقاله با تگ‌های p, h2, h3, ul, ol, li, strong, a است. بدون markdown، بدون ```، بدون H1، بدون مقدمهٔ انگلیسی. حداقل ' . $length . ' کلمه واقعی. ساختار: مقدمه کوتاه، چند H2، زیرعنوان H3 در صورت نیاز، لیست، جمع‌بندی. پاراگراف‌ها حداکثر ۳–۴ جمله. کلمه کلیدی اصلی را در مقدمه، حداقل یک H2 و جمع‌بندی طبیعی به‌کار ببر.';
-        $user = "عنوان مقاله: {$topic}\nکلمه کلیدی اصلی: {$focus}\nطول هدف: حدود {$length} کلمه\nدستورالعمل اضافه: {$notes}\n\nمقاله کامل، تخصصی، قابل انتشار و بهینه‌شده برای سئو بنویس. از تکرار مصنوعی کلمه کلیدی پرهیز کن (چگالی حدود ۱٪).";
+        $safe_mode = !empty($_POST['safe_mode']) && ($_POST['safe_mode'] === '1' || $_POST['safe_mode'] === true || $_POST['safe_mode'] === 'true');
+        // Cap length to reduce reverse-proxy 504; client retries with lower length on timeout
+        $length = max(400, min($safe_mode ? 2500 : 5000, $length));
+        $system = 'نقش تو: نویسنده ارشد محتوا و سئوی فارسی برای وردپرس. '
+            . 'فقط بدنهٔ HTML مقاله را بنویس با تگ‌های مجاز: p, h2, h3, ul, ol, li, strong, em, a. '
+            . 'ممنوع: markdown، بلوک کد، تگ html/body/head، H1، عنوان انگلیسی، توضیح قبل از مقاله، «Certainly» یا هر متن غیرفارسی. '
+            . 'حدود ' . $length . ' کلمهٔ واقعی فارسی (از این مقدار خیلی فراتر نرو). '
+            . 'ساختار اجباری: ۱) مقدمهٔ کوتاه (۲–۳ پاراگراف) با پاسخ مستقیم به نیاز خواننده؛ ۲) چند بخش H2 با محتوای عمیق؛ ۳) در صورت نیاز H3؛ ۴) حداقل یک فهرست ul/ol؛ ۵) جمع‌بندی کاربردی. '
+            . 'هر پاراگراف حداکثر ۳–۴ جمله. لحن تخصصی، روان و قابل اعتماد. '
+            . 'کلمه کلیدی اصلی را فقط به‌صورت طبیعی در مقدمه، یک H2 و جمع‌بندی بیاور؛ چگالی تقریبی ۱٪ و بدون تکرار مصنوعی.';
+        $user = "عنوان مقاله: {$topic}
+"
+            . "کلمه کلیدی اصلی: " . ($focus !== '' ? $focus : $topic) . "
+"
+            . "طول هدف: حدود {$length} کلمه (از این مقدار فراتر نرو)
+"
+            . "دستورالعمل اضافه: " . ($notes !== '' ? $notes : 'ندارد') . "
+
+"
+            . "یک مقالهٔ کامل، تخصصی، قابل انتشار و بهینه‌شده برای سئو و خوانایی بنویس. "
+            . "از کلیشه‌های ترجمه‌شده و پر کردن مصنوعی متن پرهیز کن. فقط HTML بدنه را برگردان.";
+        $max_tokens = (int) min($safe_mode ? 3500 : 5500, max(1200, (int) ($length * 1.35)));
         try {
             $body = $this->chat($provider, $system, $user, [
                 'temperature' => 0.65,
-                'max_tokens'  => min(16000, max(2000, (int) ($length * 2.5))),
+                'max_tokens'  => $max_tokens,
             ]);
         } catch (Throwable $e) {
-            wp_send_json_error(['message' => $e->getMessage()], 500);
+            $msg = $e->getMessage();
+            if ($msg === '' || stripos($msg, '<html') !== false) {
+                $msg = 'خطا در ارتباط با موتور AI یا تایم‌اوت سرور';
+            }
+            wp_send_json_error(['message' => $msg], 500);
+        }
+        if (!is_string($body) || trim($body) === '') {
+            wp_send_json_error(['message' => 'پاسخ خالی از موتور AI — دوباره تلاش کنید یا موتور دیگری انتخاب کنید']);
         }
         // Clean model output then convert to Gutenberg blocks (avoids "Convert to blocks" in editor)
-        $body = preg_replace('/^```(?:html)?\s*/i', '', trim((string) $body));
-        $body = preg_replace('/\s*```$/', '', $body);
-        $body = wp_kses_post($body);
-        $body = $this->html_to_gutenberg_blocks($body);
+        try {
+            $body = preg_replace('/^```(?:html)?\s*/i', '', trim((string) $body));
+            $body = preg_replace('/\s*```$/', '', $body);
+            $body = wp_kses_post($body);
+            if (method_exists($this, 'html_to_gutenberg_blocks')) {
+                $body = $this->html_to_gutenberg_blocks($body);
+            }
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => 'خطا در تبدیل خروجی AI به بلوک‌های وردپرس: ' . $e->getMessage()], 500);
+        }
+        if (!is_string($body) || trim($body) === '') {
+            wp_send_json_error(['message' => 'پس از پاک‌سازی، محتوای مقاله خالی شد']);
+        }
 
         $postarr = [
             'post_title'   => $topic,
@@ -3484,9 +3558,19 @@ final class Bankai_AI_Studio
 
     public function ajax_suggest_titles(): void
     {
-        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(120);
+        }
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        try {
+            check_ajax_referer('bankai_admin_nonce', 'nonce');
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => 'نشست منقضی شده — صفحه را تازه کنید'], 403);
+        }
         if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Permission denied'], 403);
+            wp_send_json_error(['message' => 'دسترسی مجاز نیست'], 403);
         }
         $topic = sanitize_text_field(wp_unslash($_POST['topic'] ?? ''));
         $count = max(3, min(20, absint($_POST['count'] ?? 10)));
@@ -3543,18 +3627,22 @@ final class Bankai_AI_Studio
         }
         $site_ctx = $ctx_lines ? implode("\n", array_slice($ctx_lines, 0, 25)) : '(no prior posts)';
 
-        $system = 'تو استراتژیست عنوان سئوی فارسی برای وردپرس هستی. فقط یک آرایه JSON از رشته‌های عنوان برگردان. بدون markdown، بدون شماره‌گذاری، بدون گیومه تزئینی داخل رشته‌ها. هر عنوان متن ساده فارسی باشد.';
-        $user = "Suggest {$count} unique, creative, SEO-optimized long article titles in Persian.
-Topic/keyword: {$topic}
-Category hint: {$category}
-Rules:
-- Length: prefer 60–110 characters (longer, descriptive, not spammy)
-- Include the keyword naturally
-- Differentiate angles: how-to, comparison, checklist, mistakes, trends, beginner vs pro
-- Do not repeat or closely paraphrase existing titles
-
-Existing site titles + keywords (inspiration only):
-{$site_ctx}";
+        $system = 'نقش تو: استراتژیست عنوان سئوی فارسی برای وردپرس. '
+            . 'فقط یک آرایه JSON از رشته‌های عنوان فارسی برگردان. '
+            . 'بدون markdown، بدون توضیح، بدون شماره‌گذاری، بدون کلید انگلیسی. '
+            . 'هر آیتم فقط یک رشته عنوان باشد.';
+        $user = "برای موضوع زیر {$count} عنوان مقالهٔ منحصربه‌فرد، جذاب و بهینه‌شده برای سئو به زبان فارسی پیشنهاد بده.\n"
+            . "موضوع / کلمه کلیدی: {$topic}\n"
+            . "دسته (راهنما): " . ($category !== '' ? $category : 'عمومی') . "\n\n"
+            . "قوانین:\n"
+            . "- طول هر عنوان ترجیحاً بین ۴۵ تا ۹۰ کاراکتر\n"
+            . "- کلمه کلیدی را طبیعی و نزدیک ابتدای عنوان بیاور\n"
+            . "- زاویه‌های متنوع: آموزشی، مقایسه‌ای، چک‌لیست، اشتباهات رایج، روندها، مبتدی در برابر حرفه‌ای\n"
+            . "- از تکرار یا بازنویسی نزدیک عناوین موجود سایت پرهیز کن\n"
+            . "- فقط فارسی؛ بدون اموجی و بدون گیومهٔ اضافه\n\n"
+            . "عناوین و کلیدواژه‌های موجود سایت (فقط برای الهام و جلوگیری از تکرار):\n"
+            . "{$site_ctx}\n\n"
+            . "خروجی نمونه: [\"عنوان اول\", \"عنوان دوم\"]";
         try {
             $raw = $this->chat($provider, $system, $user, ['temperature' => 0.7, 'max_tokens' => 1200]);
         } catch (Throwable $e) {

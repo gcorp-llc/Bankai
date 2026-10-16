@@ -76,7 +76,7 @@ foreach ($image_status as $row) {
 
 
 <div id="tab-ai-studio" class="bankai-tab-pane" :class="{ 'is-active-tab': activeTab === 'ai-studio' }" x-show="activeTab === 'ai-studio'" x-cloak>
-<div class="bankai-ai-studio-root" x-data="bankaiAiStudioRoot">
+<div class="bankai-ai-studio-root" x-data="bankaiAiStudioRoot" x-init="defaultProvider = '<?php echo esc_js($default_p); ?>'; defaultProviderName = '<?php echo esc_js($default_name); ?>'; imageDefault = '<?php echo esc_js($image_default); ?>'; imgProvider = imageDefault || ''; providerNames = <?php echo wp_json_encode(array_map(function($m){ return $m['name'] ?? ($m['label'] ?? ''); }, $catalog), JSON_UNESCAPED_UNICODE); ?>">
     <div class="bk-lg-header bk-wm-hero bk-page-hero">
         <div class="bk-wm-hero__main">
             <div class="bk-wm-hero__icon">
@@ -98,14 +98,14 @@ foreach ($image_status as $row) {
             <button type="button" class="bk-wm-chip-btn" @click="openAddModal()" x-show="aiMode==='text'" style="background:rgba(255,255,255,.95)!important;color:#5b21b6!important">افزودن هوش مصنوعی</button>
         </div>
     </div>
-    <div class="bk-art-tabs bk-lg-tabs bk-ai-mode-tabs">
-    <button type="button" class="bk-lg-tab bk-ai-mode-tab" :class="{'is-active': aiMode==='text'}" @click="aiMode='text'">
-      <svg class="solar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
-      هوش‌های مصنوعی متنی
+    <div class="bk-capsule-tabs bk-art-tabs bk-ai-mode-tabs" role="tablist">
+    <button type="button" class="bk-capsule-tab" :class="{'is-active': aiMode==='text'}" @click="aiMode='text'" title="هوش‌های مصنوعی متنی">
+      <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
+      <span class="bk-capsule-label">متنی</span>
     </button>
-    <button type="button" class="bk-lg-tab bk-ai-mode-tab" :class="{'is-active': aiMode==='image'}" @click="aiMode='image'">
-      <svg class="solar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>
-      هوش مصنوعی تصویری
+    <button type="button" class="bk-capsule-tab" :class="{'is-active': aiMode==='image'}" @click="aiMode='image'" title="هوش مصنوعی تصویری">
+      <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>
+      <span class="bk-capsule-label">تصویری</span>
     </button>
   </div>
 

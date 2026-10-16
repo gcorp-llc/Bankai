@@ -67,14 +67,14 @@ $positions = [
     </div>
 
     <!-- Sub tabs -->
-    <div class="bk-art-tabs bk-lg-tabs bk-wm-subtabs">
-        <button type="button" class="bk-lg-tab bk-wm-subtab" :class="{ 'is-active': mediaSubTab === 'watermark' }" @click="mediaSubTab = 'watermark'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/></svg>
-            استودیو واترمارک
+    <div class="bk-capsule-tabs bk-art-tabs bk-wm-subtabs" role="tablist">
+        <button type="button" class="bk-capsule-tab" :class="{ 'is-active': mediaSubTab === 'watermark' }" @click="mediaSubTab = 'watermark'" title="استودیو واترمارک">
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M5 19h14"/></svg>
+            <span class="bk-capsule-label">واترمارک</span>
         </button>
-        <button type="button" class="bk-lg-tab bk-wm-subtab" :class="{ 'is-active': mediaSubTab === 'compress' }" @click="mediaSubTab = 'compress'; loadMediaLibrary && loadMediaLibrary(true)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14h6v6H4zM14 4h6v6h-6zM14 14h6v6h-6zM4 4h6v6H4z"/></svg>
-            فشرده‌سازی تصاویر
+        <button type="button" class="bk-capsule-tab" :class="{ 'is-active': mediaSubTab === 'compress' }" @click="mediaSubTab = 'compress'; loadMediaLibrary && loadMediaLibrary(true)" title="فشرده‌سازی تصاویر">
+            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M4 14h6v6H4zM14 4h6v6h-6zM14 14h6v6h-6zM4 4h6v6H4z"/></svg>
+            <span class="bk-capsule-label">فشرده‌سازی</span>
         </button>
     </div>
 

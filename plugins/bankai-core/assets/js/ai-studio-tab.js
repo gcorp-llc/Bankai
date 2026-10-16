@@ -111,15 +111,30 @@ document.addEventListener('alpine:init', () => {
     },
     updateDefaultProvider() {
       const names = this.providerNames || {};
-      this.defaultProviderName = names[this.defaultProvider] || this.defaultProvider;
+      const id = String(this.defaultProvider || '').trim();
+      if (!id) { this.showToast('ارائه‌دهنده انتخاب نشده', 'error'); return; }
+      this.defaultProviderName = names[id] || id;
       const data = new FormData();
       data.append('action', 'bankai_set_default_provider');
-      data.append('nonce', window.bankaiAdminNonce);
-      data.append('provider', this.defaultProvider);
-      fetch(ajaxurl, { method: 'POST', body: data })
+      const nonce = window.bankaiAdminNonce
+        || (window.bankaiCoreData && window.bankaiCoreData.adminNonce)
+        || (window.bankaiData && window.bankaiData.adminNonce)
+        || '';
+      data.append('nonce', nonce);
+      data.append('provider', id);
+      fetch(ajaxurl || (window.bankaiCoreData && bankaiCoreData.ajaxUrl) || '/wp-admin/admin-ajax.php', {
+        method: 'POST', body: data, credentials: 'same-origin'
+      })
         .then(r => r.json())
-        .then(res => this.showToast(res.success ? ('پیش‌فرض: ' + this.defaultProviderName) : 'خطا'))
-        .catch(() => this.showToast('خطا'));
+        .then(res => {
+          if (res && res.success) {
+            this.showToast('موتور پیش‌فرض ذخیره شد: ' + this.defaultProviderName, 'success');
+          } else {
+            const msg = (res && res.data && res.data.message) ? res.data.message : 'ذخیره نشد';
+            this.showToast(msg, 'error');
+          }
+        })
+        .catch(() => this.showToast('خطا در ارتباط با سرور', 'error'));
     },
     saveCustomAgent() {
       const f = this.customForm;
@@ -153,14 +168,22 @@ document.addEventListener('alpine:init', () => {
     },
 
     setImageDefault() {
+      const id = String(this.imageDefault || '').trim();
+      if (!id) { this.showToast('ارائه‌دهنده تصویری انتخاب نشده', 'error'); return; }
       const data = new FormData();
       data.append('action', 'bankai_set_default_image_provider');
-      data.append('nonce', window.bankaiAdminNonce);
-      data.append('provider', this.imageDefault);
-      fetch(ajaxurl, { method: 'POST', body: data })
+      const nonce = window.bankaiAdminNonce
+        || (window.bankaiCoreData && window.bankaiCoreData.adminNonce)
+        || (window.bankaiData && window.bankaiData.adminNonce)
+        || '';
+      data.append('nonce', nonce);
+      data.append('provider', id);
+      fetch(ajaxurl || (window.bankaiCoreData && bankaiCoreData.ajaxUrl) || '/wp-admin/admin-ajax.php', {
+        method: 'POST', body: data, credentials: 'same-origin'
+      })
         .then(r => r.json())
-        .then(res => this.showToast(res.success ? 'پیش‌فرض تصویری ذخیره شد' : ((res.data && res.data.message) || 'خطا')))
-        .catch(() => this.showToast('خطا'));
+        .then(res => this.showToast(res.success ? 'پیش‌فرض تصویری ذخیره شد' : ((res.data && res.data.message) || 'خطا'), res.success ? 'success' : 'error'))
+        .catch(() => this.showToast('خطا در ارتباط', 'error'));
     },
     async generateImage() {
       if (!this.imgPrompt.trim()) return;

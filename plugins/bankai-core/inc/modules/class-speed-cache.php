@@ -94,6 +94,26 @@ class Bankai_Speed_Cache
         if ($this->is_sub_active('asset_optimization')) {
             add_filter('bankai_page_cache_html', [$this, 'maybe_minify_html'], 10, 1);
         }
+
+        // Core Web Vitals / Lighthouse pack (CLS, TBT, font-display, preconnect limit, …)
+        if ($this->is_sub_active('cwv_lighthouse') || $this->is_sub_active('asset_optimization')) {
+            add_action('wp_head', [$this, 'cwv_print_critical_css'], 2);
+            add_action('wp_footer', [$this, 'cwv_print_delay_js'], 99);
+            add_filter('the_content', [$this, 'cwv_fix_image_dimensions'], 26);
+            add_filter('post_thumbnail_html', [$this, 'cwv_fix_thumb_dimensions'], 20, 5);
+            add_filter('wp_get_attachment_image_attributes', [$this, 'cwv_image_dimensions_attr'], 20, 3);
+            add_filter('wp_resource_hints', [$this, 'cwv_limit_preconnect'], 99, 2);
+            add_action('wp_enqueue_scripts', [$this, 'cwv_dequeue_unused_assets'], 1001);
+            add_filter('script_loader_tag', [$this, 'cwv_delay_script_tag'], 25, 3);
+            add_filter('style_loader_tag', [$this, 'cwv_async_noncritical_css'], 25, 4);
+        }
+        // Font-display safety when CWV is on but fonts_localizer is off
+        if ($this->is_sub_active('cwv_lighthouse') && !$this->is_sub_active('fonts_localizer')) {
+            add_action('wp_head', [$this, 'print_font_display_override'], 99);
+            add_filter('style_loader_tag', [$this, 'filter_google_fonts_display'], 15, 4);
+            add_filter('style_loader_tag', [$this, 'async_google_fonts_css'], 20, 4);
+            add_action('wp_head', [$this, 'print_font_preconnect'], 0);
+        }
     }
 
     private function is_sub_active(string $id): bool
@@ -626,7 +646,7 @@ class Bankai_Speed_Cache
             return;
         }
         $done = true;
-        echo '<link rel="preconnect" href="https://fonts.googleapis.com">' . "\n";
+        // Prefer a single preconnect (gstatic) + dns-prefetch — avoid >4 preconnect warning
         echo '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' . "\n";
         echo '<link rel="dns-prefetch" href="//fonts.googleapis.com">' . "\n";
     }
@@ -762,8 +782,8 @@ class Bankai_Speed_Cache
             echo '<link rel="preload" href="' . esc_url($woff) . '" as="font" type="font/woff2" crossorigin>' . "\n";
             return;
         }
-        echo '<link rel="preconnect" href="https://fonts.googleapis.com">' . "\n";
         echo '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' . "\n";
+        echo '<link rel="dns-prefetch" href="//fonts.googleapis.com">' . "\n";
     }
 
     /**
@@ -774,9 +794,11 @@ class Bankai_Speed_Cache
         if (is_admin()) {
             return;
         }
-        echo "<style id=\"bankai-font-display\">@font-face{font-display:swap!important}</style>\n";
-        // Note: @font-face font-display in a separate rule doesn't override existing faces in all browsers;
-        // primary path is optimize_google_fonts_url + local CSS font-display:swap.
+        echo '<style id="bankai-font-display">'
+            . '@font-face{font-display:swap!important}'
+            /* Force swap on common font CSS variables / body text to cut FOIT */
+            . 'html{font-display:swap}'
+            . '</style>' . "\n";
     }
 
 
@@ -1387,17 +1409,12 @@ NGX;
 
     public function speed_resource_hints(array $hints, string $relation_type): array
     {
+        // Prefer dns-prefetch over many preconnects (Lighthouse: max ~4 preconnect)
         if ($relation_type === 'dns-prefetch') {
-            $hints[] = 'https://fonts.googleapis.com';
-            $hints[] = 'https://fonts.gstatic.com';
+            $hints[] = '//fonts.googleapis.com';
+            $hints[] = '//fonts.gstatic.com';
         }
-        if ($relation_type === 'preconnect') {
-            $hints[] = [
-                'href' => 'https://fonts.gstatic.com',
-                'crossorigin' => 'anonymous',
-            ];
-        }
-        // Normalize: WordPress allows string OR array hints; array_unique() fatals on arrays
+        // Normalize + dedupe
         $normalized = [];
         $seen = [];
         foreach ($hints as $hint) {
@@ -1419,6 +1436,35 @@ NGX;
         return $normalized;
     }
 
+    /**
+     * Hard-cap preconnect hints (Lighthouse warns when > 4).
+     */
+    public function cwv_limit_preconnect(array $hints, string $relation_type): array
+    {
+        if ($relation_type !== 'preconnect') {
+            return $hints;
+        }
+        $cfg = $this->get_speed_cfg('cwv_lighthouse');
+        $max = isset($cfg['max_preconnect']) ? max(1, min(6, (int) $cfg['max_preconnect'])) : 4;
+
+        $priority = [];
+        $rest = [];
+        foreach ($hints as $hint) {
+            $href = is_array($hint) ? (string) ($hint['href'] ?? '') : (string) $hint;
+            $host = (string) (wp_parse_url($href, PHP_URL_HOST) ?: $href);
+            if (str_contains($host, 'fonts.gstatic') || str_contains($host, 'fonts.googleapis')) {
+                $priority[] = $hint;
+            } else {
+                $rest[] = $hint;
+            }
+        }
+        $out = array_merge($priority, $rest);
+        if (count($out) > $max) {
+            $out = array_slice($out, 0, $max);
+        }
+        return $out;
+    }
+
     public function maybe_minify_html(string $html): string
     {
         // Conservative minify: remove HTML comments (not IE conditionals) and excess whitespace between tags
@@ -1430,6 +1476,320 @@ NGX;
 
 
     
+
+
+    /* ------------------------------------------------------------------
+     * Core Web Vitals / Lighthouse pack
+     * ----------------------------------------------------------------*/
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function get_speed_cfg(string $section = ''): array
+    {
+        $cfg = function_exists('bankai_get_option')
+            ? bankai_get_option('speed_config', [])
+            : get_option('bankai_speed_config', []);
+        if (!is_array($cfg)) {
+            $cfg = [];
+        }
+        if ($section === '') {
+            return $cfg;
+        }
+        $row = $cfg[$section] ?? [];
+        return is_array($row) ? $row : [];
+    }
+
+    private function cwv_flag(string $key, bool $default = true): bool
+    {
+        $cfg = $this->get_speed_cfg('cwv_lighthouse');
+        if (!array_key_exists($key, $cfg)) {
+            return $default;
+        }
+        return !empty($cfg[$key]);
+    }
+
+    /**
+     * Critical CSS: font-display, image aspect-ratio reserve, reduce non-composited jank.
+     */
+    public function cwv_print_critical_css(): void
+    {
+        if (is_admin()) {
+            return;
+        }
+        $parts = [];
+        if ($this->cwv_flag('font_display', true)) {
+            $parts[] = '@font-face{font-display:swap!important}';
+        }
+        if ($this->cwv_flag('cls_images', true)) {
+            // Reserve space for images missing dimensions (reduces CLS)
+            $parts[] = 'img:not([width]):not([height]){max-width:100%;height:auto;aspect-ratio:attr(width auto)/attr(height auto)}';
+            $parts[] = 'img[width][height]{height:auto;max-width:100%}';
+            $parts[] = 'iframe{max-width:100%}';
+        }
+        if ($this->cwv_flag('composited_animations', true)) {
+            // Prefer transform/opacity — avoid top/left/width animations that force layout
+            $parts[] = '@media (prefers-reduced-motion:no-preference){'
+                . '.bankai-anim,.animated,[data-animation]{will-change:transform,opacity;'
+                . 'transform:translateZ(0);backface-visibility:hidden}'
+                . '}';
+            $parts[] = '@media (prefers-reduced-motion:reduce){*,*::before,*::after{'
+                . 'animation-duration:.01ms!important;animation-iteration-count:1!important;'
+                . 'transition-duration:.01ms!important;scroll-behavior:auto!important}}';
+        }
+        if ($parts === []) {
+            return;
+        }
+        echo '<style id="bankai-cwv">' . implode('', $parts) . '</style>' . "\n";
+    }
+
+    /**
+     * Add explicit width/height to content images (CLS / Lighthouse).
+     */
+    public function cwv_fix_image_dimensions(string $content): string
+    {
+        if ($content === '' || is_admin() || !$this->cwv_flag('cls_images', true)) {
+            return $content;
+        }
+        if (!preg_match('/<img\b/i', $content)) {
+            return $content;
+        }
+        $out = preg_replace_callback('/<img\b([^>]*?)>/i', function ($m) {
+            $a = $m[1];
+            $has_w = (bool) preg_match('/\swidth\s*=/i', $a);
+            $has_h = (bool) preg_match('/\sheight\s*=/i', $a);
+            if ($has_w && $has_h) {
+                return $m[0];
+            }
+            // Try wp-image-{id}
+            $id = 0;
+            if (preg_match('/wp-image-(\d+)/', $a, $mm)) {
+                $id = (int) $mm[1];
+            }
+            if (!$id && preg_match('/src=["\']([^"\']+)["\']/', $a, $sm)) {
+                $id = (int) attachment_url_to_postid($sm[1]);
+            }
+            if ($id > 0) {
+                $meta = wp_get_attachment_metadata($id);
+                if (is_array($meta) && !empty($meta['width']) && !empty($meta['height'])) {
+                    if (!$has_w) {
+                        $a .= ' width="' . (int) $meta['width'] . '"';
+                    }
+                    if (!$has_h) {
+                        $a .= ' height="' . (int) $meta['height'] . '"';
+                    }
+                    if (!preg_match('/\sstyle=/i', $a)) {
+                        $a .= ' style="max-width:100%;height:auto"';
+                    }
+                    return '<img' . $a . '>';
+                }
+            }
+            // Last resort: decode intrinsic size from file if local upload
+            if (preg_match('/src=["\']([^"\']+)["\']/', $a, $sm)) {
+                $src = $sm[1];
+                $path = $this->cwv_url_to_path($src);
+                if ($path && is_file($path)) {
+                    $size = @getimagesize($path);
+                    if (is_array($size) && !empty($size[0]) && !empty($size[1])) {
+                        if (!$has_w) {
+                            $a .= ' width="' . (int) $size[0] . '"';
+                        }
+                        if (!$has_h) {
+                            $a .= ' height="' . (int) $size[1] . '"';
+                        }
+                        if (!preg_match('/\sstyle=/i', $a)) {
+                            $a .= ' style="max-width:100%;height:auto"';
+                        }
+                        return '<img' . $a . '>';
+                    }
+                }
+            }
+            return $m[0];
+        }, $content);
+        return is_string($out) ? $out : $content;
+    }
+
+    public function cwv_fix_thumb_dimensions($html, $post_id = 0, $post_thumbnail_id = 0, $size = '', $attr = []): string
+    {
+        if (!is_string($html) || $html === '') {
+            return is_string($html) ? $html : '';
+        }
+        return $this->cwv_fix_image_dimensions($html);
+    }
+
+    public function cwv_image_dimensions_attr(array $attr, $attachment = null, $size = null): array
+    {
+        if (is_admin() || !$this->cwv_flag('cls_images', true)) {
+            return $attr;
+        }
+        if (!empty($attr['width']) && !empty($attr['height'])) {
+            return $attr;
+        }
+        $id = $attachment instanceof \WP_Post ? (int) $attachment->ID : (int) $attachment;
+        if ($id <= 0) {
+            return $attr;
+        }
+        $meta = wp_get_attachment_metadata($id);
+        if (!is_array($meta)) {
+            return $attr;
+        }
+        if (empty($attr['width']) && !empty($meta['width'])) {
+            $attr['width'] = (int) $meta['width'];
+        }
+        if (empty($attr['height']) && !empty($meta['height'])) {
+            $attr['height'] = (int) $meta['height'];
+        }
+        return $attr;
+    }
+
+    private function cwv_url_to_path(string $url): string
+    {
+        $uploads = wp_get_upload_dir();
+        if (empty($uploads['baseurl']) || empty($uploads['basedir'])) {
+            return '';
+        }
+        if (str_starts_with($url, $uploads['baseurl'])) {
+            $rel = substr($url, strlen($uploads['baseurl']));
+            $path = $uploads['basedir'] . $rel;
+            return is_string($path) ? $path : '';
+        }
+        return '';
+    }
+
+    /**
+     * Dequeue unused front-end CSS/JS (dashicons, block library when unused, emoji already handled).
+     */
+    public function cwv_dequeue_unused_assets(): void
+    {
+        if (is_admin() || !$this->cwv_flag('unused_css_js', true)) {
+            return;
+        }
+        // Dashicons rarely needed on public front for guests
+        if (!is_user_logged_in()) {
+            wp_dequeue_style('dashicons');
+            wp_deregister_style('dashicons');
+        }
+        // Classic embeds
+        wp_dequeue_script('wp-embed');
+        // Block library CSS is heavy — only keep on singular content that may use blocks
+        // Keep wp-block-library on singular; dequeue global styles extras when possible
+        if (!is_singular()) {
+            wp_dequeue_style('wp-block-library-theme');
+            wp_dequeue_style('classic-theme-styles');
+            wp_dequeue_style('global-styles');
+        }
+        // Woo cart fragments on non-cart pages (long tasks)
+        if (function_exists('is_cart') && !is_cart() && !is_checkout() && !is_account_page()) {
+            wp_dequeue_script('wc-cart-fragments');
+        }
+    }
+
+    /**
+     * Delay non-critical third-party scripts until user interaction (TBT / long tasks).
+     */
+    public function cwv_delay_script_tag(string $tag, string $handle, string $src): string
+    {
+        if (is_admin() || !$this->cwv_flag('delay_third_party', true)) {
+            return $tag;
+        }
+        if ($src === '' || str_contains($tag, 'data-bankai-delay')) {
+            return $tag;
+        }
+        $needles = [
+            'google-analytics', 'gtag', 'googletagmanager', 'gtm',
+            'facebook', 'fbevents', 'hotjar', 'clarity', 'intercom',
+            'tawk', 'crisp', 'mc.yandex', 'connect.facebook',
+            'recaptcha', 'hcaptcha', 'cloudflareinsights',
+        ];
+        $hit = false;
+        $hay = $handle . ' ' . $src;
+        foreach ($needles as $n) {
+            if (str_contains($hay, $n)) {
+                $hit = true;
+                break;
+            }
+        }
+        if (!$hit) {
+            return $tag;
+        }
+        // Convert to type=text/bankai-delay; restored on interaction
+        $tag = preg_replace('/\stype=(["\'])text\/javascript\1/i', '', $tag) ?? $tag;
+        $tag = str_replace(' src', ' type="text/bankai-delay" data-bankai-delay="1" src', $tag);
+        return $tag;
+    }
+
+    public function cwv_print_delay_js(): void
+    {
+        if (is_admin() || !$this->cwv_flag('delay_third_party', true)) {
+            return;
+        }
+        echo '<script id="bankai-delay-js">'
+            . '(function(){var d=false;function go(){if(d)return;d=true;'
+            . 'document.querySelectorAll("script[type=\\"text/bankai-delay\\"]").forEach(function(s){'
+            . 'var n=document.createElement("script");'
+            . 'if(s.src)n.src=s.src;n.async=true;'
+            . 'Array.prototype.forEach.call(s.attributes,function(a){'
+            . 'if(a.name!=="type"&&a.name!=="data-bankai-delay")n.setAttribute(a.name,a.value)});'
+            . 's.parentNode.insertBefore(n,s);s.remove();});}'
+            . '["pointerdown","keydown","scroll","touchstart"].forEach(function(e){'
+            . 'window.addEventListener(e,go,{once:true,passive:true});});'
+            . 'setTimeout(go,4500);})();</script>' . "\n";
+    }
+
+    /**
+     * Async non-critical stylesheets more aggressively (render-blocking savings).
+     */
+    public function cwv_async_noncritical_css(string $html, string $handle, string $href, string $media): string
+    {
+        if (is_admin() || !$this->cwv_flag('async_css', true)) {
+            return $html;
+        }
+        if (str_contains($html, 'data-bankai-css') || str_contains($html, 'data-bankai-font')) {
+            return $html;
+        }
+        $critical = ['theme-style', 'stylesheet', 'wp-block-library', 'global-styles', 'woocommerce-general', 'woocommerce-layout'];
+        $theme = wp_get_theme();
+        $critical[] = $theme->get_stylesheet() . '-style';
+        $critical[] = $theme->get_template() . '-style';
+        if (in_array($handle, $critical, true)) {
+            return $html;
+        }
+        // Skip already print
+        if (str_contains($html, "media='print'") || str_contains($html, 'media="print"')) {
+            return $html;
+        }
+        $async_needles = ['font-awesome', 'elementor', 'swiper', 'slick', 'owl', 'revslider', 'js_composer', 'contact-form', 'dashicons'];
+        $should = false;
+        foreach ($async_needles as $n) {
+            if (str_contains($handle, $n) || str_contains($href, $n)) {
+                $should = true;
+                break;
+            }
+        }
+        if (!$should) {
+            return $html;
+        }
+        $html = preg_replace(
+            "/media=['\"]all['\"]/",
+            "media='print' onload=\"this.media='all'\" data-bankai-css='async'",
+            $html,
+            1
+        );
+        if (is_string($html) && !str_contains($html, 'data-bankai-css')) {
+            $html = str_replace(
+                "rel='stylesheet'",
+                "rel='stylesheet' media='print' onload=\"this.media='all'\" data-bankai-css='async'",
+                $html
+            );
+            $html = str_replace(
+                'rel="stylesheet"',
+                'rel="stylesheet" media="print" onload="this.media=\'all\'" data-bankai-css="async"',
+                $html
+            );
+        }
+        return is_string($html) ? $html : '';
+    }
+
     public function register_redis_routes(): void {
         register_rest_route('bankai/v1', '/speed/redis', [
             'methods' => 'GET',

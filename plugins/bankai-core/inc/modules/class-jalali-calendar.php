@@ -85,6 +85,16 @@ class Bankai_Jalali_Calendar
 
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
         add_action('admin_footer', [$this, 'admin_footer_marker']);
+
+        // ACF date picker integration (Jalali UI, Gregorian storage)
+        // Pattern: wp_date → render_field / acf_field_date_picker
+        add_action('acf/render_field/type=date_picker', [$this, 'acf_render_date_picker'], 20, 1);
+        add_action('acf/render_field/type=date_time_picker', [$this, 'acf_render_date_picker'], 20, 1);
+        add_filter('acf/format_value/type=date_picker', [$this, 'acf_format_date_value'], 20, 3);
+        add_filter('acf/format_value/type=date_time_picker', [$this, 'acf_format_date_value'], 20, 3);
+        // Pattern without class: wp_date, acf_format_date
+        add_filter('acf/format_date', [$this, 'acf_format_date'], 20, 2);
+        add_action('acf/input/admin_enqueue_scripts', [$this, 'acf_enqueue_assets']);
     }
 
     /**
@@ -102,6 +112,109 @@ class Bankai_Jalali_Calendar
             'datepicker'     => true,
             'admin_column'   => true,
         ], $s);
+    }
+
+
+    /* ---------- ACF date picker (Jalali) ---------- */
+
+    public function acf_enqueue_assets(): void
+    {
+        $this->enqueue_admin_assets('acf');
+    }
+
+    /**
+     * @param array<string,mixed> $field
+     */
+    public function acf_render_date_picker($field): void
+    {
+        if (empty($field) || !is_array($field)) {
+            return;
+        }
+        $settings = $this->settings();
+        if (empty($settings['datepicker'])) {
+            return;
+        }
+        $key = isset($field['key']) ? (string) $field['key'] : '';
+        $name = isset($field['name']) ? (string) $field['name'] : '';
+        $type = isset($field['type']) ? (string) $field['type'] : 'date_picker';
+        $val = isset($field['value']) ? (string) $field['value'] : '';
+        $jalali_hint = '';
+        if ($val !== '') {
+            $ts = $this->acf_value_to_timestamp($val);
+            if ($ts) {
+                $jalali_hint = $this->format_jalali($ts, 'Y/m/d');
+            }
+        }
+        echo '<div class="bk-acf-jalali-wrap" data-bk-acf-date="1" data-field-key="' . esc_attr($key) . '" data-field-name="' . esc_attr($name) . '" data-field-type="' . esc_attr($type) . '">';
+        if ($jalali_hint !== '') {
+            echo '<p class="description bk-acf-jalali-hint" style="margin:6px 0 0;color:#6d28d9;font-weight:700;">📅 ' . esc_html($jalali_hint) . '</p>';
+        }
+        echo '</div>';
+    }
+
+    /**
+     * @param mixed $value
+     * @param int|string $post_id
+     * @param array<string,mixed> $field
+     * @return mixed
+     */
+    public function acf_format_date_value($value, $post_id, $field)
+    {
+        if ($value === null || $value === '' || $value === false) {
+            return $value;
+        }
+        $ts = $this->acf_value_to_timestamp((string) $value);
+        if (!$ts) {
+            return $value;
+        }
+        $fmt = !empty($field['display_format']) ? (string) $field['display_format'] : (string) get_option('date_format', 'Y/m/d');
+        return $this->format_jalali($ts, $fmt);
+    }
+
+    /**
+     * @param string $date
+     * @param string $format
+     */
+    public function acf_format_date($date, $format = '')
+    {
+        if ($this->converting || $date === '' || $date === null) {
+            return $date;
+        }
+        $ts = $this->acf_value_to_timestamp((string) $date);
+        if (!$ts) {
+            $try = strtotime((string) $date);
+            if (!$try) {
+                return $date;
+            }
+            $ts = $try;
+        }
+        $fmt = $format !== '' ? (string) $format : (string) get_option('date_format', 'Y/m/d');
+        return $this->format_jalali($ts, $fmt);
+    }
+
+    private function acf_value_to_timestamp(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return 0;
+        }
+        if (preg_match('/^\d{8}$/', $value)) {
+            $y = (int) substr($value, 0, 4);
+            $m = (int) substr($value, 4, 2);
+            $d = (int) substr($value, 6, 2);
+            $ts = gmmktime(12, 0, 0, $m, $d, $y);
+            return $ts ? (int) $ts : 0;
+        }
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $value, $m)) {
+            $h = 12; $i = 0; $s = 0;
+            if (preg_match('/(\d{2}):(\d{2})(?::(\d{2}))?/', $value, $tm)) {
+                $h = (int) $tm[1]; $i = (int) $tm[2]; $s = isset($tm[3]) ? (int) $tm[3] : 0;
+            }
+            $ts = gmmktime($h, $i, $s, (int) $m[2], (int) $m[3], (int) $m[1]);
+            return $ts ? (int) $ts : 0;
+        }
+        $ts = strtotime($value);
+        return $ts ? (int) $ts : 0;
     }
 
     /* ---------- Filters ---------- */
@@ -443,7 +556,81 @@ class Bankai_Jalali_Calendar
         if ($is_post_screen) {
             wp_add_inline_script('bankai-jalali-datepicker', $this->post_editor_datepicker_js(), 'after');
         }
+        // Always load ACF bridge when ACF screens / global admin (lightweight)
+        wp_add_inline_script('bankai-jalali-datepicker', $this->acf_datepicker_bridge_js(), 'after');
     }
+
+
+    private function acf_datepicker_bridge_js(): string
+    {
+        return <<<'JS'
+(function (w, d) {
+  if (!w.BankaiJalaliDatepicker) return;
+  var g2j = w.BankaiJalaliDatepicker.g2j;
+  var j2g = w.BankaiJalaliDatepicker.j2g;
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function ymdFromAcf(val) {
+    val = String(val || '').trim();
+    if (/^\d{8}$/.test(val)) return { y: +val.slice(0,4), m: +val.slice(4,2), d: +val.slice(6,2) };
+    var m = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return { y: +m[1], m: +m[2], d: +m[3] };
+    return null;
+  }
+  function enhanceAcfField(wrap) {
+    if (!wrap || wrap.getAttribute('data-bk-enhanced')) return;
+    wrap.setAttribute('data-bk-enhanced', '1');
+    var row = wrap.closest('.acf-field') || wrap.parentElement;
+    if (!row) return;
+    var input = row.querySelector('input.hasDatepicker, input.acf-date-picker, input[type="text"]');
+    if (!input) return;
+    // Hidden display field
+    var view = d.createElement('input');
+    view.type = 'text';
+    view.className = 'bk-jdp-input bk-acf-jalali-view';
+    view.setAttribute('readonly', 'readonly');
+    view.placeholder = 'انتخاب تاریخ شمسی…';
+    view.style.marginTop = '6px';
+    wrap.appendChild(view);
+    function syncView() {
+      var g = ymdFromAcf(input.value);
+      if (!g) { view.value = ''; return; }
+      try {
+        var j = g2j(g.y, g.m, g.d);
+        view.value = j[0] + '/' + pad(j[1]) + '/' + pad(j[2]);
+        var hint = wrap.querySelector('.bk-acf-jalali-hint');
+        if (hint) hint.textContent = '📅 ' + view.value;
+      } catch (e) {}
+    }
+    syncView();
+    input.addEventListener('change', syncView);
+    view.addEventListener('click', function () {
+      if (w.BankaiJalaliDatepicker && w.BankaiJalaliDatepicker.openForInput) {
+        w.BankaiJalaliDatepicker.openForInput(view, function (jy, jm, jd) {
+          var g = j2g(jy, jm, jd);
+          // ACF store Ymd
+          input.value = String(g[0]) + pad(g[1]) + pad(g[2]);
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          view.value = jy + '/' + pad(jm) + '/' + pad(jd);
+        });
+      }
+    });
+  }
+  function scan() {
+    d.querySelectorAll('[data-bk-acf-date="1"]').forEach(enhanceAcfField);
+  }
+  if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', scan);
+  else scan();
+  if (w.acf && w.acf.addAction) {
+    w.acf.addAction('ready_field/type=date_picker', function () { setTimeout(scan, 50); });
+    w.acf.addAction('ready_field/type=date_time_picker', function () { setTimeout(scan, 50); });
+    w.acf.addAction('append', function () { setTimeout(scan, 80); });
+  }
+  w.addEventListener('load', function () { setTimeout(scan, 200); });
+})(window, document);
+JS;
+    }
+
+
 
     public function admin_footer_marker(): void
     {
@@ -837,10 +1024,33 @@ JS;
     var list = scope.querySelectorAll(SELECTOR);
     for (var i = 0; i < list.length; i++) BankaiJdp(list[i]);
   }
+  function openForInput(input, onPick) {
+    if (!input) return;
+    var wrap = input.closest ? input.closest('.bk-jdp') : null;
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'bk-jdp';
+      if (input.parentNode) input.parentNode.insertBefore(wrap, input);
+      wrap.appendChild(input);
+      if (input.className.indexOf('bk-jdp-input') === -1) input.className += ' bk-jdp-input';
+      BankaiJdp(wrap);
+    }
+    var handler = function () {
+      var val = String(input.value || '');
+      var m = val.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+      if (m && typeof onPick === 'function') {
+        onPick(+m[1], +m[2], +m[3]);
+      }
+    };
+    input.addEventListener('change', handler);
+    input.focus();
+    input.click();
+  }
   w.BankaiJalaliDatepicker = {
     init: boot,
     g2j: g2j,
     j2g: j2g,
+    openForInput: openForInput,
     closeActive: function () { if (ACTIVE) ACTIVE.close(); }
   };
   if (document.readyState === 'loading') {
