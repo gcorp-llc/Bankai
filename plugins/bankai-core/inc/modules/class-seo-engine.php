@@ -24,6 +24,142 @@ if (is_readable($__bankai_seo_rank)) {
     require_once $__bankai_seo_rank;
 }
 
+/**
+ * Bankai SEO Post Context — Single source of truth for post context in analysis & AI tasks.
+ */
+class Bankai_SEO_Post_Context
+{
+    public int $post_id = 0;
+    public string $post_type = 'post';
+    public string $title = '';
+    public string $content = '';
+    public string $clean_text = '';
+    public string $excerpt = '';
+    public string $slug = '';
+    public string $permalink = '';
+    public string $seo_title = '';
+    public string $description = '';
+    public string $focus_keyword = '';
+    public array $secondary_keywords = [];
+    public string $canonical = '';
+    public string $robots = '';
+    public array $categories = [];
+    public array $tags = [];
+    public array $images = [];
+    public int $word_count = 0;
+    public string $fingerprint = '';
+
+    public static function from_post(int $post_id, array $overrides = []): ?self
+    {
+        $post = get_post($post_id);
+        if (!$post) {
+            return null;
+        }
+
+        $ctx = new self();
+        $ctx->post_id       = $post_id;
+        $ctx->post_type     = (string) $post->post_type;
+        $ctx->title         = (string) ($overrides['title'] ?? (function_exists('get_the_title') ? get_the_title($post_id) : ($post->post_title ?? '')));
+        $ctx->content       = (string) ($overrides['content'] ?? ($post->post_content ?? ''));
+        $ctx->clean_text    = function_exists('wp_strip_all_tags') ? wp_strip_all_tags($ctx->content) : strip_tags($ctx->content);
+        $ctx->excerpt       = (string) ($overrides['excerpt'] ?? ($post->post_excerpt ?? ''));
+        $ctx->slug          = (string) ($post->post_name ?? '');
+        $ctx->permalink     = (string) (function_exists('get_permalink') ? get_permalink($post_id) : '');
+
+        $get_meta = function_exists('get_post_meta') ? 'get_post_meta' : static fn() => '';
+
+        $ctx->seo_title     = (string) ($overrides['seo_title'] ?? $get_meta($post_id, Bankai_SEO_Engine::META_TITLE, true));
+        $ctx->description   = (string) ($overrides['description'] ?? $get_meta($post_id, Bankai_SEO_Engine::META_DESCRIPTION, true));
+        $ctx->focus_keyword = trim((string) ($overrides['focus_keyword'] ?? $get_meta($post_id, Bankai_SEO_Engine::META_KEYWORD, true)));
+
+        $raw_kw = $get_meta($post_id, Bankai_SEO_Engine::META_KEYWORDS, true);
+        if (is_string($raw_kw) && $raw_kw !== '') {
+            $decoded = json_decode($raw_kw, true);
+            if (is_array($decoded)) {
+                $ctx->secondary_keywords = array_values(array_filter(array_map('trim', $decoded)));
+            }
+        } elseif (is_array($raw_kw)) {
+            $ctx->secondary_keywords = array_values(array_filter(array_map('trim', $raw_kw)));
+        }
+
+        $ctx->canonical = (string) ($overrides['canonical'] ?? $get_meta($post_id, Bankai_SEO_Engine::META_CANONICAL, true));
+        $ctx->robots    = (string) ($overrides['robots'] ?? $get_meta($post_id, Bankai_SEO_Engine::META_ROBOTS, true));
+
+        // Categories & Tags
+        if (function_exists('get_the_category')) {
+            $cats = get_the_category($post_id);
+            if (is_array($cats)) {
+                foreach ($cats as $c) {
+                    $ctx->categories[] = [
+                        'id'   => (int) ($c->term_id ?? 0),
+                        'name' => (string) ($c->name ?? ''),
+                        'slug' => (string) ($c->slug ?? ''),
+                    ];
+                }
+            }
+        }
+
+        if (function_exists('get_the_tags')) {
+            $tags = get_the_tags($post_id);
+            if (is_array($tags)) {
+                foreach ($tags as $t) {
+                    $ctx->tags[] = [
+                        'id'   => (int) ($t->term_id ?? 0),
+                        'name' => (string) ($t->name ?? ''),
+                        'slug' => (string) ($t->slug ?? ''),
+                    ];
+                }
+            }
+        }
+
+        if (class_exists('Bankai_SEO_Text_Normalizer')) {
+            $ctx->word_count = Bankai_SEO_Text_Normalizer::word_count($ctx->clean_text);
+        } else {
+            $ctx->word_count = count(preg_split('/\s+/u', trim($ctx->clean_text), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        }
+
+        $raw_hash = implode('|', [
+            (string) $ctx->post_id,
+            $ctx->title,
+            $ctx->content,
+            $ctx->seo_title,
+            $ctx->description,
+            $ctx->focus_keyword,
+            implode(',', $ctx->secondary_keywords),
+            $ctx->canonical,
+            $ctx->robots,
+            'v2.0'
+        ]);
+        $ctx->fingerprint = hash('sha256', $raw_hash);
+
+        return $ctx;
+    }
+
+    public function to_array(): array
+    {
+        return [
+            'post_id'            => $this->post_id,
+            'post_type'          => $this->post_type,
+            'title'              => $this->title,
+            'content'            => $this->content,
+            'clean_text'         => $this->clean_text,
+            'excerpt'            => $this->excerpt,
+            'slug'               => $this->slug,
+            'permalink'          => $this->permalink,
+            'seo_title'          => $this->seo_title,
+            'description'        => $this->description,
+            'focus_keyword'      => $this->focus_keyword,
+            'secondary_keywords' => $this->secondary_keywords,
+            'canonical'          => $this->canonical,
+            'robots'             => $this->robots,
+            'categories'         => $this->categories,
+            'tags'               => $this->tags,
+            'word_count'         => $this->word_count,
+            'fingerprint'        => $this->fingerprint,
+        ];
+    }
+}
+
 
 final class Bankai_SEO_Engine
 {
@@ -266,6 +402,25 @@ final class Bankai_SEO_Engine
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => [$this, 'api_suggest_internal_links'],
             'permission_callback' => [$this, 'permission_suggest_links'],
+        ]);
+
+        register_rest_route($namespace, '/seo/taxonomies/(?P<id>\d+)', [
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [$this, 'api_suggest_taxonomies'],
+                'permission_callback' => [$this, 'permission_check'],
+            ],
+            [
+                'methods'             => WP_REST_Server::EDITABLE,
+                'callback'            => [$this, 'api_apply_taxonomies'],
+                'permission_callback' => [$this, 'permission_check'],
+            ],
+        ]);
+
+        register_rest_route($namespace, '/seo/generate-image/(?P<id>\d+)', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [$this, 'api_generate_post_image'],
+            'permission_callback' => [$this, 'permission_check'],
         ]);
     }
 
@@ -793,19 +948,31 @@ final class Bankai_SEO_Engine
 
     public function analyze(int $post_id, array $overrides = []): array
     {
-        $post = get_post($post_id);
-        if (!$post) {
+        $post_context = Bankai_SEO_Post_Context::from_post($post_id, $overrides);
+        if (!$post_context) {
             return [];
         }
 
-        $raw_content = (string) ($overrides['content'] ?? $post->post_content);
-        $clean_text  = wp_strip_all_tags($raw_content);
-        $title       = (string) get_the_title($post_id);
-        $seo_title   = (string) ($overrides['seo_title'] ?? get_post_meta($post_id, self::META_TITLE, true));
-        $description = (string) ($overrides['description'] ?? get_post_meta($post_id, self::META_DESCRIPTION, true));
-        $keyword     = trim((string) ($overrides['focus_keyword'] ?? get_post_meta($post_id, self::META_KEYWORD, true)));
-        $slug        = (string) $post->post_name;
-        $permalink   = (string) get_permalink($post_id);
+        // Check transient cache using fingerprint if no manual override is forced
+        $force_fresh = !empty($overrides['force_fresh']);
+        $cache_key   = 'bankai_seo_analysis_' . $post_id . '_' . substr($post_context->fingerprint, 0, 16);
+
+        if (!$force_fresh && function_exists('get_transient')) {
+            $cached = get_transient($cache_key);
+            if (is_array($cached) && !empty($cached['score'])) {
+                $cached['cached'] = true;
+                return $cached;
+            }
+        }
+
+        $raw_content = $post_context->content;
+        $clean_text  = $post_context->clean_text;
+        $title       = $post_context->title;
+        $seo_title   = $post_context->seo_title;
+        $description = $post_context->description;
+        $keyword     = $post_context->focus_keyword;
+        $slug        = $post_context->slug;
+        $permalink   = $post_context->permalink;
 
         $N = class_exists('Bankai_SEO_Text_Normalizer') ? Bankai_SEO_Text_Normalizer::class : null;
 
@@ -1427,10 +1594,11 @@ final class Bankai_SEO_Engine
         // Unique title/slug
         $dup_msg = 'عنوان و آدرس یکتا هستند.';
         $dup_ok = true;
+        $post_type = $post_context->post_type;
         if ($slug !== '') {
             $by_slug = get_posts([
                 'name'           => $slug,
-                'post_type'      => $post->post_type,
+                'post_type'      => $post_type,
                 'post_status'    => ['publish', 'draft', 'pending', 'future'],
                 'exclude'        => [$post_id],
                 'posts_per_page' => 1,
@@ -1444,7 +1612,7 @@ final class Bankai_SEO_Engine
         if ($dup_ok && $title !== '') {
             $title_hits = get_posts([
                 's'              => $title,
-                'post_type'      => $post->post_type,
+                'post_type'      => $post_type,
                 'post_status'    => 'publish',
                 'exclude'        => [$post_id],
                 'posts_per_page' => 8,
@@ -1707,7 +1875,7 @@ final class Bankai_SEO_Engine
         $aeo_sub = $aeo_total > 0 ? (int) round(($aeo_pass / $aeo_total) * 100) : max(0, $score - 5);
         $geo_sub = $geo_total > 0 ? (int) round(($geo_pass / $geo_total) * 100) : (int) round($score * 0.9);
 
-        return [
+        $result = [
             'score'           => $score,
             'seo_score'       => $seo_score,
             'aeo_score'       => $aeo_score,
@@ -1722,6 +1890,8 @@ final class Bankai_SEO_Engine
             'checks'          => $checks,
             'groups'          => $groups,
             'scoring_version' => 'f1',
+            'fingerprint'     => $post_context->fingerprint,
+            'cached'          => false,
             'stats'           => [
                 'words'       => $word_count,
                 'description' => $desc_len,
@@ -1733,6 +1903,11 @@ final class Bankai_SEO_Engine
                 'density'     => $density,
             ],
         ];
+
+        if (function_exists('set_transient')) {
+            set_transient($cache_key, $result, 12 * HOUR_IN_SECONDS);
+        }
+        return $result;
     }
 
     /**
@@ -2384,6 +2559,243 @@ final class Bankai_SEO_Engine
             }
         }
         return $this->merge_unique_keywords($out);
+    }
+
+    /**
+     * REST API handler to suggest relevant categories and tags for a post.
+     */
+    public function api_suggest_taxonomies(WP_REST_Request $request): WP_REST_Response
+    {
+        $post_id = absint($request['id'] ?? 0);
+        $post_context = Bankai_SEO_Post_Context::from_post($post_id);
+        if (!$post_context) {
+            return new WP_REST_Response(['success' => false, 'message' => 'Post not found'], 404);
+        }
+
+        $normalizer = class_exists('Bankai_SEO_Text_Normalizer') ? Bankai_SEO_Text_Normalizer::class : null;
+        $title = $post_context->title;
+        $content = $post_context->clean_text;
+        $focus = $post_context->focus_keyword;
+
+        $suggested_categories = [];
+        if (function_exists('get_categories')) {
+            $all_cats = get_categories(['hide_empty' => false]);
+            foreach ($all_cats as $cat) {
+                $c_name = (string) $cat->name;
+                $c_slug = (string) $cat->slug;
+                $match_score = 0;
+
+                if ($focus !== '' && $normalizer) {
+                    if (Bankai_SEO_Text_Normalizer::contains($c_name, $focus) || Bankai_SEO_Text_Normalizer::contains($focus, $c_name)) {
+                        $match_score += 50;
+                    }
+                }
+                if ($title !== '' && $normalizer) {
+                    if (Bankai_SEO_Text_Normalizer::contains($title, $c_name)) {
+                        $match_score += 35;
+                    }
+                }
+                if ($content !== '' && $normalizer) {
+                    $occ = Bankai_SEO_Text_Normalizer::count_occurrences($content, $c_name);
+                    if ($occ > 0) {
+                        $match_score += min(30, $occ * 10);
+                    }
+                }
+
+                if ($match_score > 0) {
+                    $suggested_categories[] = [
+                        'id'          => (int) $cat->term_id,
+                        'name'        => $c_name,
+                        'slug'        => $c_slug,
+                        'confidence'  => min(100, $match_score),
+                        'is_assigned' => in_array((int) $cat->term_id, array_column($post_context->categories, 'id'), true),
+                    ];
+                }
+            }
+            usort($suggested_categories, static fn($a, $b) => $b['confidence'] <=> $a['confidence']);
+        }
+
+        $suggested_tags = [];
+        if (function_exists('get_tags')) {
+            $all_tags = get_tags(['hide_empty' => false, 'number' => 100]);
+            foreach ($all_tags as $tag) {
+                $t_name = (string) $tag->name;
+                $t_slug = (string) $tag->slug;
+                $match_score = 0;
+
+                if ($focus !== '' && $normalizer && Bankai_SEO_Text_Normalizer::contains($focus, $t_name)) {
+                    $match_score += 40;
+                }
+                if ($title !== '' && $normalizer && Bankai_SEO_Text_Normalizer::contains($title, $t_name)) {
+                    $match_score += 30;
+                }
+                if ($content !== '' && $normalizer) {
+                    $occ = Bankai_SEO_Text_Normalizer::count_occurrences($content, $t_name);
+                    if ($occ > 0) {
+                        $match_score += min(30, $occ * 10);
+                    }
+                }
+
+                if ($match_score > 0) {
+                    $suggested_tags[] = [
+                        'id'          => (int) $tag->term_id,
+                        'name'        => $t_name,
+                        'slug'        => $t_slug,
+                        'confidence'  => min(100, $match_score),
+                        'is_assigned' => in_array((int) $tag->term_id, array_column($post_context->tags, 'id'), true),
+                    ];
+                }
+            }
+            usort($suggested_tags, static fn($a, $b) => $b['confidence'] <=> $a['confidence']);
+        }
+
+        return new WP_REST_Response([
+            'success'          => true,
+            'post_id'          => $post_id,
+            'assigned_cats'    => $post_context->categories,
+            'assigned_tags'    => $post_context->tags,
+            'suggested_cats'   => array_slice($suggested_categories, 0, 5),
+            'suggested_tags'   => array_slice($suggested_tags, 0, 10),
+        ], 200);
+    }
+
+    /**
+     * REST API handler to apply categories and tags safely.
+     */
+    public function api_apply_taxonomies(WP_REST_Request $request): WP_REST_Response
+    {
+        $post_id = absint($request['id'] ?? 0);
+        if ($post_id <= 0 || !current_user_can('edit_post', $post_id)) {
+            return new WP_REST_Response(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $params = $request->get_json_params() ?: $request->get_params();
+        $cat_ids = isset($params['category_ids']) && is_array($params['category_ids'])
+            ? array_values(array_filter(array_map('absint', $params['category_ids'])))
+            : null;
+
+        $tag_names = isset($params['tags']) && is_array($params['tags'])
+            ? array_values(array_filter(array_map('sanitize_text_field', $params['tags'])))
+            : null;
+
+        $updated = [];
+
+        if (is_array($cat_ids) && function_exists('wp_set_post_categories')) {
+            wp_set_post_categories($post_id, $cat_ids, false);
+            $updated['categories'] = $cat_ids;
+        }
+
+        if (is_array($tag_names) && function_exists('wp_set_post_tags')) {
+            wp_set_post_tags($post_id, implode(',', $tag_names), false);
+            $updated['tags'] = $tag_names;
+        }
+
+        // Fresh post context verification
+        $fresh_ctx = Bankai_SEO_Post_Context::from_post($post_id);
+
+        return new WP_REST_Response([
+            'success'       => true,
+            'post_id'       => $post_id,
+            'updated'       => $updated,
+            'assigned_cats' => $fresh_ctx ? $fresh_ctx->categories : [],
+            'assigned_tags' => $fresh_ctx ? $fresh_ctx->tags : [],
+        ], 200);
+    }
+
+    /**
+     * REST API handler to generate post image with watermarking and alt text.
+     */
+    public function api_generate_post_image(WP_REST_Request $request): WP_REST_Response
+    {
+        $post_id = absint($request['id'] ?? 0);
+        $post_context = Bankai_SEO_Post_Context::from_post($post_id);
+        if (!$post_context) {
+            return new WP_REST_Response(['success' => false, 'message' => 'Post not found'], 404);
+        }
+
+        $params = $request->get_json_params() ?: $request->get_params();
+        $custom_prompt = isset($params['prompt']) ? sanitize_text_field((string) $params['prompt']) : '';
+        $set_featured  = !empty($params['set_featured']);
+
+        if (!class_exists('Bankai_AI_Studio')) {
+            return new WP_REST_Response(['success' => false, 'message' => 'AI Studio unavailable'], 503);
+        }
+
+        $studio = Bankai_AI_Studio::instance();
+        $provider = method_exists($studio, 'get_default_image_provider') ? $studio->get_default_image_provider() : '';
+        if (empty($provider)) {
+            return new WP_REST_Response(['success' => false, 'message' => 'No active image provider configured'], 400);
+        }
+
+        $prompt = $custom_prompt !== ''
+            ? $custom_prompt
+            : sprintf('High quality professional header illustration for article titled "%s", topic: %s, minimalist editorial style', $post_context->title, $post_context->focus_keyword ?: $post_context->title);
+
+        try {
+            $gen = method_exists($studio, 'generate_image_bytes')
+                ? $studio->generate_image_bytes($provider, $prompt)
+                : null;
+
+            if (!$gen || empty($gen['bytes'])) {
+                return new WP_REST_Response(['success' => false, 'message' => $gen['error'] ?? 'Image generation failed'], 500);
+            }
+
+            // Save temporary file
+            $tmp_dir = wp_upload_dir()['basedir'] . '/bankai-tmp';
+            if (!file_exists($tmp_dir)) {
+                wp_mkdir_p($tmp_dir);
+            }
+            $filename = 'ai-gen-' . $post_id . '-' . time() . '.png';
+            $file_path = $tmp_dir . '/' . $filename;
+            file_put_contents($file_path, $gen['bytes']);
+
+            // Apply watermark if active
+            if (class_exists('Bankai_Media_Watermark') && method_exists('Bankai_Media_Watermark', 'instance')) {
+                $wm = Bankai_Media_Watermark::instance();
+                if (method_exists($wm, 'apply_watermark_to_file')) {
+                    $wm->apply_watermark_to_file($file_path);
+                }
+            }
+
+            // Handle WP media upload
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+
+            $file_array = [
+                'name'     => $filename,
+                'tmp_name' => $file_path,
+            ];
+
+            $attachment_id = media_handle_sideload($file_array, $post_id, $post_context->title);
+            if (is_wp_error($attachment_id)) {
+                @unlink($file_path);
+                return new WP_REST_Response(['success' => false, 'message' => $attachment_id->get_error_message()], 500);
+            }
+
+            // Auto-generate Alt Text
+            $alt_text = !empty($post_context->focus_keyword)
+                ? sprintf('%s - %s', $post_context->title, $post_context->focus_keyword)
+                : $post_context->title;
+            update_post_meta($attachment_id, '_wp_attachment_image_alt', sanitize_text_field($alt_text));
+
+            if ($set_featured && function_exists('set_post_thumbnail')) {
+                set_post_thumbnail($post_id, $attachment_id);
+            }
+
+            $attachment_url = wp_get_attachment_url($attachment_id);
+
+            return new WP_REST_Response([
+                'success'       => true,
+                'attachment_id' => $attachment_id,
+                'url'           => $attachment_url,
+                'alt'           => $alt_text,
+                'set_featured'  => $set_featured,
+            ], 200);
+
+        } catch (Throwable $e) {
+            return new WP_REST_Response(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     public function api_suggest_internal_links(WP_REST_Request $request): WP_REST_Response
