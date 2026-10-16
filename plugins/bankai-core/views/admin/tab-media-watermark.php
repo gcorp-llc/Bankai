@@ -236,7 +236,37 @@ $positions = [
                             <input type="text" x-model="watermarkStudio.text" maxlength="80" placeholder="© BANKAI MEDIA">
                         </label>
                         <div class="bk-wm-grid-2">
-                            
+                            <label class="bk-wm-field">
+                                <span>حالت اندازه‌گیری فونت</span>
+                                <select x-model="watermarkStudio.text_size_type">
+                                    <option value="scale">مقیاس‌پذیر بر اساس تصویر (پیش‌فرض)</option>
+                                    <option value="fixed">اندازه ثابت پیکسل</option>
+                                </select>
+                            </label>
+                            <label class="bk-wm-field" x-show="watermarkStudio.text_size_type === 'scale'">
+                                <span>درصد از عرض تصویر <em x-text="(watermarkStudio.text_scale_percent||3.5)+'%'"></em></span>
+                                <input type="range" min="1.0" max="15.0" step="0.5" x-model.number="watermarkStudio.text_scale_percent">
+                            </label>
+                            <label class="bk-wm-field" x-show="watermarkStudio.text_size_type === 'fixed'">
+                                <span>سایز ثابت <em x-text="(watermarkStudio.text_size||18)+'px'"></em></span>
+                                <input type="range" min="10" max="100" x-model.number="watermarkStudio.text_size">
+                            </label>
+                            <label class="bk-wm-field">
+                                <span>فاصله از لبه (درصد عرض) <em x-text="(watermarkStudio.margin_percent||2.0)+'%'"></em></span>
+                                <input type="range" min="0.0" max="10.0" step="0.5" x-model.number="watermarkStudio.margin_percent">
+                            </label>
+                        </div>
+                        <div class="bk-wm-grid-2" x-show="watermarkStudio.text_size_type === 'scale'">
+                            <label class="bk-wm-field">
+                                <span>حداقل سایز فونت (px)</span>
+                                <input type="number" min="8" max="50" x-model.number="watermarkStudio.min_font_size">
+                            </label>
+                            <label class="bk-wm-field">
+                                <span>حداکثر سایز فونت (px)</span>
+                                <input type="number" min="20" max="180" x-model.number="watermarkStudio.max_font_size">
+                            </label>
+                        </div>
+                        <div class="bk-wm-grid-2">
                             <label class="bk-wm-field">
                                 <span>پوشش متن روی تصویر</span>
                                 <select x-model="watermarkStudio.text_cover">
@@ -257,11 +287,6 @@ $positions = [
                             <label class="bk-wm-field" x-show="watermarkStudio.box_style !== 'none'">
                                 <span>رنگ پس‌زمینه</span>
                                 <input type="color" x-model="watermarkStudio.box_color">
-                            </label>
-                            
-                            <label class="bk-wm-field">
-                                <span>سایز <em x-text="(watermarkStudio.text_size||18)+'px'"></em></span>
-                                <input type="range" min="12" max="64" x-model.number="watermarkStudio.text_size">
                             </label>
                         </div>
                         <label class="bk-wm-check">
@@ -418,43 +443,6 @@ $positions = [
         </div>
     </div>
 
-    <!-- Bulk watermark progress modal -->
-    <div x-show="wmBulkModal.show" x-cloak class="bankai-modal-shell bk-wm-bulk-modal" style="z-index:100080">
-        <div class="bankai-modal-panel" @click.outside="!wmBulkModal.running && (wmBulkModal.show=false)">
-            <div class="bankai-modal-head">
-                <h3 class="bankai-modal-title" x-text="wmBulkModal.title || 'اعمال گروهی واترمارک'"></h3>
-                <button type="button" class="bankai-modal-close" @click="wmBulkModal.show=false" :disabled="wmBulkModal.running">&times;</button>
-            </div>
-            <div class="bankai-modal-body">
-                <div class="bk-compress-progress" x-show="wmBulkModal.running || wmBulkModal.progress > 0">
-                    <div class="bk-compress-bar"><i :style="'width:'+(wmBulkModal.progress||0)+'%'"></i></div>
-                    <span x-text="wmBulkModal.progressText || ''"></span>
-                </div>
-                <div class="bk-wm-bulk-list">
-                    <template x-for="row in (wmBulkModal.items || [])" :key="row.id">
-                        <div class="bk-wm-bulk-row" :class="{ 'is-done': row.status==='done', 'is-work': row.status==='work', 'is-fail': row.status==='fail' }">
-                            <img :src="row.thumb || row.url" alt="">
-                            <div style="flex:1;min-width:0">
-                                <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="row.title"></div>
-                                <div style="color:#94a3b8;font-size:11px" x-text="row.statusText || row.status"></div>
-                            </div>
-                            <span x-show="row.status==='work'" class="bk-btn-spin"></span>
-                            <span x-show="row.status==='done'" style="color:#16a34a">✓</span>
-                            <span x-show="row.status==='fail'" style="color:#dc2626">✗</span>
-                        </div>
-                    </template>
-                </div>
-            </div>
-            <div class="bankai-modal-foot" style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
-                <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-inline-end:auto">
-                    <input type="checkbox" x-model="wmBulkModal.selectAll" @change="toggleWmBulkSelectAll()">
-                    انتخاب همه
-                </label>
-                <button type="button" class="bk-wm-btn-primary" :disabled="wmBulkModal.running" @click="startWmBulkSelected()">شروع واترمارک</button>
-                <button type="button" class="bankai-btn-ghost" @click="wmBulkModal.show=false" :disabled="wmBulkModal.running">بستن</button>
-            </div>
-        </div>
-    </div>
 
     
     <div x-show="mediaSubTab === 'compress'" x-cloak class="bk-compress-shell">

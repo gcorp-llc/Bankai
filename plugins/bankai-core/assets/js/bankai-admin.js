@@ -185,13 +185,18 @@
 
         var wmSaved = st.watermarkSettings || {};
         var watermarkStudio = {
-                custom_fonts: (window.bankaiWmCustomFonts || []),
-                custom_font_path: '',
+            custom_fonts: (window.bankaiWmCustomFonts || []),
+            custom_font_path: '',
             enabled: wmSaved.enabled !== false,
             type: wmSaved.type || 'text',
             position: wmSaved.position || 'bottom-right',
             opacity: wmSaved.opacity || 75,
             text: wmSaved.text || '© BANKAI MEDIA',
+            text_size_type: wmSaved.text_size_type || 'scale',
+            text_scale_percent: wmSaved.text_scale_percent || 3.5,
+            min_font_size: wmSaved.min_font_size || 12,
+            max_font_size: wmSaved.max_font_size || 72,
+            margin_percent: wmSaved.margin_percent != null ? wmSaved.margin_percent : 2.0,
             text_size: wmSaved.text_size || 18,
             text_color: wmSaved.text_color || '#FFFFFF',
             text_font: wmSaved.text_font || 'default',
@@ -210,7 +215,7 @@
             image_url: wmSaved.image_url || '',
             image_scale: wmSaved.image_scale || 20,
             quality: wmSaved.quality || 82,
-            min_dimension: wmSaved.min_dimension || 300,
+            min_dimension: wmSaved.min_dimension || 0,
             exclude_patterns: wmSaved.exclude_patterns || "logo\nbanner\nicon\nsprite\nfavicon",
             apply_upload: wmSaved.apply_upload !== false,
             apply_content: !!wmSaved.apply_content,
@@ -2193,6 +2198,11 @@ initSeoImport: function () {
                     position: w.position || 'bottom-right',
                     opacity: w.opacity != null ? w.opacity : 75,
                     text: w.text || '',
+                    text_size_type: w.text_size_type || 'scale',
+                    text_scale_percent: w.text_scale_percent || 3.5,
+                    min_font_size: w.min_font_size || 12,
+                    max_font_size: w.max_font_size || 72,
+                    margin_percent: w.margin_percent != null ? w.margin_percent : 2.0,
                     text_size: w.text_size || 18,
                     text_color: w.text_color || '#FFFFFF',
                     text_font: w.text_font || 'default',
@@ -2519,9 +2529,25 @@ initSeoImport: function () {
                     var r = parseInt(hex.slice(1,3),16)||0, g=parseInt(hex.slice(3,5),16)||0, b=parseInt(hex.slice(5,7),16)||0;
                     bg = 'rgba('+r+','+g+','+b+','+boxOp+')';
                 }
+
+                // Calculate font size according to text_size_type (scale vs fixed)
+                var fontSizePx = 18;
+                if ((w.text_size_type || 'scale') === 'scale') {
+                    var pct = parseFloat(w.text_scale_percent || 3.5);
+                    // Mockup canvas image simulated width = 1200px
+                    var calc = Math.round(1200 * (pct / 100));
+                    var minF = parseInt(w.min_font_size || 12, 10);
+                    var maxF = parseInt(w.max_font_size || 72, 10);
+                    fontSizePx = Math.max(minF, Math.min(maxF, calc));
+                    // Scale down for UI mockup container (~380px actual width)
+                    fontSizePx = Math.max(10, Math.round(fontSizePx * 0.45));
+                } else {
+                    fontSizePx = Math.max(10, Math.min(100, parseInt(w.text_size || 18, 10)));
+                }
+
                 return {
                     fontFamily: fam,
-                    fontSize: (w.text_size || 18) + 'px',
+                    fontSize: fontSizePx + 'px',
                     color: w.text_color || '#fff',
                     background: bg,
                     padding: w.box_enabled ? ((w.box_padding || 8) + 'px') : '0',
