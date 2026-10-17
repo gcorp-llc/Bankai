@@ -102,6 +102,7 @@ class Bankai_Theme_Admin {
             ['id' => 'agency', 'title' => 'آژانس دیجیتال', 'type' => 'multi', 'cat' => 'business', 'pages' => 8, 'desc' => 'صفحه اصلی، خدمات، نمونه کار، تماس'],
             ['id' => 'corp', 'title' => 'شرکت سازمانی', 'type' => 'multi', 'cat' => 'business', 'pages' => 10, 'desc' => 'درباره ما، تیم، اخبار، فرصت‌های شغلی'],
             ['id' => 'startup', 'title' => 'استارتاپ SaaS', 'type' => 'multi', 'cat' => 'tech', 'pages' => 6, 'desc' => 'لندینگ محصول، قیمت‌گذاری، بلاگ'],
+            ['id' => 'shop-astra-test', 'title' => 'تست فروشگاهی پرو', 'type' => 'multi', 'cat' => 'shop', 'pages' => 4, 'desc' => 'دموی تست RTL: هیرو، دسته، محصولات، بنر اپ (الهام آسترا)'],
             ['id' => 'shop', 'title' => 'فروشگاه', 'type' => 'multi', 'cat' => 'shop', 'pages' => 7, 'desc' => 'ویترین، دسته‌بندی، سبد خرید'],
             ['id' => 'blog', 'title' => 'مجله محتوا', 'type' => 'multi', 'cat' => 'blog', 'pages' => 5, 'desc' => 'آرشیو، مقاله، نویسنده، دسته‌ها'],
             ['id' => 'portfolio', 'title' => 'پورتفolio', 'type' => 'multi', 'cat' => 'creative', 'pages' => 6, 'desc' => 'گالری پروژه، درباره، تماس'],
@@ -335,14 +336,22 @@ class Bankai_Theme_Admin {
         if ($id === '') {
             wp_send_json_error(['message' => 'invalid']);
         }
+        $log = [];
         if (function_exists('bankai_theme_run_demo_import')) {
-            bankai_theme_run_demo_import($id);
+            $log = bankai_theme_run_demo_import($id);
         } else {
             set_theme_mod('bankai_last_demo', $id);
-            // Minimal: set blog name hint + flag
             update_option('bankai_theme_active_demo', $id, false);
         }
-        wp_send_json_success(['message' => __('دمو علامت‌گذاری و آماده اعمال شد.', 'bankai-theme'), 'demo' => $id]);
+        wp_send_json_success([
+            'message' => sprintf(
+                /* translators: %s: demo id */
+                __('دمو «%s» با موفقیت اعمال شد.', 'bankai-theme'),
+                $id
+            ),
+            'demo' => $id,
+            'log'  => $log,
+        ]);
     }
 
     public function ajax_apply_pattern(): void {
