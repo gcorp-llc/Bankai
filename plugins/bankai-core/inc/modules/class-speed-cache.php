@@ -100,6 +100,13 @@ class Bankai_Speed_Cache
             add_filter('wp_resource_hints', [$this, 'speed_resource_hints'], 10, 2);
         }
 
+        // Targeted cache invalidation hooks
+        if ($this->is_sub_active('page_caching')) {
+            add_action('clean_post_cache', [$this, 'page_cache_purge_post'], 20, 1);
+            add_action('wp_trash_post', [$this, 'page_cache_purge_post'], 20, 1);
+            add_action('delete_post', [$this, 'page_cache_purge_post'], 20, 1);
+        }
+
         // Optional HTML minify on cached output only (safe)
         if ($this->is_sub_active('asset_optimization')) {
             add_filter('bankai_page_cache_html', [$this, 'maybe_minify_html'], 10, 1);
@@ -253,31 +260,115 @@ class Bankai_Speed_Cache
 
     public static function minify_css_string(string $css): string
     {
+        if (trim($css) === '') {
+            return '';
+        }
+        // Preserve comments with ! (e.g. /*! ... */) if needed, otherwise strip comments
         $css = preg_replace('!/\*.*?\*/!s', '', $css) ?? $css;
+
+        // Preserve spaces inside calc() for + and - operator syntax requirement
+        // Temporarily protect calc(...) expressions
+        $calc_matches = [];
+        $css = preg_replace_callback('/calc\([^)]+\)/i', static function ($m) use (&$calc_matches) {
+            $key = '___BANKAI_CALC_' . count($calc_matches) . '___';
+            $calc_matches[$key] = $m[0];
+            return $key;
+        }, $css) ?? $css;
+
+        // Remove space around common structural punctuation, but keep spaces around calc or string content
         $css = preg_replace('/\s*([{}|;:,])\s*/', '$1', $css) ?? $css;
         $css = preg_replace('/;}/', '}', $css) ?? $css;
         $css = preg_replace('/\s+/', ' ', $css) ?? $css;
+
+        // Restore calc expressions
+        if ($calc_matches !== []) {
+            $css = strtr($css, $calc_matches);
+        }
+
         return trim($css);
     }
 
     public static function minify_js_string(string $js): string
     {
-        $js = preg_replace('!/\*.*?\*/!s', '', $js) ?? $js;
-        $lines = explode("\n", $js);
-        $clean_lines = [];
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if ($line === '' || str_starts_with($line, '//')) {
+        if (trim($js) === '') {
+            return '';
+        }
+
+        // Scan character by character to strip comments safely without destroying strings or regexes.
+        $len = strlen($js);
+        $clean = '';
+        $in_string = false;
+        $string_char = '';
+        $in_multi_comment = false;
+        $in_single_comment = false;
+
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $js[$i];
+            $next = ($i + 1 < $len) ? $js[$i + 1] : '';
+
+            if ($in_multi_comment) {
+                if ($ch === '*' && $next === '/') {
+                    $in_multi_comment = false;
+                    $i++;
+                }
                 continue;
             }
-            if (str_contains($line, '//') && !preg_match('/["\'].*?\/\/.*?["\']/', $line)) {
-                $line = preg_replace('#\s*//.*$#', '', $line) ?? $line;
+
+            if ($in_single_comment) {
+                if ($ch === "\n" || $ch === "\r") {
+                    $in_single_comment = false;
+                    $clean .= "\n";
+                }
+                continue;
             }
+
+            if ($in_string) {
+                $clean .= $ch;
+                if ($ch === '\\') {
+                    // Escaped char
+                    if ($i + 1 < $len) {
+                        $i++;
+                        $clean .= $js[$i];
+                    }
+                } elseif ($ch === $string_char) {
+                    $in_string = false;
+                }
+                continue;
+            }
+
+            // Not in string or comment
+            if ($ch === '"' || $ch === "'" || $ch === '`') {
+                $in_string = true;
+                $string_char = $ch;
+                $clean .= $ch;
+                continue;
+            }
+
+            if ($ch === '/' && $next === '*') {
+                $in_multi_comment = true;
+                $i++;
+                continue;
+            }
+
+            if ($ch === '/' && $next === '/') {
+                $in_single_comment = true;
+                $i++;
+                continue;
+            }
+
+            $clean .= $ch;
+        }
+
+        // Compress whitespace while preserving line structure for safety
+        $lines = explode("\n", str_replace("\r\n", "\n", $clean));
+        $clean_lines = [];
+        foreach ($lines as $line) {
             $line = trim($line);
             if ($line !== '') {
                 $clean_lines[] = $line;
             }
         }
+
         $js = implode("\n", $clean_lines);
         $js = preg_replace('/[ \t]+/', ' ', $js) ?? $js;
         return trim($js);
@@ -982,8 +1073,7 @@ class Bankai_Speed_Cache
             return;
         }
         echo '<style id="bankai-font-display">'
-            . '@font-face{font-display:swap!important}'
-            /* Force swap on common font CSS variables / body text to cut FOIT */
+            . '@font-face{font-display:swap}'
             . 'html{font-display:swap}'
             . '</style>' . "\n";
     }
@@ -1542,8 +1632,45 @@ NGX;
         if (!$post_id) {
             return;
         }
-        // Simple strategy: purge all (safe). Could map URLs later.
-        $this->page_cache_purge_all();
+
+        // Targeted purge: post permalink, home, and taxonomy archives
+        $url = get_permalink($post_id);
+        if (is_string($url) && $url !== '') {
+            $this->page_cache_purge_url($url);
+        }
+
+        $home = home_url('/');
+        $this->page_cache_purge_url($home);
+
+        $taxonomies = get_object_taxonomies(get_post_type($post_id));
+        foreach ($taxonomies as $tax) {
+            $terms = get_the_terms($post_id, $tax);
+            if (is_array($terms)) {
+                foreach ($terms as $term) {
+                    $term_link = get_term_link($term);
+                    if (is_string($term_link)) {
+                        $this->page_cache_purge_url($term_link);
+                    }
+                }
+            }
+        }
+    }
+
+    public function page_cache_purge_url(string $url): void
+    {
+        $parsed = wp_parse_url($url);
+        $scheme = $parsed['scheme'] ?? 'http';
+        $host   = $parsed['host'] ?? '';
+        $path   = $parsed['path'] ?? '/';
+        $query  = isset($parsed['query']) ? '?' . $parsed['query'] : '';
+
+        $key = md5($scheme . '://' . $host . $path . $query);
+        $sub = substr($key, 0, 2);
+        $file = self::page_cache_dir() . '/' . $sub . '/' . $key . '.html';
+
+        if (is_file($file)) {
+            @unlink($file);
+        }
     }
 
     public function page_cache_purge_on_comment($comment_id): void
@@ -1706,7 +1833,7 @@ NGX;
         }
         $parts = [];
         if ($this->cwv_flag('font_display', true)) {
-            $parts[] = '@font-face{font-display:swap!important}';
+            $parts[] = '@font-face{font-display:swap}';
         }
         if ($this->cwv_flag('cls_images', true)) {
             // Reserve space for images missing dimensions (reduces CLS)
