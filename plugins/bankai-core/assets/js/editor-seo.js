@@ -1557,6 +1557,10 @@
             }
         },
         async startAiWorkflow() {
+            // Fix: ensure data population and only active AI
+            if (!this.aiProvider) {
+                this.aiProvider = (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || 'gemini';
+            }
             this.aiPhase = 'running';
             this.aiProgress = 0;
             this.aiStepText = 'شروع فرایند…';
@@ -1566,11 +1570,10 @@
             try {
                 await this.runAiGeneration();
             } finally {
-                // runAiGeneration handles busy flags; ensure review phase
-                if (this.aiReviewOpen || this.aiProgress >= 100) {
+                // Force review with data if available
+                if (this.aiDraft && (this.aiDraft.title || this.aiDraft.description || this.aiDraft.rewrite)) {
                     this.aiPhase = 'review';
                 } else if (!this.aiBusy) {
-                    // if still no review, stay or go review with whatever we have
                     this.aiPhase = 'review';
                 }
             }

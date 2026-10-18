@@ -995,13 +995,10 @@ if ($post_id && !$post) {
                         </div>
                     </div>
 
-                    <div class="bk-field" style="margin-bottom:10px">
-                        <label>انتخاب موتور هوش مصنوعی</label>
-                        <select x-model="aiProvider">
-                            <template x-for="p in (window.bankaiEditorSeo && bankaiEditorSeo.aiProviders) || [{id:'',label:'پیش‌فرض سیستم'}]" :key="p.id || p.label">
-                                <option :value="p.id" x-text="p.label || p.name || p.id"></option>
-                            </template>
-                        </select>
+                    <!-- Only active AI (no dropdown) -->
+                    <div class="bk-field" style="margin-bottom:10px; display:none;">
+                        <label>موتور هوش مصنوعی فعال</label>
+                        <input type="text" :value="aiProvider || 'gemini'" readonly>
                     </div>
 
                     <div class="bk-field" x-show="aiTask === 'title' || aiTask === 'description' || aiTask === 'meta' || aiTask === 'rewrite' || aiTask === 'takeaways' || aiTask === 'faq' || aiTask === 'auto_all' || !aiTask" style="margin-bottom:10px">

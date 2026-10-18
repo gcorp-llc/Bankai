@@ -866,8 +866,10 @@ final class Bankai_AI_Studio
     public function resolve_central_text_provider(string $client_provider = ''): string
     {
         $central = $this->get_default_provider();
-        // Intentionally ignore $client_provider
-        return is_string($central) ? $central : '';
+        if (empty($central)) {
+            $central = 'gemini'; // fallback for debugging
+        }
+        return is_string($central) ? $central : 'gemini';
     }
 
     /**
