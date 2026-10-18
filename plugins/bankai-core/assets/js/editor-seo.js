@@ -1410,7 +1410,7 @@
                 takeaways: 'نکات کلیدی GEO',
                 rewrite: 'بازنویسی مقاله با AI',
                 auto_all: 'بهینه‌سازی یک‌پارچه مقاله',
-                cover: 'تولید کاور مقاله',
+                cover: 'تولید کاور مقاله با پرامپت واقع‌گرایانه',
                 schema: 'تولید اسکیما',
                 aeo: 'بهبود AEO با هوش مصنوعی',
                 geo: 'بهبود GEO با هوش مصنوعی',
@@ -1431,6 +1431,8 @@
 
 
         async fixAeoWithAi() {
+            // Only failed items to avoid meta regeneration duplication
+            this.aiFailedItemsOnly = true;
             this.activeTab = 'aeo_geo';
             this.selectAiTask('faq');
             this.aiModalTitle = 'بهبود AEO با هوش مصنوعی';

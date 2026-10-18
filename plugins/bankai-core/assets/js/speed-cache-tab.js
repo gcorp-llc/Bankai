@@ -13,11 +13,11 @@ document.addEventListener('DOMContentLoaded', function () {
     return base.replace(/\/$/, '') + path;
   };
 
-  const showToast = (msg, type = 'success') => {
+  const showToast = (msg, type = 'success', duration) => {
     if (typeof window.bankaiShowToast === 'function') {
-      window.bankaiShowToast(msg, type);
-    } else {
-      alert(msg);
+      window.bankaiShowToast(msg, type, duration);
+    } else if (typeof window.showToast === 'function' && window.showToast !== showToast) {
+      window.showToast(msg, type, duration);
     }
   };
 
@@ -468,6 +468,9 @@ document.addEventListener('DOMContentLoaded', function () {
             redisStatusMsg.textContent = res.message || '';
             redisStatusMsg.style.color = res.ok ? '#1a7f37' : '#cf222e';
           }
+          if (typeof window.bankaiSetRedisMeter === 'function') {
+            window.bankaiSetRedisMeter(res.ok ? 100 : 15, res.ok ? 'متصل' : 'ناموفق');
+          }
           showToast(res.message || 'بررسی انجام شد.', res.ok ? 'success' : 'error');
         })
         .catch(() => showToast('خطای ارتباط با سرور', 'error'))
@@ -625,4 +628,117 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
   }
+
+
+  /* ── Boost presets (Safe / Balanced / Aggressive) ───────── */
+  const boostPresets = {
+    safe: {
+      page_caching: { enabled: true },
+      asset_optimization: { enabled: true, minify_css: true, minify_js: false, defer_js: true, delay_js: false },
+      cwv_lighthouse: { enabled: true },
+      media_lazy: { enabled: true },
+      preload: { enabled: true },
+      heartbeat: { enabled: false },
+      browser_cache: { enabled: true }
+    },
+    balanced: {
+      page_caching: { enabled: true },
+      asset_optimization: { enabled: true, minify_css: true, minify_js: true, defer_js: true, delay_js: true },
+      cwv_lighthouse: { enabled: true },
+      media_lazy: { enabled: true },
+      preload: { enabled: true },
+      heartbeat: { enabled: true },
+      browser_cache: { enabled: true }
+    },
+    aggressive: {
+      page_caching: { enabled: true },
+      asset_optimization: { enabled: true, minify_css: true, minify_js: true, defer_js: true, delay_js: true },
+      cwv_lighthouse: { enabled: true },
+      media_lazy: { enabled: true },
+      preload: { enabled: true },
+      heartbeat: { enabled: true },
+      browser_cache: { enabled: true }
+    }
+  };
+  let activeBoost = 'balanced';
+
+  root.querySelectorAll('.bk-boost-chip[data-mode]').forEach((chip) => {
+    chip.addEventListener('click', function () {
+      const mode = this.getAttribute('data-mode');
+      if (mode === 'apply') return;
+      activeBoost = mode;
+      root.querySelectorAll('.bk-boost-chip[data-mode]').forEach((c) => {
+        if (c.getAttribute('data-mode') !== 'apply') c.classList.toggle('is-active', c === this);
+      });
+    });
+  });
+
+  const boostApply = root.querySelector('#bk-boost-apply');
+  if (boostApply) {
+    boostApply.addEventListener('click', function () {
+      const preset = boostPresets[activeBoost] || boostPresets.balanced;
+      speedConfig = Object.assign({}, speedConfig, {
+        page_caching: Object.assign({}, speedConfig.page_caching || {}, preset.page_caching || {}),
+        asset_optimization: Object.assign({}, speedConfig.asset_optimization || {}, preset.asset_optimization || {}),
+        cwv_lighthouse: Object.assign({}, speedConfig.cwv_lighthouse || {}, preset.cwv_lighthouse || {}),
+        media_lazy: Object.assign({}, speedConfig.media_lazy || {}, preset.media_lazy || {}),
+        preload: Object.assign({}, speedConfig.preload || {}, preset.preload || {}),
+        heartbeat: Object.assign({}, speedConfig.heartbeat || {}, preset.heartbeat || {}),
+        browser_cache: Object.assign({}, speedConfig.browser_cache || {}, preset.browser_cache || {})
+      });
+      if (typeof hydrateFormFields === 'function') hydrateFormFields();
+      // Reflect toggles
+      const map = {
+        'cfg-page-cache-enable': speedConfig.page_caching && speedConfig.page_caching.enabled !== false,
+        'cfg-assets-enable': speedConfig.asset_optimization && speedConfig.asset_optimization.enabled !== false,
+        'cfg-cwv-enable': speedConfig.cwv_lighthouse && speedConfig.cwv_lighthouse.enabled !== false,
+        'cfg-media-enable': speedConfig.media_lazy && speedConfig.media_lazy.enabled !== false,
+        'cfg-preload-enable': speedConfig.preload && speedConfig.preload.enabled !== false,
+        'cfg-heartbeat-enable': speedConfig.heartbeat && speedConfig.heartbeat.enabled !== false,
+        'cfg-browser-enable': speedConfig.browser_cache && speedConfig.browser_cache.enabled !== false,
+        'cfg-asset-minify-css': !!(speedConfig.asset_optimization && speedConfig.asset_optimization.minify_css),
+        'cfg-asset-minify-js': !!(speedConfig.asset_optimization && speedConfig.asset_optimization.minify_js),
+        'cfg-asset-defer-js': !!(speedConfig.asset_optimization && speedConfig.asset_optimization.defer_js),
+        'cfg-asset-delay-js': !!(speedConfig.asset_optimization && speedConfig.asset_optimization.delay_js)
+      };
+      Object.keys(map).forEach((id) => {
+        const el = root.querySelector('#' + id);
+        if (el) el.checked = !!map[id];
+      });
+      root.querySelectorAll('.bk-mod-card').forEach((card) => {
+        const input = card.querySelector('input[type="checkbox"]');
+        if (input && input.id && input.id.indexOf('cfg-') === 0 && input.id.indexOf('asset-') === -1) {
+          card.classList.toggle('is-on', input.checked);
+        }
+      });
+      showToast('حالت «' + activeBoost + '» روی ماژول‌ها اعمال شد — ذخیره را بزنید.', 'success');
+    });
+  }
+
+  // Toggle card is-on state
+  root.querySelectorAll('.bk-mod-card .bk-toggle input, .bk-mod-card > .bk-mod-card__head input[type="checkbox"]').forEach((inp) => {
+    inp.addEventListener('change', function () {
+      const card = this.closest('.bk-mod-card');
+      if (card) card.classList.toggle('is-on', this.checked);
+    });
+  });
+
+  // DB chips visual
+  root.querySelectorAll('#bk-db-chips .bk-db-chip').forEach((chip) => {
+    const input = chip.querySelector('input');
+    if (!input) return;
+    chip.classList.toggle('is-checked', input.checked);
+    input.addEventListener('change', function () {
+      chip.classList.toggle('is-checked', input.checked);
+    });
+  });
+
+  // Redis meter helper (called after test if available)
+  window.bankaiSetRedisMeter = function (pct, label) {
+    const bar = root.querySelector('#bk-redis-meter-bar');
+    const lab = root.querySelector('#bk-redis-meter-label');
+    if (bar) bar.style.width = Math.max(0, Math.min(100, pct || 0)) + '%';
+    if (lab) lab.textContent = label || (pct + '%');
+  };
+
 });

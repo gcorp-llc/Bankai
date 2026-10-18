@@ -1,0 +1,5052 @@
+/* bankai-font-fallback */
+#bankai-admin-app,#bankai-admin-app *{font-family:"Vazirmatn","Segoe UI",Tahoma,system-ui,-apple-system,sans-serif;}
+/* ==========================================================================
+   Bankai Core – Modern High-Performance Admin Dashboard Stylesheet
+   Fully Scoped · RTL/LTR Native · Zero WP Core Leakage
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. FOUC Prevention
+   -------------------------------------------------------------------------- */
+[x-cloak] {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   1. WordPress Admin Canvas Isolation
+   -------------------------------------------------------------------------- */
+body.toplevel_page_bankai-core,
+body.toplevel_page_bankai-core #wpwrap,
+body.toplevel_page_bankai-core #wpcontent,
+body.toplevel_page_bankai-core #wpbody,
+body.toplevel_page_bankai-core #wpbody-content {
+  background-color: #F5F5F7 !important;
+  color: #1D1D1F !important;
+  min-height: 100vh !important;
+}
+
+body.toplevel_page_bankai-core #wpcontent {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+}
+
+body.toplevel_page_bankai-core #wpbody-content {
+  padding-bottom: 0 !important;
+  float: none !important;
+  overflow: visible !important;
+}
+
+body.toplevel_page_bankai-core .notice,
+body.toplevel_page_bankai-core .update-nag,
+body.toplevel_page_bankai-core #wpbody-content > .notice,
+body.toplevel_page_bankai-core #wpbody-content > .updated,
+body.toplevel_page_bankai-core #wpbody-content > .error {
+  display: none !important;
+}
+
+body.toplevel_page_bankai-core #adminmenumain,
+body.toplevel_page_bankai-core #adminmenuwrap,
+body.toplevel_page_bankai-core #adminmenu {
+  z-index: 9990 !important;
+}
+
+body.toplevel_page_bankai-core #bankai-admin-app,
+body.toplevel_page_bankai-core .bankai-admin-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   2. Design Tokens & Global Root Container
+   -------------------------------------------------------------------------- */
+#bankai-admin-app,
+.bankai-app-wrapper,
+.bankai-admin-wrap {
+  /* Premium Minimalism tokens */
+  --bankai-bg-main: #F7F7F8;
+  --bankai-bg-surface: #FFFFFF;
+  --bankai-card-bg: #FFFFFF;
+  --bankai-card-border: #E8E8EA;
+  --bankai-border-subtle: #E8E8EA;
+  
+  --bankai-text-main: #1A1A1A;
+  --bankai-text-muted: #8A8F98;
+  --bankai-text-subtle: #A0A4AB;
+  
+  --bankai-accent: #5C6B7A;
+  --bankai-accent-hover: #3D4A57;
+  --bankai-accent-subtle: rgba(92, 107, 122, 0.1);
+  
+  --bankai-success: #30D158;
+  --bankai-success-subtle: rgba(48, 209, 88, 0.12);
+  --bankai-danger: #FF453A;
+  --bankai-purple: #BF5AF2;
+  --bankai-purple-subtle: rgba(191, 90, 242, 0.12);
+
+  --bankai-radius-sm: 12px;
+  --bankai-radius-md: 16px;
+  --bankai-radius-lg: 20px;
+  --bankai-radius-xl: 24px;
+  --bankai-shadow-1: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04);
+  --bankai-shadow-2: 0 4px 16px rgba(0,0,0,.06);
+  --bankai-shadow-3: 0 12px 40px rgba(0,0,0,.1);
+  --bankai-shadow-in: none;
+
+  background-color: var(--bankai-bg-main) !important;
+  color: var(--bankai-text-main) !important;
+  font-family: "Segoe UI", "Vazirmatn", "Inter", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  min-height: calc(100vh - 32px);
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+#bankai-admin-app *,
+.bankai-app-wrapper *,
+.bankai-admin-wrap * {
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   3. RTL / LTR Directional Mechanics
+   -------------------------------------------------------------------------- */
+#bankai-admin-app.rtl,
+.bankai-app-wrapper.rtl,
+.bankai-admin-wrap.rtl,
+[dir="rtl"] #bankai-admin-app,
+[dir="rtl"] .bankai-app-wrapper,
+[dir="rtl"] .bankai-admin-wrap {
+  direction: rtl;
+  text-align: right;
+  font-family: "Vazirmatn", "Inter", system-ui, sans-serif !important;
+}
+
+#bankai-admin-app.ltr,
+.bankai-app-wrapper.ltr,
+.bankai-admin-wrap.ltr,
+[dir="ltr"] #bankai-admin-app,
+[dir="ltr"] .bankai-app-wrapper,
+[dir="ltr"] .bankai-admin-wrap {
+  direction: ltr;
+  text-align: left;
+  font-family: "Inter", "Vazirmatn", system-ui, sans-serif !important;
+}
+
+/* --------------------------------------------------------------------------
+   4. Ambient Background Decorations
+   -------------------------------------------------------------------------- */
+#bankai-admin-app .bankai-bg-decorations,
+.bankai-app-wrapper .bankai-bg-decorations {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+#bankai-admin-app .bankai-ambient-grid,
+.bankai-app-wrapper .bankai-ambient-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(ellipse 95% 75% at 50% 30%, #000 35%, transparent 95%);
+  -webkit-mask-image: radial-gradient(ellipse 95% 75% at 50% 30%, #000 35%, transparent 95%);
+  opacity: 0.85;
+}
+
+#bankai-admin-app .bankai-ambient-orb,
+.bankai-app-wrapper .bankai-ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(85px);
+  pointer-events: none;
+  will-change: transform;
+}
+
+#bankai-admin-app .bankai-orb-1,
+.bankai-app-wrapper .bankai-orb-1 {
+  top: -80px;
+  right: 12%;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(9, 105, 218, 0.13) 0%, rgba(84, 174, 255, 0.04) 55%, transparent 75%);
+  animation: floatOrb1 20s ease-in-out infinite alternate;
+}
+
+#bankai-admin-app .bankai-orb-2,
+.bankai-app-wrapper .bankai-orb-2 {
+  top: 32%;
+  left: 4%;
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(circle, rgba(130, 80, 223, 0.1) 0%, rgba(210, 168, 255, 0.03) 55%, transparent 75%);
+  animation: floatOrb2 24s ease-in-out infinite alternate;
+}
+
+#bankai-admin-app .bankai-orb-3,
+.bankai-app-wrapper .bankai-orb-3 {
+  bottom: 4%;
+  right: 28%;
+  width: 440px;
+  height: 440px;
+  background: radial-gradient(circle, rgba(31, 136, 61, 0.08) 0%, rgba(86, 211, 100, 0.03) 55%, transparent 75%);
+  animation: floatOrb3 22s ease-in-out infinite alternate;
+}
+
+@keyframes floatOrb1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-45px, 35px) scale(1.08); }
+  100% { transform: translate(30px, -25px) scale(0.94); }
+}
+@keyframes floatOrb2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, -30px) scale(0.92); }
+  100% { transform: translate(-25px, 40px) scale(1.07); }
+}
+@keyframes floatOrb3 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-35px, -40px) scale(1.1); }
+  100% { transform: translate(35px, 25px) scale(0.95); }
+}
+
+/* --------------------------------------------------------------------------
+   5. Header / Navbar Component (#bankai-admin-header)
+   -------------------------------------------------------------------------- */
+#bankai-admin-header {
+  position: sticky !important;
+  top: 12px !important;
+  z-index: 9990 !important;
+  margin: 12px 28px 0 28px !important;
+  padding: 10px 18px !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1px solid rgba(208, 215, 222, 0.8) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px -2px rgba(31, 35, 40, 0.05), 0 1px 3px rgba(31, 35, 40, 0.03) !important;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bankai-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bankai-btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+  background: transparent;
+  line-height: 1;
+}
+
+.bankai-btn-action:active {
+  transform: scale(0.96);
+}
+
+.bankai-btn-theme {
+  background-color: var(--bankai-purple-subtle);
+  color: var(--bankai-purple);
+  border-color: rgba(130, 80, 223, 0.2);
+}
+.bankai-btn-theme:hover {
+  background-color: var(--bankai-purple);
+  color: #ffffff;
+  border-color: var(--bankai-purple);
+  box-shadow: 0 3px 10px rgba(130, 80, 223, 0.25);
+}
+
+.bankai-btn-preview {
+  background-color: var(--bankai-accent-subtle);
+  color: var(--bankai-accent);
+  border-color: rgba(9, 105, 218, 0.2);
+}
+.bankai-btn-preview:hover {
+  background-color: var(--bankai-accent);
+  color: #ffffff;
+  border-color: var(--bankai-accent);
+  box-shadow: 0 3px 10px rgba(9, 105, 218, 0.25);
+}
+
+.bankai-btn-purge {
+  background-color: var(--bankai-success-subtle);
+  color: var(--bankai-success);
+  border-color: rgba(31, 136, 61, 0.2);
+}
+.bankai-btn-purge:hover {
+  background-color: var(--bankai-success);
+  color: #ffffff;
+  border-color: var(--bankai-success);
+  box-shadow: 0 3px 10px rgba(31, 136, 61, 0.25);
+}
+
+/* Mobile trigger button in header */
+#bankai-admin-app .bankai-mobile-btn,
+.bankai-app-wrapper .bankai-mobile-btn {
+  display: none;
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: var(--bankai-text-main);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+#bankai-admin-app .bankai-mobile-btn:hover,
+.bankai-app-wrapper .bankai-mobile-btn:hover {
+  background-color: #f6f8fa;
+  border-color: #d0d7de;
+  color: var(--bankai-accent);
+}
+
+/* --------------------------------------------------------------------------
+   6. Body Layout Container
+   -------------------------------------------------------------------------- */
+#bankai-admin-app .bankai-body-layout,
+.bankai-app-wrapper .bankai-body-layout {
+  display: flex;
+  gap: 28px;
+  padding: 20px 28px 40px 28px !important;
+  box-sizing: border-box;
+  align-items: flex-start;
+  min-height: calc(100vh - 85px);
+  position: relative;
+  z-index: 1;
+}
+
+#bankai-admin-app #bankai-main-content,
+.bankai-app-wrapper #bankai-main-content {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Tab entrance animation */
+#bankai-admin-app [id^="tab-"],
+.bankai-app-wrapper [id^="tab-"] {
+  animation: bankaiTabEntrance 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes bankaiTabEntrance {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --------------------------------------------------------------------------
+   7. Sidebar Component (#bankai-admin-sidebar)
+   -------------------------------------------------------------------------- */
+#bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar,
+.bankai-app-wrapper .bankai-sidebar {
+  width: 260px;
+  min-width: 260px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(208, 215, 222, 0.8);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 20px -2px rgba(31, 35, 40, 0.04);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: sticky;
+  top: 78px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  align-self: flex-start;
+  z-index: 100;
+}
+
+/* Brand Card */
+.bankai-brand-card {
+  padding: 4px 6px 14px 6px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--bankai-border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bankai-brand-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0969da 0%, #218bff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(9, 105, 218, 0.25);
+}
+
+.bankai-brand-logo svg {
+  width: 20px;
+  height: 20px;
+}
+
+.bankai-brand-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--bankai-text-main);
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+}
+
+.bankai-brand-status {
+  font-size: 11px;
+  color: var(--bankai-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #1a7f37;
+  flex-shrink: 0;
+}
+
+/* Navigation Group & Buttons */
+.bankai-nav-group {
+  margin-bottom: 14px;
+}
+
+.bankai-nav-group-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--bankai-text-subtle);
+  padding: 0 8px 6px 8px;
+}
+
+.bankai-nav-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #57606a;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.bankai-nav-btn:hover {
+  background: rgba(9, 105, 218, 0.06);
+  color: var(--bankai-accent);
+}
+
+.bankai-nav-btn.active {
+  background: rgba(9, 105, 218, 0.1);
+  color: var(--bankai-accent);
+  font-weight: 700;
+  border-color: rgba(9, 105, 218, 0.2);
+  box-shadow: 0 2px 8px rgba(9, 105, 218, 0.08);
+}
+
+.bankai-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.bankai-nav-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+#bankai-admin-app .bankai-nav-badge,
+.bankai-app-wrapper .bankai-nav-badge {
+  display: none !important;
+}
+
+/* Telemetry Card */
+.bankai-telemetry-card {
+  background: rgba(246, 248, 250, 0.8);
+  border: 1px solid var(--bankai-border-subtle);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 16px;
+}
+
+.telemetry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.telemetry-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ping-container {
+  position: relative;
+  display: flex;
+  height: 8px;
+  width: 8px;
+}
+
+.ping-pulse {
+  position: absolute;
+  display: inline-flex;
+  height: 100%;
+  width: 100%;
+  border-radius: 50%;
+  background-color: #1a7f37;
+  opacity: 0.7;
+  animation: bankai-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.ping-dot {
+  position: relative;
+  display: inline-flex;
+  border-radius: 50%;
+  height: 8px;
+  width: 8px;
+  background-color: #1a7f37;
+}
+
+@keyframes bankai-ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+
+.status-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bankai-text-main);
+}
+
+.php-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--bankai-accent);
+  background: rgba(9, 105, 218, 0.08);
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.telemetry-progress-wrapper {
+  margin-bottom: 10px;
+}
+
+.telemetry-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--bankai-text-muted);
+  margin-bottom: 4px;
+}
+
+.memory-value {
+  font-family: monospace;
+  color: var(--bankai-accent);
+  font-weight: 700;
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 4px;
+  background-color: var(--bankai-border-subtle);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  width: 48%;
+  height: 100%;
+  background: linear-gradient(90deg, #218bff, #0969da);
+  border-radius: 3px;
+}
+
+.telemetry-details {
+  padding-top: 8px;
+  border-top: 1px solid var(--bankai-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--bankai-text-muted);
+}
+
+.detail-val {
+  font-weight: 700;
+  color: var(--bankai-text-main);
+  font-family: monospace;
+}
+
+.lang-switch-btn {
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  color: var(--bankai-accent);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.lang-switch-btn:hover {
+  background: var(--bankai-accent);
+  color: #ffffff;
+  border-color: var(--bankai-accent);
+}
+
+.bankai-sidebar-mobile-header {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 2px 4px;
+}
+
+.bankai-mobile-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--bankai-text-main);
+}
+
+.bankai-mobile-icon-box {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: rgba(9, 105, 218, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bankai-accent);
+}
+
+.bankai-mobile-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--bankai-text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.bankai-mobile-close-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* --------------------------------------------------------------------------
+   8. Mobile Drawer & Overlay (.bankai-mobile-overlay) Mechanics
+   -------------------------------------------------------------------------- */
+.bankai-mobile-overlay {
+  display: block;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(31, 35, 40, 0.48);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9998 !important;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+  pointer-events: none;
+}
+
+.bankai-mobile-overlay.active,
+.bankai-mobile-overlay.mobile-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+@media (max-width: 1024px) {
+  #bankai-admin-header {
+    margin: 8px 12px 0 12px !important;
+    padding: 8px 12px !important;
+  }
+
+  #bankai-admin-app .bankai-body-layout,
+  .bankai-app-wrapper .bankai-body-layout {
+    padding: 14px 16px 24px 16px !important;
+    gap: 0;
+  }
+
+  #bankai-admin-app .bankai-mobile-btn,
+  .bankai-app-wrapper .bankai-mobile-btn {
+    display: flex;
+  }
+
+  .bankai-sidebar-mobile-header {
+    display: flex;
+  }
+
+  /* Fixed slide-out drawer sidebar on tablet/mobile */
+  #bankai-admin-sidebar,
+  #bankai-admin-app .bankai-sidebar,
+  .bankai-app-wrapper .bankai-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    z-index: 9999 !important;
+    border-radius: 0 !important;
+    background-color: #ffffff !important;
+    box-shadow: 0 0 32px rgba(31, 35, 40, 0.25) !important;
+    overflow-y: auto;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  /* RTL Sliding Direction */
+  [dir="rtl"] #bankai-admin-sidebar,
+  [dir="rtl"] #bankai-admin-app .bankai-sidebar,
+  .rtl #bankai-admin-sidebar,
+  .bankai-app-wrapper.rtl .bankai-sidebar {
+    right: 0 !important;
+    left: auto !important;
+    transform: translateX(100%);
+    border-radius: 14px 0 0 14px !important;
+  }
+
+  /* LTR Sliding Direction */
+  [dir="ltr"] #bankai-admin-sidebar,
+  [dir="ltr"] #bankai-admin-app .bankai-sidebar,
+  .ltr #bankai-admin-sidebar,
+  .bankai-app-wrapper.ltr .bankai-sidebar {
+    left: 0 !important;
+    right: auto !important;
+    transform: translateX(-100%);
+    border-radius: 0 14px 14px 0 !important;
+  }
+
+  /* Open State */
+  #bankai-admin-sidebar.mobile-open,
+  #bankai-admin-app .bankai-sidebar.mobile-open,
+  .bankai-app-wrapper .bankai-sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .bankai-btn-action .btn-label {
+    display: none !important;
+  }
+
+  .bankai-btn-action {
+    padding: 8px !important;
+    border-radius: 8px !important;
+    justify-content: center;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   9. Switch Component
+   -------------------------------------------------------------------------- */
+#bankai-admin-app .bankai-switch,
+.bankai-app-wrapper .bankai-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+#bankai-admin-app .bankai-switch input,
+.bankai-app-wrapper .bankai-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+#bankai-admin-app .bankai-slider,
+.bankai-app-wrapper .bankai-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #d0d7de;
+  border-radius: 22px;
+  transition: background-color 0.2s ease;
+  border: none;
+  box-shadow: inset 0 1px 2px rgba(31, 35, 40, 0.08);
+}
+
+#bankai-admin-app .bankai-slider:before,
+.bankai-app-wrapper .bankai-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  top: 3px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(31, 35, 40, 0.2);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#bankai-admin-app .bankai-switch input:checked + .bankai-slider,
+.bankai-app-wrapper .bankai-switch input:checked + .bankai-slider {
+  background-color: var(--bankai-success);
+  box-shadow: none;
+}
+
+#bankai-admin-app .bankai-switch input:checked + .bankai-slider:before,
+.bankai-app-wrapper .bankai-switch input:checked + .bankai-slider:before {
+  transform: translateX(18px);
+}
+
+/* RTL Switch Handle */
+#bankai-admin-app.rtl .bankai-slider:before,
+.bankai-app-wrapper.rtl .bankai-slider:before,
+[dir="rtl"] #bankai-admin-app .bankai-slider:before {
+  left: auto;
+  right: 3px;
+}
+
+#bankai-admin-app.rtl .bankai-switch input:checked + .bankai-slider:before,
+.bankai-app-wrapper.rtl .bankai-switch input:checked + .bankai-slider:before,
+[dir="rtl"] #bankai-admin-app .bankai-switch input:checked + .bankai-slider:before {
+  transform: translateX(-18px);
+}
+
+#bankai-admin-app .bankai-switch input:focus-visible + .bankai-slider,
+.bankai-app-wrapper .bankai-switch input:focus-visible + .bankai-slider {
+  outline: 2px solid var(--bankai-accent);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   10. Components: Cards, Buttons, Form Inputs
+   -------------------------------------------------------------------------- */
+#bankai-admin-app .bankai-card,
+.bankai-app-wrapper .bankai-card {
+  background-color: var(--bankai-card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--bankai-card-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(31, 35, 40, 0.04), 0 6px 16px -4px rgba(31, 35, 40, 0.03);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  position: relative;
+}
+
+#bankai-admin-app .bankai-card:hover,
+.bankai-app-wrapper .bankai-card:hover {
+  border-color: #8c959f;
+  box-shadow: 0 3px 12px rgba(31, 35, 40, 0.07);
+}
+
+#bankai-admin-app .bankai-card-interactive:hover,
+.bankai-app-wrapper .bankai-card-interactive:hover {
+  border-color: var(--bankai-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -4px rgba(9, 105, 218, 0.12), 0 3px 8px rgba(31, 35, 40, 0.06);
+}
+
+#bankai-admin-app .bankai-card-subtle,
+.bankai-app-wrapper .bankai-card-subtle {
+  background-color: #f6f8fa;
+  border: 1px solid var(--bankai-card-border);
+  border-radius: 8px;
+}
+
+#bankai-admin-app .bankai-btn,
+.bankai-app-wrapper .bankai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+}
+
+#bankai-admin-app .bankai-btn:active,
+.bankai-app-wrapper .bankai-btn:active {
+  transform: scale(0.98);
+}
+
+#bankai-admin-app .bankai-btn-primary,
+.bankai-app-wrapper .bankai-btn-primary {
+  background-color: var(--bankai-success);
+  border: 1px solid rgba(31, 35, 40, 0.15);
+  color: #ffffff;
+}
+#bankai-admin-app .bankai-btn-primary:hover,
+.bankai-app-wrapper .bankai-btn-primary:hover {
+  background-color: #1a7f37;
+}
+
+#bankai-admin-app .bankai-btn-default,
+.bankai-app-wrapper .bankai-btn-default {
+  background-color: #f6f8fa;
+  border: 1px solid #d0d7de;
+  color: #24292f;
+}
+#bankai-admin-app .bankai-btn-default:hover,
+.bankai-app-wrapper .bankai-btn-default:hover {
+  background-color: #f3f4f6;
+  border-color: #8c959f;
+}
+
+#bankai-admin-app .bankai-btn-ghost,
+.bankai-app-wrapper .bankai-btn-ghost {
+  background: transparent !important;
+  border: none !important;
+  color: var(--bankai-text-muted);
+  box-shadow: none !important;
+  padding: 6px 10px;
+}
+#bankai-admin-app .bankai-btn-ghost:hover,
+.bankai-app-wrapper .bankai-btn-ghost:hover {
+  color: var(--bankai-accent);
+}
+
+/* Form Controls */
+#bankai-admin-app input[type="text"],
+#bankai-admin-app input[type="password"],
+#bankai-admin-app input[type="number"],
+#bankai-admin-app input[type="search"],
+#bankai-admin-app select,
+#bankai-admin-app textarea,
+.bankai-app-wrapper input[type="text"],
+.bankai-app-wrapper input[type="password"],
+.bankai-app-wrapper input[type="number"],
+.bankai-app-wrapper input[type="search"],
+.bankai-app-wrapper select,
+.bankai-app-wrapper textarea {
+  background-color: #ffffff;
+  border: 1px solid #d0d7de;
+  color: var(--bankai-text-main);
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: inset 0 1px 2px rgba(31, 35, 40, 0.06);
+}
+
+#bankai-admin-app input:focus,
+#bankai-admin-app select:focus,
+#bankai-admin-app textarea:focus,
+.bankai-app-wrapper input:focus,
+.bankai-app-wrapper select:focus,
+.bankai-app-wrapper textarea:focus {
+  outline: none;
+  border-color: var(--bankai-accent) !important;
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.28) !important;
+}
+
+/* Scrollbars */
+#bankai-admin-app ::-webkit-scrollbar,
+.bankai-app-wrapper ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+#bankai-admin-app ::-webkit-scrollbar-track,
+.bankai-app-wrapper ::-webkit-scrollbar-track {
+  background: #f6f8fa;
+}
+#bankai-admin-app ::-webkit-scrollbar-thumb,
+.bankai-app-wrapper ::-webkit-scrollbar-thumb {
+  background: #d0d7de;
+  border-radius: 4px;
+}
+#bankai-admin-app ::-webkit-scrollbar-thumb:hover,
+.bankai-app-wrapper ::-webkit-scrollbar-thumb:hover {
+  background: #8c959f;
+}
+
+/* --------------------------------------------------------------------------
+   11. Loaders, Toasts & Modals
+   -------------------------------------------------------------------------- */
+.bankai-page-progress-track {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  z-index: 999999;
+  pointer-events: none;
+}
+.bankai-page-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #54aeff 0%, #0969da 50%, #218bff 100%);
+  box-shadow: 0 0 10px rgba(9, 105, 218, 0.7);
+  transition: width 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 0 2px 2px 0;
+}
+[dir="rtl"] .bankai-page-progress-bar {
+  border-radius: 2px 0 0 2px;
+}
+
+#bankai-admin-app .bankai-toast,
+.bankai-app-wrapper .bankai-toast {
+  /* legacy single toast — prefer container */
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 99999;
+  max-width: 440px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  box-shadow: 0 10px 30px -5px rgba(31, 35, 40, 0.18);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#bankai-admin-app.rtl .bankai-toast,
+.bankai-app-wrapper.rtl .bankai-toast,
+[dir="rtl"] #bankai-admin-app .bankai-toast {
+  right: auto;
+  left: 24px;
+}
+
+.bankai-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(31, 35, 40, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 99990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --------------------------------------------------------------------------
+   12. Responsive Grids
+   -------------------------------------------------------------------------- */
+#bankai-admin-app .bankai-grid-4,
+.bankai-app-wrapper .bankai-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+#bankai-admin-app .bankai-grid-3,
+.bankai-app-wrapper .bankai-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+#bankai-admin-app .bankai-grid-2,
+.bankai-app-wrapper .bankai-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+#bankai-admin-app .bankai-grid-split,
+.bankai-app-wrapper .bankai-grid-split {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 20px;
+}
+
+@media (max-width: 1200px) {
+  #bankai-admin-app .bankai-grid-4,
+  .bankai-app-wrapper .bankai-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 1024px) {
+  #bankai-admin-app .bankai-grid-split,
+  .bankai-app-wrapper .bankai-grid-split,
+  #bankai-admin-app .bankai-grid-3,
+  .bankai-app-wrapper .bankai-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 768px) {
+  #bankai-admin-app .bankai-grid-4,
+  #bankai-admin-app .bankai-grid-3,
+  #bankai-admin-app .bankai-grid-2,
+  #bankai-admin-app .bankai-grid-split,
+  .bankai-app-wrapper .bankai-grid-4,
+  .bankai-app-wrapper .bankai-grid-3,
+  .bankai-app-wrapper .bankai-grid-2,
+  .bankai-app-wrapper .bankai-grid-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   Bankai Icon System – Solar & SVG Icon Controls
+   ========================================================================== */
+
+/* 1. Base SVG Reset & Flex Safeguard */
+#bankai-admin-app svg,
+.bankai-app-wrapper svg,
+.bankai-admin-wrap svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* 2. Default Solar Icon (20px) */
+#bankai-admin-app .solar-icon,
+.bankai-app-wrapper .solar-icon,
+.bankai-admin-wrap .solar-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* 3. Icon Size Variants */
+#bankai-admin-app .solar-icon-xs,
+.bankai-app-wrapper .solar-icon-xs {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+#bankai-admin-app .solar-icon-sm,
+.bankai-app-wrapper .solar-icon-sm {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+#bankai-admin-app .solar-icon-md,
+.bankai-app-wrapper .solar-icon-md {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+#bankai-admin-app .solar-icon-lg,
+.bankai-app-wrapper .solar-icon-lg {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+#bankai-admin-app .solar-icon-xl,
+.bankai-app-wrapper .solar-icon-xl {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+/* 4. Specific Card SVG Alignment Fix */
+.bankai-card svg,
+.bankai-card-interactive svg {
+  flex-shrink: 0 !important;
+}
+
+/* ==========================================================================
+   Bankai Ultra-Modern Glassmorphism Page Loader
+   ========================================================================== */
+
+.bankai-loader-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* انیمیشن ترانزیشن Alpine */
+.bankai-transition-enter { transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+.bankai-transition-leave { transition: all 0.2s cubic-bezier(0.7, 0, 0.84, 0); }
+.bankai-transition-start { opacity: 0; transform: scale(0.96); }
+.bankai-transition-end { opacity: 1; transform: scale(1); }
+
+.bankai-loader-card {
+  width: 90%;
+  max-width: 360px;
+  padding: 32px 24px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12),
+              0 1px 3px rgba(0, 0, 0, 0.05),
+              inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 18px;
+}
+
+.bankai-loader-brand {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bankai-spinner-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #0969DA;
+  border-right-color: rgba(9, 105, 218, 0.15);
+  animation: bankai-spin 1s linear infinite;
+}
+
+.bankai-spinner-ring-inner {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-bottom-color: #1A7F37;
+  animation: bankai-spin-reverse 1.3s linear infinite;
+}
+
+.bankai-loader-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0969DA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(9, 105, 218, 0.25);
+}
+
+.bankai-loader-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bankai-logo-fallback {
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 20px;
+}
+
+.bankai-loader-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bankai-loader-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #1F2328;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  letter-spacing: 0.5px;
+}
+
+.bankai-loader-badge {
+  background: rgba(9, 105, 218, 0.1);
+  color: #0969DA;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+}
+
+.bankai-loader-status {
+  font-size: 12px;
+  color: #636C76;
+  margin: 0;
+  font-weight: 500;
+}
+
+.bankai-loader-progress-wrap {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bankai-loader-track {
+  flex: 1;
+  height: 6px;
+  background: #EAEEF2;
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bankai-loader-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0969DA, #2da44e);
+  border-radius: 99px;
+  transition: width 0.2s ease-out;
+  position: relative;
+}
+
+.bankai-loader-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: bankai-shimmer 1.4s infinite;
+}
+
+.bankai-loader-percentage {
+  font-size: 11px;
+  font-weight: 700;
+  color: #57609A;
+  min-width: 30px;
+  text-align: end;
+}
+
+@keyframes bankai-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bankai-spin-reverse {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes bankai-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ==========================================================================
+   Bankai Ultra-Modern Floating Toast System
+   ========================================================================== */
+
+
+/* ========== Bankai Toast (Win11 / M3) ========== */
+.bankai-toast-container {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  top: auto;
+  transform: translateX(-50%);
+  z-index: 100050;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  max-width: min(440px, calc(100vw - 32px));
+  width: max-content;
+}
+.rtl .bankai-toast-container,
+[dir="rtl"] .bankai-toast-container {
+  /* centered — no side offset */
+  inset-inline-end: auto;
+  inset-inline-start: auto;
+}
+
+.bankai-toast-card {
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  min-width: 280px;
+  max-width: 420px;
+  padding: 14px 14px 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 18px 40px -12px rgba(15, 23, 42, 0.22),
+    0 4px 12px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  direction: inherit;
+}
+
+.bankai-toast-accent {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 16px 0 0 16px;
+  background: currentColor;
+  opacity: 0.85;
+}
+[dir="rtl"] .bankai-toast-accent {
+  border-radius: 0 16px 16px 0;
+}
+
+.bankai-toast-success { color: #0f7b3a; }
+.bankai-toast-error { color: #c42b1c; }
+.bankai-toast-warning { color: #9a6700; }
+.bankai-toast-info { color: #0078d4; }
+
+.bankai-toast-transition-enter { transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+.bankai-toast-transition-leave { transition: opacity 0.18s cubic-bezier(0.7, 0, 0.84, 0), transform 0.18s cubic-bezier(0.7, 0, 0.84, 0); }
+.bankai-toast-transition-start { opacity: 0; transform: translateY(10px) scale(0.96); }
+.bankai-toast-transition-end { opacity: 1; transform: translateY(0) scale(1); }
+
+.bankai-toast-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.bankai-toast-icon-badge .solar-icon {
+  width: 18px;
+  height: 18px;
+  display: block !important;
+}
+
+.bankai-toast-success .bankai-toast-icon-success {
+  background: linear-gradient(145deg, rgba(15, 123, 58, 0.16), rgba(15, 123, 58, 0.06));
+  color: #0f7b3a;
+  box-shadow: inset 0 0 0 1px rgba(15, 123, 58, 0.12);
+}
+.bankai-toast-error .bankai-toast-icon-error {
+  background: linear-gradient(145deg, rgba(196, 43, 28, 0.16), rgba(196, 43, 28, 0.06));
+  color: #c42b1c;
+  box-shadow: inset 0 0 0 1px rgba(196, 43, 28, 0.12);
+}
+.bankai-toast-warning .bankai-toast-icon-warning {
+  background: linear-gradient(145deg, rgba(154, 103, 0, 0.16), rgba(154, 103, 0, 0.06));
+  color: #9a6700;
+  box-shadow: inset 0 0 0 1px rgba(154, 103, 0, 0.12);
+}
+.bankai-toast-info .bankai-toast-icon-info {
+  background: linear-gradient(145deg, rgba(0, 120, 212, 0.16), rgba(0, 120, 212, 0.06));
+  color: #0078d4;
+  box-shadow: inset 0 0 0 1px rgba(0, 120, 212, 0.12);
+}
+
+.bankai-toast-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+}
+.bankai-toast-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  color: inherit;
+}
+.bankai-toast-text {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1f2328;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.bankai-toast-dismiss {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  margin: -2px -4px 0 0;
+  border-radius: 10px;
+  color: #8c959f;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+.bankai-toast-dismiss .solar-icon { width: 14px; height: 14px; display: block !important; }
+.bankai-toast-dismiss:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #1f2328;
+}
+.bankai-toast-dismiss:active { transform: scale(0.92); }
+
+.bankai-toast-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(15, 23, 42, 0.06);
+}
+.bankai-toast-progress-bar {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: currentColor;
+  opacity: 0.55;
+  transform: scaleX(0);
+}
+[dir="rtl"] .bankai-toast-progress-bar { transform-origin: right center; }
+.bankai-toast-progress-bar.is-running {
+  animation: bankai-toast-progress var(--toast-ms, 3600ms) linear forwards;
+}
+@keyframes bankai-toast-progress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bankai-toast-progress-bar.is-running { animation: none; }
+  .bankai-toast-transition-enter,
+  .bankai-toast-transition-leave { transition: none; }
+}
+
+/* ==========================================================================
+   Ambient Background (Grid + Orbs + Particles)
+   ========================================================================== */
+
+#bankai-admin-app .bankai-bg-decorations,
+.bankai-app-wrapper .bankai-bg-decorations {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* نقطه‌ای شبکه‌ای */
+#bankai-admin-app .bankai-ambient-grid,
+.bankai-app-wrapper .bankai-ambient-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(31, 35, 40, 0.07) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(ellipse 95% 75% at 50% 30%, #000 35%, transparent 95%);
+  -webkit-mask-image: radial-gradient(ellipse 95% 75% at 50% 30%, #000 35%, transparent 95%);
+  opacity: 0.85;
+}
+
+/* حباب‌های رنگی محو */
+#bankai-admin-app .bankai-ambient-orb,
+.bankai-app-wrapper .bankai-ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(85px);
+  pointer-events: none;
+  will-change: transform;
+}
+
+#bankai-admin-app .bankai-orb-1,
+.bankai-app-wrapper .bankai-orb-1 {
+  top: -80px;
+  right: 12%;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(9, 105, 218, 0.13) 0%, rgba(84, 174, 255, 0.04) 55%, transparent 75%);
+  animation: bankaiFloatOrb1 20s ease-in-out infinite alternate;
+}
+
+#bankai-admin-app .bankai-orb-2,
+.bankai-app-wrapper .bankai-orb-2 {
+  top: 32%;
+  left: 4%;
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(circle, rgba(130, 80, 223, 0.10) 0%, rgba(210, 168, 255, 0.03) 55%, transparent 75%);
+  animation: bankaiFloatOrb2 24s ease-in-out infinite alternate;
+}
+
+#bankai-admin-app .bankai-orb-3,
+.bankai-app-wrapper .bankai-orb-3 {
+  bottom: 4%;
+  right: 28%;
+  width: 440px;
+  height: 440px;
+  background: radial-gradient(circle, rgba(31, 136, 61, 0.08) 0%, rgba(86, 211, 100, 0.03) 55%, transparent 75%);
+  animation: bankaiFloatOrb3 22s ease-in-out infinite alternate;
+}
+
+@keyframes bankaiFloatOrb1 {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-45px, 35px) scale(1.08); }
+  100% { transform: translate(30px, -25px) scale(0.94); }
+}
+
+@keyframes bankaiFloatOrb2 {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(40px, -30px) scale(0.92); }
+  100% { transform: translate(-25px, 40px) scale(1.07); }
+}
+
+@keyframes bankaiFloatOrb3 {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-35px, -40px) scale(1.1); }
+  100% { transform: translate(35px, 25px) scale(0.95); }
+}
+
+/* ذرات شناور */
+#bankai-admin-app .bankai-ambient-particles,
+.bankai-app-wrapper .bankai-ambient-particles {
+  position: absolute;
+  inset: 0;
+}
+
+#bankai-admin-app .bankai-particle,
+.bankai-app-wrapper .bankai-particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: bankaiParticlePulse 5s ease-in-out infinite alternate;
+}
+
+#bankai-admin-app .p-1 { top: 18%; left: 22%;  width: 4px; height: 4px; background: #0969DA; opacity: 0.35; animation-delay: 0s; }
+#bankai-admin-app .p-2 { top: 32%; right: 18%; width: 5px; height: 5px; background: #8250DF; opacity: 0.30; animation-delay: 1.5s; }
+#bankai-admin-app .p-3 { top: 68%; left: 14%;  width: 4px; height: 4px; background: #1F883D; opacity: 0.32; animation-delay: 2.8s; }
+#bankai-admin-app .p-4 { top: 82%; right: 26%; width: 5px; height: 5px; background: #0969DA; opacity: 0.28; animation-delay: 1s; }
+#bankai-admin-app .p-5 { top: 48%; right: 42%; width: 4px; height: 4px; background: #9A6700; opacity: 0.35; animation-delay: 2s; }
+
+@keyframes bankaiParticlePulse {
+  0%   { transform: scale(1) translateY(0); opacity: 0.2; }
+  100% { transform: scale(1.5) translateY(-14px); opacity: 0.55; }
+}
+
+
+/* ==========================================================================
+   Page Progress Bar (نوار باریک بالای صفحه)
+   ========================================================================== */
+
+.bankai-page-progress-track {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  z-index: 999999;
+  pointer-events: none;
+}
+
+.bankai-page-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #54AEFF 0%, #0969DA 50%, #218BFF 100%);
+  box-shadow: 0 0 10px rgba(9, 105, 218, 0.65), 0 0 4px rgba(84, 174, 255, 0.8);
+  transition: width 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 0 2px 2px 0;
+}
+
+[dir="rtl"] .bankai-page-progress-bar,
+.rtl .bankai-page-progress-bar {
+  border-radius: 2px 0 0 2px;
+}
+
+
+/* ==========================================================================
+   Save Loader (کارت شناور ذخیره)
+   ========================================================================== */
+
+.bankai-save-loader-overlay {
+  position: fixed;
+  top: 48px;                          /* زیر Admin Bar + کمی فاصله */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99998;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  width: max-content;
+  max-width: 92vw;
+}
+
+.bankai-save-loader-card {
+  pointer-events: auto;
+  background-color: #FFFFFF;
+  border: 1px solid #D0D7DE;
+  border-radius: 12px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow:
+    0 8px 28px -4px rgba(31, 35, 40, 0.16),
+    0 2px 8px rgba(31, 35, 40, 0.05);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  min-width: 260px;
+  max-width: 90vw;
+}
+
+/* حالت موفقیت */
+.bankai-save-loader-success {
+  border-color: #ACEBBB;
+  box-shadow:
+    0 8px 28px -4px rgba(26, 127, 55, 0.18),
+    0 2px 8px rgba(26, 127, 55, 0.06);
+}
+
+/* دایره اسپینر */
+.bankai-save-spinner-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: rgba(9, 105, 218, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* دایره تیک موفقیت */
+.bankai-save-success-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: #DAFBE1;
+  border: 1px solid #ACEBBB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #1A7F37;
+  animation: bankaiScaleCheck 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes bankaiScaleCheck {
+  0%   { transform: scale(0.55); opacity: 0; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+/* اسپینر چرخان */
+.bankai-spinner {
+  width: 18px;
+  height: 18px;
+  color: #0969DA;
+  animation: bankaiSpin 0.75s linear infinite;
+}
+
+@keyframes bankaiSpin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* متن داخل کارت */
+.bankai-save-loader-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bankai-save-loader-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1F2328;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bankai-save-loader-message {
+  font-size: 11px;
+  font-weight: 500;
+  color: #656D76;
+  line-height: 1.35;
+}
+
+/* نقطه چشمک‌زن کنار عنوان در حالت saving */
+.bankai-pulse-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #0969DA;
+  flex-shrink: 0;
+  animation: bankaiPulseDot 1.2s ease-in-out infinite;
+}
+
+@keyframes bankaiPulseDot {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%      { opacity: 0.35; transform: scale(0.7); }
+}
+
+/* Overlay لودینگ داخل تب */
+#bankai-admin-app .bankai-tab-loading-overlay,
+.bankai-app-wrapper .bankai-tab-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(246, 248, 250, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 100px;
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+#bankai-admin-app .bankai-loading-pill,
+.bankai-app-wrapper .bankai-loading-pill {
+  background: #FFFFFF;
+  border: 1px solid #D0D7DE;
+  padding: 8px 18px;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1F2328;
+  box-shadow: 0 4px 14px rgba(31, 35, 40, 0.08);
+}
+
+/* ==========================================================================
+   Fluent Windows 11 + Material You (Android) — Admin Shell Theme
+   ========================================================================== */
+
+body.toplevel_page_bankai-core #wpcontent,
+body.toplevel_page_bankai-core #wpbody-content {
+  background-color: #f3f3f3 !important;
+}
+
+/* Header — acrylic / mica */
+#bankai-admin-header {
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(20px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.7) inset !important;
+}
+
+#bankai-admin-app .bankai-logo-mark,
+.bankai-app-wrapper .bankai-logo-mark {
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.2);
+}
+
+/* Sidebar — elevated surface */
+#bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-inline-end: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 1px 0 12px rgba(0, 0, 0, 0.03) !important;
+}
+
+#bankai-admin-app .bankai-nav-item,
+.bankai-app-wrapper .bankai-nav-item {
+  border-radius: 999px !important;
+  margin: 2px 10px !important;
+  padding: 10px 14px !important;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease !important;
+  border: none !important;
+}
+
+#bankai-admin-app .bankai-nav-item:hover,
+.bankai-app-wrapper .bankai-nav-item:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: var(--bankai-text-main) !important;
+}
+
+#bankai-admin-app .bankai-nav-item.is-active,
+#bankai-admin-app .bankai-nav-item.active,
+.bankai-app-wrapper .bankai-nav-item.is-active,
+.bankai-app-wrapper .bankai-nav-item.active {
+  background: var(--bankai-accent-subtle) !important;
+  color: var(--bankai-accent) !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+
+#bankai-admin-app .bankai-nav-item .material-symbols-outlined,
+.bankai-app-wrapper .bankai-nav-item .material-symbols-outlined {
+  font-size: 20px !important;
+}
+
+/* Main content cards */
+#bankai-admin-app .bankai-card,
+#bankai-admin-app .bk-card,
+.bankai-app-wrapper .bankai-card,
+.bankai-app-wrapper .bk-card {
+  background: var(--bankai-card-bg) !important;
+  border: 1px solid var(--bankai-card-border) !important;
+  border-radius: var(--bankai-radius-lg) !important;
+  box-shadow: var(--bankai-shadow-1) !important;
+  transition: box-shadow .2s ease, transform .15s ease !important;
+}
+
+#bankai-admin-app .bankai-card:hover,
+.bankai-app-wrapper .bankai-card:hover {
+  box-shadow: var(--bankai-shadow-2) !important;
+}
+
+/* Buttons — pill Fluent style */
+#bankai-admin-app .bankai-btn,
+#bankai-admin-app .bk-btn-primary,
+#bankai-admin-app button.button-primary,
+.bankai-app-wrapper .bankai-btn {
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em;
+  transition: filter .15s ease, transform .1s ease, box-shadow .15s ease !important;
+}
+
+#bankai-admin-app .bankai-btn-primary,
+#bankai-admin-app .bk-btn-primary {
+  background: var(--bankai-accent) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 1px 3px rgba(0, 120, 212, 0.3) !important;
+}
+
+#bankai-admin-app .bankai-btn-primary:hover,
+#bankai-admin-app .bk-btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+#bankai-admin-app .bankai-btn-ghost,
+#bankai-admin-app .bk-btn-ghost {
+  border-radius: 999px !important;
+  border: 1px solid rgba(0,0,0,.08) !important;
+  background: #fff !important;
+}
+
+/* Inputs */
+#bankai-admin-app input[type="text"],
+#bankai-admin-app input[type="search"],
+#bankai-admin-app input[type="url"],
+#bankai-admin-app input[type="number"],
+#bankai-admin-app input[type="email"],
+#bankai-admin-app input[type="password"],
+#bankai-admin-app textarea,
+#bankai-admin-app select {
+  border-radius: var(--bankai-radius-sm) !important;
+  border: 1px solid rgba(0,0,0,.08) !important;
+  background: #fafafa !important;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease !important;
+}
+
+#bankai-admin-app input:focus,
+#bankai-admin-app textarea:focus,
+#bankai-admin-app select:focus {
+  background: #fff !important;
+  border-color: var(--bankai-accent) !important;
+  box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.18) !important;
+  outline: none !important;
+}
+
+/* Tabs inside pages */
+#bankai-admin-app .bankai-tabs,
+#bankai-admin-app .bk-tabs {
+  gap: 6px !important;
+}
+
+#bankai-admin-app .bankai-tabs button,
+#bankai-admin-app .bk-tabs button,
+#bankai-admin-app .bankai-subtab {
+  border-radius: 999px !important;
+  padding: 8px 14px !important;
+  border: none !important;
+  background: transparent !important;
+  font-weight: 600 !important;
+}
+
+#bankai-admin-app .bankai-tabs button.is-active,
+#bankai-admin-app .bk-tabs button.is-active,
+#bankai-admin-app .bankai-subtab.is-active {
+  background: var(--bankai-accent-subtle) !important;
+  color: var(--bankai-accent) !important;
+}
+
+/* Tables */
+#bankai-admin-app table,
+#bankai-admin-app .bankai-table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: var(--bankai-radius-md) !important;
+  overflow: hidden;
+  border: 1px solid var(--bankai-card-border) !important;
+}
+
+#bankai-admin-app table th {
+  background: #fafafa !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid var(--bankai-border-subtle) !important;
+}
+
+#bankai-admin-app table td {
+  border-bottom: 1px solid var(--bankai-border-subtle) !important;
+}
+
+#bankai-admin-app table tr:last-child td {
+  border-bottom: none !important;
+}
+
+#bankai-admin-app table tr:hover td {
+  background: rgba(0, 120, 212, 0.03) !important;
+}
+
+/* Badges / chips */
+#bankai-admin-app .bankai-badge,
+#bankai-admin-app .bk-badge,
+#bankai-admin-app .bk-chip {
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+}
+
+/* Progress / score rings already exist — soft glow */
+#bankai-admin-app .bankai-score-ring,
+#bankai-admin-app .bk-score-ring {
+  filter: drop-shadow(0 2px 6px rgba(0,120,212,.12));
+}
+
+/* Toast */
+#bankai-admin-app .bankai-toast,
+.bankai-app-wrapper .bankai-toast {
+  /* legacy single toast — prefer container */
+  border-radius: 999px !important;
+  box-shadow: var(--bankai-shadow-2) !important;
+  border: none !important;
+  backdrop-filter: blur(12px);
+}
+
+/* Section headers */
+#bankai-admin-app .bankai-section-title,
+#bankai-admin-app h2.bankai-h2,
+#bankai-admin-app .bankai-page-title {
+  letter-spacing: -0.02em;
+  font-weight: 700 !important;
+}
+
+/* Module switch cards on overview */
+#bankai-admin-app .bankai-module-card,
+#bankai-admin-app .bankai-feature-card {
+  border-radius: var(--bankai-radius-lg) !important;
+  border: 1px solid var(--bankai-card-border) !important;
+  box-shadow: var(--bankai-shadow-1) !important;
+  transition: transform .15s ease, box-shadow .2s ease !important;
+}
+
+#bankai-admin-app .bankai-module-card:hover,
+#bankai-admin-app .bankai-feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--bankai-shadow-2) !important;
+}
+
+/* AI Studio provider cards */
+#bankai-admin-app .bankai-provider-card,
+#bankai-admin-app .ai-provider-card {
+  border-radius: var(--bankai-radius-lg) !important;
+  border: 1px solid var(--bankai-card-border) !important;
+  box-shadow: var(--bankai-shadow-1) !important;
+}
+
+#bankai-admin-app .bankai-provider-card.is-active,
+#bankai-admin-app .ai-provider-card.is-active {
+  border-color: var(--bankai-purple) !important;
+  box-shadow: 0 0 0 2px rgba(107, 78, 255, 0.18) !important;
+}
+
+/* Switches Material style */
+#bankai-admin-app input[type="checkbox"] {
+  accent-color: var(--bankai-accent);
+}
+
+/* Content area padding */
+#bankai-admin-app #bankai-main-content,
+#bankai-admin-app .bankai-main-content {
+  padding: 20px 22px 40px !important;
+}
+
+/* Loading overlay mica */
+#bankai-admin-app .bankai-tab-loading-overlay {
+  background-color: rgba(243, 243, 243, 0.65) !important;
+  backdrop-filter: blur(6px) !important;
+}
+
+#bankai-admin-app .bankai-loading-pill {
+  border-radius: 999px !important;
+  border: none !important;
+  box-shadow: var(--bankai-shadow-2) !important;
+}
+
+/* Scrollbars thin Fluent */
+#bankai-admin-app ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+#bankai-admin-app ::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,.15);
+  border-radius: 8px;
+}
+#bankai-admin-app ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,.25);
+}
+
+
+/* Material Symbols — ensure icon font applies everywhere in admin shell */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined' !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  user-select: none;
+}
+
+/* solar-icon always visible */
+#bankai-admin-app .solar-icon,
+.bankai-sidebar .solar-icon,
+.solar-icon {
+  display: inline-block !important;
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+}
+.bankai-nav-icon .solar-icon { width: 22px; height: 22px; }
+.material-symbols-outlined { display: none !important; }
+
+
+
+
+
+
+/* ==========================================================================
+   PREMIUM MINIMALISM — Admin Panel
+   ========================================================================== */
+
+#bankai-admin-app,
+.bankai-app-wrapper,
+.bankai-admin-wrap {
+  background: #F7F7F8 !important;
+  font-family: "Vazirmatn", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  color: #1A1A1A !important;
+}
+
+#bankai-admin-app .bankai-sidebar,
+.bankai-admin-wrap .bankai-sidebar,
+aside.bankai-sidebar {
+  background: #FFFFFF !important;
+  border: none !important;
+  border-inline-end: 1px solid #E8E8EA !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+#bankai-admin-app .bankai-sidebar a,
+#bankai-admin-app .bankai-nav-item,
+.bankai-menu-item,
+.bankai-sidebar-link {
+  border-radius: 10px !important;
+  margin: 2px 10px !important;
+  padding: 9px 12px !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+#bankai-admin-app .bankai-sidebar a:hover,
+.bankai-menu-item:hover {
+  background: #F4F4F5 !important;
+}
+#bankai-admin-app .bankai-sidebar a.is-active,
+#bankai-admin-app .bankai-nav-item.is-active,
+#bankai-admin-app .bankai-sidebar a.active,
+.bankai-menu-item.active {
+  background: #F0F1F3 !important;
+  color: #3D4A57 !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+}
+
+#bankai-admin-app .bankai-card,
+#bankai-admin-app .card,
+.bankai-panel,
+.bankai-box,
+.bankai-stat-card,
+.bankai-module-card,
+.bankai-ai-card,
+.bankai-seo-card,
+.bankai-widget,
+.bankai-section-card,
+.bankai-provider-card,
+.bankai-engine-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E8E8EA !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+.bankai-provider-card:hover,
+.bankai-module-card:hover,
+.bankai-stat-card:hover {
+  transform: none !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,.04) !important;
+  border-color: #D4D4D8 !important;
+}
+
+#bankai-admin-app .bankai-page-header,
+.bankai-header-bar,
+.bankai-topbar {
+  background: #FFFFFF !important;
+  border: 1px solid #E8E8EA !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+
+#bankai-admin-app .bankai-tabs,
+.bankai-tab-nav,
+.bankai-tabs-nav {
+  background: #F4F4F5 !important;
+  border: 1px solid #E8E8EA !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  padding: 3px !important;
+}
+#bankai-admin-app .bankai-tab.is-active,
+#bankai-admin-app .bankai-tab.active,
+.bankai-tab-btn.is-active {
+  background: #FFFFFF !important;
+  color: #3D4A57 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04) !important;
+  border-radius: 8px !important;
+}
+
+#bankai-admin-app .bankai-btn-primary,
+#bankai-admin-app .button-primary,
+.bankai-btn--primary {
+  background: #3D4A57 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+}
+#bankai-admin-app .bankai-btn-primary:hover,
+.bankai-btn--primary:hover {
+  background: #2C3640 !important;
+}
+#bankai-admin-app .bankai-btn,
+#bankai-admin-app .button,
+.bankai-btn-secondary {
+  background: #F0F0F2 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  color: #1A1A1A !important;
+  box-shadow: none !important;
+}
+
+#bankai-admin-app input[type="text"],
+#bankai-admin-app input[type="search"],
+#bankai-admin-app input[type="email"],
+#bankai-admin-app input[type="url"],
+#bankai-admin-app input[type="number"],
+#bankai-admin-app input[type="password"],
+#bankai-admin-app select,
+#bankai-admin-app textarea,
+.bankai-input {
+  background: #FAFAFA !important;
+  border: 1px solid #E8E8EA !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  min-height: 40px !important;
+}
+#bankai-admin-app input:focus,
+#bankai-admin-app select:focus,
+#bankai-admin-app textarea:focus {
+  border-color: #8B9BB4 !important;
+  box-shadow: 0 0 0 2px rgba(139, 155, 180, 0.22) !important;
+  background: #fff !important;
+  outline: none !important;
+}
+
+#bankai-admin-app table,
+.bankai-table {
+  border: 1px solid #E8E8EA !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+#bankai-admin-app thead th {
+  background: #F7F7F8 !important;
+  color: #8A8F98 !important;
+}
+
+/* Active / selected gray-blue */
+#bankai-admin-app .is-selected,
+#bankai-admin-app .is-active-card,
+.bankai-style-card.is-active {
+  border-color: #8B9BB4 !important;
+  box-shadow: 0 0 0 2px rgba(139, 155, 180, 0.25) !important;
+}
+
+
+/* ===== Import panel: mirror SEO AI modal ===== */
+.bk-import-ai { direction: rtl; }
+.bk-import-ai .bk-ai-assistant-shell {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 28px rgba(15,23,42,.06);
+    margin-bottom: 16px;
+}
+.bk-import-ai .bk-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    background: linear-gradient(135deg, #faf5ff 0%, #eef2ff 100%);
+}
+.bk-import-ai .bk-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.bk-import-ai .bk-ai-logo-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #6b4eff, #818cf8);
+    color: #fff;
+}
+.bk-import-ai .bk-ai-logo-icon .solar-icon { width: 22px; height: 22px; stroke: #fff; }
+.bk-import-ai .bk-modal-title strong { display: block; font-size: 15px; font-weight: 800; color: #1e1b4b; }
+.bk-import-ai .bk-modal-title small { display: block; font-size: 12px; color: #64748b; margin-top: 2px; }
+.bk-import-ai .bk-ai-engine-bar {
+    padding: 10px 14px 12px;
+    background: linear-gradient(180deg, #f8f6ff 0%, #fff 100%);
+    border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.bk-import-ai .bk-ai-engine-label {
+    font-size: 11px; font-weight: 700; color: #605e5c; margin-bottom: 8px;
+}
+.bk-import-ai .bk-ai-engine-scroll {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+    scroll-snap-type: x mandatory;
+}
+.bk-import-ai .bk-ai-engine-scroll::-webkit-scrollbar { height: 4px; }
+.bk-import-ai .bk-ai-engine-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 4px; }
+.bk-import-ai .bk-ai-engine-card {
+    flex: 0 0 auto; min-width: 128px; scroll-snap-align: start;
+    border: 1px solid rgba(0,0,0,.08); background: #fff; border-radius: 14px;
+    padding: 10px 12px; cursor: pointer; text-align: right;
+    transition: all .15s ease; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.bk-import-ai .bk-ai-engine-card:hover {
+    border-color: rgba(107,78,255,.35);
+    box-shadow: 0 4px 12px rgba(107,78,255,.1);
+}
+.bk-import-ai .bk-ai-engine-card.is-active {
+    border-color: #6b4eff;
+    background: linear-gradient(135deg, #f3f0ff, #eef6fc);
+    box-shadow: 0 0 0 2px rgba(107,78,255,.18);
+}
+.bk-import-ai .bk-ai-engine-card.is-disabled { opacity: .55; }
+.bk-import-ai .bk-ai-engine-name { display: block; font-size: 12px; font-weight: 700; color: #1a1a1a; }
+.bk-import-ai .bk-ai-engine-status { display: block; font-size: 10px; color: #8a8886; margin-top: 2px; }
+.bk-import-ai .bk-ai-engine-card.is-active .bk-ai-engine-status { color: #6b4eff; font-weight: 700; }
+.bk-import-ai .bk-import-toolbar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid #F1F5F9;
+}
+.bk-import-ai .bk-post-ai-card {
+    border: 1px solid #E2E8F0; border-radius: 14px; background: #fff;
+    padding: 14px 16px; margin-bottom: 12px;
+    transition: border-color .2s, background .2s;
+}
+.bk-import-ai .bk-post-ai-card.is-running { border-color: #A5B4FC; background: #F8FAFF; }
+.bk-import-ai .bk-post-ai-card.is-review { border-color: #93C5FD; background: #EFF6FF; }
+.bk-import-ai .bk-post-ai-card.is-done { border-color: #86EFAC; background: #F0FDF4; }
+.bk-import-ai .bk-post-ai-card.is-error { border-color: #FCA5A5; background: #FEF2F2; }
+.bk-import-ai .bk-checklist-grid {
+    list-style: none; margin: 12px 0 0; padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px;
+}
+.bk-import-ai .bk-checklist-grid li {
+    font-size: 12px; display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px; border-radius: 10px; background: #F8FAFC; border: 1px solid #F1F5F9;
+}
+.bk-import-ai .bk-progress-track {
+    height: 8px; background: #E5E7EB; border-radius: 999px; overflow: hidden; margin-top: 6px;
+}
+.bk-import-ai .bk-progress-fill {
+    height: 100%; background: linear-gradient(90deg, #6b4eff, #50e6ff); transition: width .25s;
+}
+.bk-import-ai .bk-review-box {
+    background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;
+    padding: 10px 12px; margin-top: 8px; font-size: 13px; line-height: 1.6;
+}
+.bk-import-ai .bk-btn-primary {
+    background: linear-gradient(135deg, #6b4eff, #6366f1); color: #fff; border: none;
+    border-radius: 10px; padding: 8px 14px; font-weight: 700; cursor: pointer;
+}
+.bk-import-ai .bk-btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+.bk-import-ai .bk-btn-ghost {
+    background: #fff; border: 1px solid #E2E8F0; border-radius: 10px;
+    padding: 8px 12px; cursor: pointer; font-weight: 600;
+}
+.bk-import-ai .bk-btn-success {
+    background: #16a34a; color: #fff; border: none; border-radius: 10px;
+    padding: 8px 14px; font-weight: 700; cursor: pointer;
+}
+
+/* ===== ELEMENTSKIT-INSPIRED ADMIN SHELL v1.0.105 (RTL-safe) ================
+   Sidebar sticky INSIDE #wpcontent — never under WP admin menu
+   ========================================================================== */
+
+body.toplevel_page_bankai-core,
+body.toplevel_page_bankai-core #wpwrap,
+body.toplevel_page_bankai-core #wpcontent,
+body.toplevel_page_bankai-core #wpbody,
+body.toplevel_page_bankai-core #wpbody-content {
+  background: #f0f2f8 !important;
+}
+
+#bankai-admin-app,
+.bankai-admin-wrap {
+  --ekit-side-w: 260px;
+  --ekit-text: #f5f3ff;
+  --ekit-muted: rgba(245, 243, 255, 0.62);
+  --ekit-content-bg: #f0f2f8;
+  --ekit-card: #ffffff;
+  --ekit-accent: #7c5cff;
+  background: var(--ekit-content-bg) !important;
+  min-height: calc(100vh - 32px);
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+#bankai-admin-app .bankai-bg-decorations { opacity: 0.25; pointer-events: none; }
+
+/* Header sits in normal flow above body */
+#bankai-admin-header {
+  position: sticky;
+  top: 32px;
+  z-index: 90;
+  margin: 12px 16px 0 !important;
+  padding: 12px 18px !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 24px rgba(28, 18, 70, 0.06) !important;
+}
+
+.bankai-btn-action {
+  border-radius: 12px !important;
+  border: 1px solid #e6e8f0 !important;
+  background: #fff !important;
+  color: #3b3558 !important;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.bankai-btn-action:hover {
+  transform: translateY(-1px);
+  border-color: #cfc6ff !important;
+  box-shadow: 0 6px 16px rgba(124, 92, 255, 0.12);
+  color: #5b3fd6 !important;
+}
+
+/* Body: flex row — sidebar + content (NOT fixed to viewport) */
+#bankai-admin-app .bankai-body-layout,
+.bankai-app-wrapper .bankai-body-layout {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 16px !important;
+  padding: 14px 16px 28px !important;
+  min-height: calc(100vh - 110px);
+  align-items: flex-start !important;
+  box-sizing: border-box !important;
+}
+
+/* Sidebar: sticky inside content column — respects WP admin menu + RTL */
+#bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar,
+.bankai-app-wrapper .bankai-sidebar {
+  position: sticky !important;
+  top: 46px !important; /* WP admin bar 32px + 14px gap */
+  bottom: auto !important;
+  inset: auto !important;
+  left: auto !important;
+  right: auto !important;
+  width: var(--ekit-side-w) !important;
+  min-width: var(--ekit-side-w) !important;
+  max-width: var(--ekit-side-w) !important;
+  flex: 0 0 var(--ekit-side-w) !important;
+  height: auto !important;
+  max-height: calc(100vh - 58px) !important; /* stays visible, never fades */
+  align-self: flex-start !important;
+  margin: 0 !important;
+  padding: 16px 12px !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(167, 139, 250, 0.28) 0%, transparent 55%),
+    radial-gradient(90% 70% at 100% 100%, rgba(99, 102, 241, 0.22) 0%, transparent 50%),
+    linear-gradient(165deg, #22124a 0%, #1a0f38 45%, #140a2c 100%) !important;
+  backdrop-filter: none !important;
+  box-shadow: 0 16px 40px rgba(20, 10, 50, 0.28), inset 0 1px 0 rgba(255,255,255,.08) !important;
+  color: var(--ekit-text) !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 20 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-self: flex-start !important;
+  order: 0;
+}
+
+/* Explicit RTL/LTR: keep sidebar as first flex item on the START side */
+#bankai-admin-app.rtl .bankai-body-layout,
+[dir="rtl"] #bankai-admin-app .bankai-body-layout {
+  flex-direction: row !important; /* in RTL row still places first item on the right (start) */
+}
+
+#bankai-admin-sidebar .bankai-brand-card {
+  border-bottom: 1px solid rgba(255,255,255,.1) !important;
+  padding: 4px 6px 14px !important;
+  margin-bottom: 12px !important;
+  gap: 10px !important;
+  display: flex;
+  align-items: center;
+}
+#bankai-admin-sidebar .bankai-brand-logo {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
+  box-shadow: 0 8px 18px rgba(124, 92, 255, 0.35) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden;
+}
+#bankai-admin-sidebar .bankai-brand-name,
+#bankai-admin-sidebar .bankai-brand-title {
+  color: #fff !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+}
+#bankai-admin-sidebar .bankai-brand-sub,
+#bankai-admin-sidebar .bankai-brand-version {
+  color: var(--ekit-muted) !important;
+  font-size: 11px !important;
+}
+
+#bankai-admin-sidebar .bankai-nav-group { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+#bankai-admin-sidebar .bankai-nav-group-title {
+  color: rgba(245,243,255,.4) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 8px 10px 4px !important;
+}
+
+#bankai-admin-sidebar .bankai-nav-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  padding: 10px 10px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  color: var(--ekit-muted) !important;
+  font-size: 13px !important;
+  font-weight: 550 !important;
+  text-align: start !important;
+  cursor: pointer;
+  position: relative;
+  transition: background .2s ease, color .2s ease;
+  box-shadow: none !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn span { color: inherit !important; flex: 1; }
+#bankai-admin-sidebar .bankai-nav-btn:hover {
+  background: rgba(255,255,255,.08) !important;
+  color: #fff !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn.active {
+  background: linear-gradient(90deg, rgba(124,92,255,.38), rgba(124,92,255,.12)) !important;
+  color: #fff !important;
+  box-shadow: inset 0 0 0 1px rgba(167,139,250,.28) !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn.active::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 3px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, #c4b5fd, #7c5cff);
+}
+#bankai-admin-sidebar .bankai-nav-icon {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(255,255,255,.07) !important;
+  color: #d8d0ff !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn.active .bankai-nav-icon,
+#bankai-admin-sidebar .bankai-nav-btn:hover .bankai-nav-icon {
+  background: linear-gradient(135deg, rgba(167,139,250,.55), rgba(99,102,241,.45)) !important;
+  color: #fff !important;
+}
+#bankai-admin-sidebar .bankai-nav-icon svg { width: 17px !important; height: 17px !important; stroke: currentColor !important; }
+#bankai-admin-sidebar .bankai-nav-off-badge {
+  font-size: 9px !important;
+  font-weight: 700;
+  padding: 2px 6px !important;
+  border-radius: 999px;
+  background: rgba(255,69,58,.2) !important;
+  color: #ffb4ae !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn.is-disabled { opacity: .45; }
+#bankai-admin-sidebar .bankai-sidebar-footer,
+#bankai-admin-sidebar .bankai-side-foot {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+
+/* Main content — no huge offset */
+#bankai-admin-app #bankai-main-content,
+.bankai-app-wrapper #bankai-main-content,
+#bankai-admin-app .bankai-main-content {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 2px 20px !important;
+  position: relative;
+}
+
+/* Cards */
+#bankai-admin-app .bk-card,
+#bankai-admin-app .bankai-card,
+#bankai-admin-app .bk-panel {
+  background: #fff !important;
+  border: 1px solid #e8eaf2 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 24px rgba(24, 16, 60, 0.04) !important;
+}
+#bankai-admin-app .bk-btn-primary,
+#bankai-admin-app .bankai-btn-primary {
+  background: linear-gradient(135deg, #7c5cff, #6366f1) !important;
+  border: none !important;
+  color: #fff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 18px rgba(124, 92, 255, 0.25) !important;
+}
+
+/* Dashboard widgets */
+.bk-dash-hero {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+@media (max-width: 1100px) { .bk-dash-hero { grid-template-columns: 1fr; } }
+.bk-dash-hero-main {
+  background: linear-gradient(135deg, #22124a 0%, #3b1d7a 50%, #5b3fd6 100%);
+  color: #fff;
+  border-radius: 20px;
+  padding: 22px 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(70, 40, 160, 0.25);
+}
+.bk-dash-hero-main::after {
+  content: "";
+  position: absolute;
+  width: 220px; height: 220px;
+  right: -40px; top: -60px;
+  background: radial-gradient(circle, rgba(255,255,255,.18), transparent 70%);
+  pointer-events: none;
+}
+.bk-dash-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+@media (max-width: 1100px) { .bk-dash-metrics { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .bk-dash-metrics { grid-template-columns: 1fr; } }
+.bk-dash-metric {
+  background: #fff;
+  border: 1px solid #e8eaf2;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(24,16,60,.04);
+}
+.bk-dash-metric .lab { font-size: 11px; font-weight: 700; color: #8b90a0; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; display:flex; align-items:center; gap:6px; }
+.bk-dash-metric .val { font-size: 26px; font-weight: 800; color: #1a1433; line-height: 1.15; }
+.bk-dash-metric .sub { font-size: 12px; color: #8b90a0; margin-top: 6px; }
+.bk-dash-metric.is-purple .val { color: #6d4aff; }
+.bk-dash-metric.is-green .val { color: #16a34a; }
+.bk-dash-metric.is-blue .val { color: #2563eb; }
+.bk-dash-metric.is-amber .val { color: #d97706; }
+
+/* Settings / license */
+.bk-settings-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
+@media (max-width: 1000px) { .bk-settings-grid { grid-template-columns: 1fr; } }
+.bk-lic-banner {
+  background: linear-gradient(135deg, #ecfdf5, #f5f3ff);
+  border: 1px solid #ddd6fe;
+  border-radius: 18px;
+  padding: 20px;
+}
+.bk-lic-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  letter-spacing: .04em;
+  word-break: break-all;
+}
+
+/* Site SEO tab visual upgrade */
+#tab-seo-engine .bk-seo-site-hero {
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+@media (max-width: 1100px) { #tab-seo-engine .bk-seo-site-hero { grid-template-columns: 1fr; } }
+#tab-seo-engine .bk-seo-score-ring {
+  width: 110px; height: 110px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: conic-gradient(#7c5cff var(--p, 70%), #e9e5ff 0);
+  box-shadow: 0 10px 30px rgba(124,92,255,.2);
+}
+#tab-seo-engine .bk-seo-score-ring > span {
+  width: 84px; height: 84px; border-radius: 50%;
+  background: #fff; display: grid; place-items: center;
+  font-weight: 800; font-size: 22px; color: #1a1433;
+}
+#tab-seo-engine .bk-audit-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; border-radius: 14px;
+  background: #fafbff; border: 1px solid #eceef6;
+  margin-bottom: 8px;
+}
+#tab-seo-engine .bk-audit-item.is-ok { border-color: #bbf7d0; background: #f0fdf4; }
+#tab-seo-engine .bk-audit-item.is-warn { border-color: #fde68a; background: #fffbeb; }
+#tab-seo-engine .bk-audit-item.is-bad { border-color: #fecaca; background: #fef2f2; }
+
+/* Mobile drawer */
+@media (max-width: 1024px) {
+  #bankai-admin-sidebar,
+  #bankai-admin-app .bankai-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    inset-inline-start: 0 !important;
+    inset-inline-end: auto !important;
+    max-height: none !important;
+    border-radius: 0 20px 20px 0 !important;
+    transform: translateX(-110%);
+    transition: transform .28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    z-index: 10050 !important;
+  }
+  #bankai-admin-app.rtl #bankai-admin-sidebar,
+  [dir="rtl"] #bankai-admin-sidebar {
+    border-radius: 20px 0 0 20px !important;
+    transform: translateX(110%);
+  }
+  #bankai-admin-sidebar.mobile-open,
+  #bankai-admin-app .bankai-sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+  #bankai-admin-app .bankai-body-layout {
+    flex-direction: column !important;
+  }
+}
+
+
+/* ===== Dashboard module cards + unified purple theme polish v1.0.106 ===== */
+.bk-dash-hero-main h2 { color: #ffffff !important; }
+.bk-core-mod-card {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid #e8eaf2;
+  background: #fafbff;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.bk-core-mod-card.is-on {
+  border-color: #ddd6fe;
+  background: linear-gradient(180deg, #faf8ff, #fff);
+  box-shadow: 0 8px 20px rgba(124, 92, 255, 0.08);
+}
+
+/* SEO / AI / Speed / Media / Settings shared section headers */
+.bk-section-hero {
+  background: linear-gradient(135deg, #22124a 0%, #3b1d7a 55%, #5b3fd6 100%);
+  color: #fff;
+  border-radius: 18px;
+  padding: 20px 22px;
+  margin-bottom: 18px;
+  box-shadow: 0 14px 36px rgba(70, 40, 160, 0.22);
+  position: relative;
+  overflow: hidden;
+}
+.bk-section-hero h2 { margin: 0 0 6px; font-size: 18px; font-weight: 800; color: #fff !important; }
+.bk-section-hero p { margin: 0; font-size: 13px; opacity: .9; line-height: 1.6; max-width: 56ch; }
+
+/* noindex visual toggles */
+.bk-vtoggle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+.bk-vtoggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 10px;
+  border-radius: 14px;
+  border: 1px solid #e8eaf2;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  transition: .2s ease;
+}
+.bk-vtoggle input { position: absolute; opacity: 0; pointer-events: none; }
+.bk-vtoggle__art { font-size: 22px; line-height: 1; }
+.bk-vtoggle.is-on {
+  border-color: #c4b5fd;
+  background: linear-gradient(180deg, #f5f3ff, #fff);
+  color: #5b3fd6;
+  box-shadow: 0 8px 18px rgba(124, 92, 255, 0.12);
+}
+.bk-vtoggle.is-on::after {
+  content: "noindex";
+  font-size: 10px;
+  font-weight: 800;
+  color: #7c5cff;
+}
+
+/* Speed rocket cards */
+.bk-speed-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.bk-speed-tool {
+  border: 1px solid #e8eaf2;
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bk-speed-tool.is-on { border-color: #c4b5fd; background: linear-gradient(180deg, #faf8ff, #fff); }
+
+/* Media side-by-side */
+.bk-media-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 800px) { .bk-media-row-2 { grid-template-columns: 1fr; } }
+
+
+/* Watermark studio: position + opacity/quality on one row when consecutive */
+#tab-media-watermark .bk-wm-studio-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  #tab-media-watermark .bk-wm-studio-controls { grid-template-columns: 1fr; }
+}
+
+
+/* Admin bar variants for sticky plugin sidebar */
+body.admin-bar #bankai-admin-sidebar,
+body.admin-bar #bankai-admin-app .bankai-sidebar {
+  top: 46px !important;
+  max-height: calc(100vh - 58px) !important;
+}
+@media screen and (max-width: 782px) {
+  body.admin-bar #bankai-admin-sidebar,
+  body.admin-bar #bankai-admin-app .bankai-sidebar {
+    top: 54px !important;
+    max-height: calc(100vh - 66px) !important;
+  }
+}
+
+
+/* SEO site tab card grid */
+.bk-seo-site-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 8px;
+}
+@media (max-width: 960px) {
+  .bk-seo-site-grid { grid-template-columns: 1fr; }
+}
+.bk-seo-color-card { border: 1px solid #e8eaf2 !important; border-radius: 16px !important; box-shadow: 0 8px 22px rgba(24,16,60,.04) !important; }
+.bk-seo-color-indigo { border-top: 3px solid #6366f1 !important; }
+.bk-seo-color-emerald { border-top: 3px solid #10b981 !important; }
+.bk-seo-color-sky { border-top: 3px solid #0ea5e9 !important; }
+.bk-seo-color-amber { border-top: 3px solid #f59e0b !important; }
+.bk-seo-color-violet { border-top: 3px solid #8b5cf6 !important; }
+#tab-seo-engine .bk-section-hero { margin-bottom: 16px; }
+#tab-seo-engine .bk-vtoggle-grid { margin-top: 4px; }
+
+
+/* === Nav visibility fix: always show all sidebar items === */
+#bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar {
+  max-height: calc(100vh - 48px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+#bankai-admin-sidebar .bankai-sidebar-content {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+#bankai-admin-sidebar .bankai-nav-menu {
+  flex: 1 1 auto !important;
+  overflow: visible !important;
+  display: block !important;
+  max-height: none !important;
+}
+#bankai-admin-sidebar .bankai-nav-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  min-height: 42px !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn.is-disabled {
+  opacity: 0.55 !important;
+  display: flex !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn span {
+  display: inline-block !important;
+  visibility: visible !important;
+  color: inherit !important;
+}
+/* Do NOT force Material Symbols on SVG icons */
+#bankai-admin-sidebar .bankai-nav-icon .solar-icon,
+#bankai-admin-sidebar svg.solar-icon {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  display: block !important;
+  width: 17px !important;
+  height: 17px !important;
+}
+
+
+/* tab-pane-visibility-fix — do NOT force display:none (breaks Alpine x-show) */
+.bankai-tab-pane {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.bankai-tab-pane[x-cloak] {
+  display: none !important;
+}
+#bankai-admin-sidebar .bankai-nav-off-badge { display: none !important; }
+#bankai-admin-sidebar .bankai-nav-btn:disabled {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  filter: none !important;
+}
+#bankai-admin-app #bankai-main-content,
+#bankai-admin-app .bankai-main-content {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+
+
+/* Shared button loader */
+.bk-btn-spin,.bk-spin{
+  width:14px;height:14px;border-radius:50%;display:inline-block;vertical-align:middle;
+  border:2px solid rgba(255,255,255,.35);border-top-color:#fff;
+  animation:bk-spin .7s linear infinite;margin-inline-end:6px;
+}
+.bk-btn-soft .bk-btn-spin,.bk-btn-ghost .bk-btn-spin,.bankai-btn-ghost .bk-btn-spin{
+  border-color:rgba(79,70,229,.25);border-top-color:#4f46e5;
+}
+@keyframes bk-spin{to{transform:rotate(360deg)}}
+.bk-btn,.bk-btn-primary,.bankai-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+
+
+/* Shared pill tab box (AI Studio pattern) — use everywhere */
+.bk-pill-tabs{
+  display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px;padding:4px;
+  background:#f6f8fa;border:1px solid #d0d7de;border-radius:14px;width:fit-content;max-width:100%
+}
+.bk-pill-tab{
+  border:none;background:transparent;cursor:pointer;padding:10px 16px;border-radius:10px;
+  font-size:12px;font-weight:800;color:#656d76;display:inline-flex;align-items:center;gap:8px;
+  font-family:inherit;line-height:1.2
+}
+.bk-pill-tab svg{width:15px;height:15px;flex-shrink:0}
+.bk-pill-tab:hover{color:#1f2328}
+.bk-pill-tab.is-active{
+  background:#fff;color:#0969da;box-shadow:0 1px 3px rgba(0,0,0,.06)
+}
+
+
+/* Module cards — screenshot style (SEO/Speed/Media modules) */
+.bk-mod-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;
+}
+@media(max-width:800px){.bk-mod-grid{grid-template-columns:1fr}}
+.bk-mod-card{
+  background:#fff;border:1px solid #e8ecf1;border-radius:20px;padding:20px 22px;
+  box-shadow:0 4px 20px rgba(15,23,42,.04);display:flex;flex-direction:column;gap:12px;
+  transition:box-shadow .2s,border-color .2s
+}
+.bk-mod-card:hover{box-shadow:0 8px 28px rgba(15,23,42,.07)}
+.bk-mod-card.is-on{border-color:#d1fae5}
+.bk-mod-card__top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.bk-mod-card__heading{display:flex;align-items:center;gap:10px;flex:1;min-width:0;flex-wrap:wrap}
+.bk-mod-card__title{font-size:14px;font-weight:800;color:#0f172a;line-height:1.4}
+.bk-mod-card__icon{
+  width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  background:#f1f5f9;color:#64748b;flex-shrink:0
+}
+.bk-mod-card__icon svg{width:20px;height:20px}
+.bk-mod-badge{
+  display:inline-block;font-size:10px;font-weight:800;letter-spacing:.02em;
+  padding:3px 8px;border-radius:8px;background:#eef2ff;color:#4f46e5
+}
+.bk-mod-badge.is-green{background:#ecfdf5;color:#059669}
+.bk-mod-badge.is-pink{background:#fdf2f8;color:#db2777}
+.bk-mod-badge.is-amber{background:#fffbeb;color:#d97706}
+.bk-mod-badge.is-blue{background:#eff6ff;color:#2563eb}
+.bk-mod-badge.is-violet{background:#f5f3ff;color:#7c3aed}
+.bk-mod-card__desc{margin:0;font-size:12px;line-height:1.7;color:#94a3b8}
+.bk-mod-card__foot{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding-top:12px;border-top:1px solid #f1f5f9;margin-top:auto
+}
+.bk-mod-status{font-size:12px;font-weight:800;color:#16a34a}
+.bk-mod-status.is-off{color:#94a3b8}
+.bk-mod-settings-btn{
+  border:1px solid #e2e8f0;background:#f8fafc;color:#334155;font-size:12px;font-weight:700;
+  padding:7px 14px;border-radius:10px;cursor:pointer;font-family:inherit
+}
+.bk-mod-settings-btn:hover{background:#f1f5f9;border-color:#cbd5e1}
+/* Green toggle matching screenshot */
+.bk-mod-switch{position:relative;width:44px;height:26px;flex-shrink:0}
+.bk-mod-switch input{opacity:0;width:0;height:0}
+.bk-mod-switch span{
+  position:absolute;inset:0;background:#cbd5e1;border-radius:999px;cursor:pointer;transition:.2s
+}
+.bk-mod-switch span:before{
+  content:"";position:absolute;width:20px;height:20px;right:3px;top:3px;background:#fff;
+  border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.15)
+}
+.bk-mod-switch input:checked+span{background:#22c55e}
+.bk-mod-switch input:checked+span:before{transform:translateX(-18px)}
+
+
+/* =========================================================
+   Liquid Glass system — headers + tab bars (all admin tabs)
+   ========================================================= */
+.bk-lg-header{
+  position:relative;overflow:hidden;
+  background:linear-gradient(135deg,rgba(88,28,135,.92) 0%,rgba(109,40,217,.88) 45%,rgba(124,58,237,.85) 100%);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:20px;padding:22px 24px;margin-bottom:14px;
+  box-shadow:0 12px 40px rgba(88,28,135,.28), inset 0 1px 0 rgba(255,255,255,.2);
+  color:#fff;
+}
+.bk-lg-header::before{
+  content:"";position:absolute;inset:-40% auto auto -20%;width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.22),transparent 70%);pointer-events:none
+}
+.bk-lg-header::after{
+  content:"";position:absolute;right:-60px;bottom:-80px;width:220px;height:220px;border-radius:50%;
+  background:radial-gradient(circle,rgba(167,139,250,.35),transparent 70%);pointer-events:none
+}
+.bk-lg-header > *{position:relative;z-index:1}
+.bk-lg-header__row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.bk-lg-header__crumb{font-size:11px;font-weight:700;opacity:.75;margin-bottom:4px;letter-spacing:.04em}
+.bk-lg-header__title{margin:0;font-size:20px;font-weight:800;color:#fff!important;display:flex;align-items:center;gap:10px}
+.bk-lg-header__title svg{width:22px;height:22px;flex-shrink:0}
+.bk-lg-header__sub{margin:6px 0 0;font-size:13px;opacity:.85;line-height:1.5;font-weight:500;max-width:560px}
+.bk-lg-chip{
+  display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:10px;font-weight:800;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);color:#fff;backdrop-filter:blur(8px)
+}
+.bk-lg-header__actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.bk-lg-header .bk-btn,.bk-lg-header button.bk-seo-btn,.bk-lg-header .bk-wm-chip-btn{
+  background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.28)!important;color:#fff!important;
+  backdrop-filter:blur(10px);border-radius:12px;font-weight:700
+}
+.bk-lg-header .bk-btn-primary,.bk-lg-header .bk-seo-btn-wizard{
+  background:rgba(255,255,255,.95)!important;color:#5b21b6!important;border-color:transparent!important
+}
+
+/* Liquid glass tab bar — OUTSIDE header card */
+.bk-lg-tabs{
+  display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;padding:6px;
+  background:rgba(255,255,255,.55);
+  border:1px solid rgba(226,232,240,.9);
+  border-radius:16px;width:fit-content;max-width:100%;
+  backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
+  box-shadow:0 4px 24px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.7)
+}
+.bk-lg-tab{
+  border:none;background:transparent;cursor:pointer;padding:10px 16px;border-radius:12px;
+  font-size:12px;font-weight:800;color:#64748b;display:inline-flex;align-items:center;gap:8px;
+  font-family:inherit;line-height:1.2;transition:all .18s
+}
+.bk-lg-tab svg{width:15px;height:15px;flex-shrink:0}
+.bk-lg-tab:hover{color:#1e293b;background:rgba(255,255,255,.55)}
+.bk-lg-tab.is-active{
+  background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(245,243,255,.9));
+  color:#6d28d9;
+  box-shadow:0 2px 10px rgba(109,40,217,.12), inset 0 0 0 1px rgba(167,139,250,.35)
+}
+
+/* Alias shared pill classes to liquid glass */
+.bk-pill-tabs,.bk-ai-mode-tabs,.bk-seo-tabs,.bk-wm-subtabs,.bk-gh-tabs{
+  display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;padding:6px;
+  background:rgba(255,255,255,.55)!important;
+  border:1px solid rgba(226,232,240,.9)!important;
+  border-radius:16px!important;width:fit-content;max-width:100%;
+  backdrop-filter:blur(18px) saturate(1.4)!important;-webkit-backdrop-filter:blur(18px) saturate(1.4)!important;
+  box-shadow:0 4px 24px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.7);
+  border-bottom:none!important
+}
+.bk-pill-tab,.bk-ai-mode-tab,.bk-seo-tab,.bk-wm-subtab,.bk-gh-tab{
+  border:none!important;background:transparent!important;cursor:pointer;padding:10px 16px!important;
+  border-radius:12px!important;font-size:12px!important;font-weight:800!important;color:#64748b!important;
+  display:inline-flex!important;align-items:center;gap:8px;margin-bottom:0!important
+}
+.bk-pill-tab.is-active,.bk-ai-mode-tab.is-active,.bk-seo-tab.is-active,.bk-wm-subtab.is-active,.bk-gh-tab.is-active,
+.bk-pill-tab.is-on{
+  background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(245,243,255,.9))!important;
+  color:#6d28d9!important;
+  box-shadow:0 2px 10px rgba(109,40,217,.12), inset 0 0 0 1px rgba(167,139,250,.35)!important
+}
+
+/* Purple liquid glass cards — Speed & Cache experiment */
+.bk-lg-card{
+  position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(255,255,255,.72) 0%,rgba(245,243,255,.55) 100%);
+  border:1px solid rgba(167,139,250,.28);
+  border-radius:20px;padding:20px 22px;
+  backdrop-filter:blur(16px) saturate(1.35);-webkit-backdrop-filter:blur(16px) saturate(1.35);
+  box-shadow:0 8px 28px rgba(88,28,135,.08), inset 0 1px 0 rgba(255,255,255,.7);
+  display:flex;flex-direction:column;gap:12px;transition:transform .18s,box-shadow .18s
+}
+.bk-lg-card:hover{transform:translateY(-2px);box-shadow:0 14px 36px rgba(88,28,135,.12)}
+.bk-lg-card.is-on{border-color:rgba(124,58,237,.45);box-shadow:0 0 0 1px rgba(124,58,237,.2),0 10px 30px rgba(88,28,135,.1)}
+.bk-lg-card .bk-mod-card__title{color:#4c1d95}
+.bk-lg-card .bk-mod-card__desc{color:#7c6a9a}
+.bk-lg-card .bk-mod-status{color:#6d28d9}
+.bk-lg-card .bk-mod-status.is-off{color:#94a3b8}
+.bk-lg-card .bk-mod-settings-btn{
+  background:rgba(255,255,255,.7);border:1px solid rgba(167,139,250,.35);color:#5b21b6;border-radius:10px
+}
+.bk-lg-card .bk-mod-switch input:checked+span{background:linear-gradient(135deg,#7c3aed,#a78bfa)}
+.bk-lg-card .bk-mod-badge{background:rgba(237,233,254,.9);color:#6d28d9;border:1px solid rgba(167,139,250,.3)}
+.bk-lg-card .bk-mod-card__icon{background:rgba(237,233,254,.7);color:#7c3aed;border:1px solid rgba(167,139,250,.25)}
+
+/* Override section hero to purple glass when marked */
+.bk-section-hero.bk-lg-header,
+.bk-wm-hero.bk-lg-header,
+.bk-ai-topbar.bk-lg-header,
+.bk-seo-header.bk-lg-header{
+  /* inherits .bk-lg-header */
+}
+.bk-seo-header.bk-lg-header .bk-seo-h2,
+.bk-seo-header.bk-lg-header .bk-seo-subtext{color:#fff!important}
+.bk-seo-header.bk-lg-header .bk-seo-chip{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.25)}
+.bk-wm-hero.bk-lg-header h2,
+.bk-wm-hero.bk-lg-header p{color:#fff!important}
+.bk-wm-hero.bk-lg-header .bk-wm-pill{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.25)}
+.bk-ai-topbar.bk-lg-header .bk-ai-title,
+.bk-ai-topbar.bk-lg-header .bk-ai-breadcrumb{color:#fff!important}
+.bk-ai-topbar.bk-lg-header p{color:rgba(255,255,255,.85)!important}
+
+
+/* Unified page hero (media template) */
+.bk-lg-header.bk-wm-hero,
+.bk-page-hero{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.bk-page-hero .bk-wm-hero__main,
+.bk-lg-header .bk-wm-hero__main{display:flex;align-items:center;gap:14px;min-width:0}
+.bk-page-hero .bk-wm-hero__icon,
+.bk-lg-header .bk-wm-hero__icon{
+  width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);flex-shrink:0;color:#fff
+}
+.bk-page-hero .bk-wm-hero__icon svg,
+.bk-lg-header .bk-wm-hero__icon svg{width:24px;height:24px}
+.bk-page-hero .bk-wm-hero__title-row,
+.bk-lg-header .bk-wm-hero__title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bk-page-hero h2,
+.bk-lg-header.bk-wm-hero h2,
+.bk-lg-header .bk-wm-hero__title-row h2{margin:0;font-size:20px;font-weight:800;color:#fff!important}
+.bk-page-hero p,
+.bk-lg-header.bk-wm-hero p{margin:4px 0 0;font-size:13px;color:rgba(255,255,255,.85)!important;line-height:1.5}
+.bk-wm-pill,.bk-page-hero .bk-wm-pill{
+  display:inline-flex;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:800;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);color:#fff
+}
+.bk-wm-hero__actions,.bk-page-hero__actions{display:flex;gap:8px;flex-wrap:wrap}
+.bk-wm-chip-btn{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;
+  background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.28)!important;
+  color:#fff!important;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit
+}
+.bk-wm-chip-btn svg{width:15px;height:15px}
+
+/* SEO-style module cards (shared) */
+.bk-seo-mod-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media(max-width:900px){.bk-seo-mod-grid{grid-template-columns:1fr}}
+.bk-seo-mod-card{
+  padding:18px;display:flex;flex-direction:column;justify-content:space-between;
+  border:1px solid #E2E8F0;border-radius:14px;background:#fff;
+  box-shadow:0 4px 16px rgba(15,23,42,.04)
+}
+.bk-seo-mod-card.is-on{border-color:#bbf7d0}
+.bk-seo-mod-icon{
+  width:36px;height:36px;border-radius:10px;background:#F1F5F9;display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;color:#64748b
+}
+.bk-seo-mod-icon svg{width:18px;height:18px}
+.bk-seo-badge{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:4px}
+.bk-seo-mod-foot{
+  display:flex;justify-content:space-between;align-items:center;padding-top:12px;
+  border-top:1px solid #F1F5F9;font-size:12px;font-weight:700
+}
+.bk-seo-btn-sm{
+  border:1px solid #E2E8F0;background:#F8FAFC;color:#334155;font-size:12px;font-weight:700;
+  padding:6px 12px;border-radius:8px;cursor:pointer;font-family:inherit
+}
+.bk-seo-btn-sm:hover{background:#F1F5F9}
+
+
+/* Art tabs global — shared network tab bar */
+.bk-art-tabs{
+  display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px;padding:6px;
+  background:rgba(255,255,255,.65);
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:16px;width:fit-content;max-width:100%;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 4px 20px rgba(15,23,42,.05), inset 0 1px 0 rgba(255,255,255,.8)
+}
+.bk-art-tabs .bk-pill-tab,
+.bk-art-tabs .bk-art-tab,
+.bk-art-tabs .bk-lg-tab,
+.bk-art-tabs .bk-seo-tab,
+.bk-art-tabs .bk-wm-subtab,
+.bk-art-tabs .bk-gh-tab{
+  border:none!important;background:transparent!important;cursor:pointer;
+  padding:10px 16px!important;border-radius:12px!important;
+  font-size:12px!important;font-weight:800!important;color:#64748b!important;
+  display:inline-flex!important;align-items:center;gap:8px;font-family:inherit
+}
+.bk-art-tabs .bk-pill-tab.is-active,
+.bk-art-tabs .bk-art-tab.is-active,
+.bk-art-tabs .bk-lg-tab.is-active,
+.bk-art-tabs .is-active{
+  background:linear-gradient(135deg,#fff,rgba(245,243,255,.95))!important;
+  color:#6d28d9!important;
+  box-shadow:0 2px 10px rgba(109,40,217,.12), inset 0 0 0 1px rgba(167,139,250,.35)!important
+}
+
+
+/* === v135 layout + tabs + compress fix === */
+#bankai-admin-app .bankai-body-layout,
+.bankai-admin-wrap .bankai-body-layout {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 24px !important;
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+#bankai-admin-app #bankai-main-content,
+#bankai-admin-app .bankai-main-content,
+.bankai-admin-wrap #bankai-main-content {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  position: relative !important;
+  z-index: 1 !important;
+  margin: 0 !important;
+  padding-inline-start: 0 !important;
+}
+#bankai-admin-app .bankai-sidebar,
+#bankai-admin-sidebar {
+  flex: 0 0 280px !important;
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  position: sticky !important;
+  top: 46px !important;
+  max-height: calc(100vh - 56px) !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  z-index: 20 !important;
+  align-self: flex-start !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  padding-bottom: 20px !important;
+}
+#bankai-admin-sidebar .bankai-sidebar-content,
+.bankai-sidebar .bankai-sidebar-content {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+#bankai-admin-sidebar .bankai-telemetry-card {
+  flex: 0 0 auto !important;
+  margin-top: 8px !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+#bankai-admin-sidebar .bankai-nav-menu {
+  flex: 0 0 auto !important;
+  margin-bottom: 8px !important;
+}
+
+/* Tab bar: buttons only, no outer box */
+.bk-art-tabs,
+.bk-lg-tabs,
+.bk-pill-tabs,
+.bk-seo-tabs,
+.bk-wm-subtabs,
+.bk-ai-mode-tabs,
+.bk-gh-tabs {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  margin: 0 0 16px !important;
+  width: auto !important;
+  gap: 8px !important;
+}
+.bk-art-tabs .bk-pill-tab,
+.bk-art-tabs .bk-art-tab,
+.bk-lg-tab,
+.bk-pill-tab {
+  background: rgba(248,250,252,.95) !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #64748b !important;
+  border-radius: 10px !important;
+  padding: 9px 14px !important;
+}
+.bk-art-tabs .is-active,
+.bk-lg-tab.is-active,
+.bk-pill-tab.is-active,
+.bk-art-tab.is-active {
+  background: #fff !important;
+  color: #6d28d9 !important;
+  border-color: #c4b5fd !important;
+  box-shadow: 0 1px 4px rgba(109,40,217,.12) !important;
+}
+
+/* Compress cards: no border until selected — green when selected */
+.bk-c-card {
+  border: 2px solid transparent !important;
+  box-shadow: 0 4px 16px rgba(15,23,42,.08) !important;
+}
+.bk-c-card.is-selected {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 3px rgba(34,197,94,.22) !important;
+}
+
+
+/* === v137 layout nuclear: sidebar + main side by side === */
+body.toplevel_page_bankai-core #wpcontent {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+#bankai-admin-app.bankai-admin-wrap {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+#bankai-admin-app .bankai-body-layout.bankai-ekit-body,
+#bankai-admin-app .bankai-body-layout {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  gap: 20px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 16px 20px 32px !important;
+  position: relative !important;
+  clear: both !important;
+}
+#bankai-admin-app #bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar,
+#bankai-admin-sidebar {
+  flex: 0 0 270px !important;
+  width: 270px !important;
+  min-width: 270px !important;
+  max-width: 270px !important;
+  float: none !important;
+  position: sticky !important;
+  top: 48px !important;
+  max-height: calc(100vh - 60px) !important;
+  overflow-y: auto !important;
+  align-self: flex-start !important;
+  z-index: 30 !important;
+  margin: 0 !important;
+}
+#bankai-admin-app #bankai-main-content,
+#bankai-admin-app .bankai-main-content {
+  flex: 1 1 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  float: none !important;
+  position: relative !important;
+  z-index: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+/* Hide inactive tabs firmly */
+#bankai-admin-app .bankai-tab-pane[x-cloak],
+#bankai-admin-app .bankai-tab-pane[style*="display: none"] {
+  display: none !important;
+}
+#bankai-admin-app .bankai-tab-pane:not(.is-active-tab) {
+  /* alpine x-show handles; fallback when cloak present */
+}
+/* Telemetry status text blue-gray */
+#bankai-admin-sidebar .status-title,
+.bankai-telemetry-card .status-title {
+  color: #64748b !important;
+}
+.bankai-telemetry-card .telemetry-status {
+  color: #64748b !important;
+}
+
+@media screen and (max-width: 960px) {
+  #bankai-admin-app .bankai-body-layout {
+    flex-direction: column !important;
+  }
+  #bankai-admin-app #bankai-admin-sidebar,
+  #bankai-admin-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    position: relative !important;
+    max-height: none !important;
+  }
+}
+
+
+/* === v138: body-layout children = aside + main only === */
+#bankai-admin-app .bankai-body-layout {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-start !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+#bankai-admin-app .bankai-body-layout > aside#bankai-admin-sidebar,
+#bankai-admin-app .bankai-body-layout > .bankai-sidebar {
+  flex: 0 0 270px !important;
+  width: 270px !important;
+  min-width: 270px !important;
+  max-width: 270px !important;
+  order: 1;
+}
+#bankai-admin-app .bankai-body-layout > #bankai-main-content,
+#bankai-admin-app .bankai-body-layout > main.bankai-main-content {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  width: auto !important;
+  order: 2;
+}
+#bankai-admin-app.rtl .bankai-body-layout > aside#bankai-admin-sidebar {
+  order: 1;
+}
+#bankai-admin-app.rtl .bankai-body-layout > #bankai-main-content {
+  order: 2;
+}
+
+
+/* === v139: sidebar fit-content, no scrollbar, sticky top 45px === */
+#bankai-admin-app .bankai-body-layout > aside#bankai-admin-sidebar,
+#bankai-admin-app .bankai-body-layout > .bankai-sidebar,
+#bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar,
+body.admin-bar #bankai-admin-sidebar,
+body.admin-bar #bankai-admin-app .bankai-sidebar {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  overflow-y: visible !important;
+  overflow-x: visible !important;
+  position: sticky !important;
+  top: 45px !important;
+  align-self: flex-start !important;
+  flex: 0 0 270px !important;
+  width: 270px !important;
+  min-width: 270px !important;
+  max-width: 270px !important;
+  z-index: 40 !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+#bankai-admin-sidebar::-webkit-scrollbar,
+#bankai-admin-app .bankai-sidebar::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+#bankai-admin-sidebar .bankai-sidebar-content,
+#bankai-admin-sidebar .bankai-nav-menu,
+#bankai-admin-sidebar .bankai-nav-group,
+#bankai-admin-sidebar .bankai-telemetry-card {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* System telemetry: darker labels + darker values */
+#bankai-admin-sidebar .bankai-telemetry-card .tel-item > span,
+.bankai-telemetry-card .tel-item > span {
+  color: #475569 !important;
+  font-weight: 700 !important;
+  font-size: 10px !important;
+  margin-bottom: 2px !important;
+}
+#bankai-admin-sidebar .bankai-telemetry-card .tel-item > strong,
+.bankai-telemetry-card .tel-item > strong {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+}
+#bankai-admin-sidebar .status-title,
+.bankai-telemetry-card .status-title {
+  color: #334155 !important;
+  font-weight: 800 !important;
+}
+.bankai-telemetry-card .telemetry-status {
+  color: #334155 !important;
+}
+.bankai-telemetry-card .php-badge {
+  color: #1e293b !important;
+  font-weight: 800 !important;
+}
+
+/* WP admin bar: still stick 45px under viewport top (user request),
+   admin bar floats above; 45px is measured from viewport */
+body.admin-bar #bankai-admin-sidebar,
+body.admin-bar #bankai-admin-app .bankai-sidebar {
+  top: 45px !important;
+}
+
+@media screen and (max-width: 960px) {
+  #bankai-admin-sidebar,
+  #bankai-admin-app .bankai-sidebar {
+    position: relative !important;
+    top: auto !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+}
+
+
+/* === v144: settings tab must show when active === */
+#bankai-admin-app #tab-settings-license.is-active-tab,
+#bankai-admin-app #tab-settings-license:not([x-cloak]) {
+  /* x-show sets inline display */
+}
+#bankai-admin-app .bankai-tab-pane.is-active-tab {
+  display: block !important;
+}
+
+/* =========================================================
+   v169 — Article AI Wizard visual redesign
+   ========================================================= */
+.bk-wiz-v2 {
+  padding: 0 !important;
+  overflow: hidden;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 18px !important;
+  background: #fff !important;
+}
+.bk-wiz-v2 .bk-wiz-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 55%, #ecfdf5 100%);
+  border-bottom: 1px solid #e2e8f0;
+}
+.bk-wiz-v2 .bk-wiz-hero-icon {
+  width: 48px; height: 48px; border-radius: 14px;
+  display: grid; place-items: center;
+  background: #fff; color: #4f46e5;
+  box-shadow: 0 2px 10px rgba(79,70,229,.12);
+  flex-shrink: 0;
+}
+.bk-wiz-v2 .bk-wiz-hero-text { flex: 1; min-width: 180px; }
+.bk-wiz-v2 .bk-wiz-hero-text h3 {
+  margin: 0 0 4px; font-size: 15px; font-weight: 850; color: #0f172a;
+}
+.bk-wiz-v2 .bk-wiz-hero-text p {
+  margin: 0; font-size: 12px; color: #64748b; line-height: 1.45;
+}
+.bk-wiz-v2 .bk-wiz-global-progress {
+  width: 100%; max-width: 280px; margin-inline-start: auto;
+}
+.bk-wiz-v2 .bk-ai-progress-meta {
+  display: flex; justify-content: space-between;
+  font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 5px;
+}
+.bk-wiz-v2 .bk-ai-progress-track {
+  height: 7px; border-radius: 99px; background: #e2e8f0; overflow: hidden;
+}
+.bk-wiz-v2 .bk-ai-progress-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, #6366f1, #22c55e);
+  transition: width .35s ease;
+}
+
+.bk-wiz-v2 .bk-wiz-stepper {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 14px 16px 6px;
+}
+.bk-wiz-v2 .bk-wiz-step {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 56px;
+}
+.bk-wiz-v2 .bk-wiz-step span {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 12px; font-weight: 850;
+  background: #e2e8f0; color: #64748b;
+}
+.bk-wiz-v2 .bk-wiz-step em {
+  font-style: normal; font-size: 11px; font-weight: 700; color: #94a3b8;
+}
+.bk-wiz-v2 .bk-wiz-step.is-active span {
+  background: linear-gradient(135deg, #6366f1, #3b82f6); color: #fff;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.18);
+}
+.bk-wiz-v2 .bk-wiz-step.is-active em { color: #4338ca; }
+.bk-wiz-v2 .bk-wiz-step.is-done span { background: #16a34a; color: #fff; }
+.bk-wiz-v2 .bk-wiz-step-line {
+  width: 36px; height: 2px; background: #e2e8f0; border-radius: 2px; margin-bottom: 16px;
+}
+.bk-wiz-v2 .bk-wiz-step-line.is-on { background: #86efac; }
+
+.bk-wiz-v2 .bk-wiz-engines {
+  padding: 8px 20px 4px;
+}
+.bk-wiz-v2 .bk-wiz-engines-label {
+  font-size: 11px; font-weight: 750; color: #64748b; margin-bottom: 8px;
+}
+.bk-wiz-v2 .bk-wiz-engine-grid {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.bk-wiz-v2 .bk-wiz-engine-card {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 12px;
+  border: 1px solid #e2e8f0; background: #f8fafc;
+  cursor: pointer; font-family: inherit;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.bk-wiz-v2 .bk-wiz-engine-card strong {
+  font-size: 12px; color: #0f172a;
+}
+.bk-wiz-v2 .bk-wiz-engine-card small {
+  font-size: 10px; color: #64748b;
+}
+.bk-wiz-v2 .bk-wiz-engine-card.is-active {
+  border-color: #a5b4fc; background: #eef2ff;
+  box-shadow: 0 0 0 2px rgba(99,102,241,.12);
+}
+.bk-wiz-v2 .bk-wiz-engine-card.is-disabled {
+  opacity: .55; cursor: not-allowed;
+}
+.bk-wiz-v2 .bk-wiz-engine-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+
+.bk-wiz-v2 .bk-wiz-panel {
+  padding: 12px 20px 20px;
+}
+.bk-wiz-v2 .bk-wiz-panel-head {
+  margin-bottom: 12px;
+}
+.bk-wiz-v2 .bk-wiz-panel-head strong {
+  display: block; font-size: 13.5px; color: #0f172a; margin-bottom: 2px;
+}
+.bk-wiz-v2 .bk-wiz-panel-head small {
+  font-size: 11.5px; color: #64748b; line-height: 1.4;
+}
+.bk-wiz-v2 .bk-wiz-panel-head-row {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+}
+.bk-wiz-v2 .bk-wiz-row2 {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+@media (max-width: 640px) {
+  .bk-wiz-v2 .bk-wiz-row2 { grid-template-columns: 1fr; }
+}
+.bk-wiz-v2 .bk-field { margin-bottom: 10px; }
+.bk-wiz-v2 .bk-field label {
+  display: block; font-size: 11px; font-weight: 750; color: #64748b; margin-bottom: 5px;
+}
+.bk-wiz-v2 .bk-field textarea,
+.bk-wiz-v2 .bk-field select,
+.bk-wiz-v2 .bk-field input[type="text"] {
+  width: 100%; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 9px 11px; font-size: 13px; font-family: inherit;
+  background: #fff; color: #0f172a;
+}
+.bk-wiz-v2 .bk-field textarea:focus,
+.bk-wiz-v2 .bk-field select:focus,
+.bk-wiz-v2 .bk-field input:focus {
+  outline: none; border-color: #a5b4fc;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+}
+.bk-wiz-v2 .bk-wiz-actions {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+}
+.bk-wiz-v2 .bk-wiz-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+}
+
+.bk-wiz-v2 .bk-wiz-loader {
+  display: flex; align-items: center; gap: 14px;
+  padding: 28px 20px; justify-content: center;
+}
+.bk-wiz-v2 .bk-wiz-spinner {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid #e2e8f0; border-top-color: #6366f1;
+  animation: bk-wiz-spin .7s linear infinite;
+}
+@keyframes bk-wiz-spin { to { transform: rotate(360deg); } }
+.bk-wiz-v2 .bk-wiz-loader strong {
+  display: block; font-size: 13px; color: #0f172a;
+}
+.bk-wiz-v2 .bk-wiz-loader p {
+  margin: 3px 0 0; font-size: 11.5px; color: #64748b;
+}
+
+.bk-wiz-v2 .bk-wiz-select-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 8px 12px; margin-bottom: 10px;
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+}
+.bk-wiz-v2 .bk-wiz-count {
+  font-size: 11.5px; font-weight: 700; color: #64748b;
+}
+.bk-wiz-v2 .bk-wiz-check {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700; color: #334155; cursor: pointer;
+}
+.bk-wiz-v2 .bk-wiz-num {
+  width: 22px; height: 22px; border-radius: 7px;
+  display: grid; place-items: center;
+  background: #eef2ff; color: #4338ca;
+  font-size: 11px; font-weight: 850;
+}
+
+.bk-wiz-v2 .bk-wiz-title-card {
+  border: 1px solid #e2e8f0; border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 10px;
+  background: #fff; transition: border-color .15s, box-shadow .15s;
+}
+.bk-wiz-v2 .bk-wiz-title-card.is-checked {
+  border-color: #86efac;
+  box-shadow: 0 0 0 2px rgba(34,197,94,.1);
+  background: linear-gradient(180deg, #f0fdf4, #fff);
+}
+.bk-wiz-v2 .bk-wiz-title-top {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.bk-wiz-v2 .bk-wiz-title-input {
+  flex: 1; min-width: 0;
+  border: 1px solid transparent; background: transparent;
+  font-size: 13.5px; font-weight: 750; color: #0f172a;
+  padding: 6px 8px; border-radius: 8px; font-family: inherit;
+}
+.bk-wiz-v2 .bk-wiz-title-input:focus {
+  outline: none; border-color: #c7d2fe; background: #fff;
+}
+.bk-wiz-v2 .bk-wiz-card-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+@media (max-width: 640px) {
+  .bk-wiz-v2 .bk-wiz-card-grid { grid-template-columns: 1fr; }
+}
+
+.bk-wiz-v2 .bk-wiz-job {
+  border: 1px solid #e2e8f0; border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 10px; background: #fff;
+}
+.bk-wiz-v2 .bk-wiz-job.is-run {
+  border-color: #a5b4fc; background: #f8faff;
+}
+.bk-wiz-v2 .bk-wiz-job.is-done {
+  border-color: #86efac; background: #f0fdf4;
+}
+.bk-wiz-v2 .bk-wiz-job.is-error {
+  border-color: #fca5a5; background: #fef2f2;
+}
+.bk-wiz-v2 .bk-wiz-job-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; margin-bottom: 8px;
+}
+.bk-wiz-v2 .bk-wiz-job-head strong {
+  font-size: 13px; color: #0f172a;
+}
+.bk-wiz-v2 .bk-wiz-badge {
+  font-size: 10px; font-weight: 800; padding: 3px 8px;
+  border-radius: 99px; background: #f1f5f9; color: #475569;
+}
+.bk-wiz-v2 .bk-wiz-job.is-run .bk-wiz-badge { background: #eef2ff; color: #4338ca; }
+.bk-wiz-v2 .bk-wiz-job.is-done .bk-wiz-badge { background: #dcfce7; color: #166534; }
+.bk-wiz-v2 .bk-wiz-job.is-error .bk-wiz-badge { background: #fee2e2; color: #b91c1c; }
+.bk-wiz-v2 .bk-wiz-checklist {
+  list-style: none; margin: 10px 0 0; padding: 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px;
+}
+@media (max-width: 640px) {
+  .bk-wiz-v2 .bk-wiz-checklist { grid-template-columns: 1fr; }
+}
+.bk-wiz-v2 .bk-wiz-checklist li {
+  font-size: 11px; color: #94a3b8; padding: 3px 0 3px 0;
+  position: relative; padding-inline-start: 16px;
+}
+.bk-wiz-v2 .bk-wiz-checklist li::before {
+  content: ''; position: absolute; inset-inline-start: 0; top: 7px;
+  width: 8px; height: 8px; border-radius: 50%; background: #e2e8f0;
+}
+.bk-wiz-v2 .bk-wiz-checklist li.is-done { color: #166534; font-weight: 650; }
+.bk-wiz-v2 .bk-wiz-checklist li.is-done::before { background: #22c55e; }
+.bk-wiz-v2 .bk-wiz-job-msg {
+  font-size: 11px; color: #64748b; margin-top: 6px;
+}
+.bk-wiz-v2 .bk-wiz-job-actions { margin-top: 8px; }
+.bk-wiz-v2 .bk-wiz-paused {
+  padding: 12px 14px; border-radius: 12px; margin-bottom: 12px;
+  background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+}
+.bk-wiz-v2 .bk-wiz-paused strong { display: block; margin-bottom: 4px; }
+.bk-wiz-v2 .bk-wiz-paused p { margin: 0; font-size: 12px; }
+.bk-wiz-v2 .bk-sched-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  width: 100%; padding: 9px 11px; border-radius: 10px;
+  border: 1px solid #e2e8f0; background: #fff;
+  font-family: inherit; font-size: 12.5px; color: #334155; cursor: pointer;
+}
+
+/* Articles list pagination */
+.bk-art-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 4px 4px;
+  margin-top: 8px;
+  border-top: 1px solid #eef2f7;
+}
+.bk-art-pag-info {
+  font-size: 12px;
+  font-weight: 650;
+  color: #64748b;
+}
+.bk-art-pag-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.bk-art-page-btn.is-active {
+  background: linear-gradient(135deg, #6366f1, #7c3aed) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+.bk-art-pag-controls .bk-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+/* Dashboard v2 — SEO AI Tools inspired */
+.bk-dash-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.bk-dash-v2-welcome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 2px 4px;
+}
+.bk-dash-v2-title {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 850;
+  letter-spacing: -.03em;
+  color: #0f172a;
+}
+.bk-dash-v2-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  max-width: 52ch;
+  line-height: 1.55;
+}
+.bk-dash-v2-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bk-dash-v2-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 1100px) {
+  .bk-dash-v2-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .bk-dash-v2-kpis { grid-template-columns: 1fr; }
+}
+.bk-dash-v2-kpi {
+  background: #fff;
+  border: 1px solid #e8ecf4;
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, .04);
+  position: relative;
+  overflow: hidden;
+}
+.bk-dash-v2-kpi::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: -20px;
+  top: -20px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  opacity: .12;
+}
+.bk-dash-v2-kpi.is-content::after { background: #6366f1; }
+.bk-dash-v2-kpi.is-seo::after { background: #22c55e; }
+.bk-dash-v2-kpi.is-up::after { background: #06b6d4; }
+.bk-dash-v2-kpi.is-speed::after { background: #f59e0b; }
+.bk-dash-v2-kpi-lab {
+  font-size: 11px;
+  font-weight: 750;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 8px;
+}
+.bk-dash-v2-kpi-val {
+  font-size: 28px;
+  font-weight: 850;
+  color: #0f172a;
+  line-height: 1.1;
+  letter-spacing: -.03em;
+}
+.bk-dash-v2-kpi.is-seo .bk-dash-v2-kpi-val { color: #16a34a; }
+.bk-dash-v2-kpi.is-content .bk-dash-v2-kpi-val { color: #4f46e5; }
+.bk-dash-v2-kpi-sub {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+.bk-dash-v2-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .bk-dash-v2-grid { grid-template-columns: 1fr; }
+}
+.bk-dash-v2-card {
+  background: #fff;
+  border: 1px solid #e8ecf4;
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, .04);
+}
+.bk-dash-v2-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.bk-dash-v2-card-head strong {
+  font-size: 14px;
+  color: #0f172a;
+}
+.bk-dash-v2-visits-main {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.bk-dash-v2-visits-num {
+  font-size: 36px;
+  font-weight: 850;
+  color: #4f46e5;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+.bk-dash-v2-visits-change {
+  font-size: 12px;
+  color: #64748b;
+}
+.bk-dash-v2-visits-change strong.is-up { color: #16a34a; }
+.bk-dash-v2-visits-change strong.is-down { color: #dc2626; }
+.bk-dash-v2-devices {
+  display: grid;
+  gap: 10px;
+}
+.bk-dash-v2-device {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #64748b;
+}
+.bk-dash-v2-device strong {
+  color: #0f172a;
+  font-size: 13px;
+  min-width: 40px;
+  text-align: end;
+}
+.bk-dash-v2-bar {
+  height: 7px;
+  border-radius: 99px;
+  background: #eef2f7;
+  overflow: hidden;
+  grid-column: 2;
+}
+.bk-dash-v2-device { grid-template-columns: 70px 1fr 48px; }
+.bk-dash-v2-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #6366f1, #818cf8);
+  width: 0;
+  transition: width .4s ease;
+}
+.bk-dash-v2-bar.is-teal i { background: linear-gradient(90deg, #14b8a6, #2dd4bf); }
+.bk-dash-v2-bar.is-amber i { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.bk-dash-v2-error {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: #94a3b8;
+}
+.bk-dash-v2-quick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.bk-dash-v2-quick-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e8ecf4;
+  background: #f8fafc;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: start;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.bk-dash-v2-quick-item:hover {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  box-shadow: 0 4px 12px rgba(99,102,241,.08);
+}
+.bk-dash-v2-quick-item .ico {
+  font-size: 16px;
+}
+
+/* =========================================================
+   v172 — Capsule tab bar (Solar-style active pill)
+   Matches floating nav pattern; brand indigo track
+   ========================================================= */
+.bk-capsule-tabs,
+#bankai-admin-app .bk-capsule-tabs {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 6px !important;
+  margin: 0 0 18px !important;
+  width: fit-content !important;
+  max-width: 100%;
+  background: #1e1b4b !important; /* indigo-950 — هماهنگ با بنفش برند */
+  border: 1px solid rgba(99, 102, 241, 0.35) !important;
+  border-radius: 999px !important;
+  box-shadow:
+    0 8px 28px rgba(49, 46, 129, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: none !important;
+}
+
+.bk-capsule-tab,
+#bankai-admin-app .bk-capsule-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  min-width: 42px;
+  min-height: 42px;
+  border: none !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: rgba(226, 232, 240, 0.72) !important;
+  cursor: pointer;
+  font-family: inherit !important;
+  font-size: 12.5px !important;
+  font-weight: 750 !important;
+  line-height: 1 !important;
+  white-space: nowrap;
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease, gap .18s ease, padding .18s ease !important;
+  box-shadow: none !important;
+}
+
+.bk-capsule-tab svg.solar-icon,
+.bk-capsule-tab svg {
+  width: 18px !important;
+  height: 18px !important;
+  flex-shrink: 0;
+  stroke: currentColor;
+  opacity: .9;
+}
+
+.bk-capsule-tab .bk-capsule-label {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(4px);
+  transition: max-width .22s ease, opacity .18s ease, transform .18s ease, margin .18s ease;
+  margin-inline-start: 0;
+}
+
+.bk-capsule-tab:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.bk-capsule-tab.is-active {
+  background: #ffffff !important;
+  color: #312e81 !important; /* indigo-900 */
+  gap: 8px !important;
+  padding: 10px 16px !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18) !important;
+}
+
+.bk-capsule-tab.is-active svg {
+  color: #4f46e5 !important;
+  opacity: 1;
+}
+
+.bk-capsule-tab.is-active .bk-capsule-label {
+  max-width: 160px;
+  opacity: 1;
+  transform: none;
+  margin-inline-start: 2px;
+  color: #1e1b4b;
+}
+
+/* Redis status dot inside capsule */
+.bk-capsule-tab .bk-gh-redis-badge {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  margin-inline-start: 4px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: inline-block;
+}
+.bk-capsule-tab .bk-gh-redis-badge i { display: none; }
+.bk-capsule-tab .bk-gh-redis-badge.is-off { background: #f87171; }
+
+/* When only icons (inactive) keep compact on small screens */
+@media (max-width: 640px) {
+  .bk-capsule-tabs {
+    width: 100% !important;
+    justify-content: center;
+  }
+  .bk-capsule-tab.is-active .bk-capsule-label {
+    max-width: 110px;
+  }
+}
+
+/* Override older glass/pill rules when capsule class present */
+.bk-capsule-tabs.bk-art-tabs,
+.bk-capsule-tabs.bk-lg-tabs,
+.bk-capsule-tabs.bk-pill-tabs,
+.bk-capsule-tabs.bk-seo-tabs,
+.bk-capsule-tabs.bk-wm-subtabs,
+.bk-capsule-tabs.bk-gh-tabs,
+.bk-capsule-tabs.bk-ai-mode-tabs {
+  background: #1e1b4b !important;
+  border-radius: 999px !important;
+}
+
+
+/* =========================================================
+   v173 — Tabs match sidebar nav (ekit purple)
+   Track = sidebar gradient; inactive = muted; active = nav.active
+   ========================================================= */
+.bk-capsule-tabs,
+#bankai-admin-app .bk-capsule-tabs,
+#bankai-admin-app .bk-capsule-tabs.bk-art-tabs,
+#bankai-admin-app .bk-capsule-tabs.bk-lg-tabs,
+#bankai-admin-app .bk-capsule-tabs.bk-seo-tabs,
+#bankai-admin-app .bk-capsule-tabs.bk-wm-subtabs,
+#bankai-admin-app .bk-capsule-tabs.bk-gh-tabs,
+#bankai-admin-app .bk-capsule-tabs.bk-ai-mode-tabs {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-wrap: wrap !important;
+  padding: 6px !important;
+  margin: 0 0 18px !important;
+  width: fit-content !important;
+  max-width: 100%;
+  /* همان پس‌زمینه سایدمنو */
+  background: linear-gradient(165deg, #22124a 0%, #1a0f38 45%, #140a2c 100%) !important;
+  border: 1px solid rgba(167, 139, 250, 0.22) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 24px rgba(20, 10, 44, 0.25) !important;
+  backdrop-filter: none !important;
+}
+
+.bk-capsule-tab,
+#bankai-admin-app .bk-capsule-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 10px 14px !important;
+  min-height: 40px;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  /* inactive = nav muted */
+  color: rgba(245, 243, 255, 0.62) !important;
+  cursor: pointer;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 550 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap;
+  position: relative;
+  transition: background .2s ease, color .2s ease, box-shadow .2s ease !important;
+  box-shadow: none !important;
+}
+
+.bk-capsule-tab svg.solar-icon,
+.bk-capsule-tab svg {
+  width: 17px !important;
+  height: 17px !important;
+  flex-shrink: 0;
+  stroke: currentColor !important;
+  opacity: 1;
+  color: inherit !important;
+}
+
+/* همیشه لیبل را نشان بده مثل سایدمنو (نه فقط در active) */
+.bk-capsule-tab .bk-capsule-label {
+  max-width: none !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  transform: none !important;
+  margin-inline-start: 0 !important;
+  color: inherit !important;
+  font-weight: inherit;
+}
+
+.bk-capsule-tab:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+/* active = همان bankai-nav-btn.active */
+.bk-capsule-tab.is-active {
+  background: linear-gradient(90deg, rgba(124, 92, 255, 0.38), rgba(124, 92, 255, 0.12)) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.28) !important;
+  padding: 10px 14px !important;
+  gap: 8px !important;
+}
+
+.bk-capsule-tab.is-active::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 3px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, #c4b5fd, #7c5cff);
+}
+
+.bk-capsule-tab.is-active svg {
+  color: #ffffff !important;
+  opacity: 1;
+}
+
+.bk-capsule-tab.is-active .bk-capsule-label {
+  color: #ffffff !important;
+}
+
+.bk-capsule-tab .bk-gh-redis-badge {
+  width: 8px; height: 8px; padding: 0; margin-inline-start: 4px;
+  border-radius: 50%; background: #22c55e; display: inline-block;
+}
+.bk-capsule-tab .bk-gh-redis-badge i { display: none; }
+.bk-capsule-tab .bk-gh-redis-badge.is-off { background: #f87171; }
+
+@media (max-width: 640px) {
+  .bk-capsule-tabs { width: 100% !important; }
+}
+
+/* =========================================================
+   v174 — Jalali calendar popup + minimal wizard (no green cards)
+   ========================================================= */
+
+/* Backdrop + popup */
+.bk-jcal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100040;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(2px);
+}
+.bk-jcal-pop {
+  position: fixed;
+  z-index: 100050;
+  background: #fff;
+  border: 1px solid #e8ecf4;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+  padding: 14px;
+  width: min(320px, calc(100vw - 24px));
+  direction: rtl;
+}
+.bk-jcal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.bk-jcal-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #312e81;
+}
+.bk-jcal-nav {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  color: #4338ca;
+}
+.bk-jcal-nav:hover { background: #eef2ff; }
+.bk-jcal-dows {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+.bk-jcal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.bk-jcal-day {
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: #0f172a;
+  font-family: inherit;
+}
+.bk-jcal-day:hover:not(:disabled) { background: #eef2ff; color: #4338ca; }
+.bk-jcal-day.is-muted { opacity: 0; pointer-events: none; }
+.bk-jcal-day.is-today { box-shadow: inset 0 0 0 1px #a5b4fc; }
+.bk-jcal-day.is-sel {
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: #fff !important;
+}
+.bk-jcal-time {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #eef2f7;
+}
+.bk-jcal-time > label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+.bk-jcal-time-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bk-jcal-time-row input[type="number"] {
+  width: 56px;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+.bk-jcal-time-row select {
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.bk-jcal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+/* Minimal wizard redesign — colored text, no green boxes */
+.bk-wiz-minimal {
+  background: #fff !important;
+  border: 1px solid #e8ecf4 !important;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04) !important;
+  border-radius: 16px !important;
+  padding: 18px 20px !important;
+}
+.bk-wiz-minimal .bk-wiz-hero {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 0 14px !important;
+  margin: 0 0 14px !important;
+  border-bottom: 1px solid #eef2f7 !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+.bk-wiz-minimal .bk-wiz-hero-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff) !important;
+  color: #4f46e5 !important;
+  display: flex; align-items: center; justify-content: center;
+}
+.bk-wiz-minimal .bk-wiz-hero-text h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 850;
+  color: #1e1b4b !important;
+  letter-spacing: -.02em;
+}
+.bk-wiz-minimal .bk-wiz-hero-text p {
+  margin: 0;
+  font-size: 12.5px;
+  color: #64748b !important;
+  line-height: 1.55;
+}
+.bk-wiz-minimal .bk-wiz-stepper {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 0 16px !important;
+  margin: 0 0 16px !important;
+  border-bottom: 1px solid #eef2f7 !important;
+  gap: 8px;
+}
+.bk-wiz-minimal .bk-wiz-step span {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  border: none !important;
+}
+.bk-wiz-minimal .bk-wiz-step em { color: #64748b !important; font-style: normal; }
+.bk-wiz-minimal .bk-wiz-step.is-active span {
+  background: #4f46e5 !important;
+  color: #fff !important;
+}
+.bk-wiz-minimal .bk-wiz-step.is-active em { color: #4f46e5 !important; font-weight: 800; }
+.bk-wiz-minimal .bk-wiz-step.is-done span {
+  background: #e0e7ff !important;
+  color: #4338ca !important;
+}
+.bk-wiz-minimal .bk-wiz-step-line { background: #e2e8f0 !important; }
+.bk-wiz-minimal .bk-wiz-step-line.is-on { background: #a5b4fc !important; }
+
+.bk-wiz-minimal .bk-wiz-engines {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 0 14px !important;
+  margin: 0 0 14px !important;
+}
+.bk-wiz-minimal .bk-wiz-engines-label {
+  color: #4f46e5 !important;
+  font-weight: 800;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.bk-wiz-minimal .bk-wiz-engine-card {
+  background: #fafbff !important;
+  border: 1px solid #e8ecf4 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+.bk-wiz-minimal .bk-wiz-engine-card.is-active {
+  border-color: #818cf8 !important;
+  background: #eef2ff !important;
+  box-shadow: none !important;
+}
+.bk-wiz-minimal .bk-wiz-engine-card strong { color: #1e1b4b !important; }
+.bk-wiz-minimal .bk-wiz-engine-card small { color: #64748b !important; }
+.bk-wiz-minimal .bk-wiz-engine-card.is-active small { color: #4f46e5 !important; }
+
+.bk-wiz-minimal .bk-wiz-panel {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.bk-wiz-minimal .bk-wiz-panel-head strong {
+  color: #312e81 !important;
+  font-size: 14px;
+}
+.bk-wiz-minimal .bk-wiz-panel-head small {
+  color: #64748b !important;
+}
+
+.bk-wiz-minimal .bk-wiz-title-card {
+  background: #fff !important;
+  border: 1px solid #e8ecf4 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  padding: 12px 14px !important;
+  margin-bottom: 10px;
+}
+.bk-wiz-minimal .bk-wiz-title-card.is-checked {
+  border-color: #c7d2fe !important;
+  background: #fafbff !important;
+  box-shadow: none !important;
+}
+.bk-wiz-minimal .bk-wiz-title-card.is-checked .bk-wiz-num {
+  color: #4f46e5 !important;
+  background: #e0e7ff !important;
+}
+
+.bk-wiz-minimal .bk-sched-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px dashed #c7d2fe;
+  border-radius: 10px;
+  background: #fafbff;
+  color: #4338ca;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: start;
+}
+.bk-wiz-minimal .bk-sched-toggle:hover {
+  border-style: solid;
+  background: #eef2ff;
+}
+
+.bk-wiz-minimal .bk-wiz-job {
+  background: #fff !important;
+  border: 1px solid #e8ecf4 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  padding: 12px 14px !important;
+  margin-bottom: 10px;
+}
+.bk-wiz-minimal .bk-wiz-badge {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  border: none !important;
+}
+.bk-wiz-minimal .bk-wiz-job.is-done .bk-wiz-badge {
+  background: #eef2ff !important;
+  color: #4f46e5 !important;
+}
+.bk-wiz-minimal .bk-wiz-checklist li.is-done {
+  color: #4f46e5 !important;
+}
+.bk-wiz-minimal .bk-wiz-checklist li.is-done::before {
+  color: #4f46e5 !important;
+}
+.bk-wiz-minimal .bk-ai-progress-fill {
+  background: linear-gradient(90deg, #6366f1, #8b5cf6) !important;
+}
+.bk-wiz-minimal .bk-wiz-cta {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  border: none !important;
+  color: #fff !important;
+}
+.bk-wiz-minimal .bk-field label {
+  color: #64748b !important;
+  font-weight: 700;
+  font-size: 11.5px;
+}
+.bk-wiz-minimal .bk-wiz-select-bar {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid #eef2f7 !important;
+  padding: 0 0 10px !important;
+  margin-bottom: 12px !important;
+}
+.bk-wiz-minimal .bk-wiz-count {
+  color: #4f46e5 !important;
+  font-weight: 800;
+  font-size: 12px;
+}
+.bk-wiz-minimal .bk-wiz-loader {
+  background: #fafbff !important;
+  border: 1px dashed #c7d2fe !important;
+  border-radius: 12px !important;
+}
+.bk-wiz-minimal .bk-wiz-spinner {
+  border-color: #e0e7ff !important;
+  border-top-color: #4f46e5 !important;
+}
+
+/* v175 — light blue Jalali popup + viewport positioning */
+.bk-jcal-backdrop {
+  background: rgba(30, 58, 95, 0.22) !important;
+}
+.bk-jcal-pop {
+  background: #f0f7ff !important;
+  border: 1px solid #bfdbfe !important;
+  box-shadow: 0 16px 40px rgba(37, 99, 235, 0.15) !important;
+}
+.bk-jcal-title { color: #1d4ed8 !important; }
+.bk-jcal-nav {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+.bk-jcal-nav:hover { background: #bfdbfe !important; }
+.bk-jcal-dows span { color: #60a5fa !important; }
+.bk-jcal-day { color: #1e3a5f !important; }
+.bk-jcal-day:hover:not(:disabled) {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+.bk-jcal-day.is-today { box-shadow: inset 0 0 0 1px #93c5fd !important; }
+.bk-jcal-day.is-sel {
+  background: linear-gradient(135deg, #3b82f6, #60a5fa) !important;
+  color: #fff !important;
+}
+.bk-jcal-time { border-top-color: #bfdbfe !important; }
+.bk-jcal-time > label { color: #3b82f6 !important; }
+.bk-jcal-time-row input[type="number"],
+.bk-jcal-time-row select {
+  border-color: #93c5fd !important;
+  background: #fff !important;
+}
+.bk-wiz-minimal .bk-sched-toggle {
+  border-color: #93c5fd !important;
+  background: #f0f7ff !important;
+  color: #1d4ed8 !important;
+}
+.bk-wiz-minimal .bk-sched-toggle:hover {
+  background: #dbeafe !important;
+}
+
+
+/* ==========================================================================
+   Bankai Toast System v191 — stackable glass cards
+   ========================================================================== */
+.bankai-toast-container {
+  position: fixed;
+  z-index: 100000;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 10px;
+  width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bankai-toast-card {
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  padding: 14px 14px 16px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.12),
+    0 4px 12px rgba(79, 70, 229, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  color: #1e1b4b;
+  opacity: 0;
+  transform: translateY(14px) scale(0.96);
+  transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bankai-toast-card.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.bankai-toast-card.is-leaving {
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+  transition-duration: 0.22s;
+}
+
+.bankai-toast-card.is-enter {
+  opacity: 0;
+  transform: translateY(14px) scale(0.96);
+}
+
+.bankai-toast-accent {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: currentColor;
+  opacity: 0.9;
+}
+
+.bankai-toast-success { color: #059669; }
+.bankai-toast-error { color: #dc2626; }
+.bankai-toast-warning { color: #d97706; }
+.bankai-toast-info { color: #4f46e5; }
+
+.bankai-toast-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.bankai-toast-icon-badge svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.bankai-toast-icon-success {
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0.06));
+  color: #059669;
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.15);
+}
+.bankai-toast-icon-error {
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.06));
+  color: #dc2626;
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.15);
+}
+.bankai-toast-icon-warning {
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.06));
+  color: #d97706;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.18);
+}
+.bankai-toast-icon-info {
+  background: linear-gradient(145deg, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0.06));
+  color: #4f46e5;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15);
+}
+
+.bankai-toast-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 1px;
+  color: #1e293b;
+}
+.bankai-toast-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.72;
+  color: inherit;
+}
+.bankai-toast-text {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.bankai-toast-dismiss {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.bankai-toast-dismiss:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+.bankai-toast-dismiss svg {
+  width: 14px;
+  height: 14px;
+}
+
+.bankai-toast-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+}
+.bankai-toast-progress-bar {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #6366f1, #22d3ee);
+  transform: scaleX(0);
+}
+.bankai-toast-progress-bar.is-running {
+  animation: bankaiToastProgress var(--toast-ms, 3600ms) linear forwards;
+}
+.bankai-toast-error .bankai-toast-progress-bar {
+  background: linear-gradient(90deg, #ef4444, #f97316);
+}
+.bankai-toast-success .bankai-toast-progress-bar {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+.bankai-toast-warning .bankai-toast-progress-bar {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+@keyframes bankaiToastProgress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+[dir="rtl"] .bankai-toast-progress-bar,
+.rtl .bankai-toast-progress-bar {
+  transform-origin: right center;
+}
+
+@media (max-width: 480px) {
+  .bankai-toast-container {
+    bottom: 16px;
+    width: calc(100vw - 20px);
+  }
+  .bankai-toast-card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+}
+
+
+/* Speed tab bar shares capsule theme */
+#bankai-admin-app .bk-speed-tabs-nav.bk-capsule-tabs {
+  display: inline-flex !important;
+  background: #1e1b4b !important;
+  border: 1px solid rgba(99, 102, 241, 0.35) !important;
+  border-radius: 999px !important;
+}
+#bankai-admin-app .bk-speed-tab-btn.bk-capsule-tab.is-active {
+  background: #ffffff !important;
+  color: #312e81 !important;
+}

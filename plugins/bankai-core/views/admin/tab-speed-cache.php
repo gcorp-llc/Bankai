@@ -20,7 +20,10 @@ $cfg_json = wp_json_encode($cfg, JSON_UNESCAPED_UNICODE);
 $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_key', '') ?: '') : get_option('bankai_psi_api_key', '');
 ?>
 
-<div id="tab-speed-cache" class="bankai-tab-pane bk-speed-tab-root">
+<div id="tab-speed-cache" class="bankai-tab-pane bk-speed-tab-root"
+     :class="{ 'is-active-tab': activeTab === 'speed-cache' }"
+     x-show="activeTab === 'speed-cache'"
+     x-cloak>
 
     <!-- Hero Header -->
     <div class="bk-speed-hero">
@@ -52,24 +55,44 @@ $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_k
         </div>
     </div>
 
+
+    <!-- Boost Modes -->
+    <div class="bk-speed-boost" id="bk-speed-boost">
+        <div class="bk-speed-boost__label">حالت شتاب‌دهی یک‌کلیکه</div>
+        <div class="bk-speed-boost__modes" role="group" aria-label="Boost presets">
+            <button type="button" class="bk-boost-chip" data-mode="safe" title="امن — کمترین تداخل با اسکریپت‌ها">
+                <span class="bk-boost-chip__dot"></span> ایمن (Safe)
+            </button>
+            <button type="button" class="bk-boost-chip is-active" data-mode="balanced" title="تعادل بین سرعت و سازگاری">
+                <span class="bk-boost-chip__dot"></span> متعادل (Balanced)
+            </button>
+            <button type="button" class="bk-boost-chip" data-mode="aggressive" title="حداکثر بهینه‌سازی">
+                <span class="bk-boost-chip__dot"></span> تهاجمی (Max)
+            </button>
+            <button type="button" class="bk-boost-chip" data-mode="apply" id="bk-boost-apply" style="margin-right:auto;background:#eef2ff;border-color:#a5b4fc;color:#4338ca">
+                اعمال روی ماژول‌ها
+            </button>
+        </div>
+    </div>
+
     <!-- Quick Stats Cards Row -->
     <div class="bk-speed-stats-row">
-        <div class="bk-speed-stat-card">
+        <div class="bk-speed-stat-card" data-tone="cyan">
             <span class="bk-speed-stat-card__label">زمان پاسخ‌دهی (TTFB)</span>
             <span class="bk-speed-stat-card__val" id="bk-stat-ttfb"><?php echo $ttfb; ?></span>
-            <span class="bk-speed-stat-card__sub">✓ سرعت پاسخ سرور</span>
+            <span class="bk-speed-stat-card__sub"><span class="bk-speed-pulse"></span> سرعت پاسخ سرور</span>
         </div>
-        <div class="bk-speed-stat-card">
+        <div class="bk-speed-stat-card" data-tone="green">
             <span class="bk-speed-stat-card__label">نرخ موفقیت کش (Hit Ratio)</span>
             <span class="bk-speed-stat-card__val" id="bk-stat-hit"><?php echo $hit; ?></span>
             <span class="bk-speed-stat-card__sub">درخواست‌های سروشده از کش</span>
         </div>
-        <div class="bk-speed-stat-card">
+        <div class="bk-speed-stat-card" data-tone="violet">
             <span class="bk-speed-stat-card__label">وضعیت Redis Object Cache</span>
             <span class="bk-speed-stat-card__val" id="bk-stat-redis"><?php echo $redis; ?></span>
             <span class="bk-speed-stat-card__sub">بک‌اند کش پایگاه‌داده</span>
         </div>
-        <div class="bk-speed-stat-card">
+        <div class="bk-speed-stat-card" data-tone="amber">
             <span class="bk-speed-stat-card__label">فایل‌های کش صفحات</span>
             <span class="bk-speed-stat-card__val" id="bk-stat-files"><?php echo (int)($stats['page_files'] ?? 0); ?></span>
             <span class="bk-speed-stat-card__sub">نسخه‌های ذخیره‌شده HTML</span>
@@ -77,26 +100,22 @@ $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_k
     </div>
 
     <!-- Subtab Navigation Bar -->
-    <div class="bk-speed-tabs-nav" role="tablist">
-        <button type="button" class="bk-speed-tab-btn is-active" data-subtab="auditor">
+    <div class="bk-capsule-tabs bk-speed-tabs-nav" role="tablist">
+        <button type="button" class="bk-speed-tab-btn bk-capsule-tab is-active" data-subtab="auditor">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.69l1.88 1.88a.75.75 0 1 1-1.06 1.06l-2.2-2.2A.75.75 0 0 1 7 8.75v-4a.75.75 0 0 1 1.5 0Z"/></svg>
             تست عملکرد و Fix All
         </button>
-        <button type="button" class="bk-speed-tab-btn" data-subtab="config">
+        <button type="button" class="bk-speed-tab-btn bk-capsule-tab" data-subtab="config">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v12.5A1.75 1.75 0 0 1 14.25 16H1.75A1.75 1.75 0 0 1 0 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25ZM3.5 7.75a.75.75 0 0 1 .75-.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1-.75-.75Zm.75 2.25a.75.75 0 0 0 0 1.5h4a.75.75 0 0 0 0-1.5Z"/></svg>
             پیکربندی کش و دارایی‌ها
         </button>
-        <button type="button" class="bk-speed-tab-btn" data-subtab="redis">
+        <button type="button" class="bk-speed-tab-btn bk-capsule-tab" data-subtab="redis">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25ZM1.75 2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25Z"/></svg>
             تنظیمات Redis
         </button>
-        <button type="button" class="bk-speed-tab-btn" data-subtab="db">
+        <button type="button" class="bk-speed-tab-btn bk-capsule-tab" data-subtab="db">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 0 0-1.5.14v1.53A6.5 6.5 0 1 1 1.67 8H.14A8 8 0 1 0 8 0ZM2.5 8a5.5 5.5 0 1 0 5.5-5.5V8Z"/></svg>
             بهینه‌سازی دیتابیس
-        </button>
-        <button type="button" class="bk-speed-tab-btn" data-subtab="history">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25Z"/></svg>
-            تاریخچه تست‌ها و گزارش
         </button>
     </div>
 
@@ -216,7 +235,7 @@ $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_k
             <div class="bk-mod-card is-on">
                 <div class="bk-mod-card__head">
                     <span class="bk-mod-card__title">کش صفحات استاتیک (Page Cache)</span>
-                    <input type="checkbox" id="cfg-page-cache-enable" checked>
+                    <label class="bk-toggle" title="فعال/غیرفعال"><input type="checkbox" id="cfg-page-cache-enable" checked><span class="bk-toggle__track"></span></label>
                 </div>
                 <p class="bk-mod-card__desc">ذخیره نسخه کامل HTML صفحات برای کاربران ناشناس جهت کاهش TTFB به کمتر از ۲۰۰ میلی‌ثانیه.</p>
                 <div class="bk-mod-card__foot">
@@ -236,8 +255,8 @@ $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_k
             <!-- Asset Optimization Card -->
             <div class="bk-mod-card is-on">
                 <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">بهینه‌سازی CSS و JavaScript</span>
-                    <input type="checkbox" id="cfg-assets-enable" checked>
+                    <span class="bk-mod-card__title">بهینه‌سازی CSS و JavaScript</span><span class="bk-mod-impact is-high">تأثیر بالا</span>
+                    <label class="bk-toggle"><input type="checkbox" id="cfg-assets-enable" checked><span class="bk-toggle__track"></span></label>
                 </div>
                 <p class="bk-mod-card__desc">فشرده‌سازی Minify، اجرای به تعویق انداخته (Defer / Delay) و حذف CSS/JS استفاده‌نشده.</p>
                 <div class="bk-mod-card__foot">
@@ -255,8 +274,8 @@ $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_k
             <!-- Core Web Vitals Card -->
             <div class="bk-mod-card is-on">
                 <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">بهینه‌سازی Core Web Vitals (CLS & Font)</span>
-                    <input type="checkbox" id="cfg-cwv-enable" checked>
+                    <span class="bk-mod-card__title">Core Web Vitals (CLS و فونت)</span><span class="bk-mod-impact is-high">تأثیر بالا</span>
+                    <label class="bk-toggle"><input type="checkbox" id="cfg-cwv-enable" checked><span class="bk-toggle__track"></span></label>
                 </div>
                 <p class="bk-mod-card__desc">تعیین ابعاد صریح تصاویر جهت صفر کردن CLS، تنظیم font-display: swap و محدودسازی Preconnect.</p>
                 <div class="bk-mod-card__foot">
@@ -267,8 +286,8 @@ $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_k
             <!-- Media Lazy Load Card -->
             <div class="bk-mod-card is-on">
                 <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">بارگذاری تنبل رسانه‌ها (Lazy Load)</span>
-                    <input type="checkbox" id="cfg-media-enable" checked>
+                    <span class="bk-mod-card__title">بارگذاری تنبل رسانه‌ها</span><span class="bk-mod-impact is-med">تأثیر متوسط</span>
+                    <label class="bk-toggle"><input type="checkbox" id="cfg-media-enable" checked><span class="bk-toggle__track"></span></label>
                 </div>
                 <p class="bk-mod-card__desc">بارگذاری تنبل تصاویر، iframeها و ویدیوهای یوتیوب تا اولین رندر سریع‌تر انجام شود.</p>
                 <div class="bk-mod-card__foot">
@@ -279,8 +298,8 @@ $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_k
             <!-- Preload & Hints Card -->
             <div class="bk-mod-card is-on">
                 <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">Preload و DNS Prefetch</span>
-                    <input type="checkbox" id="cfg-preload-enable" checked>
+                    <span class="bk-mod-card__title">Preload و DNS Prefetch</span><span class="bk-mod-impact is-med">تأثیر متوسط</span>
+                    <label class="bk-toggle"><input type="checkbox" id="cfg-preload-enable" checked><span class="bk-toggle__track"></span></label>
                 </div>
                 <p class="bk-mod-card__desc">Preload فونت‌های حیاتی و برقراری پیش‌فرض اتصال به دامنه‌های خارجی مانند گوگل‌فونت.</p>
                 <div class="bk-mod-card__foot">
@@ -291,8 +310,8 @@ $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_k
             <!-- Heartbeat Control Card -->
             <div class="bk-mod-card is-on">
                 <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">کنترل Heartbeat API</span>
-                    <input type="checkbox" id="cfg-heartbeat-enable" checked>
+                    <span class="bk-mod-card__title">کنترل Heartbeat API</span><span class="bk-mod-impact is-low">تأثیر کم</span>
+                    <label class="bk-toggle"><input type="checkbox" id="cfg-heartbeat-enable" checked><span class="bk-toggle__track"></span></label>
                 </div>
                 <p class="bk-mod-card__desc">کاهش یا غیرفعال‌سازی پایش‌های AJAX وردپرس در فرانت‌اند برای سبک‌تر شدن بار پردازش سرور.</p>
                 <div class="bk-mod-card__foot">
@@ -304,7 +323,7 @@ $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_k
             <div class="bk-mod-card is-on">
                 <div class="bk-mod-card__head">
                     <span class="bk-mod-card__title">کش مرورگر و فشرده‌سازی سرور</span>
-                    <input type="checkbox" id="cfg-browser-enable" checked>
+                    <label class="bk-toggle"><input type="checkbox" id="cfg-browser-enable" checked><span class="bk-toggle__track"></span></label>
                 </div>
                 <p class="bk-mod-card__desc">تولید خودکار قواعد .htaccess برای mod_expires، mod_headers و فشرده‌سازی Gzip/Deflate.</p>
                 <div class="bk-mod-card__foot">
@@ -353,34 +372,35 @@ $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_k
                 </button>
                 <span id="redis-status-msg" style="font-size:12px;font-weight:600"></span>
             </div>
+            <div style="margin-top:12px">
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b;margin-bottom:4px">
+                    <span>سلامت اتصال</span>
+                    <span id="bk-redis-meter-label">—</span>
+                </div>
+                <div class="bk-redis-meter"><div class="bk-redis-meter__bar" id="bk-redis-meter-bar"></div></div>
+            </div>
         </div>
     </div>
 
     <!-- PANE 4: Database Optimizer -->
     <div class="bk-speed-tab-pane" id="bk-pane-db">
         <div class="bk-audit-form-card">
-            <h3 style="font-size:16px;font-weight:700;margin:0 0 8px">پاکسازی و بهینه‌سازی پایگاه داده</h3>
-            <p style="font-size:12px;color:#636c76;margin-bottom:16px">حذف رونوشت‌های قدیمی، پیش‌نویس‌های خودکار، زباله‌دان، دیدگاه‌های اسپم و transientهای منقضی شده.</p>
+            <h3 style="font-size:16px;font-weight:800;margin:0 0 6px">پاکسازی هوشمند پایگاه داده</h3>
+            <p style="font-size:12px;color:#64748b;margin:0 0 4px">مواردی که می‌خواهید پاک شوند را انتخاب کنید؛ قبل از حذف سنگین از پشتیبان مطمئن شوید.</p>
+            <div class="bk-db-chips" id="bk-db-chips">
+                <label class="bk-db-chip is-checked"><input type="checkbox" data-db-opt="revisions" checked> رونوشت‌ها</label>
+                <label class="bk-db-chip is-checked"><input type="checkbox" data-db-opt="auto_drafts" checked> پیش‌نویس خودکار</label>
+                <label class="bk-db-chip is-checked"><input type="checkbox" data-db-opt="trash" checked> زباله‌دان</label>
+                <label class="bk-db-chip is-checked"><input type="checkbox" data-db-opt="spam" checked> دیدگاه اسپم</label>
+                <label class="bk-db-chip is-checked"><input type="checkbox" data-db-opt="transients" checked> Transient منقضی</label>
+            </div>
             <button type="button" class="bk-btn-primary" id="bk-run-db-opt-btn" style="width:fit-content">
                 <span class="bk-spin" style="display:none"></span>
-                اجرای پاکسازی پایگاه داده
+                اجرای پاکسازی انتخاب‌شده
             </button>
-            <div id="db-opt-result" style="display:none;margin-top:14px;font-size:12px;padding:12px;background:#f6f8fa;border:1px solid #d0d7de;border-radius:8px"></div>
+            <div id="db-opt-result" style="display:none;margin-top:14px;font-size:12px;padding:12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px"></div>
         </div>
     </div>
-
-    <!-- PANE 5: Test History & Report Export -->
-    <div class="bk-speed-tab-pane" id="bk-pane-history">
-        <div class="bk-audit-form-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                <h3 style="font-size:16px;font-weight:700;margin:0">تاریخچه تست‌های Performance</h3>
-                <button type="button" class="bk-btn-secondary" id="bk-export-report-btn">خروجی گزارش JSON / قابل چاپ</button>
-            </div>
-            <div id="bk-history-list" style="display:flex;flex-direction:column;gap:10px"></div>
-        </div>
-    </div>
-
-</div>
 
 <!-- Pass Initial Config Payload to Vanilla JS -->
 <script>

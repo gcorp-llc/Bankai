@@ -1,4 +1,128 @@
 /**
+ * Bankai Global Toast Engine (vanilla, stackable, modern)
+ * API: window.bankaiShowToast(message, type?, durationMs?)
+ *      type: success | error | warning | warn | info
+ */
+(function () {
+  'use strict';
+
+  var MAX_TOASTS = 4;
+  var DEFAULT_MS = 3600;
+
+  function ensureContainer() {
+    var el = document.getElementById('bankai-toast-container');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'bankai-toast-container';
+      el.className = 'bankai-toast-container';
+      el.setAttribute('aria-live', 'polite');
+      el.setAttribute('aria-atomic', 'false');
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function iconSvg(type) {
+    if (type === 'error') {
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>';
+    }
+    if (type === 'warning' || type === 'warn') {
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>';
+    }
+    if (type === 'info') {
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>';
+  }
+
+  function labelFa(type, rtl) {
+    if (type === 'error') return rtl ? 'خطا' : 'Error';
+    if (type === 'warning' || type === 'warn') return rtl ? 'هشدار' : 'Warning';
+    if (type === 'info') return rtl ? 'اطلاع' : 'Info';
+    return rtl ? 'موفق' : 'Success';
+  }
+
+  function normalizeType(type) {
+    type = (type || 'success').toLowerCase();
+    if (type === 'warn') type = 'warning';
+    if (['success', 'error', 'warning', 'info'].indexOf(type) === -1) type = 'success';
+    return type;
+  }
+
+  function isRtl() {
+    var app = document.getElementById('bankai-admin-app');
+    if (app && (app.getAttribute('dir') === 'rtl' || app.classList.contains('rtl'))) return true;
+    return document.documentElement.getAttribute('dir') === 'rtl' || document.body.classList.contains('rtl');
+  }
+
+  function dismiss(card) {
+    if (!card || card._leaving) return;
+    card._leaving = true;
+    card.classList.add('is-leaving');
+    clearTimeout(card._timer);
+    setTimeout(function () {
+      if (card.parentNode) card.parentNode.removeChild(card);
+    }, 280);
+  }
+
+  function bankaiShowToast(message, type, duration) {
+    message = (message == null ? '' : String(message)).trim();
+    if (!message) return null;
+
+    type = normalizeType(type);
+    var ms = typeof duration === 'number' && duration > 0 ? duration : (type === 'error' ? 5200 : DEFAULT_MS);
+    var rtl = isRtl();
+    var box = ensureContainer();
+
+    // Cap stack
+    while (box.querySelectorAll('.bankai-toast-card').length >= MAX_TOASTS) {
+      var first = box.querySelector('.bankai-toast-card');
+      if (first) dismiss(first);
+      else break;
+    }
+
+    var card = document.createElement('div');
+    card.className = 'bankai-toast-card bankai-toast-' + type + ' is-enter';
+    card.setAttribute('role', type === 'error' || type === 'warning' ? 'alert' : 'status');
+    card.innerHTML =
+      '<span class="bankai-toast-accent" aria-hidden="true"></span>' +
+      '<div class="bankai-toast-icon-badge bankai-toast-icon-' + type + '" aria-hidden="true">' + iconSvg(type) + '</div>' +
+      '<div class="bankai-toast-body">' +
+        '<span class="bankai-toast-label">' + labelFa(type, rtl) + '</span>' +
+        '<span class="bankai-toast-text"></span>' +
+      '</div>' +
+      '<button type="button" class="bankai-toast-dismiss" aria-label="Dismiss">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+      '</button>' +
+      '<div class="bankai-toast-progress" aria-hidden="true"><div class="bankai-toast-progress-bar is-running" style="--toast-ms:' + ms + 'ms"></div></div>';
+
+    card.querySelector('.bankai-toast-text').textContent = message;
+
+    var closeBtn = card.querySelector('.bankai-toast-dismiss');
+    closeBtn.addEventListener('click', function () { dismiss(card); });
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('.bankai-toast-dismiss')) return;
+      // click body keeps it; double-click dismiss
+    });
+
+    box.appendChild(card);
+    requestAnimationFrame(function () {
+      card.classList.remove('is-enter');
+      card.classList.add('is-visible');
+    });
+
+    card._timer = setTimeout(function () { dismiss(card); }, ms);
+    return card;
+  }
+
+  window.bankaiShowToast = bankaiShowToast;
+  // aliases used across tabs
+  window.showToast = function (msg, type, duration) {
+    return bankaiShowToast(msg, type, duration);
+  };
+})();
+
+/**
  * Bankai Admin Hooks
  * - Core module toggles → REST /core-module/{key} (AJAX fallback)
  * - Sub-module toggles → REST /module/{id}
@@ -13,25 +137,13 @@
     }
 
     function toast(msg, type) {
-        if (typeof window.showToast === 'function') {
-            window.showToast(msg, type || 'success');
+        if (typeof window.bankaiShowToast === 'function') {
+            window.bankaiShowToast(msg, type || 'success');
             return;
         }
-        // Minimal fallback
-        var el = document.getElementById('bankai-toast');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'bankai-toast';
-            el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.15);transition:opacity .3s;';
-            document.body.appendChild(el);
+        if (typeof window.showToast === 'function' && window.showToast !== toast) {
+            window.showToast(msg, type || 'success');
         }
-        el.style.background = '#FFFFFF';
-        el.style.color = type === 'error' ? '#A6122D' : '#1F2328';
-        el.style.border = '1px solid ' + (type === 'error' ? '#A6122D' : '#D0D7DE');
-        el.textContent = msg;
-        el.style.opacity = '1';
-        clearTimeout(el._t);
-        el._t = setTimeout(function () { el.style.opacity = '0'; }, 2800);
     }
 
     function rest(path, options) {

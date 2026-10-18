@@ -1,0 +1,63 @@
+/**
+ * Sticky sidebar — stays in view while main content scrolls
+ */
+.bankai-admin-wrap {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.bankai-admin-body,
+.bankai-layout-body,
+#bankai-admin-app > .bankai-body,
+.bankai-main-layout {
+    display: flex;
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
+}
+
+#bankai-admin-sidebar,
+.bankai-sidebar {
+    position: sticky !important;
+    top: 32px; /* WP admin bar */
+    align-self: flex-start;
+    height: calc(100vh - 32px);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 0;
+    z-index: 40;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Folded admin bar */
+@media screen and (max-width: 782px) {
+    #bankai-admin-sidebar,
+    .bankai-sidebar {
+        top: 46px;
+        height: calc(100vh - 46px);
+        max-height: calc(100vh - 46px);
+    }
+}
+
+/* When WP admin bar is hidden */
+body.no-admin-bar #bankai-admin-sidebar,
+body.no-admin-bar .bankai-sidebar {
+    top: 0;
+    height: 100vh;
+    max-height: 100vh;
+}
+
+.bankai-main-content,
+#bankai-main-content {
+    flex: 1;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+/* Hide green save-loader success card completely */
+#bankai-save-loader,
+.bankai-save-loader-overlay {
+    display: none !important;
+}

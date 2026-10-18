@@ -470,6 +470,10 @@
             },
 
             showToast: function (message, type, duration) {
+                if (typeof window.bankaiShowToast === 'function') {
+                    window.bankaiShowToast(message, type, duration);
+                    return;
+                }
                 var t = type || 'success';
                 if (t === 'warn') t = 'warning';
                 var ms = duration || (t === 'error' ? 4800 : 3600);
