@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Bankai Core
  * Description: هسته Bankai — سئو مقالات، استودیوی هوش مصنوعی متنی/تصویری، تولید و زمان‌بندی محتوا، رسانه و واترمارک، کش و سرعت، آنالیتیکس و ابزارهای یکپارچه مدیریت وردپرس با پنل مدرن Bento.
- * Version: 1.5.1
+ * Version: 1.5.2
  * Author: Bankai
  * Text Domain: bankai-core
  * Requires at least: 6.0
@@ -39,7 +39,7 @@ defined('BANKAI_CORE_VIEWS_DIR') || define(
     BANKAI_CORE_DIR . 'views/'
 );
 
-defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.5.0');
+defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.5.2');
 
 /*
 |--------------------------------------------------------------------------
@@ -96,6 +96,8 @@ final class Bankai_Core
 
         // Feature modules — files always required; constructors gate on active_modules
         $modules = [
+            'class-seo-text-normalizer.php',
+            'class-seo-link-ranker.php',
             'class-jalali-calendar.php',
             'class-settings-license.php',
             'class-speed-cache.php',

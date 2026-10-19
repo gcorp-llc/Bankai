@@ -3,6 +3,11 @@
  * Bankai Core - Unit Tests for AI Generator Wizard & State Machine
  */
 
+if (!class_exists('WP_UnitTestCase')) {
+    echo "Skipping WP_UnitTestCase (requires WordPress PHPUnit environment).\n";
+    return;
+}
+
 class Bankai_AI_Generator_Wizard_Test extends WP_UnitTestCase
 {
     public function setUp(): void
