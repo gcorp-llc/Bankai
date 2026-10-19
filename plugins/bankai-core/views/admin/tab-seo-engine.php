@@ -990,3 +990,5 @@ $page_count  = (int) wp_count_posts('page')->publish;
 <!-- close tab-seo-engine.php -->
 </div>
 <!-- /tab-seo-engine root -->
+
+<!-- link.score link.reason -->

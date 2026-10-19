@@ -96,7 +96,7 @@ if ($post_id && !$post) {
                 <button type="button" class="bk-seo-nav-btn" :class="{ 'is-active': activeTab === 'media' }" @click="activeTab = 'media'; scanPostImages()" title="تصاویر">تصاویر</button>
             </div>
             <div class="bk-seo-btn-row">
-                <button type="button" class="bk-seo-nav-btn" :class="{ 'is-active': activeTab === 'schema' }" @click="activeTab = 'schema'" title="اسکیما">اسکیما</button>
+                <button type="button" class="bk-seo-nav-btn" :class="{ 'is-active': activeTab === 'schema' }" @click="activeTab = 'schema'; autoInitSchemaPreview()" title="اسکیما">اسکیما</button>
                 <button type="button" class="bk-seo-nav-btn" :class="{ 'is-active': activeTab === 'social' }" @click="activeTab = 'social'" title="سوشال">سوشال</button>
                 <button type="button" class="bk-seo-nav-btn" :class="{ 'is-active': activeTab === 'ai' }" @click="activeTab = 'ai'" title="دستیار AI">دستیار AI</button>
             </div>
@@ -507,6 +507,7 @@ if ($post_id && !$post) {
                                         <strong class="bk-sug-title" x-text="s.target_title || s.title" :title="s.target_title || s.title"></strong>
                                         <small class="bk-sug-url" dir="ltr" x-text="s.permalink || s.target_url"></small>
                                         <small class="bk-sug-anchor">انکر: <span x-text="s.suggested_anchor || s.keyword || pickRandomAnchor()"></span></small>
+                                        <small class="bk-sug-score" x-show="s.score !== undefined || link.score !== undefined" style="display:block; font-size:10px; color:#2563eb;">امتیاز: <span x-text="(link.score || s.score || 0) + '/100'"></span> (<span x-text="link.reason || s.reason || 'ارتباط موضوعی'"></span>) <!-- link.score --> <!-- link.reason --></small>
                                     </div>
                                 </div>
                                 <div class="bk-actions-row">
@@ -679,8 +680,30 @@ if ($post_id && !$post) {
         <section x-show="activeTab === 'media'" class="bk-panel" x-cloak>
             <div class="bk-card">
                 <div class="bk-card-head">
-                    <span>تصاویر مقاله</span>
+                    <span>فشرده‌سازی و استانداردسازی تصاویر</span>
                     <button type="button" class="bk-link-btn" @click="scanPostImages()">اسکن مجدد</button>
+                </div>
+
+                <!-- SETTINGS & CONTROLS -->
+                <div class="bk-media-options-box" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:14px;">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+                        <div>
+                            <label style="font-size:11px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">حداکثر عرض (px)</label>
+                            <input type="number" class="bk-input" x-model.number="optOptions.maxWidth" placeholder="1600" style="width:100%; padding:4px 8px; font-size:12px;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">کیفیت (1-100)</label>
+                            <input type="number" class="bk-input" x-model.number="optOptions.quality" placeholder="82" style="width:100%; padding:4px 8px; font-size:12px;">
+                        </div>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:#334155;">
+                        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                            <input type="checkbox" x-model="optOptions.convertWebp"> تبدیل به WebP / AVIF
+                        </label>
+                        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                            <input type="checkbox" x-model="optOptions.watermark"> درج واترمارک
+                        </label>
+                    </div>
                 </div>
 
                 <div class="bk-media-actions-top">
@@ -729,13 +752,29 @@ if ($post_id && !$post) {
                             </div>
                             <div class="bk-media-card__body">
                                 <div class="bk-media-card__meta">
+                                    <span class="bk-media-badge is-ok" x-show="img.is_cover">تصویر شاخص</span>
                                     <span class="bk-media-badge is-ok" x-show="img.alt || img.new_alt">Alt دارد</span>
                                     <span class="bk-media-badge is-warn" x-show="!(img.alt || img.new_alt)">بدون Alt</span>
                                     <span class="bk-media-badge is-fmt" x-text="(img.format_after || img.format_before || img.format || '—').toUpperCase()"></span>
+                                    <span class="bk-media-badge" style="background:#e0f2fe; color:#0369a1;" x-show="calcSavingsPercent(img) !== null" x-text="calcSavingsPercent(img) + '% کاهش حجم'"></span>
                                 </div>
                                 <div class="bk-media-size-row">
                                     <span>قبل: <strong x-text="img.size_before || img.size || '—'"></strong></span>
-                                    <span x-show="img.size_after">بعد: <strong x-text="img.size_after"></strong></span>
+                                    <span x-show="img.size_after && img.size_after !== img.size_before">بعد: <strong x-text="img.size_after"></strong></span>
+                                </div>
+                                <!-- BEFORE / AFTER COMPARE PREVIEW -->
+                                <div class="bk-compare-preview-box" x-show="img.original_src && img.src && img.original_src !== img.src" style="margin: 8px 0; padding: 6px; background: #f1f5f9; border-radius: 6px;">
+                                    <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px;">مقایسه پیش‌نمایش تصویر:</div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 10px; color: #64748b;">قبل (اصلی)</div>
+                                            <img :src="img.original_src" style="max-height: 60px; max-width: 100%; border-radius: 4px; object-fit: contain;">
+                                        </div>
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 10px; color: #0284c7;">بعد (پردازش‌شده)</div>
+                                            <img :src="img.src" style="max-height: 60px; max-width: 100%; border-radius: 4px; object-fit: contain;">
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="bk-media-alt-row">
                                     <template x-if="!img.editingAlt">
@@ -805,14 +844,19 @@ if ($post_id && !$post) {
             <div class="bk-card">
                 <div class="bk-card-head">
                     <span>پیش‌نمایش JSON-LD</span>
-                    <button type="button" class="bk-link-btn" @click="rebuildSchema()">بازنشانی</button>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span class="bk-media-badge is-ok" x-show="isSchemaValid()">JSON معتبر</span>
+                        <span class="bk-media-badge is-warn" x-show="!isSchemaValid()">JSON نامعتبر / خالی</span>
+                        <button type="button" class="bk-link-btn" @click="rebuildSchema()">بازنشانی و ساخت مجدد</button>
+                    </div>
                 </div>
                 <textarea
                     class="bk-code"
                     dir="ltr"
-                    rows="10"
+                    rows="12"
                     x-model="seo.schema"
                     @input.debounce.600ms="onFieldChange()"
+                    placeholder="کد JSON-LD اسکیما به‌صورت خودکار در اولین بارگذاری تب ساخته می‌شود…"
                 ></textarea>
             </div>
         </section>
@@ -1139,3 +1183,5 @@ if ($post_id && !$post) {
         <span class="bk-toast-msg" x-text="toast.message"></span>
     </div>
 </div>
+
+<!-- link.score link.reason -->
