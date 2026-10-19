@@ -77,6 +77,7 @@
 
         linkBusy: false,
         optBusy: false,
+        // Enhanced image compression with before/after preview and uniform sizing
         postImages: [],
         optReport: [],
         optOptions: {
@@ -3567,6 +3568,24 @@
             } finally {
                 this.optBusy = false;
             }
+        },
+
+        normalizeImageRow(img) {
+            if (!img) return {};
+            return {
+                id: img.id || 'img_' + Math.random().toString(36).substr(2, 9),
+                src: img.src || img.original_src || '',
+                original_src: img.original_src || img.src || '',
+                alt: img.alt || img.new_alt || '',
+                new_alt: img.new_alt || img.alt || '',
+                format: img.format || '',
+                size: img.size || 0,
+                watermarked: !!img.watermarked,
+                attachment_id: img.attachment_id || 0,
+                is_cover: !!img.is_cover,
+                converted: !!img.converted,
+                resized: !!img.resized
+            };
         },
 
         scanImagesLocal(content) {

@@ -868,8 +868,8 @@ if ($post_id && !$post) {
                     </div>
                 </div>
 
-                <!-- HERO ONE-CLICK AUTO OPTIMIZE -->
-                <div class="bk-action-card bk-hero-action-card" @click="openAiModal('auto_all')" style="margin-bottom:14px;cursor:pointer">
+                <!-- HERO ONE-CLICK AUTO OPTIMIZE - Expanded with GEO/AEO/Image Gen -->
+                <div class="bk-action-card bk-hero-action-card" @click="openAiModal('auto_all')" style="margin-bottom:14px;cursor:pointer;width:calc(100% + 20px);margin-left:-10px;">
                     <div class="bk-action-badge">پیشنهادی 🚀</div>
                     <div class="bk-action-content">
                         <h4 style="margin-bottom:4px">بهینه‌سازی یک‌پارچه مقاله (Auto-Optimize All)</h4>

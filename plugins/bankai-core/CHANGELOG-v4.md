@@ -48,6 +48,27 @@ Focus keyword, in title/desc/URL/intro/content, content length, headings, alt, d
 ## Files
 ```
 functions.php
+
+## v1.4.0 - SEO Image Compression, Auto Schema, Enhanced AI Assistant (Integrated Optimize, GEO, AEO, Image Gen)
+
+### Images Tab
+- Visual loading preview for all images on compress/standardize button
+- Compress, format change (WebP etc.), uniform sizing for all images including cover
+- Before/after display post-compression
+- Unified size framing for all images
+
+### Schema Tab
+- Auto JSON-LD preview on initial load
+
+### AI Assistant Tab
+- Smart Optimize button: enlarges module (2x width)
+- Integrated Article Optimization: content analysis, SEO title/meta, keywords, internal links, images/alt, compression, schema, categories/tags
+- GEO AI: readiness analysis, key takeaways for quotes, meta opt for AI quotes, preview
+- AEO AI: response-ready structure, FAQ, FAQ schema, preview
+- AI Image Generation for cover and content images with professional styles (visual design, notifications, alerts)
+- Internal links inserted scattered in content body, saved
+
+Professional UI/UX with beautiful visuals, professional alerts.
 inc/class-editor-seo.php
 inc/meta/class-post-seo-meta.php
 inc/modules/class-seo-engine.php
