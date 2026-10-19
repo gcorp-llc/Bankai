@@ -758,9 +758,10 @@ if ($post_id && !$post) {
                                     <span class="bk-media-badge is-fmt" x-text="(img.format_after || img.format_before || img.format || '—').toUpperCase()"></span>
                                     <span class="bk-media-badge" style="background:#e0f2fe; color:#0369a1;" x-show="calcSavingsPercent(img) !== null" x-text="calcSavingsPercent(img) + '% کاهش حجم'"></span>
                                 </div>
-                                <div class="bk-media-size-row">
-                                    <span>قبل: <strong x-text="img.size_before || img.size || '—'"></strong></span>
-                                    <span x-show="img.size_after && img.size_after !== img.size_before">بعد: <strong x-text="img.size_after"></strong></span>
+                                <div class="bk-media-size-row" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:11px; color:#475569; margin:4px 0;">
+                                    <span>حجم قبل: <strong x-text="img.size_before || img.size || '—'"></strong></span>
+                                    <span x-show="img.size_after && img.size_after !== img.size_before">حجم بعد: <strong x-text="img.size_after"></strong></span>
+                                    <span x-show="img.dimensions || img.width" style="color:#64748b;">ابعاد: <strong x-text="(img.dimensions || (img.width ? (img.width + 'x' + (img.height||'?')) : ''))"></strong></span>
                                 </div>
                                 <!-- BEFORE / AFTER COMPARE PREVIEW -->
                                 <div class="bk-compare-preview-box" x-show="img.original_src && img.src && img.original_src !== img.src" style="margin: 8px 0; padding: 6px; background: #f1f5f9; border-radius: 6px;">
@@ -1029,46 +1030,105 @@ if ($post_id && !$post) {
             <div class="bk-modal-body">
                 <!-- ===== PHASE: SETUP ===== -->
                 <div x-show="aiPhase === 'setup'" x-cloak>
-                    <div class="bk-ai-hero-banner" :class="'tone-' + (aiTask || 'default')">
-                        <div class="bk-ai-hero-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
-                        </div>
-                        <div>
-                            <strong x-text="aiModalTitle"></strong>
-                            <p x-text="aiTaskBlurb()"></p>
-                        </div>
-                    </div>
-
-                    <!-- Only active AI (no dropdown) -->
-                    <div class="bk-field" style="margin-bottom:10px; display:none;">
-                        <label>موتور هوش مصنوعی فعال</label>
-                        <input type="text" :value="aiProvider || 'gemini'" readonly>
-                    </div>
-
-                    <div class="bk-field" x-show="aiTask === 'title' || aiTask === 'description' || aiTask === 'meta' || aiTask === 'rewrite' || aiTask === 'takeaways' || aiTask === 'faq' || aiTask === 'auto_all' || !aiTask" style="margin-bottom:10px">
-                        <label>سبک تولید</label>
-                        <select x-model="aiOptions.style">
-                            <option value="seo">سئو استاندارد (پیش‌فرض)</option>
-                            <option value="engaging">جذاب و کلیک‌خور (High CTR)</option>
-                            <option value="formal">رسمی و حرفه‌ای</option>
-                            <option value="simple">ساده و روان</option>
-                        </select>
-                    </div>
-
-                    <div class="bk-ai-plan-card">
-                        <div class="bk-ai-plan-head">فرایندهای این اجرا</div>
-                        <template x-for="(item, i) in plannedChecklist()" :key="item.id">
-                            <div class="bk-ai-plan-row">
-                                <span class="bk-ai-plan-num" x-text="(i+1)"></span>
-                                <span x-text="item.label"></span>
+                    <div class="bk-modal-split-grid">
+                        <!-- Right Column: Integrated Optimization -->
+                        <div class="bk-ai-col-integrated" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:14px;">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+                                <div style="width:32px; height:32px; border-radius:8px; background:#e0e7ff; color:#4f46e5; display:flex; align-items:center; justify-content:center;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/></svg>
+                                </div>
+                                <div>
+                                    <strong style="font-size:13px; color:#1e293b; display:block;">بهینه‌سازی یک‌پارچه مقاله</strong>
+                                    <span style="font-size:10.5px; color:#64748b;">تمام گام‌های سئو، کلیدواژه، لینک، تصویر و اسکیما به‌صورت یک‌پارچه اجرا می‌شود.</span>
+                                </div>
                             </div>
-                        </template>
-                    </div>
 
-                    <button type="button" class="bk-btn-primary bk-full bk-ai-start-btn" @click="startAiWorkflow()" :disabled="aiBusy || aiLoading">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                        <span>شروع فرایند</span>
-                    </button>
+                            <div class="bk-ai-plan-card" style="margin-bottom:12px;">
+                                <div class="bk-ai-plan-head" style="font-size:11px; font-weight:700; color:#334155; margin-bottom:8px;">فرایندهای این اجرا</div>
+                                <div class="bk-ai-plan-list" style="display:flex; flex-direction:column; gap:6px;">
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">1</span><span>تحلیل محتوا و ساختار مقاله</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">2</span><span>تولید عنوان سئو و متا دیسکریپشن</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">3</span><span>استخراج کلمات کلیدی</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">4</span><span>پیشنهاد لینک داخلی</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">5</span><span>سئوی تصاویر و Alt</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">6</span><span>فشرده‌سازی تصاویر</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">7</span><span>تولید اسکیما</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">8</span><span>دسته و برچسب</span></div>
+                                </div>
+                            </div>
+
+                            <button type="button" class="bk-btn-primary bk-full bk-ai-start-btn" @click="aiTask='auto_all'; startAiWorkflow()" :disabled="aiBusy || aiLoading">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                                <span>شروع بهینه‌سازی هوشمند</span>
+                            </button>
+                        </div>
+
+                        <!-- Left Column: GEO & AEO & Image Studio Placeholders -->
+                        <div class="bk-ai-col-secondary" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px;">
+                            <div class="bk-ai-tabs-header">
+                                <button type="button" class="bk-ai-tab-btn" :class="{ 'is-active': modalSubTab === 'geo' }" @click="modalSubTab = 'geo'">بهبود GEO</button>
+                                <button type="button" class="bk-ai-tab-btn" :class="{ 'is-active': modalSubTab === 'aeo' }" @click="modalSubTab = 'aeo'">بهبود AEO</button>
+                                <button type="button" class="bk-ai-tab-btn" :class="{ 'is-active': modalSubTab === 'images' }" @click="modalSubTab = 'images'">تصاویر AI</button>
+                            </div>
+
+                            <!-- GEO SUBTAB -->
+                            <div x-show="modalSubTab === 'geo'" x-cloak>
+                                <div style="font-size:12px; font-weight:700; color:#0f172a; margin-bottom:4px;">بهبود GEO با هوش مصنوعی</div>
+                                <div style="font-size:10.5px; color:#64748b; margin-bottom:10px;">چکیده و نکات کلیدی برای نقل‌قول توسط ChatGPT و موتورهای مولد تولید می‌شود.</div>
+                                <div class="bk-ai-plan-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px;">
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">1</span><span>تحلیل آمادگی موتورهای مولد (GEO)</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">2</span><span>تولید خلاصه نکات کلیدی</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">3</span><span>بهینه‌سازی متا برای نقل‌قول AI</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">4</span><span>آماده‌سازی پیش‌نمایش برای تایید</span></div>
+                                </div>
+                                <button type="button" class="bk-btn-primary bk-full" @click="aiTask='geo'; startAiWorkflow()" :disabled="aiBusy || aiLoading">
+                                    <span>اجرای بهینه‌سازی GEO</span>
+                                </button>
+                            </div>
+
+                            <!-- AEO SUBTAB -->
+                            <div x-show="modalSubTab === 'aeo'" x-cloak>
+                                <div style="font-size:12px; font-weight:700; color:#0f172a; margin-bottom:4px;">بهبود AEO با هوش مصنوعی</div>
+                                <div style="font-size:10.5px; color:#64748b; margin-bottom:10px;">ساختار پاسخ‌محور و FAQ برای Featured Snippet و موتورهای پاسخ‌گو ساخته می‌شود.</div>
+                                <div class="bk-ai-plan-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px;">
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">1</span><span>تحلیل آمادگی پاسخ‌محور (AEO)</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">2</span><span>تولید سوالات متداول ساختاریافته</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">3</span><span>آماده‌سازی اسکیما FAQ</span></div>
+                                    <div class="bk-ai-plan-row"><span class="bk-ai-plan-num">4</span><span>آماده‌سازی پیش‌نمایش برای تایید</span></div>
+                                </div>
+                                <button type="button" class="bk-btn-primary bk-full" @click="aiTask='aeo'; startAiWorkflow()" :disabled="aiBusy || aiLoading">
+                                    <span>اجرای بهینه‌سازی AEO</span>
+                                </button>
+                            </div>
+
+                            <!-- IMAGES SUBTAB -->
+                            <div x-show="modalSubTab === 'images'" x-cloak>
+                                <div style="font-size:12px; font-weight:700; color:#0f172a; margin-bottom:4px;">تولید تصویر با هوش مصنوعی</div>
+                                <div style="font-size:10.5px; color:#64748b; margin-bottom:10px;">ایجاد تصویر کاور و تصاویر بدنه محتوا با سبکی مدرن و حرفه‌ای.</div>
+                                <div class="bk-field" style="margin-bottom:8px;">
+                                    <label style="font-size:11px; font-weight:600; color:#475569;">نوع تصویر</label>
+                                    <select x-model="aiImgType" style="width:100%; font-size:11px; padding:4px 8px; border-radius:6px; border:1px solid #cbd5e1;">
+                                        <option value="cover">تصویر کاور (Featured Cover)</option>
+                                        <option value="inline">تصویر درون محتوا (Inline Body)</option>
+                                    </select>
+                                </div>
+                                <div class="bk-field" style="margin-bottom:10px;">
+                                    <label style="font-size:11px; font-weight:600; color:#475569;">سبک طراحی بصری</label>
+                                    <select x-model="aiImgStyle" style="width:100%; font-size:11px; padding:4px 8px; border-radius:6px; border:1px solid #cbd5e1;">
+                                        <option value="photorealistic">واقع‌گرایانه (Photorealistic / High Detail)</option>
+                                        <option value="minimalist">مینیمال و مدرن (Minimalist Corporate)</option>
+                                        <option value="vector">تصویرسازی برداری (Vector Illustration)</option>
+                                        <option value="render_3d">رندر سه‌بعدی (3D Digital Art / Render)</option>
+                                        <option value="cinematic">سینمایی و استودیویی (Cinematic Studio Lighting)</option>
+                                        <option value="infographic">اینفوگرافیک و آموزشی (Infographic Style)</option>
+                                    </select>
+                                </div>
+                                <button type=button class="bk-btn-primary bk-full" @click="generateAiArticleImage()" :disabled="aiBusy || optBusy">
+                                    <span>تولید و افزودن تصویر با AI</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- ===== PHASE: RUNNING ===== -->

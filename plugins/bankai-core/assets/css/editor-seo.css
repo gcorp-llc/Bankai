@@ -4932,3 +4932,95 @@
   color: #fff;
   box-shadow: 0 4px 12px rgba(99, 102, 241, .28);
 }
+
+
+/* Uniform Framing & Sizing for Images Tab */
+.bk-media-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px !important;
+}
+.bk-media-card {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    box-sizing: border-box;
+    width: 100%;
+}
+.bk-media-card__thumb {
+    width: 80px;
+    height: 80px;
+    min-width: 80px;
+    min-height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #F8FAFC;
+    border: 1px solid #CBD5E1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+.bk-media-card__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.bk-compare-preview-box {
+    box-sizing: border-box;
+    border: 1px solid #E2E8F0;
+}
+
+
+/* AI Modal 2-Column Split Grid & Enhanced Width Layout */
+.bk-modal-ai-flow {
+    max-width: 1100px !important;
+    width: min(1100px, calc(100vw - 32px)) !important;
+}
+
+.bk-modal-split-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+}
+
+@media (max-width: 860px) {
+    .bk-modal-split-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bk-ai-tabs-header {
+    display: flex;
+    gap: 4px;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.bk-ai-tab-btn {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.bk-ai-tab-btn.is-active {
+    background: #ffffff;
+    color: #4f46e5;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}

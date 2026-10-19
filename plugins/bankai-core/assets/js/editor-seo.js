@@ -114,6 +114,9 @@
         aiModalOpen: false,
         aiTask: '',
         aiModalTitle: 'دستیار AI سئو',
+        modalSubTab: 'geo',
+        aiImgType: 'cover',
+        aiImgStyle: 'photorealistic',
         aiOptions: { style: 'seo', count: '5' },
         aiProvider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || '',
         aiImageProvider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultImageProvider) || '',
@@ -1589,6 +1592,50 @@
             });
             // user clicks start again
         },
+                scatterAndInsertSmartLinks(links) {
+            if (!Array.isArray(links) || !links.length) return;
+            let content = this.getEditorRawContent() || '';
+            if (!content.trim()) return;
+
+            const parts = content.split(/(?=<p\b|<div\b|<h[2-6]\b|\n\n)/i);
+            if (!parts || !parts.length) return;
+
+            const bodyIndices = [];
+            parts.forEach((p, idx) => {
+                if (idx > 0 && p.length > 20) {
+                    bodyIndices.push(idx);
+                }
+            });
+
+            if (!bodyIndices.length) {
+                parts.forEach((_, idx) => bodyIndices.push(idx));
+            }
+
+            const step = Math.max(1, Math.floor(bodyIndices.length / links.length));
+
+            links.forEach((link, lIdx) => {
+                const targetIdx = bodyIndices[Math.min(lIdx * step, bodyIndices.length - 1)];
+                const keyword = link.keyword || link.anchor || link.title || '';
+                const url = link.url || link.permalink || '';
+
+                if (keyword && url && parts[targetIdx]) {
+                    if (!parts[targetIdx].includes(url)) {
+                        const regex = new RegExp('(' + keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'i');
+                        if (regex.test(parts[targetIdx])) {
+                            parts[targetIdx] = parts[targetIdx].replace(regex, '<a href="' + url + '" title="' + keyword + '">$1</a>');
+                        } else {
+                            parts[targetIdx] += ' <a href="' + url + '" title="' + keyword + '">' + keyword + '</a>';
+                        }
+                    }
+                }
+            });
+
+            const newContent = parts.join('');
+            if (newContent !== content && typeof this.setEditorRawContent === 'function') {
+                this.setEditorRawContent(newContent);
+            }
+        },
+
         applyAiReview() {
             try {
                 if (this.aiDraft.title) this.seo.seo_title = this.aiDraft.title;
@@ -1627,6 +1674,11 @@
                         this.insertContentIntoEditor('<div class="bankai-summary"><h2>خلاصه نکات کلیدی</h2><p>' + geo + '</p></div>', 'prepend');
                     }
                 }
+                // Insert & scatter smart internal links in content body
+                if (Array.isArray(this.aiDraft.smartLinks) && this.aiDraft.smartLinks.length) {
+                    this.scatterAndInsertSmartLinks(this.aiDraft.smartLinks);
+                }
+
                 if (Array.isArray(this.aiDraft.altTexts)) {
                     this.aiDraft.altTexts.forEach((a) => {
                         if (a && (a.suggestedAlt || a.alt) && typeof this.updateImageAlt === 'function') {
@@ -3556,6 +3608,43 @@
             }
         },
 
+        async generateAiArticleImage() {
+            const type = this.aiImgType || 'cover';
+            const style = this.aiImgStyle || 'photorealistic';
+            const styleLabels = {
+                photorealistic: 'واقع‌گرایانه با جزئیات بالا',
+                minimalist: 'مینیمال و شرکتی مدرن',
+                vector: 'تصویرسازی برداری',
+                render_3d: 'رندر سه‌بعدی دیجیتال',
+                cinematic: 'نورپردازی سینمایی و استودیویی',
+                infographic: 'اینفوگرافیک و آموزشی'
+            };
+            const styleText = styleLabels[style] || style;
+            this.aiBusy = true;
+            this.optBusy = true;
+            this.showToast('در حال شروع ساخت تصویر با سبک ' + styleText + '…', 'info');
+            try {
+                const ctx = this.getEditorContext();
+                const prompt = (ctx.title || 'تصویر مقاله') + ' - سبک بصری: ' + styleText + ' - طراحی حرفه‌ای و با کیفیت بالا';
+                const imgResult = await this.callImageAi(type, { prompt, section: null });
+                if (!imgResult || (!imgResult.src && !imgResult.attachment_id && !imgResult.url)) {
+                    throw new Error('تصویر توسط هوش مصنوعی تولید نشد');
+                }
+                if (type === 'cover' && imgResult.src) {
+                    this.showToast('تصویر کاور با موفقیت تولید و اضافه شد', 'success');
+                } else {
+                    this.showToast('تصویر محتوا با موفقیت تولید و اضافه شد', 'success');
+                }
+                await this.scanPostImages();
+                this.closeAiModal();
+            } catch (e) {
+                this.showToast((e && e.message) || 'خطا در تولید تصویر با AI', 'error');
+            } finally {
+                this.aiBusy = false;
+                this.optBusy = false;
+            }
+        },
+
         async watermarkSingleImage(img) {
             if (!img) return;
             try {
@@ -3581,8 +3670,10 @@
         },
 
         autoInitSchemaPreview() {
-            if (!this.seo.schema || !this.seo.schema.trim()) {
-                this.rebuildSchema();
+            // Automatically reset/rebuild and refresh JSON-LD schema preview on tab open
+            this.rebuildSchema();
+            if (typeof this.syncSchemaFromForms === 'function') {
+                this.syncSchemaFromForms(true);
             }
         },
 
@@ -3638,6 +3729,8 @@
             this.optBusy = true;
             this.optReport = [];
             try {
+                // Ensure postImages is updated first before compression
+                await this.scanPostImages();
                 const cfg = window.bankaiEditorSeo || {};
                 const content = this.getEditorRawContent() || this.seo.content || '';
                 const body = new FormData();
