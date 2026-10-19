@@ -3570,6 +3570,32 @@
             }
         },
 
+                calcSavingsPercent(img) {
+            if (!img) return null;
+            const b = Number(img.bytes_before || 0);
+            const a = Number(img.bytes_after || 0);
+            if (b > 0 && a > 0 && b !== a) {
+                return Math.round(((b - a) / b) * 100);
+            }
+            return null;
+        },
+
+        autoInitSchemaPreview() {
+            if (!this.seo.schema || !this.seo.schema.trim()) {
+                this.rebuildSchema();
+            }
+        },
+
+        isSchemaValid() {
+            if (!this.seo || !this.seo.schema || !this.seo.schema.trim()) return false;
+            try {
+                JSON.parse(this.seo.schema);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        },
+
         normalizeImageRow(img) {
             if (!img) return {};
             return {
