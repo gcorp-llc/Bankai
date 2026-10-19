@@ -863,7 +863,7 @@ if ($post_id && !$post) {
                         <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M19 14l.7 2L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/></svg>
                     </div>
                     <div>
-                        <strong style="font-size:13px;display:block">دستیار هوشمند سئوی بنکای</strong>
+                        <strong style="font-size:13px;display:block">دستیار هوشمند سئوی بنکای v1.4 (به‌روزرسانی کامل تصاویر، اسکیما، AI یکپارچه)</strong>
                         <small style="color:#64748b;font-size:10px">ابزارهای حرفه‌ای بهینه‌سازی تولید محتوا و سئو با یک کلیک</small>
                     </div>
                 </div>
