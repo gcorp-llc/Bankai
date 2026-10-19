@@ -4390,6 +4390,9 @@
    v167 — Visual AI multi-phase modal
    ========================================================= */
 .bankai-seo-root .bk-modal-ai-flow {
+    max-width: 1100px !important;
+    width: min(1100px, calc(100vw - 32px)) !important;
+}
     max-width: 420px;
     width: calc(100% - 24px);
 }
