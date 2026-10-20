@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Bankai Core
  * Description: هسته Bankai — سئو مقالات، استودیوی هوش مصنوعی متنی/تصویری، تولید و زمان‌بندی محتوا، رسانه و واترمارک، کش و سرعت، آنالیتیکس و ابزارهای یکپارچه مدیریت وردپرس با پنل مدرن Bento.
- * Version: 1.5.2
+ * Version: 1.5.3
  * Author: Bankai
  * Text Domain: bankai-core
  * Requires at least: 6.0
@@ -39,7 +39,7 @@ defined('BANKAI_CORE_VIEWS_DIR') || define(
     BANKAI_CORE_DIR . 'views/'
 );
 
-defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.5.2');
+defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.5.3');
 
 /*
 |--------------------------------------------------------------------------
