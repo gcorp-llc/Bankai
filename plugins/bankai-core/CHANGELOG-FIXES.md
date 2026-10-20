@@ -1,3 +1,14 @@
+# Bankai Core – Refactoring & Optimization Changelog
+
+## v1.5.2 Refactoring Release
+- **Unused Code Cleanup**: Removed legacy duplicate file `inc/class-seo-engine.php` and orphan snippet `inc/class-editor-seo-ai-snippet.php`.
+- **Dependency Optimization**: Explicitly registered `class-seo-text-normalizer.php` and `class-seo-link-ranker.php` as module dependencies loaded during plugin bootstrap.
+- **Query & Database Performance**: Optimized `Bankai_SEO_Engine::get_views_map()` to execute a single batch query for post view counts instead of N sequential meta queries.
+- **Scoring Pipeline Refactoring**: Streamlined `Bankai_SEO_Engine::analyze()` scoring evaluation loop to calculate overall, SEO, AEO, and GEO sub-scores in a single pass.
+- **Test Integrity**: Verified 100% test pass rate across all 8 test suites without breaking or weakening any existing checks.
+
+---
+
 # Bankai SEO – Fixes & Improvements
 
 ## مشکلات شناسایی‌شده و رفع‌شده

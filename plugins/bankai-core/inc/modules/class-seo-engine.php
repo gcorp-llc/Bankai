@@ -495,24 +495,26 @@ final class Bankai_SEO_Engine
         if (!$post_ids) {
             return [];
         }
-        $map = [];
-        foreach ($post_ids as $id) {
-            $map[$id] = (int) get_post_meta($id, self::META_VIEWS, true);
-        }
-        // Prefer a single query when possible
+        $map = array_fill_keys($post_ids, 0);
         global $wpdb;
-        $ids_sql = implode(',', $post_ids);
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- IDs are absint-filtered
-        $rows = $wpdb->get_results(
-            "SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = '" . esc_sql(self::META_VIEWS) . "' AND post_id IN ({$ids_sql})",
-            ARRAY_A
-        );
-        if (is_array($rows)) {
-            foreach ($rows as $row) {
-                $pid = (int) ($row['post_id'] ?? 0);
-                if ($pid > 0) {
-                    $map[$pid] = (int) ($row['meta_value'] ?? 0);
+        if (isset($wpdb->postmeta)) {
+            $ids_sql = implode(',', $post_ids);
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- IDs are absint-filtered
+            $rows = $wpdb->get_results(
+                "SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = '" . esc_sql(self::META_VIEWS) . "' AND post_id IN ({$ids_sql})",
+                ARRAY_A
+            );
+            if (is_array($rows)) {
+                foreach ($rows as $row) {
+                    $pid = (int) ($row['post_id'] ?? 0);
+                    if ($pid > 0) {
+                        $map[$pid] = (int) ($row['meta_value'] ?? 0);
+                    }
                 }
+            }
+        } else {
+            foreach ($post_ids as $id) {
+                $map[$id] = (int) get_post_meta($id, self::META_VIEWS, true);
             }
         }
         return $map;
@@ -1813,9 +1815,14 @@ final class Bankai_SEO_Engine
         // - pass → passed; warning/fail/unknown → not passed
         $pass_count = 0;
         $scored_total = 0;
+
         $seo_pass = 0; $seo_tot = 0;
         $aeo_pass = 0; $aeo_tot = 0;
         $geo_pass = 0; $geo_tot = 0;
+
+        $sub_seo_pass = 0; $sub_seo_tot = 0;
+        $sub_aeo_pass = 0; $sub_aeo_tot = 0;
+        $sub_geo_pass = 0; $sub_geo_tot = 0;
 
         foreach ($checks as $c) {
             $st = (string) ($c['status'] ?? '');
@@ -1823,57 +1830,46 @@ final class Bankai_SEO_Engine
                 continue;
             }
             $scored_total++;
-            if ($st === 'pass') {
+            $is_pass = ($st === 'pass');
+            if ($is_pass) {
                 $pass_count++;
             }
 
-            $g = $c['group'] ?? 'basic';
+            $g = (string) ($c['group'] ?? 'basic');
+            $k = (string) ($c['key'] ?? '');
+
             if (in_array($g, ['basic', 'advanced', 'title', 'content'], true)) {
                 $seo_tot++;
-                if ($st === 'pass') { $seo_pass++; }
+                if ($is_pass) { $seo_pass++; }
             } elseif ($g === 'aeo') {
                 $aeo_tot++;
-                if ($st === 'pass') { $aeo_pass++; }
+                if ($is_pass) { $aeo_pass++; }
             } elseif ($g === 'geo') {
                 $geo_tot++;
-                if ($st === 'pass') { $geo_pass++; }
+                if ($is_pass) { $geo_pass++; }
+            }
+
+            if (in_array($g, ['basic', 'title'], true) || str_contains($k, 'kw') || str_contains($k, 'desc') || str_contains($k, 'url') || str_contains($k, 'title')) {
+                $sub_seo_tot++;
+                if ($is_pass) { $sub_seo_pass++; }
+            }
+            if ($g === 'content' || str_contains($k, 'list') || str_contains($k, 'heading') || str_contains($k, 'para') || str_contains($k, 'sentence') || str_contains($k, 'faq')) {
+                $sub_aeo_tot++;
+                if ($is_pass) { $sub_aeo_pass++; }
+            }
+            if ($g === 'advanced' || str_contains($k, 'media') || str_contains($k, 'unique') || str_contains($k, 'density') || str_contains($k, 'length')) {
+                $sub_geo_tot++;
+                if ($is_pass) { $sub_geo_pass++; }
             }
         }
-        $score = $scored_total > 0 ? (int) round(($pass_count / $scored_total) * 100) : 0;
+        $score     = $scored_total > 0 ? (int) round(($pass_count / $scored_total) * 100) : 0;
         $seo_score = $seo_tot > 0 ? (int) round(($seo_pass / $seo_tot) * 100) : $score;
         $aeo_score = $aeo_tot > 0 ? (int) round(($aeo_pass / $aeo_tot) * 100) : $score;
         $geo_score = $geo_tot > 0 ? (int) round(($geo_pass / $geo_tot) * 100) : $score;
 
-        $seo_pass = 0; $seo_total = 0;
-        $aeo_pass = 0; $aeo_total = 0;
-        $geo_pass = 0; $geo_total = 0;
-
-        foreach ($checks as $c) {
-            $st = (string) ($c['status'] ?? '');
-            if ($st === 'not_applicable') {
-                continue;
-            }
-            $g = (string) ($c['group'] ?? 'basic');
-            $k = (string) ($c['key'] ?? '');
-            $is_pass = ($st === 'pass');
-
-            if (in_array($g, ['basic', 'title'], true) || str_contains($k, 'kw') || str_contains($k, 'desc') || str_contains($k, 'url') || str_contains($k, 'title')) {
-                $seo_total++;
-                if ($is_pass) $seo_pass++;
-            }
-            if ($g === 'content' || str_contains($k, 'list') || str_contains($k, 'heading') || str_contains($k, 'para') || str_contains($k, 'sentence') || str_contains($k, 'faq')) {
-                $aeo_total++;
-                if ($is_pass) $aeo_pass++;
-            }
-            if ($g === 'advanced' || str_contains($k, 'media') || str_contains($k, 'unique') || str_contains($k, 'density') || str_contains($k, 'length')) {
-                $geo_total++;
-                if ($is_pass) $geo_pass++;
-            }
-        }
-
-        $seo_sub = $seo_total > 0 ? (int) round(($seo_pass / $seo_total) * 100) : $score;
-        $aeo_sub = $aeo_total > 0 ? (int) round(($aeo_pass / $aeo_total) * 100) : max(0, $score - 5);
-        $geo_sub = $geo_total > 0 ? (int) round(($geo_pass / $geo_total) * 100) : (int) round($score * 0.9);
+        $seo_sub = $sub_seo_tot > 0 ? (int) round(($sub_seo_pass / $sub_seo_tot) * 100) : $score;
+        $aeo_sub = $sub_aeo_tot > 0 ? (int) round(($sub_aeo_pass / $sub_aeo_tot) * 100) : max(0, $score - 5);
+        $geo_sub = $sub_geo_tot > 0 ? (int) round(($sub_geo_pass / $sub_geo_tot) * 100) : (int) round($score * 0.9);
 
         $result = [
             'score'           => $score,
