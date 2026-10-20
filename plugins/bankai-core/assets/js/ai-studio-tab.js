@@ -10,6 +10,7 @@
 document.addEventListener('alpine:init', () => {
   Alpine.data('bankaiAiStudioRoot', () => ({
     busy: false,
+    checkingConnections: false,
     addModal: false,
     aiMode: 'text',
     imageDefault: '',
@@ -24,11 +25,70 @@ document.addEventListener('alpine:init', () => {
     defaultProvider: '',
     defaultProviderName: '',
     providerNames: '',
+    hasKeyMap: {},
+    imageHasKeyMap: {},
+    statusMap: {},
+    imageStatusMap: {},
+    activeTextProviders: [],
+    activeImageProviders: [],
     toast: { visible: false, message: '' },
     customForm: {
       id: '', name: '', type: 'openai_compat', endpoint: '', models: '',
       default_model: '', auth_header: 'Authorization', auth_prefix: 'Bearer ',
       extra_headers: '', api_key: '', tagline: 'ایجنت سفارشی', curl: ''
+    },
+    initPage() {
+      this.checkingConnections = true;
+      const data = new FormData();
+      data.append('action', 'bankai_test_ai_connections');
+      data.append('nonce', window.bankaiAdminNonce);
+      fetch(ajaxurl, { method: 'POST', body: data })
+        .then(r => r.json())
+        .then(res => {
+          if (res && res.success && res.data) {
+            const providers = res.data.providers || [];
+            const imgProviders = res.data.image_providers || [];
+            const activeText = [];
+            const activeImg = [];
+
+            providers.forEach(p => {
+              this.statusMap[p.id] = { status: p.status, label: p.label };
+              const isOk = p.status === 'ready' || p.ok || p.status !== 'missing_key';
+              this.hasKeyMap[p.id] = isOk;
+              if (isOk) {
+                activeText.push({ id: p.id, name: p.name || p.id, model: p.model || '' });
+              }
+            });
+
+            imgProviders.forEach(ip => {
+              this.imageStatusMap[ip.id] = { status: ip.status, label: ip.label };
+              const isOk = ip.status === 'ready' || ip.ok || ip.status !== 'missing_key';
+              this.imageHasKeyMap[ip.id] = isOk;
+              if (isOk) {
+                activeImg.push({ id: ip.id, name: ip.name || ip.id, model: ip.model || '' });
+              }
+            });
+
+            this.activeTextProviders = activeText;
+            this.activeImageProviders = activeImg;
+
+            if (activeText.length && (!this.defaultProvider || !this.hasKeyMap[this.defaultProvider])) {
+              this.defaultProvider = activeText[0].id;
+              this.updateDefaultProvider();
+            }
+            if (activeImg.length && (!this.imageDefault || !this.imageHasKeyMap[this.imageDefault])) {
+              this.imageDefault = activeImg[0].id;
+              this.setImageDefault();
+            }
+            if (!this.imgProvider && activeImg.length) {
+              this.imgProvider = activeImg[0].id;
+            }
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          this.checkingConnections = false;
+        });
     },
     showToast(msg, type) {
       var message = String(msg || '');

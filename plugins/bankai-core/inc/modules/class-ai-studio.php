@@ -865,25 +865,38 @@ final class Bankai_AI_Studio
      */
     public function resolve_central_text_provider(string $client_provider = ''): string
     {
-        $central = $this->get_default_provider();
-        if (empty($central)) {
-            $central = 'gemini'; // fallback for debugging
+        $keys = $this->get_keys();
+        if (!empty($client_provider) && !empty($keys[$client_provider]) && is_string($keys[$client_provider]) && trim($keys[$client_provider]) !== '') {
+            return $client_provider;
         }
-        return is_string($central) ? $central : 'gemini';
+        $central = $this->get_default_provider();
+        if (!empty($central) && !empty($keys[$central]) && is_string($keys[$central]) && trim($keys[$central]) !== '') {
+            return $central;
+        }
+        foreach ($keys as $pid => $k) {
+            if (is_string($k) && trim($k) !== '') {
+                return (string) $pid;
+            }
+        }
+        return is_string($central) && !empty($central) ? $central : 'gemini';
     }
 
     /**
-     * Phase D — image Provider for SEO assistant: always central image default.
+     * Phase D — image Provider resolution: check client provider, default image provider, or active keyed fallback.
      */
     public function resolve_central_image_provider(string $client_provider = ''): string
     {
+        $keys = $this->get_image_keys();
+        if (!empty($client_provider) && !empty($keys[$client_provider]) && is_string($keys[$client_provider]) && trim($keys[$client_provider]) !== '') {
+            return $client_provider;
+        }
         $central = $this->get_default_image_provider();
-        if ($central === '') {
-            $keys = $this->get_image_keys();
-            foreach ($keys as $pid => $k) {
-                if (is_string($k) && trim($k) !== '') {
-                    return (string) $pid;
-                }
+        if (!empty($central) && !empty($keys[$central]) && is_string($keys[$central]) && trim($keys[$central]) !== '') {
+            return $central;
+        }
+        foreach ($keys as $pid => $k) {
+            if (is_string($k) && trim($k) !== '') {
+                return (string) $pid;
             }
         }
         return is_string($central) ? $central : '';
@@ -895,15 +908,14 @@ final class Bankai_AI_Studio
     public function text_provider_readiness_error(string $provider = ''): string
     {
         if ($provider === '') {
-            $provider = $this->get_default_provider();
+            $provider = $this->resolve_central_text_provider();
         }
         if ($provider === '') {
-            return 'هیچ موتور متنی پیش‌فرضی در تنظیمات مرکزی AI انتخاب نشده است. از استودیو هوش مصنوعی یک Provider پیش‌فرض تنظیم کنید.';
+            return 'هیچ هوش مصنوعی فعالی ندارید لطفا میزان مصرف خود در هوش مصنوعی مورد نظر را برسی کنید';
         }
         $keys = $this->get_keys();
         if (empty($keys[$provider]) || !is_string($keys[$provider]) || trim($keys[$provider]) === '') {
-            $name = self::all_providers_catalog()[$provider]['name'] ?? $provider;
-            return sprintf('کلید API برای موتور متنی «%s» در تنظیمات مرکزی تنظیم نشده است.', $name);
+            return 'هیچ هوش مصنوعی فعالی ندارید لطفا میزان مصرف خود در هوش مصنوعی مورد نظر را برسی کنید';
         }
         return '';
     }
@@ -917,11 +929,11 @@ final class Bankai_AI_Studio
             $provider = $this->resolve_central_image_provider();
         }
         if ($provider === '') {
-            return 'هیچ موتور تصویری در تنظیمات مرکزی پیکربندی نشده است. از استودیو AI → تب تصویر یک Provider تنظیم کنید.';
+            return 'هیچ هوش مصنوعی فعالی ندارید لطفا میزان مصرف خود در هوش مصنوعی مورد نظر را برسی کنید';
         }
         $keys = $this->get_image_keys();
         if (empty($keys[$provider]) || !is_string($keys[$provider]) || trim($keys[$provider]) === '') {
-            return 'کلید API موتور تصویر پیش‌فرض در تنظیمات مرکزی موجود نیست.';
+            return 'هیچ هوش مصنوعی فعالی ندارید لطفا میزان مصرف خود در هوش مصنوعی مورد نظر را برسی کنید';
         }
         return '';
     }
@@ -2123,7 +2135,7 @@ final class Bankai_AI_Studio
             }
         }
 
-        throw $last_error ?: new Exception('پاسخی از سرویس هوش مصنوعی دریافت نشد.');
+        throw new Exception('هیچ هوش مصنوعی فعالی ندارید لطفا میزان مصرف خود در هوش مصنوعی مورد نظر را برسی کنید');
     }
 
     private function dispatch_chat(string $provider, string $key, string $model, string $system, string $user, float $temperature, int $max_tokens): string
@@ -2893,10 +2905,35 @@ final class Bankai_AI_Studio
             }
         }
 
-        // When single provider test, put that first for UI
+        $img_catalog = self::image_providers_catalog();
+        $img_keys = $this->get_image_keys();
+        $img_results = [];
+        foreach ($img_catalog as $ipid => $imeta) {
+            if (empty($img_keys[$ipid])) {
+                $img_results[] = [
+                    'id'      => $ipid,
+                    'name'    => $imeta['name'] ?? $ipid,
+                    'status'  => 'missing_key',
+                    'label'   => __('بدون کلید API', 'bankai-core'),
+                    'ok'      => false,
+                    'message' => __('کلید تنظیم نشده', 'bankai-core'),
+                ];
+                continue;
+            }
+            $img_results[] = [
+                'id'      => $ipid,
+                'name'    => $imeta['name'] ?? $ipid,
+                'status'  => 'ready',
+                'label'   => __('آماده ✓', 'bankai-core'),
+                'ok'      => true,
+                'message' => __('کلید فعال موجود است', 'bankai-core'),
+            ];
+        }
+
         wp_send_json_success([
-            'providers' => $results,
-            'message'   => __('تست انجام شد', 'bankai-core'),
+            'providers'       => $results,
+            'image_providers' => $img_results,
+            'message'         => __('تست اتصالات انجام شد', 'bankai-core'),
         ]);
     }
 
@@ -4151,17 +4188,46 @@ final class Bankai_AI_Studio
      */
     public function generate_image_bytes(string $provider, string $prompt, array $opts = []): array
     {
-        $keys = $this->get_image_keys();
-        $key = (string) ($keys[$provider] ?? '');
-        if ($key === '') {
-            throw new RuntimeException('کلید API برای این موتور تنظیم نشده است');
-        }
+        $keys   = $this->get_image_keys();
         $models = $this->get_image_models();
-        $cat = self::image_providers_catalog();
-        $model = $opts['model'] ?? ($models[$provider] ?? ($cat[$provider]['default'] ?? ''));
-        $w = (int) ($opts['width'] ?? 1024);
-        $h = (int) ($opts['height'] ?? 1024);
+        $cat    = self::image_providers_catalog();
+        $w      = (int) ($opts['width'] ?? 1024);
+        $h      = (int) ($opts['height'] ?? 1024);
 
+        $tried    = [];
+        $last_err = null;
+
+        if ($provider !== '' && !empty($keys[$provider])) {
+            $key   = (string) $keys[$provider];
+            $model = $opts['model'] ?? ($models[$provider] ?? ($cat[$provider]['default'] ?? ''));
+            $tried[$provider] = true;
+            try {
+                return $this->dispatch_image_gen($provider, $key, $model, $prompt, $w, $h);
+            } catch (Throwable $e) {
+                $last_err = $e;
+            }
+        }
+
+        // Cross-provider fallback for active image providers with keys
+        foreach ($keys as $pid => $k) {
+            $k = is_string($k) ? trim($k) : '';
+            if ($k === '' || !empty($tried[$pid])) {
+                continue;
+            }
+            $tried[$pid] = true;
+            $model = $models[$pid] ?? ($cat[$pid]['default'] ?? '');
+            try {
+                return $this->dispatch_image_gen((string) $pid, $k, $model, $prompt, $w, $h);
+            } catch (Throwable $e) {
+                $last_err = $e;
+            }
+        }
+
+        throw new RuntimeException('هیچ هوش مصنوعی فعالی ندارید لطفا میزان مصرف خود در هوش مصنوعی مورد نظر را برسی کنید');
+    }
+
+    private function dispatch_image_gen(string $provider, string $key, string $model, string $prompt, int $w, int $h): array
+    {
         switch ($provider) {
             case 'cloudflare_image':
                 return $this->image_gen_cloudflare($key, $model, $prompt, $w, $h);

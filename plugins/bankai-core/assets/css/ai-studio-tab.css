@@ -273,3 +273,51 @@ html[dir="rtl"] #tab-ai-studio .bk-switch input:checked + span:before{transform:
 #tab-ai-studio .bk-img-purpose button{border:1px solid #d0d7de;background:#fff;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer}
 #tab-ai-studio .bk-img-purpose button.is-on{background:#ddf4ff;border-color:#0969da;color:#0969da}
 
+/* Visual default engine selectable cards */
+#tab-ai-studio .bk-default-card {
+  border: 2px solid var(--bk-line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+#tab-ai-studio .bk-default-card:hover:not(.is-disabled) {
+  border-color: var(--dc-accent, #0078d4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+#tab-ai-studio .bk-default-card.is-active-default {
+  border-color: var(--dc-accent, #0078d4);
+  background: color-mix(in srgb, var(--dc-accent, #0078d4) 8%, #fff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dc-accent, #0078d4) 20%, transparent);
+}
+#tab-ai-studio .bk-default-card.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+#tab-ai-studio .bk-dc-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--bk-ink);
+}
+#tab-ai-studio .bk-dc-badge {
+  font-size: 10px;
+  font-weight: 800;
+  background: var(--dc-accent, #0078d4);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+#tab-ai-studio .bk-btn-spin {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  vertical-align: middle;
+}
