@@ -5,10 +5,12 @@
  */
 defined('ABSPATH') || exit;
 
-$woo           = class_exists('WooCommerce');
-$woo_install   = admin_url('plugin-install.php?s=woocommerce&tab=search&type=term');
-$woo_plugins   = admin_url('plugins.php');
-$currency      = function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '';
+$woo_active      = class_exists('WooCommerce');
+$plugin_dir      = defined('WP_PLUGIN_DIR') ? WP_PLUGIN_DIR : (dirname(BANKAI_CORE_DIR));
+$woo_installed   = $woo_active || file_exists($plugin_dir . '/woocommerce/woocommerce.php');
+$woo_install_url = admin_url('plugin-install.php?s=woocommerce&tab=search&type=term');
+$woo_plugins_url = admin_url('plugins.php');
+$currency        = function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '';
 ?>
 <div id="tab-store"
      class="bankai-tab-pane bk-orange-shell"
@@ -29,7 +31,7 @@ $currency      = function_exists('get_woocommerce_currency_symbol') ? get_woocom
       </div>
     </div>
     <div class="bk-top-head__actions">
-      <?php if ($woo) : ?>
+      <?php if ($woo_active) : ?>
       <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="openCreate()">
         <iconify-icon icon="solar:add-circle-bold-duotone" width="16"></iconify-icon>
         افزودن محصول
@@ -38,20 +40,31 @@ $currency      = function_exists('get_woocommerce_currency_symbol') ? get_woocom
     </div>
   </header>
 
-  <?php if (!$woo) : ?>
+  <?php if (!$woo_active) : ?>
   <div class="bk-store-empty bankai-card">
     <div class="bk-store-empty__icon">
       <iconify-icon icon="solar:bag-cross-bold-duotone" width="56"></iconify-icon>
     </div>
-    <h3>ووکامرس نصب یا فعال نیست</h3>
-    <p>برای استفاده از بخش فروشگاه، افزونه <strong>WooCommerce</strong> را نصب و فعال کنید. سپس از پیشخوان یا تنظیمات، ماژول فروشگاه را روشن کنید.</p>
-    <div class="bk-store-empty__actions">
-      <a class="bk-wpr-btn bk-wpr-btn--primary" href="<?php echo esc_url($woo_install); ?>">
-        <iconify-icon icon="solar:download-minimalistic-bold-duotone" width="16"></iconify-icon>
-        نصب ووکامرس
-      </a>
-      <a class="bk-wpr-btn bk-wpr-btn--secondary" href="<?php echo esc_url($woo_plugins); ?>">مدیریت افزونه‌ها</a>
-    </div>
+    <?php if ($woo_installed) : ?>
+      <h3>ووکامرس نصب است اما غیرفعال است</h3>
+      <p>افزونه <strong>WooCommerce</strong> روی سایت شما نصب شده است اما فعال نیست. برای استفاده از امکانات مدیریت فروشگاه هوشمند بنکای، ابتدا ووکامرس را فعال کنید.</p>
+      <div class="bk-store-empty__actions">
+        <a class="bk-wpr-btn bk-wpr-btn--primary" href="<?php echo esc_url($woo_plugins_url); ?>">
+          <iconify-icon icon="solar:check-circle-bold-duotone" width="16"></iconify-icon>
+          فعال‌سازی ووکامرس
+        </a>
+      </div>
+    <?php else : ?>
+      <h3>ووکامرس نصب نیست</h3>
+      <p>برای راه‌اندازی و استفاده از ماژول مدیریت فروشگاه هوشمند بنکای، ابتدا باید افزونه <strong>WooCommerce</strong> را نصب و فعال کنید.</p>
+      <div class="bk-store-empty__actions">
+        <a class="bk-wpr-btn bk-wpr-btn--primary" href="<?php echo esc_url($woo_install_url); ?>">
+          <iconify-icon icon="solar:download-minimalistic-bold-duotone" width="16"></iconify-icon>
+          نصب ووکامرس
+        </a>
+        <a class="bk-wpr-btn bk-wpr-btn--secondary" href="<?php echo esc_url($woo_plugins_url); ?>">مدیریت افزونه‌ها</a>
+      </div>
+    <?php endif; ?>
   </div>
   <?php else : ?>
 
@@ -243,7 +256,7 @@ $currency      = function_exists('get_woocommerce_currency_symbol') ? get_woocom
 
             <button type="button" class="bk-store-wiz-btn" @click="startWizard(item)" :disabled="wizard.running">
               <iconify-icon icon="solar:magic-stick-3-bold-duotone" width="16"></iconify-icon>
-              ویزارد
+              بهینه‌سازی با هوش مصنوعی
             </button>
           </div>
         </div>
