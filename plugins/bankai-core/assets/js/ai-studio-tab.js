@@ -9,6 +9,10 @@
 })();
 document.addEventListener('alpine:init', () => {
   Alpine.data('bankaiAiStudioRoot', () => ({
+    // Global reference for refresh from child cards
+    init() {
+      window.bankaiAiStudioRootInstance = this;
+    },
     busy: false,
     checkingConnections: false,
     addModal: false,
@@ -53,10 +57,16 @@ document.addEventListener('alpine:init', () => {
 
             providers.forEach(p => {
               this.statusMap[p.id] = { status: p.status, label: p.label };
-              const isOk = p.status === 'ready' || p.ok || p.status !== 'missing_key';
+              const isOk = p.has_key || p.status === 'ready' || p.ok || p.status !== 'missing_key';
               this.hasKeyMap[p.id] = isOk;
               if (isOk) {
-                activeText.push({ id: p.id, name: p.name || p.id, model: p.model || '' });
+                activeText.push({ 
+                  id: p.id, 
+                  name: p.name || p.id, 
+                  model: p.model || '', 
+                  accent: p.accent || '#0078d4',
+                  status: p.status 
+                });
               }
             });
 
@@ -65,7 +75,12 @@ document.addEventListener('alpine:init', () => {
               const isOk = ip.status === 'ready' || ip.ok || ip.status !== 'missing_key';
               this.imageHasKeyMap[ip.id] = isOk;
               if (isOk) {
-                activeImg.push({ id: ip.id, name: ip.name || ip.id, model: ip.model || '' });
+                activeImg.push({ 
+                  id: ip.id, 
+                  name: ip.name || ip.id, 
+                  model: ip.model || '', 
+                  accent: ip.accent || '#10A37F'
+                });
               }
             });
 
@@ -402,6 +417,12 @@ document.addEventListener('alpine:init', () => {
             this.masked = (res.data && res.data.masked) || this.masked;
             if (this.keyDirty) { this.key = this.masked; this.keyDirty = false; }
             this.notify((res.data && res.data.message) || 'ذخیره شد');
+            // Refresh default lists after save
+            if (typeof window.bankaiAiStudioRootInstance !== 'undefined') {
+              setTimeout(() => window.bankaiAiStudioRootInstance.initPage(), 300);
+            } else {
+              setTimeout(() => location.reload(), 800);
+            }
           } else this.notify((res.data && res.data.message) || 'خطا در ذخیره');
         })
         .catch(() => this.notify('خطای شبکه'))
@@ -517,6 +538,12 @@ document.addEventListener('alpine:init', () => {
             if (res.data.masked_key) this.key = res.data.masked_key;
             this.keyDirty = false;
             this.notify('ذخیره شد');
+            // Refresh default lists
+            if (typeof window.bankaiAiStudioRootInstance !== 'undefined') {
+              setTimeout(() => window.bankaiAiStudioRootInstance.initPage(), 300);
+            } else {
+              setTimeout(() => location.reload(), 800);
+            }
           } else this.notify((res.data && res.data.message) || 'خطا');
         })
         .catch(() => this.notify('خطا'))

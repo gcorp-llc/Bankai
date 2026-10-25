@@ -2334,6 +2334,7 @@ final class Bankai_SEO_Engine
 
     public function register_web_manifest(): void
     {
+        if (class_exists('Bankai_PWA')) { return; }
         add_rewrite_rule('^manifest\.webmanifest$', 'index.php?bankai_manifest=1', 'top');
         add_filter('query_vars', static function ($v) {
             $v[] = 'bankai_manifest';
@@ -2346,6 +2347,7 @@ final class Bankai_SEO_Engine
 
     public function serve_web_manifest(): void
     {
+        if (class_exists('Bankai_PWA')) { return; }
         if ((int) get_query_var('bankai_manifest') !== 1) {
             // path fallback
             $uri = $_SERVER['REQUEST_URI'] ?? '';

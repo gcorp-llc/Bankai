@@ -165,6 +165,7 @@ $bankai_state = [
             <?php
             $tabs = [
                 'overview',
+                'store',
                 'articles',
                 'seo-engine',
                 'ai-studio',

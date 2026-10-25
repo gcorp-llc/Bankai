@@ -321,3 +321,25 @@ html[dir="rtl"] #tab-ai-studio .bk-switch input:checked + span:before{transform:
   animation: spin 0.75s linear infinite;
   vertical-align: middle;
 }
+
+/* Orange theme alignment */
+#tab-ai-studio.bk-orange-shell-host .bk-top-head__logo,
+#tab-ai-studio .bk-top-head__logo { background: #fc4c2f !important; color: #fff !important; }
+#tab-ai-studio .bk-top-tab.is-active { color: #fc4c2f; border-color: #fc4c2f; }
+#tab-ai-studio .bk-wpr-btn--primary,
+#tab-ai-studio .bk-btn-primary { background: #fc4c2f !important; border-color: #fc4c2f !important; }
+#tab-ai-studio .bk-default-card.is-active-default {
+  border-color: #fc4c2f !important;
+  background: #fff7ed !important;
+  box-shadow: 0 0 0 3px rgba(252,76,47,.15) !important;
+}
+#tab-ai-studio .bk-dc-badge { background: #fc4c2f !important; }
+#tab-ai-studio .bk-provider-card::before { background: #fc4c2f; }
+#tab-ai-studio .bk-vault { border-radius: 14px; border: 1px solid #fed7aa; background: #fff7ed !important; }
+#tab-ai-studio .bk-vault strong { color: #c2410c !important; }
+#tab-ai-studio .bk-chip.is-green { background: #dcfce7; color: #166534; }
+#tab-ai-studio .bk-chip.is-blue { background: #ffedd5; color: #c2410c; }
+#tab-ai-studio .bk-default-engine-card-section {
+  border: 1px solid #fed7aa !important;
+  background: linear-gradient(180deg, #fff7ed, #fff) !important;
+}

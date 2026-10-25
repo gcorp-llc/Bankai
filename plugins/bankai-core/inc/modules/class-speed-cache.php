@@ -53,6 +53,7 @@ class Bankai_Speed_Cache
         add_action('wp_ajax_bankai_preload_page_cache', [$this, 'handle_preload_page_cache']);
         add_action('wp_ajax_bankai_get_audit_history', [$this, 'handle_get_audit_history']);
         add_action('wp_ajax_bankai_export_performance_report', [$this, 'handle_export_report']);
+        add_action('wp_ajax_bankai_localize_fonts', [$this, 'handle_localize_fonts']);
 
         add_action('rest_api_init', [$this, 'register_rest_routes']);
 
@@ -554,6 +555,165 @@ class Bankai_Speed_Cache
             'site'   => get_bloginfo('name'),
             'date'   => current_time('mysql'),
         ]);
+    }
+
+
+    /**
+     * Download Google Fonts (and similar) and serve them locally.
+     */
+    public function handle_localize_fonts(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('دسترسی مجاز نیست.', 'bankai-core')], 403);
+        }
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+
+        $upload = wp_upload_dir();
+        if (!empty($upload['error'])) {
+            wp_send_json_error(['message' => $upload['error']]);
+        }
+
+        $base_dir = trailingslashit($upload['basedir']) . 'bankai-fonts';
+        $base_url = trailingslashit($upload['baseurl']) . 'bankai-fonts';
+        if (!wp_mkdir_p($base_dir)) {
+            wp_send_json_error(['message' => __('امکان ایجاد پوشه فونت وجود ندارد.', 'bankai-core')]);
+        }
+
+        $families = $this->detect_external_font_families();
+        if (!$families) {
+            $families = [
+                ['name' => 'Vazirmatn', 'weights' => ['400', '600', '700']],
+                ['name' => 'Inter', 'weights' => ['400', '600', '700']],
+            ];
+        }
+
+        $css_parts = [];
+        $downloaded = 0;
+        $errors = [];
+
+        foreach ($families as $fam) {
+            $name = $fam['name'];
+            $weights = $fam['weights'] ?: ['400', '700'];
+            $slug = sanitize_title($name);
+
+            foreach ($weights as $w) {
+                $css_url = 'https://fonts.googleapis.com/css2?family=' . rawurlencode($name) . ':wght@' . $w . '&display=swap';
+                $resp = wp_remote_get($css_url, [
+                    'timeout' => 20,
+                    'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                ]);
+                if (is_wp_error($resp) || (int) wp_remote_retrieve_response_code($resp) !== 200) {
+                    $errors[] = $name . ' ' . $w;
+                    continue;
+                }
+                $css_body = (string) wp_remote_retrieve_body($resp);
+                if (!preg_match_all('/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2)\)/i', $css_body, $m)) {
+                    $errors[] = $name . ' ' . $w . ' (no woff2)';
+                    continue;
+                }
+                $font_url = $m[1][0];
+                $file_name = $slug . '-' . $w . '.woff2';
+                $file_path = $base_dir . '/' . $file_name;
+                if (!is_file($file_path)) {
+                    $bin = wp_remote_get($font_url, ['timeout' => 30]);
+                    if (is_wp_error($bin) || (int) wp_remote_retrieve_response_code($bin) !== 200) {
+                        $errors[] = $file_name;
+                        continue;
+                    }
+                    file_put_contents($file_path, wp_remote_retrieve_body($bin));
+                }
+                $downloaded++;
+                $local = $base_url . '/' . $file_name;
+                $css_parts[] = "@font-face{font-family:'{$name}';font-style:normal;font-weight:{$w};font-display:swap;src:url('{$local}') format('woff2');}";
+            }
+        }
+
+        $css_file = $base_dir . '/local-fonts.css';
+        file_put_contents($css_file, "/* Bankai self-hosted fonts */\n" . implode("\n", $css_parts) . "\n");
+
+        update_option('bankai_local_fonts', [
+            'enabled' => true,
+            'css_url' => $base_url . '/local-fonts.css',
+            'dir'     => $base_dir,
+            'families'=> $families,
+            'count'   => $downloaded,
+            'updated' => current_time('mysql'),
+        ], false);
+
+        $cfg = function_exists('bankai_get_option') ? (bankai_get_option('speed_config', []) ?: []) : get_option('bankai_speed_config', []);
+        if (!is_array($cfg)) {
+            $cfg = [];
+        }
+        $cfg['fonts_localizer'] = array_merge(
+            is_array($cfg['fonts_localizer'] ?? null) ? $cfg['fonts_localizer'] : [],
+            ['enabled' => true, 'self_host' => true, 'display_swap' => true, 'preload_critical' => true]
+        );
+        if (function_exists('bankai_update_option')) {
+            bankai_update_option('speed_config', $cfg);
+        } else {
+            update_option('bankai_speed_config', $cfg, false);
+        }
+
+        wp_send_json_success([
+            'message'  => sprintf(__('%d فایل فونت محلی‌سازی شد.', 'bankai-core'), $downloaded),
+            'count'    => $downloaded,
+            'errors'   => $errors,
+            'css_url'  => $base_url . '/local-fonts.css',
+            'families' => $families,
+        ]);
+    }
+
+    /**
+     * @return array<int, array{name:string,weights:array<int,string>}>
+     */
+    private function detect_external_font_families(): array
+    {
+        $found = [];
+        global $wp_styles;
+        if ($wp_styles instanceof \WP_Styles) {
+            foreach ((array) $wp_styles->registered as $style) {
+                $src = (string) ($style->src ?? '');
+                if ($src === '' || (!str_contains($src, 'fonts.googleapis.com') && !str_contains($src, 'fonts.bunny.net'))) {
+                    continue;
+                }
+                if (preg_match_all('/family=([^&]+)/', $src, $matches)) {
+                    foreach ($matches[1] as $raw) {
+                        $parts = explode('|', rawurldecode($raw));
+                        foreach ($parts as $part) {
+                            $name = explode(':', $part)[0];
+                            $name = str_replace('+', ' ', $name);
+                            $weights = ['400', '700'];
+                            if (preg_match('/wght@([0-9;]+)/', $part, $wm)) {
+                                $weights = array_values(array_unique(array_filter(
+                                    explode(';', $wm[1]),
+                                    static fn($w) => in_array($w, ['300', '400', '500', '600', '700'], true)
+                                )));
+                            }
+                            if ($name !== '') {
+                                $found[$name] = ['name' => $name, 'weights' => $weights ?: ['400', '700']];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        $theme_style = get_stylesheet_directory() . '/style.css';
+        if (is_readable($theme_style)) {
+            $content = (string) file_get_contents($theme_style);
+            if (preg_match_all('/fonts\.googleapis\.com\/css2?\?[^\'"\s)]+/i', $content, $um)) {
+                foreach ($um[0] as $u) {
+                    if (preg_match_all('/family=([^&]+)/', $u, $fm)) {
+                        foreach ($fm[1] as $raw) {
+                            $name = str_replace('+', ' ', explode(':', rawurldecode($raw))[0]);
+                            if ($name !== '') {
+                                $found[$name] = ['name' => $name, 'weights' => ['400', '700']];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return array_values($found);
     }
 
     /* ------------------------------------------------------------------
@@ -1510,24 +1670,50 @@ class Bankai_Speed_Cache
             return;
         }
 
-        $local_css = BANKAI_CORE_DIR . 'assets/fonts/bankai-fonts.css';
-        $has_local_files = is_file(BANKAI_CORE_DIR . 'assets/fonts/Vazirmatn-Regular.woff2');
+        $local_meta = get_option('bankai_local_fonts', []);
+        $self_host_css = is_array($local_meta) && !empty($local_meta['enabled']) && !empty($local_meta['css_url'])
+            ? (string) $local_meta['css_url']
+            : '';
+        $plugin_local_css = BANKAI_CORE_DIR . 'assets/fonts/bankai-fonts.css';
+        $has_plugin_local = is_file(BANKAI_CORE_DIR . 'assets/fonts/Vazirmatn-Regular.woff2') && is_file($plugin_local_css);
 
         foreach ((array) $wp_styles->queue as $handle) {
             if (!isset($wp_styles->registered[$handle])) {
                 continue;
             }
             $src = (string) $wp_styles->registered[$handle]->src;
-            if ($src === '' || !str_contains($src, 'fonts.googleapis.com')) {
+            if ($src === '') {
+                continue;
+            }
+            $is_external_font = str_contains($src, 'fonts.googleapis.com')
+                || str_contains($src, 'fonts.gstatic.com')
+                || str_contains($src, 'fonts.bunny.net');
+            if (!$is_external_font) {
                 continue;
             }
 
-            $optimized = $this->optimize_google_fonts_url($src);
-            if ($optimized !== $src) {
-                $wp_styles->registered[$handle]->src = $optimized;
+            if ($self_host_css !== '') {
+                wp_dequeue_style($handle);
+                wp_deregister_style($handle);
+                if (!wp_style_is('bankai-self-hosted-fonts', 'enqueued')) {
+                    wp_enqueue_style(
+                        'bankai-self-hosted-fonts',
+                        $self_host_css,
+                        [],
+                        defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : null
+                    );
+                }
+                continue;
             }
 
-            if ($has_local_files && is_file($local_css)) {
+            if (str_contains($src, 'fonts.googleapis.com')) {
+                $optimized = $this->optimize_google_fonts_url($src);
+                if ($optimized !== $src) {
+                    $wp_styles->registered[$handle]->src = $optimized;
+                }
+            }
+
+            if ($has_plugin_local) {
                 wp_dequeue_style($handle);
                 wp_deregister_style($handle);
                 if (!wp_style_is('bankai-local-fonts', 'enqueued')) {

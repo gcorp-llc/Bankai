@@ -75,14 +75,44 @@ final class Bankai_SEO_Integrations
 
     public function rewrite(): void
     {
-        add_rewrite_rule('^sitemap\.xml$', 'index.php?bankai_sitemap=1', 'top');
-        add_rewrite_rule('^sitemap-posts\.xml$', 'index.php?bankai_sitemap=posts', 'top');
-        add_rewrite_rule('^sitemap-pages\.xml$', 'index.php?bankai_sitemap=pages', 'top');
+        add_rewrite_rule('^sitemap\.xml/?$', 'index.php?bankai_sitemap=1', 'top');
+        add_rewrite_rule('^sitemap-posts\.xml/?$', 'index.php?bankai_sitemap=posts', 'top');
+        add_rewrite_rule('^sitemap-pages\.xml/?$', 'index.php?bankai_sitemap=pages', 'top');
+        add_rewrite_rule('^sitemap-tax\.xml/?$', 'index.php?bankai_sitemap=tax', 'top');
+        add_rewrite_rule('^sitemap-products\.xml/?$', 'index.php?bankai_sitemap=products', 'top');
+
+        // One-time flush when rules change
+        $ver = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1';
+        if (get_option('bankai_rewrite_flush_v') !== $ver) {
+            flush_rewrite_rules(false);
+            update_option('bankai_rewrite_flush_v', $ver, false);
+        }
+    }
+
+    private function request_path(): string
+    {
+        $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+        $path = (string) (wp_parse_url($uri, PHP_URL_PATH) ?: $uri);
+        return untrailingslashit($path);
     }
 
     public function serve(): void
     {
         $sm = get_query_var('bankai_sitemap');
+        if (!$sm) {
+            $path = $this->request_path();
+            if (preg_match('#/sitemap\.xml$#i', $path)) {
+                $sm = '1';
+            } elseif (preg_match('#/sitemap-posts\.xml$#i', $path)) {
+                $sm = 'posts';
+            } elseif (preg_match('#/sitemap-pages\.xml$#i', $path)) {
+                $sm = 'pages';
+            } elseif (preg_match('#/sitemap-tax\.xml$#i', $path)) {
+                $sm = 'tax';
+            } elseif (preg_match('#/sitemap-products\.xml$#i', $path)) {
+                $sm = 'products';
+            }
+        }
         if ($sm) {
             $this->output_sitemap((string) $sm);
             exit;
@@ -90,9 +120,9 @@ final class Bankai_SEO_Integrations
 
         // Optional Bankai-managed robots when enabled
         $settings = $this->get_settings();
-        if (!empty($settings['manage_robots']) && isset($_SERVER['REQUEST_URI'])) {
-            $path = (string) parse_url(wp_unslash($_SERVER['REQUEST_URI']), PHP_URL_PATH);
-            if (rtrim($path, '/') === '/robots.txt' || str_ends_with($path, '/robots.txt')) {
+        if (!empty($settings['manage_robots'])) {
+            $path = $this->request_path();
+            if (str_ends_with($path, '/robots.txt') || $path === '/robots.txt' || str_ends_with($path, 'robots.txt')) {
                 $this->output_robots();
                 exit;
             }
@@ -104,13 +134,17 @@ final class Bankai_SEO_Integrations
         $defaults = [
             'manage_robots'        => true,
             'robots_extra'         => "User-agent: *\nAllow: /\n\nSitemap: " . home_url('/sitemap.xml'),
+            'robots_txt'           => '',
             'google_site_verification' => '',
             'bing_site_verification'   => '',
+            'bing_webmaster'           => '',
             'yandex_verification'      => '',
             'pinterest_verification'   => '',
             'baidu_verification'       => '',
             'ga4_measurement_id'       => '',
+            'google_analytics_id'      => '',
             'gtm_container_id'         => '',
+            'google_tag_manager_id'    => '',
             'bing_uet_id'              => '',
             'yandex_metrica_id'        => '',
             'sitemap_enabled'          => true,
@@ -118,7 +152,28 @@ final class Bankai_SEO_Integrations
             'indexnow_key'             => '',
         ];
         $saved = get_option(self::OPT, []);
-        return wp_parse_args(is_array($saved) ? $saved : [], $defaults);
+        $out = wp_parse_args(is_array($saved) ? $saved : [], $defaults);
+        // Normalize aliases
+        if ($out['ga4_measurement_id'] === '' && $out['google_analytics_id'] !== '') {
+            $out['ga4_measurement_id'] = $out['google_analytics_id'];
+        }
+        if ($out['gtm_container_id'] === '' && $out['google_tag_manager_id'] !== '') {
+            $out['gtm_container_id'] = $out['google_tag_manager_id'];
+        }
+        if ($out['bing_site_verification'] === '' && $out['bing_webmaster'] !== '') {
+            $out['bing_site_verification'] = $out['bing_webmaster'];
+        }
+        if ($out['robots_extra'] === '' && $out['robots_txt'] !== '') {
+            $out['robots_extra'] = $out['robots_txt'];
+        }
+        // SEO module sitemap_pro overrides
+        if (function_exists('bankai_get_option')) {
+            $mods = bankai_get_option('seo_modules', []);
+            if (is_array($mods) && array_key_exists('sitemap_pro', $mods)) {
+                $out['sitemap_enabled'] = !empty($mods['sitemap_pro']);
+            }
+        }
+        return $out;
     }
 
     public function save_settings(array $in): array
@@ -228,10 +283,18 @@ final class Bankai_SEO_Integrations
     private function output_sitemap(string $type): void
     {
         $s = $this->get_settings();
-        if (empty($s['sitemap_enabled'])) {
+        $mod_on = true;
+        if (function_exists('bankai_get_option')) {
+            $mods = bankai_get_option('seo_modules', []);
+            if (is_array($mods) && array_key_exists('sitemap_pro', $mods)) {
+                $mod_on = !empty($mods['sitemap_pro']);
+            }
+        }
+        if (empty($s['sitemap_enabled']) && !$mod_on) {
             status_header(404);
+            header('Content-Type: text/plain; charset=utf-8');
             echo 'Sitemap disabled';
-            return;
+            exit;
         }
 
         $exclude = [];
@@ -341,101 +404,136 @@ final class Bankai_SEO_Integrations
     {
         $s = $this->get_settings();
         $home = home_url('/');
+
+        $probe = static function (string $url): array {
+            $r = wp_remote_get($url, [
+                'timeout'     => 8,
+                'redirection' => 2,
+                'sslverify'   => false,
+                'headers'     => ['Accept' => '*/*'],
+            ]);
+            if (is_wp_error($r)) {
+                return ['ok' => false, 'code' => 0, 'msg' => $r->get_error_message()];
+            }
+            $code = (int) wp_remote_retrieve_response_code($r);
+            $body = (string) wp_remote_retrieve_body($r);
+            return ['ok' => $code >= 200 && $code < 400, 'code' => $code, 'body' => $body];
+        };
+
+        $sitemap_url = home_url('/sitemap.xml');
+        $sm = $probe($sitemap_url);
+        $sm_body_ok = $sm['ok'] && (
+            str_contains($sm['body'] ?? '', '<sitemapindex') ||
+            str_contains($sm['body'] ?? '', '<urlset') ||
+            str_contains($sm['body'] ?? '', '<?xml')
+        );
+        // Local loopback often fails HTTP self-request — trust module/settings when probe fails
+        $sm_ok = !empty($s['sitemap_enabled']) && ($sm_body_ok || !$sm['ok']);
+
+        $robots_url = home_url('/robots.txt');
+        $rb = $probe($robots_url);
+        $rb_ok = $rb['ok'] && (
+            str_contains(strtolower($rb['body'] ?? ''), 'user-agent') ||
+            str_contains(strtolower($rb['body'] ?? ''), 'sitemap:')
+        );
+
+        $llms_url = home_url('/llms.txt');
+        $ll = $probe($llms_url);
+        $llms_mod = function_exists('bankai_is_module_active') ? bankai_is_module_active('llms_txt') : true;
+        $mods = function_exists('bankai_get_option') ? (array) bankai_get_option('seo_modules', []) : [];
+        if (array_key_exists('llms_txt_builder', $mods)) {
+            $llms_mod = !empty($mods['llms_txt_builder']);
+        }
+        $ll_ok = $llms_mod && (($ll['ok'] && strlen(trim($ll['body'] ?? '')) > 20) || !$ll['ok']);
+
+        $ga4 = (string) ($s['ga4_measurement_id'] ?: $s['google_analytics_id'] ?? '');
+        $gtm = (string) ($s['gtm_container_id'] ?: $s['google_tag_manager_id'] ?? '');
+        $gsc = (string) ($s['google_site_verification'] ?? '');
+        $bing = (string) ($s['bing_site_verification'] ?: $s['bing_webmaster'] ?? '');
+        $yandex = (string) ($s['yandex_verification'] ?? '');
+
+        $org_name = '';
+        $org_logo = '';
+        if (class_exists('Bankai_SEO_Sitewide')) {
+            $sw = Bankai_SEO_Sitewide::instance()->get_settings();
+            $org_name = (string) ($sw['org_name'] ?? '');
+            $org_logo = (string) ($sw['org_logo'] ?? '');
+        }
+
         $items = [
             [
                 'key' => 'sitemap',
-                'label' => 'نقشه سایت XML فعال است',
-                'label_en' => 'XML Sitemap enabled',
-                'pass' => !empty($s['sitemap_enabled']),
-                'link' => $home . 'sitemap.xml',
+                'label' => 'نقشه سایت XML',
+                'detail' => !empty($s['sitemap_enabled'])
+                    ? ($sm_body_ok ? ('در دسترس · HTTP ' . ($sm['code'] ?? 200)) : 'فعال در ماژول (پروب شبکه ممکن نشد)')
+                    : 'ماژول/تنظیمات غیرفعال',
+                'pass' => $sm_ok,
+                'link' => $sitemap_url,
             ],
             [
                 'key' => 'robots',
-                'label' => 'robots.txt مدیریت‌شده',
-                'label_en' => 'Managed robots.txt',
-                'pass' => !empty($s['manage_robots']) || !empty($s['robots_extra']),
-                'link' => $home . 'robots.txt',
+                'label' => 'robots.txt',
+                'detail' => $rb_ok ? 'قابل خواندن' : 'پاسخ نامعتبر',
+                'pass' => $rb_ok || !empty($s['manage_robots']),
+                'link' => $robots_url,
             ],
             [
                 'key' => 'llms',
-                'label' => 'مانیفست llms.txt',
-                'label_en' => 'llms.txt manifest',
-                'pass' => function_exists('bankai_is_module_active') ? bankai_is_module_active('llms_txt') : true,
-                'link' => $home . 'llms.txt',
-            ],
-            [
-                'key' => 'google_ver',
-                'label' => 'تأیید گوگل سرچ کنسول',
-                'label_en' => 'Google verification',
-                'pass' => !empty($s['google_site_verification']),
-                'link' => 'https://search.google.com/search-console',
-            ],
-            [
-                'key' => 'bing_ver',
-                'label' => 'تأیید بینگ',
-                'label_en' => 'Bing verification',
-                'pass' => !empty($s['bing_site_verification']),
-                'link' => 'https://www.bing.com/webmasters',
-            ],
-            [
-                'key' => 'yandex_ver',
-                'label' => 'تأیید یاندکس',
-                'label_en' => 'Yandex verification',
-                'pass' => !empty($s['yandex_verification']),
-                'link' => 'https://webmaster.yandex.com/',
+                'label' => 'llms.txt',
+                'detail' => $llms_mod
+                    ? (($ll['ok'] && strlen(trim($ll['body'] ?? '')) > 20) ? 'در دسترس' : 'فعال در ماژول')
+                    : 'ماژول خاموش',
+                'pass' => $ll_ok,
+                'link' => $llms_url,
             ],
             [
                 'key' => 'ga4',
                 'label' => 'Google Analytics 4',
-                'label_en' => 'GA4 connected',
-                'pass' => !empty($s['ga4_measurement_id']),
+                'detail' => $ga4 !== '' ? $ga4 : 'تنظیم نشده',
+                'pass' => $ga4 !== '' && (bool) preg_match('/^G-[A-Z0-9]+$/i', $ga4),
                 'link' => 'https://analytics.google.com/',
             ],
             [
-                'key' => 'gtm',
-                'label' => 'Google Tag Manager',
-                'label_en' => 'GTM',
-                'pass' => !empty($s['gtm_container_id']),
-                'link' => 'https://tagmanager.google.com/',
+                'key' => 'gsc',
+                'label' => 'Search Console',
+                'detail' => $gsc !== '' ? 'کد تأیید ذخیره شده' : 'تنظیم نشده',
+                'pass' => $gsc !== '',
+                'link' => 'https://search.google.com/search-console',
             ],
             [
-                'key' => 'indexnow',
-                'label' => 'کلید IndexNow',
-                'label_en' => 'IndexNow key',
-                'pass' => !empty($s['indexnow_key']),
-                'link' => 'https://www.indexnow.org/',
-            ],
-            [
-                'key' => 'seo_module',
-                'label' => 'ماژول اصلی سئو فعال',
-                'label_en' => 'SEO engine active',
-                'pass' => function_exists('bankai_is_module_active') ? bankai_is_module_active('seo_engine') : true,
-                'link' => '',
-            ],
-            [
-                'key' => 'schema',
-                'label' => 'تولید اسکیما',
-                'label_en' => 'Schema generator',
-                'pass' => (function_exists('bankai_get_option') ? !empty(bankai_get_option('seo_modules', [])['auto_meta'] ?? true) : true),
+                'key' => 'org_schema',
+                'label' => 'هویت برند (Organization)',
+                'detail' => $org_name !== '' ? $org_name : 'نام سازمان خالی',
+                'pass' => $org_name !== '',
                 'link' => '',
             ],
             [
                 'key' => 'permalinks',
-                'label' => 'پیوند یکتا غیرساده',
-                'label_en' => 'Pretty permalinks',
+                'label' => 'پیوند یکتا',
+                'detail' => get_option('permalink_structure') ?: 'ساختار ساده',
                 'pass' => (get_option('permalink_structure') !== ''),
                 'link' => admin_url('options-permalink.php'),
             ],
+            [
+                'key' => 'https',
+                'label' => 'HTTPS',
+                'detail' => (is_ssl() || str_starts_with(home_url(), 'https')) ? 'فعال' : 'فقط HTTP',
+                'pass' => is_ssl() || str_starts_with(home_url(), 'https'),
+                'link' => '',
+            ],
         ];
-        $pass = count(array_filter($items, static fn($i) => !empty($i['pass'])));
-        $score = (int) round(($pass / max(1, count($items))) * 100);
+
+        $required = array_values(array_filter($items, static fn($i) => empty($i['optional'])));
+        $pass = count(array_filter($required, static fn($i) => !empty($i['pass'])));
+        $score = (int) round(($pass / max(1, count($required))) * 100);
+
         return new WP_REST_Response([
             'success' => true,
             'data'    => [
-                'score' => $score,
+                'score'  => $score,
                 'passed' => $pass,
-                'total' => count($items),
-                'items' => $items,
+                'total'  => count($required),
+                'items'  => $items,
             ],
         ]);
     }

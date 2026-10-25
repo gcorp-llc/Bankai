@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Bankai Core
  * Description: هسته Bankai — سئو مقالات، استودیوی هوش مصنوعی متنی/تصویری، تولید و زمان‌بندی محتوا، رسانه و واترمارک، کش و سرعت، آنالیتیکس و ابزارهای یکپارچه مدیریت وردپرس با پنل مدرن Bento.
- * Version: 1.5.4
+ * Version: 1.6.25
  * Author: Bankai
  * Text Domain: bankai-core
  * Requires at least: 6.0
@@ -39,7 +39,7 @@ defined('BANKAI_CORE_VIEWS_DIR') || define(
     BANKAI_CORE_DIR . 'views/'
 );
 
-defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.5.4');
+defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.6.25');
 
 /*
 |--------------------------------------------------------------------------
@@ -110,6 +110,8 @@ final class Bankai_Core
             'class-media-watermark.php',
             'class-ai-studio.php',
             'class-llms-txt.php',
+            'class-pwa.php',
+            'class-store.php',
         ];
         foreach ($modules as $module_file) {
             $filepath = BANKAI_CORE_DIR . 'inc/modules/' . $module_file;
@@ -155,6 +157,8 @@ final class Bankai_Core
             'Bankai_Media_Watermark'  => 'media_watermark',
             'Bankai_AI_Studio'        => 'ai_studio',
             'Bankai_LLMS_Txt'         => 'llms_txt',
+            'Bankai_PWA'              => '',  // always boot; frontend gated inside class
+            'Bankai_Store'            => 'store',
             'Bankai_Editor_SEO'       => 'seo_engine',
             'Bankai_Post_SEO_Meta'    => 'seo_engine',
         ];

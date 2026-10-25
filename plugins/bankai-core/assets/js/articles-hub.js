@@ -453,7 +453,8 @@
           };
           try {
             await this.loadAuditSeoForm();
-            await this.ensureAnalysisLoaded(false);
+            // Always run full analysis with blur loader until complete
+            await this.rerunAudit(true);
           } finally {
             this.seoLoading = false;
           }
@@ -788,6 +789,10 @@
             fd.append('action', 'bankai_seo_audit_ai_fix');
             fd.append('nonce', nonce());
             fd.append('post_id', String(id));
+            // Only failed checklist items; empty provider = default text AI from studio settings
+            fd.append('failed', JSON.stringify(fails.map(function (f) {
+              return { key: f.key || '', label: f.label || '', group: f.group || '', message: f.message || '' };
+            })));
             var r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin' });
             var j = await r.json();
             if (j && j.success && j.data) {
@@ -806,26 +811,43 @@
             this.setBtnBusy('aiFix', false);
           }
         },
+        cancelAiFix() {
+          this.auditDrawer.aiReady = false;
+          this.auditDrawer.aiRunning = false;
+          this.auditDrawer.aiProposed = null;
+          this.auditDrawer.aiSteps = [];
+          this.auditDrawer.aiStep = '';
+          this.auditDrawer.aiProgress = 0;
+        },
         async applyAiFix() {
           var id = this.auditDrawer.postId;
           if (!id || !this.auditDrawer.aiReady) return;
           this.setBtnBusy('applyFix', true);
+          var toast = function (msg, type) {
+            if (window.bankaiShowToast) window.bankaiShowToast(msg, type || 'info');
+            else if (window.showToast) window.showToast(msg, type || 'info');
+          };
           try {
             var prop = this.auditDrawer.aiProposed || {};
+            if (!this.auditDrawer.seoForm) this.auditDrawer.seoForm = {};
             if (prop.seo_title) this.auditDrawer.seoForm.seo_title = prop.seo_title;
             if (prop.description) this.auditDrawer.seoForm.description = prop.description;
             if (prop.focus_keyword) this.auditDrawer.seoForm.focus_keyword = prop.focus_keyword;
             if (prop.keywords) {
               this.auditDrawer.seoForm.keywords_str = Array.isArray(prop.keywords) ? prop.keywords.join('، ') : String(prop.keywords);
             }
+
+            // 1) Apply via audit endpoint (transient or posted proposed)
             var fd = new FormData();
             fd.append('action', 'bankai_seo_audit_apply_fix');
             fd.append('nonce', nonce());
             fd.append('post_id', String(id));
+            fd.append('force', '1');
             fd.append('proposed', JSON.stringify(prop));
             var r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin' });
-            var j = await r.json();
-            // always also apply via draft endpoint so meta is written even if transient expired
+            var j = await r.json().catch(function () { return null; });
+
+            // 2) Always write meta via draft endpoint as belt-and-suspenders
             var fd2 = new FormData();
             fd2.append('action', 'bankai_seo_ai_apply_draft');
             fd2.append('nonce', nonce());
@@ -833,15 +855,20 @@
             fd2.append('seo_title', prop.seo_title || this.auditDrawer.seoForm.seo_title || '');
             fd2.append('description', prop.description || this.auditDrawer.seoForm.description || '');
             fd2.append('focus_keyword', prop.focus_keyword || this.auditDrawer.seoForm.focus_keyword || '');
+            if (prop.og_title) fd2.append('og_title', prop.og_title);
+            if (prop.og_description) fd2.append('og_description', prop.og_description);
             await fetch(ajax(), { method: 'POST', body: fd2, credentials: 'same-origin' });
-            await this.saveAuditSeoForm();
+
             this.auditDrawer.aiReady = false;
             this.auditDrawer.aiProposed = null;
-            if (window.showToast) window.showToast((j && j.success) ? 'اصلاحات در مقاله ذخیره شد' : 'ذخیره مستقیم انجام شد', 'success');
+            this.auditDrawer.aiSteps = [];
+            toast((j && j.success) ? 'اصلاحات ذخیره شد — در حال آنالیز مجدد…' : 'ذخیره انجام شد — آنالیز مجدد…', 'success');
+
             await this.loadAuditSeoForm();
-            await this.rerunAudit();
+            await this.rerunAudit(true);
+            try { await this.loadArticles(); } catch (e2) {}
           } catch (e) {
-            if (window.showToast) window.showToast('خطای شبکه', 'error');
+            toast((e && e.message) || 'خطا در ذخیره اصلاحات', 'error');
           } finally {
             this.setBtnBusy('aiFix', false);
             this.setBtnBusy('applyFix', false);
@@ -1179,7 +1206,7 @@
             fd.append('action', 'bankai_ai_suggest_titles');
             fd.append('nonce', nonce());
             fd.append('topic', this.wiz.topic);
-            fd.append('count', '5');
+            fd.append('count', String(this.wiz.count || 5));
             const r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin' });
             const j = await r.json();
             const titles = (j && j.data && (j.data.titles || j.data.items)) || [];
@@ -1195,56 +1222,97 @@
             this.wizBusy = false;
           }
         },
+        stepDone(step) {
+          var sel = (this.wiz.selected || []).filter(function (s) { return s.approved && s.title; });
+          if (step === 'planning') return sel.length > 0;
+          if (step === 'guidelines') return sel.length > 0 && !!(this.wiz.guidelines && this.wiz.guidelines.tone);
+          if (step === 'wizard') return (this.wiz.queue || []).length > 0;
+          return false;
+        },
+        jobStatusLabel(st) {
+          var map = { pending: 'در صف', run: 'در حال تولید', done: 'موفق', error: 'خطا' };
+          return map[st] || st || '—';
+        },
+        async produceOneJob(job) {
+          job.status = 'run';
+          job.stepLabel = 'تولید بدنه مقاله با AI…';
+          job.progress = 12;
+          var g = this.wiz.guidelines || {};
+          var notes = [g.siteWide || '', (this.siteGuidelines && this.siteGuidelines.custom_notes) || '']
+            .filter(Boolean).join('\n');
+          var fd = new FormData();
+          fd.append('action', 'bankai_ai_generate_article');
+          fd.append('nonce', nonce());
+          fd.append('topic', job.title);
+          fd.append('focus', this.wiz.topic || job.title);
+          fd.append('length', String(g.wordCount || 2500));
+          fd.append('status', this.wiz.status || 'draft');
+          fd.append('tone', g.tone || 'seo');
+          fd.append('notes', notes);
+          fd.append('do_seo', '1');
+          if (this.wiz.status === 'future' && this.wiz.publishDate) {
+            fd.append('schedule_at', this.wiz.publishDate);
+            fd.append('publish_date', this.wiz.publishDate);
+          }
+          job.progress = 35;
+          job.stepLabel = 'انتظار پاسخ موتور AI…';
+          var r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin' });
+          var text = await r.text();
+          var j = null;
+          try { j = JSON.parse(text); } catch (e) { throw new Error('پاسخ نامعتبر سرور'); }
+          if (j && j.success) {
+            job.progress = 100;
+            job.status = 'done';
+            job.stepLabel = 'مقاله ایجاد شد' + (j.data && j.data.post_id ? (' #' + j.data.post_id) : '');
+            job.post_id = (j.data && j.data.post_id) || 0;
+          } else {
+            job.status = 'error';
+            job.stepLabel = (j && j.data && j.data.message) || 'خطا در تولید';
+          }
+        },
         async startProduce() {
-          const items = (this.wiz.selected || []).filter(function (s) { return s.approved && s.title && s.title.trim(); });
+          var items = (this.wiz.selected || []).filter(function (s) { return s.approved && s.title && s.title.trim(); });
           if (!items.length) {
-            if (window.showToast) window.showToast('لطفاً حداقل یک عنوان را تایید کنید', 'warning');
+            if (window.bankaiShowToast) window.bankaiShowToast('حداقل یک عنوان را تایید کنید', 'warning');
+            else if (window.showToast) window.showToast('حداقل یک عنوان را تایید کنید', 'warning');
             return;
           }
           this.batchBusy = true;
           this.wiz.subTab = 'dashboard';
           this.wiz.phase = 'produce';
           this.wiz.queue = items.map(function (s) {
-            return { title: s.title.trim(), status: 'pending', progress: 0, stepLabel: 'در صف انتشار', post_id: 0 };
+            return { title: s.title.trim(), status: 'pending', progress: 0, stepLabel: 'در صف تولید', post_id: 0 };
           });
-          for (let i = 0; i < this.wiz.queue.length; i++) {
-            const job = this.wiz.queue[i];
-            job.status = 'run';
-            job.stepLabel = 'تولید محتوای سئوشده…';
-            job.progress = 15;
+          for (var i = 0; i < this.wiz.queue.length; i++) {
             try {
-              const fd = new FormData();
-              fd.append('action', 'bankai_ai_generate_article');
-              fd.append('nonce', nonce());
-              fd.append('topic', job.title);
-              fd.append('focus', this.wiz.topic || '');
-              fd.append('length', String(this.wiz.guidelines ? this.wiz.guidelines.wordCount || 2500 : 2500));
-              fd.append('status', this.wiz.status || 'draft');
-              if (this.wiz.status === 'future' && this.wiz.publishDate) {
-                fd.append('publish_date', this.wiz.publishDate);
-              }
-              fd.append('do_seo', '1');
-              const r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin' });
-              const text = await r.text();
-              let j = null;
-              try { j = JSON.parse(text); } catch (e) { throw new Error('پاسخ نامعتبر سرور'); }
-              if (j && j.success) {
-                job.progress = 100;
-                job.status = 'done';
-                job.stepLabel = 'مقاله ایجاد شد';
-                job.post_id = (j.data && j.data.post_id) || 0;
-              } else {
-                job.status = 'error';
-                job.stepLabel = (j && j.data && j.data.message) || 'خطا در تولید';
-              }
+              await this.produceOneJob(this.wiz.queue[i]);
             } catch (e) {
-              job.status = 'error';
-              job.stepLabel = (e && e.message) || 'خطای شبکه';
+              this.wiz.queue[i].status = 'error';
+              this.wiz.queue[i].stepLabel = (e && e.message) || 'خطای شبکه';
             }
           }
           this.batchBusy = false;
-          this.loadArticles();
-          if (window.showToast) window.showToast('صف تولید با موفقیت به پایان رسید', 'success');
+          try { await this.loadArticles(); } catch (e2) {}
+          var ok = this.wiz.queue.filter(function (q) { return q.status === 'done'; }).length;
+          var bad = this.wiz.queue.length - ok;
+          var msg = ok + ' مقاله ساخته شد' + (bad ? (' · ' + bad + ' ناموفق') : '');
+          if (window.bankaiShowToast) window.bankaiShowToast(msg, bad ? 'warning' : 'success');
+          else if (window.showToast) window.showToast(msg, bad ? 'warning' : 'success');
+        },
+        async retryFailedJobs() {
+          var fails = (this.wiz.queue || []).filter(function (j) { return j.status === 'error'; });
+          if (!fails.length || this.batchBusy) return;
+          this.batchBusy = true;
+          this.wiz.subTab = 'dashboard';
+          for (var i = 0; i < fails.length; i++) {
+            try { await this.produceOneJob(fails[i]); }
+            catch (e) {
+              fails[i].status = 'error';
+              fails[i].stepLabel = (e && e.message) || 'خطا';
+            }
+          }
+          this.batchBusy = false;
+          try { await this.loadArticles(); } catch (e2) {}
         }
       };
     });

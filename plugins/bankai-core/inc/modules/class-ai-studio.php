@@ -2766,11 +2766,22 @@ final class Bankai_AI_Studio
         }
 
         $has = !empty($keys[$provider]);
+        // Keep active-providers list in sync
+        $active = get_option('bankai_ai_active_text_providers', []);
+        if (!is_array($active)) $active = [];
+        if ($has) {
+            $active[$provider] = true;
+        } else {
+            unset($active[$provider]);
+        }
+        update_option('bankai_ai_active_text_providers', $active, false);
+
         wp_send_json_success([
             'status'     => $has ? 'ready' : 'missing_key',
             'label'      => $has ? __('کلید تنظیم شده', 'bankai-core') : __('بدون کلید API', 'bankai-core'),
             'masked_key' => $has ? self::mask_key($keys[$provider]) : '',
             'message'    => __('ذخیره شد', 'bankai-core'),
+            'active'     => array_keys(array_filter($active)),
         ]);
     }
 
@@ -2786,6 +2797,12 @@ final class Bankai_AI_Studio
             wp_send_json_error(['message' => 'Invalid provider'], 400);
         }
         $keys = $this->get_keys();
+        // Remove from active list
+        $active = get_option('bankai_ai_active_text_providers', []);
+        if (is_array($active)) {
+            unset($active[$provider]);
+            update_option('bankai_ai_active_text_providers', $active, false);
+        }
         $keys[$provider] = '';
         update_option(self::OPT_KEYS, $keys, false);
         $this->mirror_keys_to_core($keys);
@@ -2870,6 +2887,7 @@ final class Bankai_AI_Studio
                     'label'  => __('بدون کلید API', 'bankai-core'),
                     'ok'     => false,
                     'message'=> __('کلید تنظیم نشده', 'bankai-core'),
+                    'accent' => $info['accent'] ?? '#0078d4',
                 ];
                 continue;
             }
@@ -2892,6 +2910,7 @@ final class Bankai_AI_Studio
                     'ok'     => $ok,
                     'message'=> $ok ? __('اتصال موفق', 'bankai-core') : mb_substr($text, 0, 80),
                     'preview'=> mb_substr(trim($text), 0, 60),
+                    'accent' => $info['accent'] ?? '#0078d4',
                 ];
             } catch (Throwable $e) {
                 $results[] = [
@@ -2917,6 +2936,7 @@ final class Bankai_AI_Studio
                     'label'   => __('بدون کلید API', 'bankai-core'),
                     'ok'      => false,
                     'message' => __('کلید تنظیم نشده', 'bankai-core'),
+                    'accent'  => $imeta['accent'] ?? '#10A37F',
                 ];
                 continue;
             }
@@ -2927,6 +2947,7 @@ final class Bankai_AI_Studio
                 'label'   => __('آماده ✓', 'bankai-core'),
                 'ok'      => true,
                 'message' => __('کلید فعال موجود است', 'bankai-core'),
+                'accent'  => $imeta['accent'] ?? '#10A37F',
             ];
         }
 
@@ -3491,8 +3512,9 @@ final class Bankai_AI_Studio
         $focus = sanitize_text_field(wp_unslash($_POST['focus'] ?? ''));
         $length = absint($_POST['length'] ?? 1500);
         $status = sanitize_key($_POST['status'] ?? 'draft');
-        $schedule_at = sanitize_text_field(wp_unslash($_POST['schedule_at'] ?? ''));
+        $schedule_at = sanitize_text_field(wp_unslash($_POST['schedule_at'] ?? $_POST['publish_date'] ?? ''));
         $notes = sanitize_textarea_field(wp_unslash($_POST['notes'] ?? ''));
+        $tone = sanitize_key(wp_unslash($_POST['tone'] ?? 'seo'));
         $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
         if ($provider === '') {
             $provider = $this->get_default_provider();
@@ -3517,13 +3539,22 @@ final class Bankai_AI_Studio
         $safe_mode = !empty($_POST['safe_mode']) && ($_POST['safe_mode'] === '1' || $_POST['safe_mode'] === true || $_POST['safe_mode'] === 'true');
         // Cap length to reduce reverse-proxy 504; client retries with lower length on timeout
         $length = max(400, min($safe_mode ? 2500 : 5000, $length));
+        $tone_map = [
+            'seo' => 'لحن سئو استاندارد، دقیق و کاربردی',
+            'engaging' => 'لحن جذاب، روایی و گیرا بدون اغراق',
+            'formal' => 'لحن رسمی، تخصصی و دانشگاهی',
+            'simple' => 'لحن ساده، روان و همه‌فهم',
+        ];
+        $tone_label = $tone_map[$tone] ?? $tone_map['seo'];
+        $guide_ctx = self::format_guidelines_prompt_context();
         $system = 'نقش تو: نویسنده ارشد محتوا و سئوی فارسی برای وردپرس. '
             . 'فقط بدنهٔ HTML مقاله را بنویس با تگ‌های مجاز: p, h2, h3, ul, ol, li, strong, em, a. '
             . 'ممنوع: markdown، بلوک کد، تگ html/body/head، H1، عنوان انگلیسی، توضیح قبل از مقاله، «Certainly» یا هر متن غیرفارسی. '
             . 'حدود ' . $length . ' کلمهٔ واقعی فارسی (از این مقدار خیلی فراتر نرو). '
             . 'ساختار اجباری: ۱) مقدمهٔ کوتاه (۲–۳ پاراگراف) با پاسخ مستقیم به نیاز خواننده؛ ۲) چند بخش H2 با محتوای عمیق؛ ۳) در صورت نیاز H3؛ ۴) حداقل یک فهرست ul/ol؛ ۵) جمع‌بندی کاربردی. '
-            . 'هر پاراگراف حداکثر ۳–۴ جمله. لحن تخصصی، روان و قابل اعتماد. '
-            . 'کلمه کلیدی اصلی را فقط به‌صورت طبیعی در مقدمه، یک H2 و جمع‌بندی بیاور؛ چگالی تقریبی ۱٪ و بدون تکرار مصنوعی.';
+            . 'هر پاراگراف حداکثر ۳–۴ جمله. ' . $tone_label . '. '
+            . 'کلمه کلیدی اصلی را فقط به‌صورت طبیعی در مقدمه، یک H2 و جمع‌بندی بیاور؛ چگالی تقریبی ۱٪ و بدون تکرار مصنوعی. '
+            . ($guide_ctx !== '' ? "\nدستورالعمل برند سایت:\n" . $guide_ctx : '');
         $user = "عنوان مقاله: {$topic}
 "
             . "کلمه کلیدی اصلی: " . ($focus !== '' ? $focus : $topic) . "
@@ -4016,7 +4047,21 @@ final class Bankai_AI_Studio
             $models[$provider] = $model;
             update_option(self::OPT_IMAGE_MODELS, $models, false);
         }
-        wp_send_json_success(['message' => 'ذخیره شد', 'masked' => self::mask_key($keys[$provider] ?? '')]);
+        // Active image providers list
+        $active = get_option('bankai_ai_active_image_providers', []);
+        if (!is_array($active)) $active = [];
+        if (!empty($keys[$provider])) {
+            $active[$provider] = true;
+        } else {
+            unset($active[$provider]);
+        }
+        update_option('bankai_ai_active_image_providers', $active, false);
+
+        wp_send_json_success([
+            'message' => 'ذخیره شد',
+            'masked'  => self::mask_key($keys[$provider] ?? ''),
+            'active'  => array_keys(array_filter($active)),
+        ]);
     }
 
     public function ajax_clear_image_ai_key(): void
@@ -4029,6 +4074,11 @@ final class Bankai_AI_Studio
         $keys = $this->get_image_keys();
         unset($keys[$provider]);
         update_option(self::OPT_IMAGE_KEYS, $keys, false);
+        $active = get_option('bankai_ai_active_image_providers', []);
+        if (is_array($active)) {
+            unset($active[$provider]);
+            update_option('bankai_ai_active_image_providers', $active, false);
+        }
         wp_send_json_success(['message' => 'کلید حذف شد']);
     }
 
@@ -4105,9 +4155,16 @@ final class Bankai_AI_Studio
         }
         $img_keys = $this->get_image_keys();
 
+        // Persian → English translation for image models (most image AIs work best in English)
+        $style = sanitize_text_field(wp_unslash($_POST['style'] ?? 'photorealistic'));
+        $title_ctx = sanitize_text_field(wp_unslash($_POST['title'] ?? ''));
+        $section_ctx = sanitize_textarea_field(wp_unslash($_POST['section_context'] ?? ''));
+        $focus_ctx = sanitize_text_field(wp_unslash($_POST['focus_keyword'] ?? ''));
+        $final_prompt = $this->prepare_english_image_prompt($prompt, $purpose, $style, $title_ctx, $section_ctx, $focus_ctx);
+
         $size = $purpose === 'cover' ? ['width' => 1280, 'height' => 720] : ['width' => 1024, 'height' => 1024];
         try {
-            $gen = $this->generate_image_bytes($provider, $prompt, array_merge($size, ['model' => $model]));
+            $gen = $this->generate_image_bytes($provider, $final_prompt, array_merge($size, ['model' => $model]));
         } catch (Throwable $e) {
             wp_send_json_error(['message' => $e->getMessage()], 500);
         }
@@ -4155,9 +4212,6 @@ final class Bankai_AI_Studio
             set_post_thumbnail($post_id, $attach_id);
         }
 
-        $title_ctx = sanitize_text_field(wp_unslash($_POST['title'] ?? ''));
-        $section_ctx = sanitize_textarea_field(wp_unslash($_POST['section_context'] ?? ''));
-        $focus_ctx = sanitize_text_field(wp_unslash($_POST['focus_keyword'] ?? ''));
         $alt_src = $section_ctx !== '' ? $section_ctx : ($title_ctx !== '' ? $title_ctx : $prompt);
         if ($focus_ctx !== '' && mb_stripos($alt_src, $focus_ctx) === false) {
             $alt_src = $focus_ctx . ' — ' . $alt_src;
@@ -4181,6 +4235,70 @@ final class Bankai_AI_Studio
             'provider'      => $provider,
             'message'       => $purpose === 'cover' ? 'کاور ساخته و در رسانه ذخیره شد' : 'تصویر محتوا ساخته شد',
         ]);
+    }
+
+    /**
+     * Prepare English prompt for image models.
+     * If source text is Persian, translate via text AI first.
+     */
+    public function prepare_english_image_prompt(
+        string $raw_prompt,
+        string $purpose = 'cover',
+        string $style = 'photorealistic',
+        string $title = '',
+        string $section = '',
+        string $focus = ''
+    ): string {
+        $style_map = [
+            'photorealistic' => 'photorealistic, high detail, cinematic lighting',
+            'minimalist'     => 'minimalist modern corporate style, clean composition',
+            'vector'         => 'vector illustration, flat design, clean lines',
+            'render_3d'      => '3D digital render, studio lighting, high quality',
+            'cinematic'      => 'cinematic studio lighting, dramatic atmosphere, film still',
+            'infographic'    => 'infographic style, educational illustration, clear visual hierarchy',
+        ];
+        $style_en = $style_map[$style] ?? $style_map['photorealistic'];
+
+        $has_persian = (bool) preg_match('/[\x{0600}-\x{06FF}]/u', $raw_prompt . $title . $section . $focus);
+
+        $content_en = $raw_prompt;
+        if ($has_persian) {
+            try {
+                $sys = 'You are a professional translator. Translate the following Persian text into clear natural English suitable for an AI image generation prompt. Output ONLY the English translation, nothing else. No explanations.';
+                $user = "Title: {$title}\nFocus keyword: {$focus}\nSection / prompt context:\n" . mb_substr(trim($raw_prompt . "\n" . $section), 0, 1200);
+                $translated = $this->chat($this->resolve_central_text_provider(), $sys, $user, [
+                    'temperature' => 0.2,
+                    'max_tokens'  => 400,
+                    'no_fallback' => false,
+                ]);
+                $translated = trim(preg_replace('/^["\']|["\']$/', '', (string) $translated));
+                if ($translated !== '') {
+                    $content_en = $translated;
+                }
+            } catch (Throwable $e) {
+                // keep original if translation fails
+                $content_en = $raw_prompt;
+            }
+        }
+
+        $purpose_line = $purpose === 'cover'
+            ? 'Create a professional editorial blog cover image (16:9) that represents this article content.'
+            : 'Create a high-quality illustrative photo suitable for an article body section.';
+
+        $parts = [
+            $purpose_line,
+            'Visual style: ' . $style_en . '.',
+            'Content description: ' . $content_en,
+        ];
+        if ($title !== '') {
+            $parts[] = 'Article title (for context only): ' . $title;
+        }
+        if ($focus !== '') {
+            $parts[] = 'Main topic keyword: ' . $focus;
+        }
+        $parts[] = 'Strict rules: no text, no letters, no watermark, no logo, no UI elements, no captions on the image.';
+
+        return implode("\n", $parts);
     }
 
     /**

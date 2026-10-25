@@ -16,30 +16,31 @@ if (class_exists('Bankai_AI_Studio')) {
 echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
 ?></script>
 
-<div id="tab-articles" class="bankai-tab-pane" :class="{ 'is-active-tab': activeTab === 'articles' }" x-show="activeTab === 'articles'" x-cloak
+<div id="tab-articles" class="bankai-tab-pane bk-orange-shell" :class="{ 'is-active-tab': activeTab === 'articles' }" x-show="activeTab === 'articles'" x-cloak
      x-data="bankaiArticlesHub" x-init="init()">
 
-    <div class="bk-art-main">
-        <div class="bk-art-head">
-            <div>
-                <h2>
-                    <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                    مدیریت محتوا
-                </h2>
-                <p>سئوی محتوا با هوش مصنوعی و تولید مقاله — ویرایش در وردپرس</p>
-            </div>
-            <button type="button" class="bk-btn bk-btn-primary" @click="panel='generate'">تولید مقاله با AI</button>
-        </div>
+  <header class="bk-top-head">
+    <div class="bk-top-head__brand">
+      <span class="bk-top-head__logo"><iconify-icon icon="solar:document-text-bold-duotone" width="24" height="24"></iconify-icon></span>
+      <div>
+        <strong>مدیریت محتوا</strong>
+        <small>سئوی محتوا · تولید با AI · انتشار</small>
+      </div>
+    </div>
+  </header>
 
-        <div class="bk-capsule-tabs bk-art-tabs" role="tablist">
-            <button type="button" class="bk-capsule-tab" :class="{'is-active': panel==='list'}" @click="panel='list'; loadArticles()">
-                <span class="bk-capsule-label">سئو محتوا</span>
-            </button>
-            <button type="button" class="bk-capsule-tab" :class="{'is-active': panel==='generate'}" @click="panel='generate'">
-                <span class="bk-capsule-label">تولید محتوا با AI</span>
-            </button>
-        </div>
+  <nav class="bk-top-tabs" role="tablist">
+    <button type="button" class="bk-top-tab" :class="{'is-active': panel==='list'}" @click="panel='list'; loadArticles()">
+      <iconify-icon icon="solar:checklist-minimalistic-bold-duotone" width="18"></iconify-icon>
+      <span>سئو محتوا</span>
+    </button>
+    <button type="button" class="bk-top-tab" :class="{'is-active': panel==='generate'}" @click="panel='generate'">
+      <iconify-icon icon="solar:magic-stick-3-bold-duotone" width="18"></iconify-icon>
+      <span>تولید با AI</span>
+    </button>
+  </nav>
 
+  <div class="bk-top-body">
         <!-- LIST -->
         <div class="bk-art-card" x-show="panel==='list'" x-cloak>
             <div class="bk-art-toolbar">
@@ -63,6 +64,18 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
 
                         <!-- AUDIT PANEL -->
             <div class="bk-audit-panel" x-show="auditDrawer.open" x-cloak>
+            <!-- Full-screen analysis / AI overlay -->
+            <div class="bk-audit-blur-overlay" x-show="auditDrawer.phase==='run' || auditDrawer.aiRunning || seoLoading" x-cloak>
+                <div class="bk-audit-blur-card">
+                    <div class="bk-audit-blur-spinner"></div>
+                    <strong x-text="auditDrawer.aiRunning ? (auditDrawer.aiStep || 'در حال بهینه‌سازی با هوش مصنوعی…') : (auditDrawer.step || 'در حال آنالیز کامل مقاله…')"></strong>
+                    <div class="bk-audit-progress-line" style="margin-top:14px;max-width:260px;width:100%">
+                        <div class="bk-audit-progress-line__fill" :style="'width:'+((auditDrawer.aiRunning ? auditDrawer.aiProgress : auditDrawer.progress)||8)+'%'"></div>
+                    </div>
+                    <small style="color:#94a3b8;margin-top:8px;display:block" x-text="auditDrawer.aiRunning ? 'تنها موارد تاییدنشده چک‌لیست اصلاح می‌شوند' : 'لطفاً تا پایان آنالیز SEO · AEO · GEO صبر کنید'"></small>
+                </div>
+            </div>
+
                 <div class="bk-audit-panel__top">
                 <div class="bk-audit-header-grid">
                     <div class="bk-audit-header-main">
@@ -138,179 +151,21 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
                     <div class="bk-audit-progress-line__fill" :style="'width:'+(auditDrawer.progress||0)+'%'"></div>
                 </div>
 
-                <div class="bk-capsule-tabs" role="tablist" style="margin:12px 0 14px">
-                    <button type="button" class="bk-capsule-tab" :class="{'is-active': auditDrawer.uiTab==='seo'}" @click="auditDrawer.uiTab='seo'; loadAuditSeoForm()"><span class="bk-capsule-label">سئو</span></button>
-                    <button type="button" class="bk-capsule-tab" :class="{'is-active': auditDrawer.uiTab==='ai'}" @click="switchAuditTab('ai')"><span class="bk-capsule-label">دستیار هوشمند</span></button>
-                    <button type="button" class="bk-capsule-tab" :class="{'is-active': auditDrawer.uiTab==='analysis'}" @click="switchAuditTab('analysis')"><span class="bk-capsule-label">آنالیز SEO · AEO · GEO</span></button>
-                </div>
-
-                <!-- SEO TAB 2-COL -->
-                <div class="bk-audit-seo-panel" x-show="auditDrawer.uiTab==='seo'" x-cloak>
-                    <div class="bk-seo-loader" x-show="seoLoading"><div class="spin"></div><span>در حال بارگذاری اطلاعات سئو…</span></div>
-                    <div x-show="!seoLoading">
-                    <div class="bk-seo-2col">
-                        <div>
-                            <div class="bk-card">
-                                <div class="bk-card-head" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-                                    <span>پیش‌نمایش SERP</span>
-                                    <div class="bk-serp-actions" x-show="auditDrawer.seoForm && auditDrawer.seoForm.permalink">
-                                        <a class="bk-serp-icon-btn" :href="auditDrawer.seoForm.permalink" target="_blank" rel="noopener" title="مشاهده صفحه">
-                                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
-                                        </a>
-                                        <button type="button" class="bk-serp-icon-btn" title="کپی لینک" @click="copyPermalink()">
-                                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 20"/></svg>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="bk-serp">
-                                    <div class="bk-serp-title" x-text="(auditDrawer.seoForm && auditDrawer.seoForm.seo_title) || auditDrawer.title || 'عنوان سئو'"></div>
-                                    <div class="bk-serp-desc" x-text="(auditDrawer.seoForm && auditDrawer.seoForm.description) || 'توضیحات متا…'"></div>
-                                </div>
-                                <div style="margin-top:8px;font-size:11px;color:#64748b">
-                                    طول عنوان: <strong x-text="((auditDrawer.seoForm && auditDrawer.seoForm.seo_title) || '').length"></strong>
-                                    · متا: <strong x-text="((auditDrawer.seoForm && auditDrawer.seoForm.description) || '').length"></strong>
-                                </div>
-                            </div>
-                            <div class="bk-card">
-                                <div class="bk-card-head"><span>کلیدواژه‌ها</span></div>
-                                <label>کلیدواژه اصلی</label>
-                                <input type="text" x-model="auditDrawer.seoForm.focus_keyword" style="margin-bottom:10px">
-                                <label>کلیدواژه‌های فرعی</label>
-                                <div class="bk-kw-box" style="margin-bottom:8px">
-                                    <template x-for="(kw, i) in auditKeywordList()" :key="'kw'+i">
-                                        <span class="bk-chip" :class="{ 'is-primary': i === 0 }">
-                                            <span x-text="kw"></span>
-                                            <button type="button" class="bk-chip-x" @click="removeAuditKeyword(i)">×</button>
-                                        </span>
-                                    </template>
-                                    <input type="text" class="bk-kw-input" x-model="auditDrawer.keywordInput" @keydown.enter.prevent="addAuditKeyword()" placeholder="افزودن + اینتر…">
-                                </div>
-                            </div>
-                            <div class="bk-card">
-                                <div class="bk-card-head"><span>عنوان سئو (Title Tag)</span></div>
-                                <input type="text" x-model="auditDrawer.seoForm.seo_title">
-                            </div>
-                            <div class="bk-card">
-                                <div class="bk-card-head"><span>توضیحات متا (Meta Description)</span></div>
-                                <textarea rows="3" x-model="auditDrawer.seoForm.description"></textarea>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="bk-card">
-                                <div class="bk-card-head"><span>بررسی‌های پایه سئو</span></div>
-                                <div class="bk-seo-loader" x-show="seoLoading || auditDrawer.phase==='run'">
-                                    <div class="spin"></div>
-                                    <span>در حال بارگذاری بررسی‌های سئو…</span>
-                                </div>
-                                <template x-if="!seoLoading && auditDrawer.phase!=='run'">
-                                    <div>
-                                        <template x-for="grp in groupSeoChecks((auditDrawer.result && auditDrawer.result.seo) || [])" :key="grp.key">
-                                            <div class="bk-check-acc">
-                                                <button type="button" class="bk-check-acc__head" @click="toggleCheckAcc(grp.key)">
-                                                    <span x-text="grp.title"></span>
-                                                    <span class="meta" x-text="(checkAcc[grp.key] ? '▾ ' : '▸ ') + grp.items.length + ' مورد'"></span>
-                                                </button>
-                                                <div class="bk-check-acc__body" x-show="checkAcc[grp.key]">
-                                                    <template x-for="c in grp.items" :key="c._k">
-                                                        <div class="bk-check-item" :class="isPass(c) ? 'is-pass' : 'is-fail'">
-                                                            <div class="bk-check-item__row" @click="toggleAnalysisItem('seo-'+c._k)">
-                                                                <span x-html="lineIcon(isPass(c) ? 'pass' : 'fail')"></span>
-                                                                <div style="min-width:0;flex:1">
-                                                                    <span class="bk-check-text" x-text="c.label || c.name"></span>
-                                                                    <small class="bk-check-desc" x-show="c.message" x-text="c.message"></small>
-                                                                </div>
-                                                                <span class="bk-acc-chevron" :class="analysisOpen['seo-'+c._k] ? 'is-open' : ''" title="نمایش راهنما">▸</span>
-                                                            </div>
-                                                            <div class="bk-check-item__guide" x-show="analysisOpen['seo-'+c._k]" x-text="expandGuideHint(c)"></div>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </template>
-                                        <p x-show="!(auditDrawer.result && auditDrawer.result.seo && auditDrawer.result.seo.length)" style="font-size:12px;color:#94a3b8;margin:8px 0 0">هنوز بررسی‌ای نیست — آنالیز را اجرا کنید.</p>
-                                    </div>
-                                </template>
-                            </div>
-                            <div class="bk-card">
-                                <div class="bk-card-head"><span>تنظیمات ایندکس و Robots</span></div>
-                                <div class="bk-robots-card">
-                                <label class="bk-switch-row"><span>اجازه ایندکس (Index)</span><input type="checkbox" x-model="auditDrawer.seoForm.robots_index"></label>
-                                <label class="bk-switch-row"><span>دنبال کردن لینک‌ها (Follow)</span><input type="checkbox" x-model="auditDrawer.seoForm.robots_follow"></label>
-                                <label class="bk-switch-row"><span>مخفی کردن تاریخ در SERP</span><input type="checkbox" x-model="auditDrawer.seoForm.hide_date"></label>
-                                <label class="bk-field-label">Canonical URL</label>
-                                <input type="url" dir="ltr" x-model="auditDrawer.seoForm.canonical">
-                                </div>
-                            </div>
-                            <button type="button" class="bk-btn bk-btn-primary" @click="saveAuditSeoForm()" :disabled="auditDrawer.seoSaving || isBtnBusy('saveSeo')" :class="{ 'is-loading': auditDrawer.seoSaving || isBtnBusy('saveSeo') }" :disabled="auditDrawer.seoSaving">ذخیره سئو</button>
-                        </div>
-                    </div>
-                </div>
-
-                </div>
-                <!-- AI TAB 2-COL -->
-                <div class="bk-hub-ai-match" x-show="auditDrawer.uiTab==='ai' && auditDrawer.phase!=='run'" x-cloak>
-                    <div class="bk-card" style="padding:14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;margin-bottom:12px">
-                        <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
-                            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f97316,#0f766e);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800">AI</div>
-                            <div>
-                                <strong style="font-size:13px;display:block">دستیار هوشمند سئوی بنکای</strong>
-                                <small style="color:#64748b;font-size:10px">ابزارهای حرفه‌ای بهینه‌سازی با یک کلیک</small>
-                            </div>
-                        </div>
-                        <div class="bk-hero-action-card" style="margin-bottom:14px;cursor:pointer;position:relative" @click="openAiModal('auto_all')">
-                            <div class="bk-action-badge">پیشنهادی 🚀</div>
-                            <h4 style="margin:0 0 4px;font-size:14px">بهینه‌سازی یک‌پارچه مقاله (Auto-Optimize All)</h4>
-                            <p style="margin:0 0 10px;font-size:11px;color:#64748b">تحلیل، عنوان و متا، کلیدواژه، لینک، تصویر و اسکیما</p>
-                            <button type="button" class="bk-btn bk-btn-primary bk-full bk-btn-3d" style="background:linear-gradient(135deg,#6366f1,#4f46e5);border:0" @click.stop="openAiModal('auto_all')">شروع بهینه‌سازی هوشمند</button>
-                        </div>
-                        <div class="bk-ai-tools-grid">
-                            <button type="button" class="bk-ai-tool-item" @click="openAiModal('meta')">
-                                <div class="bk-ai-tool-icon bk-icon-blue"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7V5h16v2M12 5v14M9 19h6"/></svg></div>
-                                <div class="bk-ai-tool-info"><strong>عنوان و متا دیسکریپشن</strong><small>متاداده استاندارد سئو</small></div>
-                            </button>
-                            <button type="button" class="bk-ai-tool-item" @click="openAiModal('keywords')">
-                                <div class="bk-ai-tool-icon bk-icon-amber"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/></svg></div>
-                                <div class="bk-ai-tool-info"><strong>کلیدواژه اصلی و فرعی</strong><small>استخراج از محتوا</small></div>
-                            </button>
-
-                            <button type="button" class="bk-ai-tool-item" @click="openAiModal('links')">
-                                <div class="bk-ai-tool-icon bk-icon-blue"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/></svg></div>
-                                <div class="bk-ai-tool-info"><strong>لینک داخلی</strong><small>پیشنهاد انکورتکست</small></div>
-                            </button>
-                            <button type="button" class="bk-ai-tool-item" @click="openAiModal('images')">
-                                <div class="bk-ai-tool-icon bk-icon-emerald"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
-                                <div class="bk-ai-tool-info"><strong>Alt تصاویر</strong><small>متن جایگزین سئو</small></div>
-                            </button>
-                            <button type="button" class="bk-ai-tool-item" @click="openAiModal('rewrite')" style="grid-column:1/-1">
-                                <div class="bk-ai-tool-icon bk-icon-purple"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></div>
-                                <div class="bk-ai-tool-info"><strong>بازنویسی کامل مقاله با AI</strong><small>حفظ تگ‌های HTML</small></div>
-                            </button>
-                        </div>
-                        <div class="bk-ai-section-divider">
-                            <span class="bk-ai-section-title">بهبود پاسخ‌محور و مولد (AEO · GEO)</span>
-                            <p class="bk-ai-section-desc">تولید FAQ ساختاریافته، اسکیما، خلاصه نکات کلیدی و متای قابل‌نقل برای موتورهای پاسخ‌گو و مولد</p>
-                        </div>
-                        <div class="bk-ai-tools-grid bk-ai-tools-grid--aeo-geo">
-                            <button type="button" class="bk-ai-tool-item bk-ai-tool-item--wide" @click="openAiModal('aeo_geo')">
-                                <div class="bk-ai-tool-icon bk-icon-cyan"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.4L12 3z"/><path d="M4 19h16M8 15v4M16 15v4"/></svg></div>
-                                <div class="bk-ai-tool-info">
-                                    <strong>بهبود یک‌پارچه AEO · GEO</strong>
-                                    <small>FAQ + Schema + Takeaways + Meta — تولید، بازبینی و افزودن به مقاله</small>
-                                </div>
-                            </button>
-                        </div>
-
-                    </div>
-                </div>
 
                 <!-- ANALYSIS TAB -->
-                <div x-show="auditDrawer.uiTab==='analysis'" x-cloak>
-                    <div class="bk-audit-panel__actions" style="margin-bottom:12px" x-show="auditDrawer.phase!=='run'">
-                        <button type="button" class="bk-abtn bk-abtn-primary bk-btn-3d" @click="rerunAudit(true)" :disabled="!!auditBusyId || isBtnBusy('rerun')" :class="{ 'is-loading': !!auditBusyId || isBtnBusy('rerun') }">
-                            <span class="bk-btn-spin" x-show="!!auditBusyId || isBtnBusy('rerun')"></span>
-                            <span x-text="(!!auditBusyId || isBtnBusy('rerun')) ? 'در حال آنالیز…' : (auditDrawer.phase==='done' ? 'آنالیز مجدد' : 'شروع آنالیز SEO · AEO · GEO')"></span>
+                <div class="bk-audit-analysis-only" x-cloak>
+                    <div class="bk-audit-panel__actions" style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center" x-show="auditDrawer.phase==='done' && !auditDrawer.aiRunning">
+                        <button type="button" class="bk-abtn bk-abtn-primary bk-btn-3d" @click="runAiFix()"
+                                :disabled="isBtnBusy('aiFix') || failedAuditItems().length===0 || auditDrawer.aiReady"
+                                x-show="!auditDrawer.aiReady"
+                                :class="{ 'is-loading': isBtnBusy('aiFix') }">
+                            <span class="bk-btn-spin" x-show="isBtnBusy('aiFix')"></span>
+                            <span x-text="failedAuditItems().length ? ('بهینه‌سازی موارد تاییدنشده با AI (' + failedAuditItems().length + ')') : 'همه موارد تایید شده‌اند'"></span>
                         </button>
-                        <p class="bk-analysis-auto-hint" x-show="auditDrawer.phase==='done' && !auditBusyId">آنالیز ذخیره شده است — در صورت تغییر محتوا «آنالیز مجدد» را بزنید. برای FAQ و Takeaways از تب دستیار هوشمند استفاده کنید.</p>
+                        <button type="button" class="bk-abtn" @click="rerunAudit(true)" :disabled="!!auditBusyId || isBtnBusy('rerun')">
+                            آنالیز مجدد
+                        </button>
+                        <span style="font-size:11px;color:#94a3b8" x-show="failedAuditItems().length===0 && !auditDrawer.aiReady">چک‌لیست کامل است</span>
                     </div>
 
                     <div class="bk-audit-ai" x-show="auditDrawer.aiRunning || auditDrawer.aiReady">
@@ -327,10 +182,35 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
                                 </div>
                             </template>
                         </div>
-                        <div class="bk-audit-ai__preview" x-show="auditDrawer.aiReady && auditDrawer.aiProposed" style="margin-top:10px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc">
-                            <div style="font-size:12px;font-weight:700;margin-bottom:6px">پیش‌نمایش اصلاحات پیشنهادی</div>
-                            <div x-show="auditDrawer.aiProposed && auditDrawer.aiProposed.seo_title"><small>عنوان سئو</small><strong style="display:block" x-text="auditDrawer.aiProposed.seo_title"></strong></div>
-                            <div x-show="auditDrawer.aiProposed && auditDrawer.aiProposed.description" style="margin-top:6px"><small>توضیحات متا</small><strong style="display:block" x-text="auditDrawer.aiProposed.description"></strong></div>
+                        <div class="bk-audit-ai__preview" x-show="auditDrawer.aiReady && auditDrawer.aiProposed" style="margin-top:12px;padding:14px;border:1px solid #fdbaa4;border-radius:12px;background:#fff7ed">
+                            <div style="font-size:13px;font-weight:800;margin-bottom:10px;color:#c2410c">گزارش موارد ساخته‌شده توسط هوش مصنوعی</div>
+                            <template x-if="auditDrawer.aiProposed">
+                              <div>
+                            <div x-show="auditDrawer.aiProposed.seo_title" style="margin-bottom:8px"><small style="color:#78716c">عنوان سئو</small><strong style="display:block" x-text="auditDrawer.aiProposed.seo_title"></strong></div>
+                            <div x-show="auditDrawer.aiProposed.description" style="margin-bottom:8px"><small style="color:#78716c">توضیحات متا</small><strong style="display:block" x-text="auditDrawer.aiProposed.description"></strong></div>
+                            <div x-show="auditDrawer.aiProposed.focus_keyword" style="margin-bottom:8px"><small style="color:#78716c">کلمه کلیدی</small><strong style="display:block" x-text="auditDrawer.aiProposed.focus_keyword"></strong></div>
+                            <div x-show="auditDrawer.aiProposed.og_title" style="margin-bottom:8px"><small style="color:#78716c">OG Title</small><strong style="display:block" x-text="auditDrawer.aiProposed.og_title"></strong></div>
+                            <div x-show="auditDrawer.aiProposed.content_changed" style="margin-bottom:8px;padding:8px;background:#ecfdf5;border-radius:8px;font-size:12px;color:#065f46">
+                              تغییرات محتوایی (FAQ / TOC / Schema / …) آماده اعمال است.
+                              <div x-show="auditDrawer.aiProposed.content_preview" style="margin-top:6px;opacity:.85" x-text="String(auditDrawer.aiProposed.content_preview||'').slice(0,160)+'…'"></div>
+                            </div>
+                            <div x-show="auditDrawer.aiProposed.applied_keys && auditDrawer.aiProposed.applied_keys.length" style="margin-bottom:8px">
+                                <small style="color:#78716c">کلیدهای اعمال‌شده</small>
+                                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+                                    <template x-for="k in (auditDrawer.aiProposed.applied_keys || [])" :key="'ak'+k">
+                                        <span class="bk-chip" x-text="k"></span>
+                                    </template>
+                                </div>
+                            </div>
+                              </div>
+                            </template>
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
+                                <button type="button" class="bk-abtn bk-abtn-primary bk-btn-3d" @click="applyAiFix()" :disabled="isBtnBusy('applyFix')" :class="{ 'is-loading': isBtnBusy('applyFix') }">
+                                    <span x-text="isBtnBusy('applyFix') ? 'در حال ذخیره و آنالیز مجدد…' : 'تایید و ذخیره + آنالیز مجدد'"></span>
+                                </button>
+                                <button type="button" class="bk-abtn" @click="runAiFix()" :disabled="isBtnBusy('aiFix')">برطرف‌سازی مجدد</button>
+                                <button type="button" class="bk-abtn" @click="cancelAiFix()">لغو</button>
+                            </div>
                         </div>
                     </div>
 
@@ -470,229 +350,277 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
         </div>
 
         <!-- GENERATE (AI CONTENT PUBLISHING WORKFLOW) -->
-        <div class="bk-art-card" x-show="panel==='generate'" x-cloak>
-            <div class="bk-gen-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
-                <div>
-                    <h3 style="margin:0 0 4px;font-size:16px;font-weight:700">کارگاه هوشمند تولید و انتشار محتوا (AI Publishing Hub)</h3>
-                    <p style="margin:0;font-size:12px;color:#64748b">برنامه‌ریزی، خوشه‌بندی، تعیین لحن، تولید سئوشده و انتشار زمان‌بندی‌شده مقالات</p>
+                <div class="bk-art-card bk-pub-hub" x-show="panel==='generate'" x-cloak>
+            <!-- Hub header -->
+            <div class="bk-pub-hero">
+                <div class="bk-pub-hero__icon">
+                    <iconify-icon icon="solar:magic-stick-3-bold-duotone" width="28" height="28"></iconify-icon>
                 </div>
-                <div class="bk-capsule-tabs bk-sub-tabs">
-                    <button type="button" class="bk-capsule-tab" :class="{'is-active': wiz.subTab==='planning'}" @click="wiz.subTab='planning'">
-                        <span class="bk-capsule-label">۱. پیشنهاد و خوشه‌بندی</span>
-                    </button>
-                    <button type="button" class="bk-capsule-tab" :class="{'is-active': wiz.subTab==='guidelines'}" @click="wiz.subTab='guidelines'">
-                        <span class="bk-capsule-label">۲. دستورالعمل و لحن</span>
-                    </button>
-                    <button type="button" class="bk-capsule-tab" :class="{'is-active': wiz.subTab==='wizard'}" @click="wiz.subTab='wizard'">
-                        <span class="bk-capsule-label">۳. ویزارد تولید</span>
-                    </button>
-                    <button type="button" class="bk-capsule-tab" :class="{'is-active': wiz.subTab==='dashboard'}" @click="wiz.subTab='dashboard'">
-                        <span class="bk-capsule-label">۴. داشبورد و صف تولید</span>
-                    </button>
+                <div class="bk-pub-hero__text">
+                    <h3>کارگاه هوشمند تولید و انتشار محتوا</h3>
+                    <p>از ایده تا پیش‌نویس سئوشده — خوشه‌بندی موضوع، لحن برند، تولید دسته‌ای و انتشار زمان‌بندی‌شده</p>
+                </div>
+                <div class="bk-pub-hero__stats">
+                    <div class="bk-pub-stat">
+                        <strong x-text="(wiz.selected||[]).filter(x=>x.approved).length || 0"></strong>
+                        <span>عنوان تاییدشده</span>
+                    </div>
+                    <div class="bk-pub-stat">
+                        <strong x-text="(wiz.queue||[]).filter(x=>x.status==='done').length || 0"></strong>
+                        <span>تولید موفق</span>
+                    </div>
+                    <div class="bk-pub-stat">
+                        <strong x-text="(wiz.guidelines && wiz.guidelines.wordCount) || 2500"></strong>
+                        <span>کلمه هدف</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- SUBTAB 1: TOPIC PLANNING -->
-            <div x-show="wiz.subTab==='planning'" x-cloak>
-                <div class="bk-planning-grid" style="display:grid;grid-template-columns:1fr 2fr;gap:16px">
-                    <div class="bk-card" style="padding:14px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc">
-                        <strong style="display:block;font-size:13px;margin-bottom:8px">ایجاد استراتژی موضوعی جدید</strong>
-                        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">موضوع اصلی / حوزه فعالیت</label>
-                        <textarea x-model="wiz.topic" rows="3" placeholder="مثلاً: طراحی سایت شرکتی و راهکارهای افزایش فروش آنلاین…" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box;margin-bottom:10px"></textarea>
+            <!-- Step rail -->
+            <nav class="bk-pub-steps" role="tablist">
+                <button type="button" class="bk-pub-step" :class="{'is-active': wiz.subTab==='planning', 'is-done': stepDone('planning')}" @click="wiz.subTab='planning'">
+                    <span class="bk-pub-step__num">1</span>
+                    <iconify-icon icon="solar:lightbulb-bolt-bold-duotone" width="18"></iconify-icon>
+                    <span>پیشنهاد و خوشه</span>
+                </button>
+                <span class="bk-pub-step__line" :class="{'is-on': stepDone('planning')}"></span>
+                <button type="button" class="bk-pub-step" :class="{'is-active': wiz.subTab==='guidelines', 'is-done': stepDone('guidelines')}" @click="wiz.subTab='guidelines'">
+                    <span class="bk-pub-step__num">2</span>
+                    <iconify-icon icon="solar:pen-new-square-bold-duotone" width="18"></iconify-icon>
+                    <span>دستورالعمل و لحن</span>
+                </button>
+                <span class="bk-pub-step__line" :class="{'is-on': stepDone('guidelines')}"></span>
+                <button type="button" class="bk-pub-step" :class="{'is-active': wiz.subTab==='wizard', 'is-done': stepDone('wizard')}" @click="wiz.subTab='wizard'">
+                    <span class="bk-pub-step__num">3</span>
+                    <iconify-icon icon="solar:settings-bold-duotone" width="18"></iconify-icon>
+                    <span>تنظیم تولید</span>
+                </button>
+                <span class="bk-pub-step__line" :class="{'is-on': stepDone('wizard')}"></span>
+                <button type="button" class="bk-pub-step" :class="{'is-active': wiz.subTab==='dashboard'}" @click="wiz.subTab='dashboard'">
+                    <span class="bk-pub-step__num">4</span>
+                    <iconify-icon icon="solar:playlist-bold-duotone" width="18"></iconify-icon>
+                    <span>صف تولید</span>
+                </button>
+            </nav>
 
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-                            <div>
-                                <label style="display:block;font-size:11px;font-weight:600;margin-bottom:2px">تعداد پیشنهادات</label>
-                                <select class="bk-select" x-model="wiz.count">
-                                    <option value="5">۵ عنوان</option>
-                                    <option value="10">۱۰ عنوان</option>
-                                    <option value="15">۱۵ عنوان</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="display:block;font-size:11px;font-weight:600;margin-bottom:2px">موتور هوش مصنوعی</label>
-                                <select class="bk-select" x-model="aiProvider">
-                                    <option value="">پیش‌فرض سیستم</option>
-                                    <template x-for="p in aiProvidersList()" :key="p.id">
-                                        <option :value="p.id" x-text="p.label || p.name || p.id"></option>
-                                    </template>
-                                </select>
-                            </div>
+            <!-- ========== 1. PLANNING ========== -->
+            <div x-show="wiz.subTab==='planning'" x-cloak class="bk-pub-panel">
+                <div class="bk-pub-grid-2">
+                    <div class="bk-pub-card">
+                        <div class="bk-pub-card__head">
+                            <iconify-icon icon="solar:compass-bold-duotone" width="20" style="color:#fc4c2f"></iconify-icon>
+                            <strong>استراتژی موضوعی</strong>
                         </div>
-
-                        <button type="button" class="bk-btn bk-btn-primary bk-full" @click="suggestTitles()" :disabled="wizBusy" :class="{ 'is-loading': wizBusy }">
-                            <span>پیشنهاد عناوین با هوش مصنوعی</span>
-                        </button>
+                        <label class="bk-pub-label">موضوع اصلی / خوشه محتوا</label>
+                        <textarea class="bk-pub-input" x-model="wiz.topic" rows="4" placeholder="مثلاً: کاردرمانی آسیب نخاعی گردنی و بازگشت عملکرد دست…"></textarea>
+                        <label class="bk-pub-label">تعداد پیشنهاد عنوان</label>
+                        <select class="bk-pub-input" x-model="wiz.count">
+                            <option value="5">۵ عنوان</option>
+                            <option value="8">۸ عنوان</option>
+                            <option value="12">۱۲ عنوان</option>
+                        </select>
+                        <div class="bk-pub-actions">
+                            <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="suggestTitles()" :disabled="wizBusy || !(wiz.topic||'').trim()">
+                                <span class="bk-btn-spin" x-show="wizBusy"></span>
+                                <iconify-icon icon="solar:magic-stick-3-bold-duotone" width="16" x-show="!wizBusy"></iconify-icon>
+                                <span x-text="wizBusy ? 'در حال پیشنهاد…' : 'پیشنهاد عنوان با AI'"></span>
+                            </button>
+                            <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="addManualTitle()">
+                                <iconify-icon icon="solar:add-circle-bold-duotone" width="16"></iconify-icon>
+                                افزودن دستی
+                            </button>
+                        </div>
+                        <p class="bk-pub-hint">موضوع را دقیق بنویسید تا خوشهٔ عنوان‌ها برای سئو و نیت جستجو هم‌راستا شود.</p>
                     </div>
-
-                    <div class="bk-card" style="padding:14px;border:1px solid #e2e8f0;border-radius:10px;background:#fff">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                            <strong style="font-size:13px">عناوین پیشنهادی و خوشه‌بندی محتوا</strong>
-                            <button type="button" class="bk-btn-sm" @click="addManualTitle()">+ افزودن عنوان دستی</button>
+                    <div class="bk-pub-card">
+                        <div class="bk-pub-card__head">
+                            <iconify-icon icon="solar:checklist-bold-duotone" width="20" style="color:#fc4c2f"></iconify-icon>
+                            <strong>عنوان‌های پیشنهادی</strong>
+                            <span class="bk-pub-badge" x-text="(wiz.selected||[]).length + ' مورد'"></span>
                         </div>
-                        <template x-if="!wiz.selected || !wiz.selected.length">
-                            <div style="text-align:center;padding:32px;color:#94a3b8;font-size:12px">
-                                هنوز عنوانی ثبت نشده است. موضوع خود را در فرم مقابل وارد کنید و دکمه پیشنهاد را بزنید.
-                            </div>
-                        </template>
-                        <template x-for="(item, idx) in wiz.selected" :key="'ws'+idx">
-                            <div style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;background:#f8fafc;display:flex;gap:10px;align-items:center">
-                                <input type="checkbox" x-model="item.approved" style="margin:0">
-                                <div style="flex:1">
-                                    <input type="text" x-model="item.title" style="width:100%;padding:6px;border:1px solid #cbd5e1;border-radius:6px;box-sizing:border-box;font-size:13px;font-weight:600">
+                        <div class="bk-pub-empty" x-show="!(wiz.selected||[]).length">
+                            <iconify-icon icon="solar:document-add-bold-duotone" width="36" style="color:#cbd5e1"></iconify-icon>
+                            <p>هنوز عنوانی نیست. موضوع را وارد کنید و پیشنهاد AI بگیرید.</p>
+                        </div>
+                        <div class="bk-pub-title-list" x-show="(wiz.selected||[]).length">
+                            <template x-for="(item, idx) in (wiz.selected||[])" :key="'t'+idx">
+                                <div class="bk-pub-title-row" :class="{'is-on': item.approved}">
+                                    <label class="bk-pub-check">
+                                        <input type="checkbox" x-model="item.approved">
+                                        <span></span>
+                                    </label>
+                                    <input type="text" class="bk-pub-title-input" x-model="item.title" :placeholder="'عنوان '+(idx+1)">
+                                    <button type="button" class="bk-pub-icon-btn" title="حذف" @click="wiz.selected.splice(idx,1)">
+                                        <iconify-icon icon="solar:trash-bin-2-bold-duotone" width="16"></iconify-icon>
+                                    </button>
                                 </div>
-                                <button type="button" class="bk-chip-x" @click="wiz.selected.splice(idx, 1)" title="حذف">×</button>
-                            </div>
-                        </template>
-                        <div x-show="(wiz.selected||[]).length" style="margin-top:12px;text-align:left">
-                            <button type="button" class="bk-btn bk-btn-primary" @click="wiz.subTab='guidelines'">تایید و تنظیم دستورالعمل‌ها ←</button>
+                            </template>
+                        </div>
+                        <div class="bk-pub-actions" style="margin-top:12px" x-show="(wiz.selected||[]).length">
+                            <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="(wiz.selected||[]).forEach(x=>x.approved=true)">تایید همه</button>
+                            <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="wiz.subTab='guidelines'" :disabled="!(wiz.selected||[]).filter(x=>x.approved).length">
+                                مرحله بعد
+                                <iconify-icon icon="solar:arrow-left-bold-duotone" width="16"></iconify-icon>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- SUBTAB 2: GUIDELINES & TONE -->
-            <div x-show="wiz.subTab==='guidelines'" x-cloak>
-                <div style="max-width:850px;margin:0 auto;background:#fff;padding:20px;border:1px solid #d0d7de;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #d0d7de">
-                        <div>
-                            <h4 style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1f2328">دستورالعمل عمومی تولید محتوا (Site-Wide AI Guidelines)</h4>
-                            <p style="margin:0;font-size:12px;color:#656d76">اصول ثابت برند، لحن، ساختار هدینگ‌ها، قوانین سئو و سیاست‌های محتوایی که تمام هوش مصنوعی‌ها از آن پیروی می‌کنند.</p>
+            <!-- ========== 2. GUIDELINES ========== -->
+            <div x-show="wiz.subTab==='guidelines'" x-cloak class="bk-pub-panel">
+                <div class="bk-pub-grid-2">
+                    <div class="bk-pub-card">
+                        <div class="bk-pub-card__head">
+                            <iconify-icon icon="solar:palette-bold-duotone" width="20" style="color:#fc4c2f"></iconify-icon>
+                            <strong>لحن و طول محتوا</strong>
                         </div>
-                        <button type="button" class="bk-btn bk-btn-primary" @click="saveSiteGuidelines()" :disabled="guidelinesSaving" :class="{ 'is-loading': guidelinesSaving }">
-                            📌 ذخیره دستورالعمل عمومی
-                        </button>
+                        <label class="bk-pub-label">لحن نوشتار</label>
+                        <div class="bk-pub-tone-grid">
+                            <button type="button" class="bk-pub-tone" :class="{'is-on': wiz.guidelines.tone==='seo'}" @click="wiz.guidelines.tone='seo'">
+                                <iconify-icon icon="solar:chart-bold-duotone" width="18"></iconify-icon>
+                                سئو استاندارد
+                            </button>
+                            <button type="button" class="bk-pub-tone" :class="{'is-on': wiz.guidelines.tone==='engaging'}" @click="wiz.guidelines.tone='engaging'">
+                                <iconify-icon icon="solar:fire-bold-duotone" width="18"></iconify-icon>
+                                جذاب و روایی
+                            </button>
+                            <button type="button" class="bk-pub-tone" :class="{'is-on': wiz.guidelines.tone==='formal'}" @click="wiz.guidelines.tone='formal'">
+                                <iconify-icon icon="solar:case-bold-duotone" width="18"></iconify-icon>
+                                رسمی و تخصصی
+                            </button>
+                            <button type="button" class="bk-pub-tone" :class="{'is-on': wiz.guidelines.tone==='simple'}" @click="wiz.guidelines.tone='simple'">
+                                <iconify-icon icon="solar:chat-round-bold-duotone" width="18"></iconify-icon>
+                                ساده و روان
+                            </button>
+                        </div>
+                        <label class="bk-pub-label">طول هدف (کلمه)</label>
+                        <div class="bk-pub-range">
+                            <input type="range" min="800" max="4000" step="100" x-model="wiz.guidelines.wordCount">
+                            <em x-text="(wiz.guidelines.wordCount||2500)+' کلمه'"></em>
+                        </div>
+                        <label class="bk-pub-label">دستورالعمل اختصاصی این دسته</label>
+                        <textarea class="bk-pub-input" rows="4" x-model="wiz.guidelines.siteWide" placeholder="نکات برند، ممنوعیت‌ها، ساختار مورد انتظار…"></textarea>
                     </div>
-
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-                        <div>
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">حوزه فعالیت / موضوع کلان سایت</label>
-                            <input type="text" class="bk-input" x-model="siteGuidelines.site_domain" placeholder="مثلاً: طراحی سایت، سئو، فناوری و کسب‌وکار آنلاین" style="width:100%;box-sizing:border-box">
+                    <div class="bk-pub-card">
+                        <div class="bk-pub-card__head">
+                            <iconify-icon icon="solar:bookmark-bold-duotone" width="20" style="color:#fc4c2f"></iconify-icon>
+                            <strong>دستورالعمل سراسری سایت</strong>
                         </div>
-                        <div>
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">مخاطب هدف</label>
-                            <input type="text" class="bk-input" x-model="siteGuidelines.target_audience" placeholder="مثلاً: مدیران کسب‌وکار، وبمستران و علاقه‌مندان به مارکتینگ" style="width:100%;box-sizing:border-box">
-                        </div>
-                    </div>
-
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-                        <div>
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">لحن اصلی برند (Brand Tone)</label>
-                            <select class="bk-select" x-model="siteGuidelines.brand_tone" style="width:100%">
-                                <option value="seo">سئو استاندارد، تخصصی و جامع</option>
-                                <option value="engaging">جذاب، داستانی و پرانرژی</option>
-                                <option value="formal">رسمی، آکادمیک و موثق</option>
-                                <option value="simple">ساده، صمیمی و روان</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">سطح رسمیت</label>
-                            <input type="text" class="bk-input" x-model="siteGuidelines.formality" placeholder="مثلاً: میانه (حرفه‌ای و صمیمی)" style="width:100%;box-sizing:border-box">
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom:14px">
-                        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">قواعد هدینگ‌ها و ساختار متن (Heading Structure)</label>
-                        <textarea x-model="siteGuidelines.heading_rules" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box"></textarea>
-                    </div>
-
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-                        <div>
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">قواعد کلیدواژه‌ها (Keyword Policy)</label>
-                            <textarea x-model="siteGuidelines.keyword_policy" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box"></textarea>
-                        </div>
-                        <div>
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">عبارات و کلمات ممنوعه (Forbidden Phrases)</label>
-                            <textarea x-model="siteGuidelines.forbidden_phrases" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box" placeholder="مثلاً: در دنیای امروز، بدون شک، حتما می‌دانید…"></textarea>
-                        </div>
-                    </div>
-
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-                        <div>
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">سیاست لینک‌دهی داخلی</label>
-                            <textarea x-model="siteGuidelines.internal_link_policy" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box"></textarea>
-                        </div>
-                        <div>
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">قواعد AEO و GEO (FAQ و پاسخ صریح)</label>
-                            <textarea x-model="siteGuidelines.faq_aeo_geo_rules" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box"></textarea>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom:16px">
-                        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#1f2328">یادداشت‌های اختصاصی مدیر (Custom Notes)</label>
-                        <textarea x-model="siteGuidelines.custom_notes" rows="2" class="bk-textarea" style="width:100%;box-sizing:border-box" placeholder="هرگونه دستور ویژه دیگر که باید در تمامی پرامپت‌ها اعمال شود…"></textarea>
-                    </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid #d0d7de">
-                        <button type="button" class="bk-btn" @click="wiz.subTab='planning'">→ قبلی (برنامه‌ریزی)</button>
-                        <div style="display:flex;gap:8px">
-                            <button type="button" class="bk-btn bk-btn-secondary" @click="previewAiPrompt()">🔍 پیش‌نمایش پرامپت هوش مصنوعی</button>
-                            <button type="button" class="bk-btn bk-btn-primary" @click="wiz.subTab='wizard'">رفتن به ویزارد انتشار ←</button>
+                        <p class="bk-pub-hint" style="margin-top:0">این لایه روی همه تولیدهای AI اعمال می‌شود و جداگانه ذخیره می‌شود.</p>
+                        <label class="bk-pub-label">حوزه / دامنه موضوعی</label>
+                        <input class="bk-pub-input" type="text" x-model="siteGuidelines.site_domain">
+                        <label class="bk-pub-label">مخاطب هدف</label>
+                        <input class="bk-pub-input" type="text" x-model="siteGuidelines.target_audience">
+                        <label class="bk-pub-label">سیاست کلمه کلیدی</label>
+                        <textarea class="bk-pub-input" rows="2" x-model="siteGuidelines.keyword_policy"></textarea>
+                        <label class="bk-pub-label">عبارات ممنوع</label>
+                        <textarea class="bk-pub-input" rows="2" x-model="siteGuidelines.forbidden_phrases"></textarea>
+                        <div class="bk-pub-actions">
+                            <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="saveSiteGuidelines()" :disabled="guidelinesSaving">
+                                <iconify-icon icon="solar:diskette-bold-duotone" width="16"></iconify-icon>
+                                <span x-text="guidelinesSaving ? 'ذخیره…' : 'ذخیره دستورالعمل سایت'"></span>
+                            </button>
+                            <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="wiz.subTab='wizard'">
+                                مرحله بعد
+                                <iconify-icon icon="solar:arrow-left-bold-duotone" width="16"></iconify-icon>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- SUBTAB 3: WIZARD & PUBLISHING -->
-            <div x-show="wiz.subTab==='wizard'" x-cloak>
-                <div style="max-width:700px;margin:0 auto;background:#fff;padding:16px;border:1px solid #e2e8f0;border-radius:12px">
-                    <h4 style="margin:0 0 12px;font-size:14px">تنظیمات انتشار و زمان‌بندی</h4>
-
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <!-- ========== 3. WIZARD SETTINGS ========== -->
+            <div x-show="wiz.subTab==='wizard'" x-cloak class="bk-pub-panel">
+                <div class="bk-pub-card">
+                    <div class="bk-pub-card__head">
+                        <iconify-icon icon="solar:rocket-2-bold-duotone" width="20" style="color:#fc4c2f"></iconify-icon>
+                        <strong>انتشار و اجرای تولید</strong>
+                    </div>
+                    <div class="bk-pub-grid-3">
                         <div>
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">وضعیت انتشار نهایی</label>
-                            <select class="bk-select" x-model="wiz.status">
-                                <option value="draft">پیش‌نویس (Draft)</option>
-                                <option value="pending">در انتظار بازبینی (Pending Review)</option>
-                                <option value="future">زمان‌بندی شده (Scheduled)</option>
-                                <option value="publish">انتشار مستقیم (Publish)</option>
+                            <label class="bk-pub-label">وضعیت انتشار</label>
+                            <select class="bk-pub-input" x-model="wiz.status">
+                                <option value="draft">پیش‌نویس</option>
+                                <option value="pending">در انتظار بازبینی</option>
+                                <option value="future">زمان‌بندی‌شده</option>
+                                <option value="publish">انتشار مستقیم</option>
                             </select>
                         </div>
                         <div x-show="wiz.status==='future'">
-                            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">تاریخ و زمان انتشار</label>
-                            <input type="datetime-local" class="bk-input" x-model="wiz.publishDate" style="width:100%;box-sizing:border-box">
+                            <label class="bk-pub-label">تاریخ و زمان انتشار</label>
+                            <input type="datetime-local" class="bk-pub-input" x-model="wiz.publishDate">
+                        </div>
+                        <div>
+                            <label class="bk-pub-label">عناوین آماده تولید</label>
+                            <div class="bk-pub-stat-inline">
+                                <strong x-text="(wiz.selected||[]).filter(x=>x.approved).length"></strong>
+                                <span>عنوان تاییدشده</span>
+                            </div>
                         </div>
                     </div>
-
-                    <div style="padding:12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:16px;font-size:12px;color:#475569">
-                        تعداد مقالات آماده تولید: <strong x-text="(wiz.selected||[]).filter(x=>x.approved).length"></strong> عنوان
+                    <div class="bk-pub-callout">
+                        <iconify-icon icon="solar:info-circle-bold-duotone" width="18"></iconify-icon>
+                        <div>
+                            هر عنوان به‌ترتیب با موتور AI پیش‌فرض تولید می‌شود؛ سپس متای سئو (عنوان، توضیح، کلیدواژه) خودکار نوشته می‌شود.
+                            از قطع کردن صفحه در حین تولید خودداری کنید.
+                        </div>
                     </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center">
-                        <button type="button" class="bk-btn" @click="wiz.subTab='guidelines'">→ قبلی</button>
-                        <button type="button" class="bk-btn bk-btn-primary bk-btn-3d" @click="startProduce()" :disabled="batchBusy || !(wiz.selected||[]).filter(x=>x.approved).length" :class="{ 'is-loading': batchBusy }">
-                            شروع تولید و ایجاد در دیتابیس 🚀
+                    <div class="bk-pub-actions" style="justify-content:space-between">
+                        <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="wiz.subTab='guidelines'">
+                            <iconify-icon icon="solar:arrow-right-bold-duotone" width="16"></iconify-icon>
+                            قبلی
+                        </button>
+                        <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="startProduce()"
+                                :disabled="batchBusy || !(wiz.selected||[]).filter(x=>x.approved).length"
+                                :class="{'is-loading': batchBusy}">
+                            <span class="bk-btn-spin" x-show="batchBusy"></span>
+                            <iconify-icon icon="solar:play-circle-bold-duotone" width="18" x-show="!batchBusy"></iconify-icon>
+                            شروع تولید دسته‌ای
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- SUBTAB 4: BATCH QUEUE & DASHBOARD -->
-            <div x-show="wiz.subTab==='dashboard'" x-cloak>
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                    <strong style="font-size:14px">پیشرفت صف تولید دسته‌ای مقالات</strong>
-                    <span style="font-size:12px;color:#64748b" x-text="'تعداد کارهای صف: ' + (wiz.queue||[]).length"></span>
+            <!-- ========== 4. QUEUE ========== -->
+            <div x-show="wiz.subTab==='dashboard'" x-cloak class="bk-pub-panel">
+                <div class="bk-pub-card">
+                    <div class="bk-pub-card__head">
+                        <iconify-icon icon="solar:playlist-minimalistic-bold-duotone" width="20" style="color:#fc4c2f"></iconify-icon>
+                        <strong>صف تولید دسته‌ای</strong>
+                        <span class="bk-pub-badge" x-text="(wiz.queue||[]).length + ' کار'"></span>
+                    </div>
+                    <div class="bk-pub-empty" x-show="!(wiz.queue||[]).length">
+                        <iconify-icon icon="solar:inbox-bold-duotone" width="36" style="color:#cbd5e1"></iconify-icon>
+                        <p>صف خالی است. از مرحله ۳ تولید را شروع کنید.</p>
+                        <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="wiz.subTab='wizard'">رفتن به تنظیم تولید</button>
+                    </div>
+                    <div class="bk-pub-queue" x-show="(wiz.queue||[]).length">
+                        <template x-for="(job, qi) in (wiz.queue||[])" :key="'q'+qi">
+                            <div class="bk-pub-job" :class="'is-'+job.status">
+                                <div class="bk-pub-job__top">
+                                    <span class="bk-pub-job__status" x-text="jobStatusLabel(job.status)"></span>
+                                    <strong class="bk-pub-job__title" x-text="job.title"></strong>
+                                    <a class="bk-pub-job__link" x-show="job.post_id" :href="'/wp-admin/post.php?post='+job.post_id+'&action=edit'" target="_blank">ویرایش</a>
+                                </div>
+                                <div class="bk-pub-job__bar"><i :style="'width:'+(job.progress||0)+'%'"></i></div>
+                                <small class="bk-pub-job__step" x-text="job.stepLabel || ''"></small>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="bk-pub-actions" style="margin-top:14px" x-show="(wiz.queue||[]).length && !batchBusy">
+                        <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="retryFailedJobs()" x-show="(wiz.queue||[]).some(j=>j.status==='error')">
+                            <iconify-icon icon="solar:restart-bold-duotone" width="16"></iconify-icon>
+                            تلاش مجدد ناموفق‌ها
+                        </button>
+                        <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="panel='list'; loadArticles()">
+                            <iconify-icon icon="solar:checklist-minimalistic-bold-duotone" width="16"></iconify-icon>
+                            بازگشت به لیست مقالات
+                        </button>
+                    </div>
                 </div>
-                <template x-if="!wiz.queue || !wiz.queue.length">
-                    <div style="text-align:center;padding:36px;color:#94a3b8;font-size:12px;border:1px dashed #cbd5e1;border-radius:10px">
-                        هیچ عملیات تولیدی در صف اجرا نیست. از تب ۱ موضوعات را انتخاب کرده و از تب ۳ شروع تولید را بزنید.
-                    </div>
-                </template>
-                <template x-for="(job, ji) in wiz.queue" :key="'jq'+ji">
-                    <div style="padding:12px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:10px;background:#fff">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                            <strong x-text="job.title" style="font-size:13px"></strong>
-                            <span class="bk-status-pill" :class="'is-' + (job.status==='done'?'publish':(job.status==='run'?'pending':'draft'))" x-text="job.stepLabel || job.status"></span>
-                        </div>
-                        <div style="height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden">
-                            <div :style="'width:'+(job.progress||0)+'%;height:100%;background:linear-gradient(90deg,#6366f1,#4f46e5)'"></div>
-                        </div>
-                    </div>
-                </template>
             </div>
-
         </div>
-    </div>
 
     <!-- Prompt Preview Modal -->
     <template x-teleport="body">
@@ -839,4 +767,7 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
             </div>
         </div>
     </template>
-</div>
+
+  </div><!-- /.bk-top-body -->
+
+</div><!-- /tab-articles -->

@@ -890,23 +890,77 @@ watermark",
     }
 
     /** @return resource|\GdImage|false */
-    private function load_image(string $file, string $mime)
+    private function load_image(string $file, string $mime = '')
     {
+        if ($file === '' || !is_readable($file)) {
+            return false;
+        }
+
+        $mime = strtolower(trim((string) $mime));
+        if ($mime === '' || $mime === 'application/octet-stream') {
+            $info = @getimagesize($file);
+            if (is_array($info) && !empty($info['mime'])) {
+                $mime = strtolower((string) $info['mime']);
+            } else {
+                $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                $map = [
+                    'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'jpe' => 'image/jpeg',
+                    'png' => 'image/png', 'webp' => 'image/webp', 'gif' => 'image/gif',
+                ];
+                $mime = $map[$ext] ?? '';
+            }
+        }
+
+        // Normalize aliases
+        if (in_array($mime, ['image/jpg', 'image/pjpeg', 'image/x-jpeg'], true)) {
+            $mime = 'image/jpeg';
+        }
+
+        $img = false;
         switch ($mime) {
             case 'image/jpeg':
-                return @imagecreatefromjpeg($file);
-            case 'image/png':
-                $img = @imagecreatefrompng($file);
-                if ($img) {
-                    imagealphablending($img, true);
-                    imagesavealpha($img, true);
+                if (function_exists('imagecreatefromjpeg')) {
+                    $img = @imagecreatefromjpeg($file);
                 }
-                return $img;
+                break;
+            case 'image/png':
+                if (function_exists('imagecreatefrompng')) {
+                    $img = @imagecreatefrompng($file);
+                    if ($img) {
+                        imagealphablending($img, true);
+                        imagesavealpha($img, true);
+                    }
+                }
+                break;
             case 'image/webp':
-                return function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($file) : false;
-            default:
-                return false;
+                if (function_exists('imagecreatefromwebp')) {
+                    $img = @imagecreatefromwebp($file);
+                    if ($img) {
+                        imagealphablending($img, true);
+                        imagesavealpha($img, true);
+                    }
+                }
+                break;
+            case 'image/gif':
+                if (function_exists('imagecreatefromgif')) {
+                    $img = @imagecreatefromgif($file);
+                }
+                break;
         }
+
+        // Last resort: let GD sniff the file
+        if (!$img && function_exists('imagecreatefromstring')) {
+            $raw = @file_get_contents($file);
+            if (is_string($raw) && $raw !== '') {
+                $img = @imagecreatefromstring($raw);
+                if ($img && function_exists('imagealphablending')) {
+                    @imagealphablending($img, true);
+                    @imagesavealpha($img, true);
+                }
+            }
+        }
+
+        return $img ?: false;
     }
 
     /** @param resource|\GdImage $image */
@@ -1931,14 +1985,18 @@ watermark",
                 $format = 'gif';
             }
             $thumb = wp_get_attachment_image_url($id, 'medium') ?: wp_get_attachment_url($id);
+            $size_label = $bytes > 0 ? size_format($bytes) : '—';
             $items[] = [
-                'id'     => $id,
-                'title'  => get_the_title($id) ?: ('#' . $id),
-                'url'    => (string) wp_get_attachment_url($id),
-                'thumb'  => (string) $thumb,
-                'mime'   => $mime,
-                'format' => $format,
-                'bytes'  => $bytes,
+                'id'         => $id,
+                'title'      => get_the_title($id) ?: ('#' . $id),
+                'url'        => (string) wp_get_attachment_url($id),
+                'thumb'      => (string) $thumb,
+                'mime'       => $mime,
+                'format'     => $format,
+                'bytes'      => $bytes,
+                'size'       => $size_label,
+                'size_label' => $size_label,
+                'selected'   => false,
             ];
         }
 
@@ -1997,7 +2055,18 @@ watermark",
         $before = (int) filesize($file);
         $image  = $this->load_image($file, $mime);
         if (!$image) {
-            return new WP_Error('load', __('بارگذاری تصویر ممکن نشد.', 'bankai-core'));
+            $detail = $mime !== '' ? $mime : (pathinfo($file, PATHINFO_EXTENSION) ?: 'unknown');
+            if (!extension_loaded('gd')) {
+                return new WP_Error('load', __('افزونه GD در PHP فعال نیست.', 'bankai-core'));
+            }
+            return new WP_Error(
+                'load',
+                sprintf(
+                    /* translators: %s: mime or extension */
+                    __('بارگذاری تصویر ممکن نشد (%s). فرمت پشتیبانی‌نشده یا فایل خراب است.', 'bankai-core'),
+                    $detail
+                )
+            );
         }
 
         $w = imagesx($image);

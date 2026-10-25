@@ -232,7 +232,8 @@
             media_watermark: true,
             jalali_calendar: true,
             pwa: true,
-            llms_txt: true
+            llms_txt: true,
+            store: true
         };
         (st.coreModules || []).forEach(function (m) {
             if (m && m.key) {
@@ -240,6 +241,8 @@
                 moduleActive[m.key] = m.active !== false && m.active !== 0 && m.active !== '0';
             }
         });
+
+        var wooActive = !!(window.bankaiData && bankaiData.wooActive) || !!(window.bankaiCoreData && bankaiCoreData.wooActive);
 
         return {
             activeTab: initial.activeTab || 'overview',
@@ -250,6 +253,7 @@
             savingLoader: { show: false, state: 'saving', title: '', message: '' },
             toast: { show: false, message: '', type: 'success' },
             busy: false,
+            wooActive: wooActive,
 
             seoState: seoState,
             speedState: speedState,
@@ -283,13 +287,34 @@
             redisSaving: false,
 
             dashVisits: { total: 0, change: 0, desktop: 0, mobile: 0, tablet: 0, error: '' },
+            settingsPanel: 'license',
+            pwaSaving: false,
+            pwaManifestUrl: '',
+            pwa: {
+                enabled: false,
+                name: '',
+                short_name: '',
+                description: '',
+                start_url: '/',
+                scope: '/',
+                display: 'standalone',
+                orientation: 'any',
+                theme_color: '#fc4c2f',
+                background_color: '#ffffff',
+                icon_192: '',
+                icon_512: '',
+                service_worker: true,
+                install_prompt: true,
+                offline_cache: true
+            },
             coreModuleCards: [
-                { key: 'seo_engine', title: 'SEO Engine', title_fa: 'موتور سئو و اسکیما', desc: 'Meta, schema, sitemap, canonical', desc_fa: 'متا، اسکیما، نقشه سایت، کانونیکال و ممیزی سئو' },
-                { key: 'ai_studio', title: 'AI Studio', title_fa: 'استودیو هوش مصنوعی', desc: 'Text & image AI providers', desc_fa: 'اتصال موتورهای متنی و تصویری برای تولید محتوا و سئو' },
-                { key: 'speed_cache', title: 'Cache & Speed', title_fa: 'کش و سرعت', desc: 'Page cache, assets, DB optimize', desc_fa: 'کش صفحه، بهینه‌سازی فایل‌ها و پایگاه‌داده' },
-                { key: 'media_watermark', title: 'Media & Watermark', title_fa: 'رسانه و واترمارک', desc: 'Compress, WebP, watermark', desc_fa: 'فشرده‌سازی، WebP، واترمارک و حذف EXIF' },
-                { key: 'jalali_calendar', title: 'Jalali Calendar', title_fa: 'تقویم جلالی', desc: 'Persian dates across admin', desc_fa: 'نمایش و انتخاب تاریخ شمسی در کل وردپرس' },
-                { key: 'pwa', title: 'Progressive Web App', title_fa: 'اپلیکیشن وب پیشرفته (PWA)', desc: 'Installable app, offline, manifest', desc_fa: 'نصب‌پذیر، آفلاین، مانیفست و Service Worker — تنظیمات در سئوی سایت' }
+                { key: 'seo_engine', icon: 'solar:magnifer-bold-duotone', title: 'SEO Engine', title_fa: 'موتور سئو و اسکیما', desc: 'Meta, schema, sitemap, canonical', desc_fa: 'متا، اسکیما، نقشه سایت، کانونیکال و ممیزی سئو' },
+                { key: 'store', icon: 'solar:shop-bold-duotone', title: 'Store', title_fa: 'فروشگاه', desc: 'WooCommerce products, SEO wizard, sales stats', desc_fa: 'محصولات ووکامرس، ویزارد سئو، آمار فروش — نیاز به ووکامرس' },
+                { key: 'ai_studio', icon: 'solar:ghost-bold-duotone', title: 'AI Studio', title_fa: 'استودیو هوش مصنوعی', desc: 'Text & image AI providers', desc_fa: 'اتصال موتورهای متنی و تصویری برای تولید محتوا و سئو' },
+                { key: 'speed_cache', icon: 'solar:bolt-bold-duotone', title: 'Cache & Speed', title_fa: 'کش و سرعت', desc: 'Page cache, assets, DB optimize', desc_fa: 'کش صفحه، بهینه‌سازی فایل‌ها و پایگاه‌داده' },
+                { key: 'media_watermark', icon: 'solar:gallery-bold-duotone', title: 'Media & Watermark', title_fa: 'رسانه و واترمارک', desc: 'Compress, WebP, watermark', desc_fa: 'فشرده‌سازی، WebP، واترمارک و حذف EXIF' },
+                { key: 'jalali_calendar', icon: 'solar:calendar-bold-duotone', title: 'Jalali Calendar', title_fa: 'تقویم جلالی', desc: 'Persian dates across admin', desc_fa: 'نمایش و انتخاب تاریخ شمسی در کل وردپرس' },
+                { key: 'pwa', icon: 'solar:smartphone-bold-duotone', title: 'Progressive Web App', title_fa: 'اپلیکیشن وب پیشرفته (PWA)', desc: 'Installable app, offline, manifest', desc_fa: 'نصب‌پذیر، آفلاین، مانیفست و Service Worker — تنظیمات در سئوی سایت' }
             ],
 
             seoDrawer: { show: false, id: '', title: '' },
@@ -419,6 +444,54 @@
                         }
                     }).catch(function () {});
             },
+            loadPwa: function () {
+                var self = this;
+                var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
+                var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
+                fetch(root + 'pwa/settings', { credentials: 'same-origin', headers: { 'X-WP-Nonce': nonce } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        if (!j || !j.success || !j.data) return;
+                        if (j.data.settings) self.pwa = Object.assign({}, self.pwa, j.data.settings);
+                        self.pwaManifestUrl = j.data.manifest_url || '';
+                    }).catch(function () {});
+            },
+            savePwa: function () {
+                var self = this;
+                self.pwaSaving = true;
+                var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
+                var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
+                fetch(root + 'pwa/settings', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
+                    body: JSON.stringify({ settings: self.pwa })
+                }).then(function (r) { return r.json(); }).then(function (j) {
+                    self.pwaSaving = false;
+                    if (j && j.success && j.data && j.data.settings) {
+                        self.pwa = Object.assign({}, self.pwa, j.data.settings);
+                        self.pwaManifestUrl = j.data.manifest_url || self.pwaManifestUrl;
+                    }
+                    self.showToast((j && j.success) ? (self.isRtl ? 'تنظیمات PWA ذخیره شد' : 'PWA settings saved') : (self.isRtl ? 'خطا در ذخیره PWA' : 'PWA save failed'), (j && j.success) ? 'success' : 'error');
+                }).catch(function () {
+                    self.pwaSaving = false;
+                    self.showToast(self.isRtl ? 'خطا در ذخیره PWA' : 'PWA save failed', 'error');
+                });
+            },
+            pickPwaIcon: function (size) {
+                var self = this;
+                if (typeof wp === 'undefined' || !wp.media) {
+                    self.showToast(self.isRtl ? 'رسانه وردپرس در دسترس نیست' : 'WP media unavailable', 'error');
+                    return;
+                }
+                var frame = wp.media({ title: 'PWA icon ' + size, button: { text: 'Select' }, multiple: false });
+                frame.on('select', function () {
+                    var att = frame.state().get('selection').first().toJSON();
+                    if (!att || !att.url) return;
+                    if (String(size) === '192') self.pwa.icon_192 = att.url;
+                    else self.pwa.icon_512 = att.url;
+                });
+                frame.open();
+            },
             setTab: function (tab) {
                 if (!tab) return;
                 var self = this;
@@ -426,6 +499,9 @@
                 // keep moduleActive as-is (respect dashboard toggles)
                 if (tab === 'speed-cache' && typeof this.loadRedisSettings === 'function') {
                     try { this.loadRedisSettings(); } catch (e) {}
+                }
+                if (tab === 'settings-license' && typeof this.loadPwa === 'function') {
+                    try { this.loadPwa(); } catch (e) {}
                 }
                 this.pageLoading = true;
                 this.pageProgress = 40;
@@ -609,19 +685,42 @@ initDashboard: function () {
                     self.dashVisits.error = self.isRtl ? 'ماژول آنالیتیکس را فعال کنید یا کمی بعد دوباره تلاش کنید' : 'Enable analytics module or try again';
                 }).finally(function () { self.dashVisitsLoading = false; });
             },
-toggleCoreModule: function (key, enabled) {
+openStoreTab: function () {
+                if (!this.isModuleNavEnabled('store')) {
+                    this.showToast(this.isRtl ? 'ماژول فروشگاه غیرفعال است — از پیشخوان فعال کنید' : 'Store module is off', 'warning');
+                    return;
+                }
+                var woo = !!(window.bankaiData && bankaiData.wooActive) || !!(window.bankaiCoreData && bankaiCoreData.wooActive);
+                this.wooActive = !!woo;
+                // Always open the tab so the dependency empty-state (install/activate WC) is visible
+                if (!woo) {
+                    this.showToast(this.isRtl ? 'ووکامرس نصب یا فعال نیست — راهنما در صفحه فروشگاه نمایش داده می‌شود.' : 'WooCommerce is not active — see Store tab guidance.', 'warning');
+                }
+                this.setTab('store');
+            },
+            toggleCoreModule: function (key, enabled) {
                 var self = this;
                 var prev = self.moduleActive[key];
                 // Optimistic UI — instant feedback
                 self.moduleActive[key] = !!enabled;
                 self.moduleActive = Object.assign({}, self.moduleActive);
+                if (key === 'store' && enabled) {
+                    var wooOn = !!(window.bankaiData && bankaiData.wooActive) || !!(window.bankaiCoreData && bankaiCoreData.wooActive);
+                    if (!wooOn) {
+                        self.showToast(self.isRtl
+                            ? 'ووکامرس نصب/فعال نیست. از افزونه‌ها → نصب WooCommerce سپس این تیک را بزنید.'
+                            : 'WooCommerce is not active. Install it from Plugins, then enable Store.',
+                            'warning', 5000);
+                    }
+                }
 
                 var reverse = {
                     seo_engine: 'seo-engine',
                     speed_cache: 'speed-cache',
                     media_watermark: 'media-watermark',
                     ai_studio: 'ai-studio',
-                    jalali_calendar: 'jalali-calendar'
+                    jalali_calendar: 'jalali-calendar',
+                    store: 'store'
                 };
                 if (!enabled && reverse[key] && self.activeTab === reverse[key]) {
                     self.setTab('overview');

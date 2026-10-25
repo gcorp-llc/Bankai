@@ -35,8 +35,13 @@ class Bankai_LLMS_Txt {
     }
 
     public function add_rewrite_rules(): void {
-        add_rewrite_rule('^llms\.txt$', 'index.php?bankai_llms_txt=1', 'top');
-        add_rewrite_rule('^llms-full\.txt$', 'index.php?bankai_llms_txt=full', 'top');
+        add_rewrite_rule('^llms\.txt/?$', 'index.php?bankai_llms_txt=1', 'top');
+        add_rewrite_rule('^llms-full\.txt/?$', 'index.php?bankai_llms_txt=full', 'top');
+        $ver = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1';
+        if (get_option('bankai_llms_rewrite_v') !== $ver) {
+            flush_rewrite_rules(false);
+            update_option('bankai_llms_rewrite_v', $ver, false);
+        }
     }
 
     public function add_query_vars(array $vars): array {
@@ -46,6 +51,15 @@ class Bankai_LLMS_Txt {
 
     public function render_llms_txt(): void {
         $mode = get_query_var('bankai_llms_txt');
+        if (!$mode) {
+            $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+            $path = untrailingslashit((string) (wp_parse_url($uri, PHP_URL_PATH) ?: $uri));
+            if (preg_match('#/llms-full\.txt$#i', $path)) {
+                $mode = 'full';
+            } elseif (preg_match('#/llms\.txt$#i', $path)) {
+                $mode = '1';
+            }
+        }
         if (!$mode) {
             return;
         }

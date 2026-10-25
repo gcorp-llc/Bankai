@@ -294,6 +294,23 @@ class Bankai_Admin_Menu {
         );
 
         // Articles hub module (Alpine.data) — must register before Alpine boots
+        if (is_file(BANKAI_CORE_DIR . 'assets/js/store-hub.js')) {
+            wp_enqueue_script(
+                'bankai-store-hub',
+                bankai_asset_url('js/store-hub.js'),
+                ['bankai-admin'],
+                $js_ver('store-hub.js'),
+                true
+            );
+        }
+        if (is_file(BANKAI_CORE_DIR . 'assets/css/store-hub.css')) {
+            wp_enqueue_style(
+                'bankai-store-hub-css',
+                bankai_asset_url('css/store-hub.css'),
+                ['bankai-admin'],
+                (defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0') . '.' . (string) filemtime(BANKAI_CORE_DIR . 'assets/css/store-hub.css')
+            );
+        }
         if (is_file(BANKAI_CORE_DIR . 'assets/js/articles-hub.js')) {
             wp_enqueue_script(
                 'bankai-articles-hub',
@@ -307,7 +324,7 @@ class Bankai_Admin_Menu {
             wp_enqueue_script(
                 'bankai-seo-engine-tab',
                 bankai_asset_url('js/seo-engine-tab.js'),
-                ['bankai-admin-js'],
+                ['bankai-admin-js', 'iconify-icon'],
                 $js_ver('seo-engine-tab.js'),
                 true
             );
@@ -337,11 +354,29 @@ class Bankai_Admin_Menu {
                 $js_ver('ai-studio-tab.js')
             );
         }
+        // Solar Icons via Iconify (for Speed & Cache and other tabs)
+        wp_enqueue_script(
+            'iconify-icon',
+            'https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js',
+            [],
+            '2.1.0',
+            true
+        );
+
+        if (is_file(BANKAI_CORE_DIR . 'assets/css/wpr-layout.css')) {
+            wp_enqueue_style(
+                'bankai-wpr-layout',
+                bankai_asset_url('css/wpr-layout.css'),
+                ['bankai-admin-css'],
+                defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0'
+            );
+        }
+
         if (is_file(BANKAI_CORE_DIR . 'assets/js/speed-cache-tab.js')) {
             wp_enqueue_script(
                 'bankai-speed-cache-tab',
                 bankai_asset_url('js/speed-cache-tab.js'),
-                ['bankai-admin-js'],
+                ['bankai-admin-js', 'iconify-icon'],
                 $js_ver('speed-cache-tab.js'),
                 true
             );
@@ -398,6 +433,7 @@ class Bankai_Admin_Menu {
             'locale'     => get_user_locale(),
             'version'    => BANKAI_CORE_VERSION,
             'activeTab'  => $this->get_current_tab(),
+            'wooActive'  => class_exists('WooCommerce'),
             'i18n'       => [
                 'saving'  => __('در حال ذخیره‌سازی...', 'bankai-core'),
                 'saved'   => __('ذخیره شد', 'bankai-core'),
@@ -461,7 +497,7 @@ class Bankai_Admin_Menu {
         if (!empty($_GET['bankai_tab'])) {
             $tab = sanitize_key(wp_unslash($_GET['bankai_tab']));
             $allowed = [
-                'overview', 'articles', 'seo-engine', 'ai-studio',
+                'overview', 'store', 'articles', 'seo-engine', 'ai-studio',
                 'speed-cache', 'media-watermark', 'settings-license',
                 'jalali-calendar', 'theme-kits',
             ];
@@ -486,6 +522,7 @@ class Bankai_Admin_Menu {
     }
 
     public function get_initial_state_data(): array {
+        $woo_active = class_exists('WooCommerce');
         $system_report = sprintf(
             "=== Bankai Core Diagnostic Telemetry ===\nPHP: %s | WP: %s | Server: %s | Memory Limit: %s\nActive Modules: 7/7 Enabled | Autonomous Engine Status: OPTIMAL",
             phpversion(),

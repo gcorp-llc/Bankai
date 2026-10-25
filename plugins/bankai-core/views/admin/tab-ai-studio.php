@@ -75,48 +75,58 @@ foreach ($image_status as $row) {
 
 
 
-<div id="tab-ai-studio" class="bankai-tab-pane" :class="{ 'is-active-tab': activeTab === 'ai-studio' }" x-show="activeTab === 'ai-studio'" x-cloak>
-<div class="bankai-ai-studio-root" x-data="bankaiAiStudioRoot" x-init="defaultProvider = '<?php echo esc_js($default_p); ?>'; defaultProviderName = '<?php echo esc_js($default_name); ?>'; imageDefault = '<?php echo esc_js($image_default); ?>'; imgProvider = imageDefault || ''; providerNames = <?php echo wp_json_encode(array_map(function($m){ return $m['name'] ?? ($m['label'] ?? ''); }, $catalog), JSON_UNESCAPED_UNICODE); ?>; initPage();">
+<div id="tab-ai-studio" class="bankai-tab-pane bk-orange-shell-host" :class="{ 'is-active-tab': activeTab === 'ai-studio' }" x-show="activeTab === 'ai-studio'" x-cloak>
+<?php
+$__pn = [];
+foreach ((array) $catalog as $cid => $meta) {
+    if (is_array($meta)) {
+        $__pn[(string) ($meta['id'] ?? $cid)] = (string) ($meta['name'] ?? $meta['label'] ?? $cid);
+    }
+}
+?>
+<script type="application/json" id="bankai-ai-provider-names"><?php echo wp_json_encode($__pn, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
+<div class="bankai-ai-studio-root" x-data="bankaiAiStudioRoot" x-init="init(); defaultProvider = '<?php echo esc_js($default_p); ?>'; defaultProviderName = '<?php echo esc_js($default_name); ?>'; imageDefault = '<?php echo esc_js($image_default); ?>'; imgProvider = imageDefault || ''; (function(){ try { var el=document.getElementById('bankai-ai-provider-names'); if(el){ providerNames = JSON.parse(el.textContent||'{}'); } } catch(e){ providerNames = {}; } })(); initPage();">
     <!-- Auto Connection Testing Indicator -->
-    <div class="bk-vault" x-show="checkingConnections" x-cloak style="background:#eef6fc;border-color:#0078d4;margin-bottom:14px">
+    <div class="bk-vault" x-show="checkingConnections" x-cloak style="margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:12px">
-        <span class="bk-btn-spin" style="width:18px;height:18px;border-width:2px;border-color:#0078d4 transparent #0078d4 transparent"></span>
-        <strong style="font-size:13px;color:#0078d4">در حال تست بلادرنگ اتصالات و بررسی سلامت هوش‌های مصنوعی…</strong>
+        <span class="bk-btn-spin" style="width:18px;height:18px;border-width:2px;border-color:#fc4c2f transparent #fc4c2f transparent"></span>
+        <iconify-icon icon="solar:shield-network-bold-duotone" width="20" style="color:#fc4c2f"></iconify-icon>
+        <strong style="font-size:13px">در حال تست بلادرنگ اتصالات و بررسی سلامت هوش‌های مصنوعی…</strong>
       </div>
     </div>
 
-    <div class="bk-lg-header bk-wm-hero bk-page-hero">
-        <div class="bk-wm-hero__main">
-            <div class="bk-wm-hero__icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a4 4 0 014 4v1h1a3 3 0 010 6h-1v1a4 4 0 11-8 0v-1H7a3 3 0 010-6h1V6a4 4 0 014-4z"/><circle cx="12" cy="12" r="1.5"/></svg>
-            </div>
-            <div>
-                <div class="bk-wm-hero__title-row">
-                    <h2>استودیو هوش مصنوعی</h2>
-                    <span class="bk-wm-pill">Multi-LLM</span>
-                </div>
-                <p>کلید API، مدل فعال، ایجنت‌های سفارشی و موتورهای متنی/تصویری</p>
-            </div>
-        </div>
-        <div class="bk-wm-hero__actions">
-            <button type="button" class="bk-wm-chip-btn" @click="testAllConnections()" :disabled="busy" x-show="aiMode==='text'">
-                <span x-show="!busy">تست همه اتصالات</span>
-                <span x-show="busy" x-cloak>در حال تست…</span>
-            </button>
-            <button type="button" class="bk-wm-chip-btn" @click="openAddModal()" x-show="aiMode==='text'" style="background:rgba(255,255,255,.95)!important;color:#5b21b6!important">افزودن هوش مصنوعی</button>
-        </div>
+  <div class="bk-orange-shell">
+  <header class="bk-top-head">
+    <div class="bk-top-head__brand">
+      <span class="bk-top-head__logo"><iconify-icon icon="solar:ghost-bold-duotone" width="24" height="24"></iconify-icon></span>
+      <div>
+        <strong>استودیو هوش مصنوعی</strong>
+        <small>کلید API · مدل فعال · متنی / تصویری</small>
+      </div>
     </div>
-    <div class="bk-capsule-tabs bk-art-tabs bk-ai-mode-tabs" role="tablist">
-    <button type="button" class="bk-capsule-tab" :class="{'is-active': aiMode==='text'}" @click="aiMode='text'" title="هوش‌های مصنوعی متنی">
-      <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
-      <span class="bk-capsule-label">متنی</span>
+    <div class="bk-top-head__actions">
+      <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="testAllConnections()" :disabled="busy" x-show="aiMode==='text'">
+        <iconify-icon icon="solar:shield-check-bold-duotone" width="16"></iconify-icon>
+        <span x-show="!busy">تست همه اتصالات</span>
+        <span x-show="busy" x-cloak>در حال تست…</span>
+      </button>
+      <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="openAddModal()" x-show="aiMode==='text'">
+        <iconify-icon icon="solar:add-circle-bold-duotone" width="16"></iconify-icon>
+        افزودن هوش مصنوعی
+      </button>
+    </div>
+  </header>
+  <nav class="bk-top-tabs" role="tablist">
+    <button type="button" class="bk-top-tab" :class="{'is-active': aiMode==='text'}" @click="aiMode='text'">
+      <iconify-icon icon="solar:text-bold-duotone" width="18"></iconify-icon>
+      <span>متنی</span>
     </button>
-    <button type="button" class="bk-capsule-tab" :class="{'is-active': aiMode==='image'}" @click="aiMode='image'" title="هوش مصنوعی تصویری">
-      <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>
-      <span class="bk-capsule-label">تصویری</span>
+    <button type="button" class="bk-top-tab" :class="{'is-active': aiMode==='image'}" @click="aiMode='image'">
+      <iconify-icon icon="solar:gallery-bold-duotone" width="18"></iconify-icon>
+      <span>تصویری</span>
     </button>
-  </div>
-
+  </nav>
+  <div class="bk-top-body">
   <div x-show="aiMode==='text'" style="display:block">
   <!-- Visual Default Engine Selector for Text AI -->
   <div class="bk-default-engine-card-section" style="margin-bottom:18px;background:#fff;border:1px solid var(--bk-line);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
@@ -128,43 +138,32 @@ foreach ($image_status as $row) {
         </h3>
         <p style="margin:4px 0 0;font-size:11px;color:var(--bk-muted)">روی کارت کلیک کنید تا به عنوان موتور اصلی فعال انتخاب شود (تنها ارائه‌دهندگان دارای API Key و فعال لیست می‌شوند)</p>
       </div>
-      <div style="min-width:220px">
-        <select class="bk-input" x-model="defaultProvider" @change="updateDefaultProvider()" style="font-weight:700;padding:8px 12px;border-radius:10px">
-          <template x-for="p in activeTextProviders" :key="p.id">
-            <option :value="p.id" x-text="p.name + (p.model ? ' (' + p.model + ')' : '')"></option>
-          </template>
-          <template x-if="!activeTextProviders.length">
-            <option value="" disabled selected>هیچ موتور متنی فعالی یافت نشد</option>
-          </template>
-        </select>
-      </div>
+      
     </div>
 
     <div class="bk-default-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px">
-      <?php foreach ($catalog as $id => $meta):
-        $st = $status_map[$id] ?? [];
-        $sel_model = $models[$id] ?? ($meta['default'] ?? '');
-        $accent = $meta['accent'] ?? '#0078d4';
-        $has_k = !empty($st['has_key']);
-      ?>
-      <div class="bk-default-card"
-           :class="{'is-active-default': defaultProvider === '<?php echo esc_js($id); ?>', 'is-disabled': !hasKeyMap['<?php echo esc_js($id); ?>']}"
-           @click="if (hasKeyMap['<?php echo esc_js($id); ?>']) { defaultProvider = '<?php echo esc_js($id); ?>'; updateDefaultProvider(); }"
-           style="--dc-accent:<?php echo esc_attr($accent); ?>">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <span class="bk-dc-title"><?php echo esc_html($meta['name'] ?? $id); ?></span>
-          <template x-if="defaultProvider === '<?php echo esc_js($id); ?>'">
-            <span class="bk-dc-badge">پیش‌فرض ✓</span>
-          </template>
+      <template x-for="p in activeTextProviders" :key="p.id">
+        <div class="bk-default-card"
+             :class="{'is-active-default': defaultProvider === p.id}"
+             @click="defaultProvider = p.id; updateDefaultProvider();"
+             :style="'--dc-accent:' + (p.accent || '#0078d4')">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span class="bk-dc-title" x-text="p.name"></span>
+            <template x-if="defaultProvider === p.id">
+              <span class="bk-dc-badge" style="background:#10b981;color:white;padding:2px 8px;border-radius:9999px;font-size:10px;">پیش‌فرض ✓</span>
+            </template>
+          </div>
+          <div style="font-size:10px;color:var(--bk-soft);direction:ltr;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="p.model || 'مدل پیش‌فرض'"></div>
+          <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
+            <span class="bk-chip is-green" x-text="statusMap[p.id]?.label || 'متصل ✓'"></span>
+          </div>
         </div>
-        <div style="font-size:10px;color:var(--bk-soft);direction:ltr;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-          <?php echo esc_html($sel_model); ?>
+      </template>
+      <template x-if="!activeTextProviders.length">
+        <div style="grid-column: 1 / -1; text-align:center; padding:40px 20px; color:#ef4444; background:#fef2f2; border-radius:12px;">
+          هیچ موتور متنی فعالی یافت نشد. لطفاً در بخش تنظیمات کلید API اضافه کنید و تست کنید.
         </div>
-        <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
-          <span class="bk-chip" :class="statusMap['<?php echo esc_js($id); ?>']?.status === 'ready' ? 'is-green' : (hasKeyMap['<?php echo esc_js($id); ?>'] ? 'is-blue' : '')" x-text="statusMap['<?php echo esc_js($id); ?>']?.label || (hasKeyMap['<?php echo esc_js($id); ?>'] ? 'دارای کلید' : 'بدون کلید')"></span>
-        </div>
-      </div>
-      <?php endforeach; ?>
+      </template>
     </div>
   </div>
 
@@ -335,42 +334,32 @@ foreach ($image_status as $row) {
           </h3>
           <p style="margin:4px 0 0;font-size:11px;color:var(--bk-muted)">روی کارت کلیک کنید تا به عنوان موتور اصلی فعال ساخت تصویر انتخاب شود (تنها ارائه‌دهندگان دارای API Key و فعال لیست می‌شوند)</p>
         </div>
-        <div style="min-width:220px">
-          <select class="bk-input" x-model="imageDefault" @change="setImageDefault()" style="font-weight:700;padding:8px 12px;border-radius:10px">
-            <template x-for="p in activeImageProviders" :key="p.id">
-              <option :value="p.id" x-text="p.name + (p.model ? ' (' + p.model + ')' : '')"></option>
-            </template>
-            <template x-if="!activeImageProviders.length">
-              <option value="" disabled selected>هیچ موتور تصویری فعالی یافت نشد</option>
-            </template>
-          </select>
-        </div>
+        
       </div>
 
       <div class="bk-default-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px">
-        <?php foreach ($image_catalog as $id => $meta):
-          $st = $image_status_map[$id] ?? [];
-          $sel_model = $image_models[$id] ?? ($meta['default'] ?? '');
-          $accent = $meta['accent'] ?? '#0078d4';
-        ?>
-        <div class="bk-default-card"
-             :class="{'is-active-default': imageDefault === '<?php echo esc_js($id); ?>', 'is-disabled': !imageHasKeyMap['<?php echo esc_js($id); ?>']}"
-             @click="if (imageHasKeyMap['<?php echo esc_js($id); ?>']) { imageDefault = '<?php echo esc_js($id); ?>'; setImageDefault(); }"
-             style="--dc-accent:<?php echo esc_attr($accent); ?>">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <span class="bk-dc-title"><?php echo esc_html($meta['name'] ?? $id); ?></span>
-            <template x-if="imageDefault === '<?php echo esc_js($id); ?>'">
-              <span class="bk-dc-badge">پیش‌فرض ✓</span>
-            </template>
+        <template x-for="p in activeImageProviders" :key="p.id">
+          <div class="bk-default-card"
+               :class="{'is-active-default': imageDefault === p.id}"
+               @click="imageDefault = p.id; setImageDefault();"
+               :style="'--dc-accent:' + (p.accent || '#10A37F')">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span class="bk-dc-title" x-text="p.name"></span>
+              <template x-if="imageDefault === p.id">
+                <span class="bk-dc-badge" style="background:#10b981;color:white;padding:2px 8px;border-radius:9999px;font-size:10px;">پیش‌فرض ✓</span>
+              </template>
+            </div>
+            <div style="font-size:10px;color:var(--bk-soft);direction:ltr;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="p.model || 'مدل پیش‌فرض'"></div>
+            <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
+              <span class="bk-chip is-green" x-text="imageStatusMap[p.id]?.label || 'متصل ✓'"></span>
+            </div>
           </div>
-          <div style="font-size:10px;color:var(--bk-soft);direction:ltr;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-            <?php echo esc_html($sel_model); ?>
+        </template>
+        <template x-if="!activeImageProviders.length">
+          <div style="grid-column: 1 / -1; text-align:center; padding:40px 20px; color:#ef4444; background:#fef2f2; border-radius:12px;">
+            هیچ موتور تصویری فعالی یافت نشد. لطفاً کلید API اضافه کنید و تست کنید.
           </div>
-          <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
-            <span class="bk-chip" :class="imageStatusMap['<?php echo esc_js($id); ?>']?.status === 'ready' ? 'is-green' : (imageHasKeyMap['<?php echo esc_js($id); ?>'] ? 'is-blue' : '')" x-text="imageStatusMap['<?php echo esc_js($id); ?>']?.label || (imageHasKeyMap['<?php echo esc_js($id); ?>'] ? 'دارای کلید' : 'بدون کلید')"></span>
-          </div>
-        </div>
-        <?php endforeach; ?>
+        </template>
       </div>
     </div>
 
@@ -501,14 +490,6 @@ foreach ($image_status as $row) {
         </div>
         <div class="bk-field">
           <label>موتور انتخاب شده برای تولید</label>
-          <select x-model="imgProvider">
-            <template x-for="p in activeImageProviders" :key="p.id">
-              <option :value="p.id" x-text="p.name + (p.model ? ' (' + p.model + ')' : '')"></option>
-            </template>
-            <template x-if="!activeImageProviders.length">
-              <option value="" disabled selected>هیچ موتور تصویری دارای کلید API یافت نشد</option>
-            </template>
-          </select>
         </div>
         <div class="bk-field">
           <label>شناسه پست (اختیاری — برای ست‌کردن کاور)</label>
@@ -542,6 +523,9 @@ foreach ($image_status as $row) {
 
 
   <!-- ADD PROVIDER MODAL -->
+  </div><!-- /.bk-top-body -->
+  </div><!-- /.bk-orange-shell -->
+
   <div class="bk-modal-shell" x-show="addModal" x-cloak @click.self="addModal=false">
     <div class="bk-modal-panel" @click.stop>
       <div class="bk-modal-head">

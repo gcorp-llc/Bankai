@@ -73,7 +73,7 @@ $is_on = static function (string $key) use ($active_map): bool {
 
         <div class="bankai-brand-card bankai-ekit-brand">
             <div class="bankai-brand-logo">
-                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                <iconify-icon icon="solar:bolt-bold-duotone" width="22" height="22" aria-hidden="true"></iconify-icon>
             </div>
             <div class="bankai-brand-info">
                 <div class="bankai-brand-title">BANKAI CORE</div>
@@ -91,15 +91,23 @@ $is_on = static function (string $key) use ($active_map): bool {
                 <button type="button" id="nav-tab-overview" class="bankai-nav-btn"
                         :class="{ 'active': activeTab === 'overview' }"
                         @click="setTab('overview')">
-                    <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+                    <div class="bankai-nav-icon"><iconify-icon icon="solar:widget-2-bold-duotone" width="20" height="20" aria-hidden="true"></iconify-icon></div>
                     <span><?php echo esc_html__('پیشخوان و سلامت', 'bankai-core'); ?></span>
                 </button>
 
-                <!-- 2. مدیریت محتوا -->
+                <!-- فروشگاه — بلافاصله قبل از مدیریت محتوا -->
+                <button type="button" id="nav-tab-store" class="bankai-nav-btn"
+                        :class="{ 'active': activeTab === 'store', 'is-off': !isModuleNavEnabled('store') || !wooActive }"
+                        @click="openStoreTab()">
+                    <div class="bankai-nav-icon"><iconify-icon icon="solar:shop-bold-duotone" width="20" height="20" aria-hidden="true"></iconify-icon></div>
+                    <span><?php echo esc_html__('فروشگاه', 'bankai-core'); ?></span>
+                </button>
+
+                <!-- مدیریت محتوا -->
                 <button type="button" id="nav-tab-articles" class="bankai-nav-btn"
                         :class="{ 'active': activeTab === 'articles' }"
                         @click="setTab('articles')">
-                    <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h12a2 2 0 0 1 2 2v14l-4-2-4 2-4-2-4 2V6a2 2 0 0 1 2-2z"/><path d="M8 8h8M8 12h6"/></svg></div>
+                    <div class="bankai-nav-icon"><iconify-icon icon="solar:document-text-bold-duotone" width="20" height="20" aria-hidden="true"></iconify-icon></div>
                     <span><?php echo esc_html__('مدیریت محتوا', 'bankai-core'); ?></span>
                 </button>
 
@@ -107,7 +115,7 @@ $is_on = static function (string $key) use ($active_map): bool {
                 <button type="button" id="nav-tab-seo" class="bankai-nav-btn"
                         :class="{ 'active': activeTab === 'seo-engine', 'is-off': !isModuleNavEnabled('seo-engine') }"
                         @click="isModuleNavEnabled('seo-engine') ? setTab('seo-engine') : showToast(isRtl ? 'ماژول سئو غیرفعال است — از پیشخوان فعال کنید' : 'SEO module is off', 'warning')">
-                    <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+                    <div class="bankai-nav-icon"><iconify-icon icon="solar:magnifer-bold-duotone" width="20" height="20" aria-hidden="true"></iconify-icon></div>
                     <span><?php echo esc_html__('موتور سئو و اسکیما', 'bankai-core'); ?></span>
                 </button>
 
@@ -115,7 +123,7 @@ $is_on = static function (string $key) use ($active_map): bool {
                 <button type="button" id="nav-tab-ai" class="bankai-nav-btn"
                         :class="{ 'active': activeTab === 'ai-studio', 'is-off': !isModuleNavEnabled('ai-studio') }"
                         @click="isModuleNavEnabled('ai-studio') ? setTab('ai-studio') : showToast(isRtl ? 'استودیو AI غیرفعال است — از پیشخوان فعال کنید' : 'AI Studio is off', 'warning')">
-                    <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V5M9 12h.01M15 12h.01M9 16h6"/></svg></div>
+                    <div class="bankai-nav-icon"><iconify-icon icon="solar:ghost-bold-duotone" width="20" height="20" aria-hidden="true"></iconify-icon></div>
                     <span><?php echo esc_html__('استودیو هوش مصنوعی', 'bankai-core'); ?></span>
                 </button>
 
@@ -123,7 +131,7 @@ $is_on = static function (string $key) use ($active_map): bool {
                 <button type="button" id="nav-tab-speed" class="bankai-nav-btn"
                         :class="{ 'active': activeTab === 'speed-cache', 'is-off': !isModuleNavEnabled('speed-cache') }"
                         @click="isModuleNavEnabled('speed-cache') ? setTab('speed-cache') : showToast(isRtl ? 'ماژول کش غیرفعال است' : 'Speed module is off', 'warning')">
-                    <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+                    <div class="bankai-nav-icon"><iconify-icon icon="solar:bolt-bold-duotone" width="20" height="20" aria-hidden="true"></iconify-icon></div>
                     <span><?php echo esc_html__('کش و سرعت', 'bankai-core'); ?></span>
                 </button>
 
@@ -131,7 +139,7 @@ $is_on = static function (string $key) use ($active_map): bool {
                 <button type="button" id="nav-tab-media" class="bankai-nav-btn"
                         :class="{ 'active': activeTab === 'media-watermark', 'is-off': !isModuleNavEnabled('media-watermark') }"
                         @click="isModuleNavEnabled('media-watermark') ? setTab('media-watermark') : showToast(isRtl ? 'ماژول رسانه غیرفعال است' : 'Media module is off', 'warning')">
-                    <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M21 9v10a2 2 0 0 1-2 2H7"/><circle cx="9" cy="11" r="1.5"/><path d="M3 15l4-3 3 2 4-4 3 3"/></svg></div>
+                    <div class="bankai-nav-icon"><iconify-icon icon="solar:gallery-bold-duotone" width="20" height="20" aria-hidden="true"></iconify-icon></div>
                     <span><?php echo esc_html__('رسانه و واترمارک', 'bankai-core'); ?></span>
                 </button>
 
@@ -139,7 +147,7 @@ $is_on = static function (string $key) use ($active_map): bool {
                 <button type="button" id="nav-tab-settings" class="bankai-nav-btn"
                         :class="{ 'active': activeTab === 'settings-license' }"
                         @click="setTab('settings-license')">
-                    <div class="bankai-nav-icon"><svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg></div>
+                    <div class="bankai-nav-icon"><iconify-icon icon="solar:settings-bold-duotone" width="20" height="20" aria-hidden="true"></iconify-icon></div>
                     <span><?php echo esc_html__('تنظیمات و لایسنس', 'bankai-core'); ?></span>
                 </button>
             </div>
@@ -156,7 +164,7 @@ $is_on = static function (string $key) use ($active_map): bool {
             <span class="php-badge">PHP <?php echo esc_html($bk_tel['php']); ?></span>
         </div>
         <div class="telemetry-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:10px;line-height:1.4;">
-            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">MySQL</span><strong style="color:#0f172a;font-weight:800" font-size:11px;word-break:break-all"><?php echo esc_html(wp_html_excerpt($bk_tel['mysql'], 24, '…')); ?></strong></div>
+            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">MySQL</span><strong style="color:#0f172a;font-weight:800;font-size:11px;word-break:break-all"><?php echo esc_html(wp_html_excerpt($bk_tel['mysql'], 24, '…')); ?></strong></div>
             <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">حافظه PHP</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['memory_usage']); ?> / <?php echo esc_html($bk_tel['memory_limit']); ?></strong></div>
             <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">بار پردازنده</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['load']); ?></strong></div>
             <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">دیسک آزاد</span><strong style="color:#0f172a;font-weight:800" font-size:10px"><?php echo esc_html($bk_tel['disk']); ?></strong></div>

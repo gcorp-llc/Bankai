@@ -33,52 +33,50 @@ $positions = [
 ];
 ?>
 
-<div id="tab-media-watermark" class="bankai-tab-pane bk-wm-shell" :class="{ 'is-active-tab': activeTab === 'media-watermark' }" x-show="activeTab === 'media-watermark'" x-cloak>
+<div id="tab-media-watermark" class="bankai-tab-pane bk-orange-shell" :class="{ 'is-active-tab': activeTab === 'media-watermark' }" x-show="activeTab === 'media-watermark'" x-cloak>
 
-    <!-- Hero -->
-    <div class="bk-lg-header bk-wm-hero">
-        <div class="bk-wm-hero__main">
-            <div class="bk-wm-hero__icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2.25 15.75l5.16-5.16a2.25 2.25 0 013.18 0l5.16 5.16m-1.5-1.5l1.41-1.41a2.25 2.25 0 013.18 0l2.91 2.91M3.75 6h16.5A1.5 1.5 0 0121.75 7.5v12a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5v-12A1.5 1.5 0 013.75 6z"/></svg>
-            </div>
-            <div>
-                <div class="bk-wm-hero__title-row">
-                    <h2>رسانه و واترمارک</h2>
-                    <span class="bk-wm-pill">موتور نسل سوم</span>
-                </div>
-                <p>فشرده‌سازی، WebP، واترمارک تعاملی و پاکسازی متادیتا EXIF</p>
-            </div>
-        </div>
-        <div class="bk-wm-hero__actions">
-            <button type="button" class="bk-wm-chip-btn" @click="regenerateThumbnails()" :disabled="busy">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 9h5V4M3 15v5h5M21 9A9 9 0 005.6 5.6M3 15a9 9 0 0015.4 3.4"/></svg>
-                بازتولید بندانگشتی
-            </button>
-        </div>
+  <header class="bk-top-head">
+    <div class="bk-top-head__brand">
+      <span class="bk-top-head__logo"><iconify-icon icon="solar:gallery-bold-duotone" width="24" height="24"></iconify-icon></span>
+      <div>
+        <strong>رسانه و واترمارک</strong>
+        <small>فشرده‌سازی · WebP · واترمارک · EXIF</small>
+      </div>
     </div>
+    <div class="bk-top-head__actions">
+      <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="regenerateThumbnails()" :disabled="busy">
+        <iconify-icon icon="solar:restart-bold-duotone" width="16"></iconify-icon>
+        بازتولید بندانگشتی
+      </button>
+    </div>
+  </header>
 
-    <!-- Env status -->
-    <div class="bk-wm-env">
+  <nav class="bk-top-tabs" role="tablist">
+    <button type="button" class="bk-top-tab" :class="{ 'is-active': mediaSubTab === 'watermark' }" @click="mediaSubTab = 'watermark'">
+      <iconify-icon icon="solar:pen-new-square-bold-duotone" width="18"></iconify-icon>
+      <span>واترمارک</span>
+    </button>
+    <button type="button" class="bk-top-tab" :class="{ 'is-active': mediaSubTab === 'compress' }" @click="mediaSubTab = 'compress'; loadMediaLibrary && loadMediaLibrary(true)">
+      <iconify-icon icon="solar:minimize-square-2-bold-duotone" width="18"></iconify-icon>
+      <span>فشرده‌سازی</span>
+    </button>
+  </nav>
+
+  <div class="bk-top-body">
+    <div class="bk-wm-env" style="margin-bottom:14px">
         <span class="bk-wm-env-label">وضعیت ماژول‌های پردازش:</span>
         <span class="bk-wm-env-chip is-ok"><i></i> Lazy Load</span>
-        <span class="bk-wm-env-chip <?php echo $webp_ok ? 'is-ok' : 'is-bad'; ?>"><i></i> WebP / AVIF</span>
-        <span class="bk-wm-env-chip <?php echo $imagick_ok ? 'is-ok' : 'is-muted'; ?>"><i></i> Imagick</span>
-        <span class="bk-wm-env-chip <?php echo $gd_ok ? 'is-ok' : 'is-bad'; ?>"><i></i> GD Library</span>
+        <span class="bk-wm-env-chip <?php echo $webp_ok ? 'is-ok' : 'is-bad'; ?>"><i></i> WebP <?php echo $webp_ok ? '✓' : '✗'; ?></span>
+        <span class="bk-wm-env-chip <?php echo $imagick_ok ? 'is-ok' : 'is-muted'; ?>"><i></i> Imagick <?php echo $imagick_ok ? '✓' : '—'; ?></span>
+        <span class="bk-wm-env-chip <?php echo $gd_ok ? 'is-ok' : 'is-bad'; ?>"><i></i> GD Library <?php echo $gd_ok ? '✓' : '✗'; ?></span>
     </div>
-
-    <!-- Sub tabs -->
-    <div class="bk-capsule-tabs bk-art-tabs bk-wm-subtabs" role="tablist">
-        <button type="button" class="bk-capsule-tab" :class="{ 'is-active': mediaSubTab === 'watermark' }" @click="mediaSubTab = 'watermark'" title="استودیو واترمارک">
-            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M5 19h14"/></svg>
-            <span class="bk-capsule-label">واترمارک</span>
-        </button>
-        <button type="button" class="bk-capsule-tab" :class="{ 'is-active': mediaSubTab === 'compress' }" @click="mediaSubTab = 'compress'; loadMediaLibrary && loadMediaLibrary(true)" title="فشرده‌سازی تصاویر">
-            <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M4 14h6v6H4zM14 4h6v6h-6zM14 14h6v6h-6zM4 4h6v6H4z"/></svg>
-            <span class="bk-capsule-label">فشرده‌سازی</span>
-        </button>
+    <?php if (! $gd_ok): ?>
+    <div class="bk-dash-card" style="margin-bottom:14px;border-color:#fecaca;background:#fef2f2">
+      <strong style="color:#b91c1c">GD PHP فعال نیست</strong>
+      <p style="margin:6px 0 0;font-size:12px;color:#7f1d1d">فشرده‌سازی تصاویر به افزونه GD نیاز دارد. از هاست بخواهید extension <code>gd</code> را فعال کند (با پشتیبانی imagewebp).</p>
     </div>
+    <?php endif; ?>
 
-    <!-- ========== WATERMARK STUDIO ========== -->
     <div x-show="mediaSubTab === 'watermark'" x-cloak class="bk-wm-studio">
 
         <!-- Service enable bar -->
@@ -508,21 +506,7 @@ $positions = [
     </div>
 
 
-<!-- Media module drawer (optional) -->
-    <div x-show="mediaDrawer.show" x-cloak class="bankai-modal-shell" x-transition>
-        <div class="bankai-modal-panel" @click.outside="mediaDrawer.show=false">
-            <div class="bankai-modal-head">
-                <h3 class="bankai-modal-title" x-text="(mediaDrawer.title || '') + ' — تنظیمات'"></h3>
-                <button type="button" class="bankai-modal-close" @click="mediaDrawer.show=false">&times;</button>
-            </div>
-            <div class="bankai-modal-body">
-                <p style="margin:0;font-size:13px;color:#64748b">تنظیمات جزئی این ماژول از کارت‌های بالا یا بخش CDN در دسترس است.</p>
-            </div>
-            <div class="bankai-modal-foot">
-                <button type="button" class="bankai-btn-ghost" @click="mediaDrawer.show=false">بستن</button>
-            </div>
-        </div>
-    </div>
-<!-- end tab-media-watermark -->
-</div>
+</div><!-- /.bk-top-body -->
+</div><!-- /tab-media-watermark -->
+
 <!-- /tab-media-watermark root -->

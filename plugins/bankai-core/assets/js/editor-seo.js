@@ -117,6 +117,12 @@
         modalSubTab: 'geo',
         aiImgType: 'cover',
         aiImgStyle: 'photorealistic',
+        aiImgStep: 1,          // 1=select, 2=progress, 3=result
+        aiImgProgress: 0,
+        aiImgStepText: '',
+        aiImgResultUrl: '',
+        aiImgResultId: 0,
+        aiImgResultHtml: '',
         aiOptions: { style: 'seo', count: '5' },
         aiProvider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultAiProvider) || '',
         aiImageProvider: (window.bankaiEditorSeo && bankaiEditorSeo.defaultImageProvider) || '',
@@ -1935,30 +1941,41 @@
             const kw = (ctx.focus_keyword || (this.keywordList && this.keywordList[0]) || this.seo.focus_keyword || '').trim();
             const paras = this.extractParagraphs();
             const firstTwo = paras.slice(0, 2).join(' ').slice(0, 500);
+            const style = this.aiImgStyle || 'photorealistic';
+
+            const styleGuide = {
+                photorealistic: 'Ultra-realistic photography, natural skin tones if people appear, real-world lighting, shallow depth of field, shot on 35mm lens, high dynamic range, no CGI look, authentic textures.',
+                editorial: 'Editorial magazine photography, clean composition, soft natural light, professional documentary feel, muted color grade.',
+                cinematic: 'Cinematic still frame, anamorphic bokeh, dramatic but natural lighting, film grain subtle, wide emotional scene.',
+                illustration: 'High-end digital illustration, clean shapes, soft gradients, modern editorial illustration, not cartoonish.'
+            }[style] || style;
+
+            const common = [
+                'This image is for a WordPress article. Match the article topic accurately.',
+                'Article title: ' + (title || 'Untitled'),
+                kw ? ('Focus topic / keyword: ' + kw) : '',
+                'Visual style: ' + styleGuide,
+                'Composition: clear subject, balanced framing, suitable for web hero or in-article placement.',
+                'STRICT: no text, no letters, no watermark, no logo, no UI, no borders, no collages.'
+            ].filter(Boolean);
 
             if (purpose === 'cover') {
                 const story = firstTwo || this.getPlainContent().slice(0, 400);
                 return [
-                    'Create a professional editorial blog cover image that represents this article.',
-                    'Article title: ' + (title || 'Untitled'),
-                    kw ? ('Main keyword: ' + kw) : '',
-                    'Article introduction (first paragraphs): ' + (story || title || 'general topic'),
-                    'Style: cinematic lighting, high detail, photorealistic or refined illustration, 16:9 composition.',
-                    'Strict rules: no text, no letters, no watermark, no logo, no UI chrome.'
-                ].filter(Boolean).join('\n');
+                    'Create a photorealistic editorial COVER image for a blog article (16:9 feel).',
+                    'Story context: ' + (story || title || 'general topic'),
+                    ...common,
+                    'Prefer real environments and objects related to the topic; avoid abstract blobs.'
+                ].join('\n');
             }
 
-            // inline / section image
-            const sectionText = (sectionCtx && sectionCtx.context) ? sectionCtx.context : firstTwo;
+            const sectionText = (sectionCtx && (sectionCtx.context || sectionCtx.text || '')) || '';
             return [
-                'Create a high-quality illustrative photo for an article body section.',
-                'Article title: ' + (title || 'Untitled'),
-                kw ? ('Keyword: ' + kw) : '',
-                'This image must match the following surrounding paragraphs (before/after context):',
-                sectionText || title || 'article topic',
-                'Style: realistic, clean composition, related to the paragraph topic, suitable mid-article illustration.',
-                'Strict rules: no text overlay, no watermark, no logo.'
-            ].filter(Boolean).join('\n');
+                'Create a photorealistic INLINE illustration photo for an article section.',
+                'Surrounding content: ' + (sectionText || firstTwo || title || 'article topic'),
+                ...common,
+                'Make the scene look photographed in real life, not AI-plastic.'
+            ].join('\n');
         },
 
         async callImageAi(purpose, options) {
@@ -1973,6 +1990,11 @@
             body.append('prompt', prompt);
             if (options.section && options.section.context) {
                 body.append('section_context', options.section.context);
+            }
+            if (options.style) {
+                body.append('style', options.style);
+            } else if (this.aiImgStyle) {
+                body.append('style', this.aiImgStyle);
             }
             const ctx = this.getEditorContext();
             body.append('title', ctx.title || this.seo.title || '');
@@ -3608,41 +3630,122 @@
             }
         },
 
-        async generateAiArticleImage() {
-            const type = this.aiImgType || 'cover';
-            const style = this.aiImgStyle || 'photorealistic';
-            const styleLabels = {
-                photorealistic: 'واقع‌گرایانه با جزئیات بالا',
-                minimalist: 'مینیمال و شرکتی مدرن',
-                vector: 'تصویرسازی برداری',
-                render_3d: 'رندر سه‌بعدی دیجیتال',
-                cinematic: 'نورپردازی سینمایی و استودیویی',
-                infographic: 'اینفوگرافیک و آموزشی'
-            };
-            const styleText = styleLabels[style] || style;
+        async startAiImageFlow() {
+            this.aiImgStep = 2;
+            this.aiImgProgress = 5;
+            this.aiImgStepText = 'آماده‌سازی پرامپت و ترجمه به انگلیسی…';
+            this.aiImgResultUrl = '';
+            this.aiImgResultId = 0;
+            this.aiImgResultHtml = '';
             this.aiBusy = true;
             this.optBusy = true;
-            this.showToast('در حال شروع ساخت تصویر با سبک ' + styleText + '…', 'info');
             try {
+                const type = this.aiImgType || 'cover';
+                const style = this.aiImgStyle || 'photorealistic';
+                const styleLabels = {
+                    photorealistic: 'photorealistic high detail',
+                    minimalist: 'minimalist modern corporate',
+                    vector: 'vector illustration',
+                    render_3d: '3D digital render',
+                    cinematic: 'cinematic studio lighting',
+                    infographic: 'infographic educational'
+                };
                 const ctx = this.getEditorContext();
-                const prompt = (ctx.title || 'تصویر مقاله') + ' - سبک بصری: ' + styleText + ' - طراحی حرفه‌ای و با کیفیت بالا';
-                const imgResult = await this.callImageAi(type, { prompt, section: null });
-                if (!imgResult || (!imgResult.src && !imgResult.attachment_id && !imgResult.url)) {
+                const rawPrompt = [
+                    ctx.title || 'Article image',
+                    ctx.focus_keyword ? ('Keyword: ' + ctx.focus_keyword) : '',
+                    'Style: ' + (styleLabels[style] || style)
+                ].filter(Boolean).join(' — ');
+
+                this.aiImgProgress = 25;
+                this.aiImgStepText = 'ترجمه محتوا و ساخت پرامپت انگلیسی…';
+
+                // callImageAi will hit server which now translates Persian → English
+                this.aiImgProgress = 45;
+                this.aiImgStepText = 'ارسال به موتور تصویر و تولید…';
+                const imgResult = await this.callImageAi(type, {
+                    prompt: rawPrompt,
+                    section: null,
+                    style: style
+                });
+
+                this.aiImgProgress = 90;
+                this.aiImgStepText = 'ذخیره در کتابخانه رسانه…';
+
+                if (!imgResult || (!imgResult.url && !imgResult.src && !imgResult.attachment_id)) {
                     throw new Error('تصویر توسط هوش مصنوعی تولید نشد');
                 }
-                if (type === 'cover' && imgResult.src) {
-                    this.showToast('تصویر کاور با موفقیت تولید و اضافه شد', 'success');
-                } else {
-                    this.showToast('تصویر محتوا با موفقیت تولید و اضافه شد', 'success');
-                }
-                await this.scanPostImages();
-                this.closeAiModal();
+                this.aiImgResultUrl = imgResult.url || imgResult.src || '';
+                this.aiImgResultId = imgResult.attachment_id || 0;
+                this.aiImgResultHtml = imgResult.html || '';
+                this.aiImgProgress = 100;
+                this.aiImgStepText = 'آماده شد';
+                this.aiImgStep = 3;
+                this.showToast('تصویر با موفقیت تولید شد', 'success');
             } catch (e) {
-                this.showToast((e && e.message) || 'خطا در تولید تصویر با AI', 'error');
+                this.showToast((e && e.message) || 'خطا در تولید تصویر', 'error');
+                this.aiImgStep = 1;
             } finally {
                 this.aiBusy = false;
                 this.optBusy = false;
             }
+        },
+
+        async confirmAiImage() {
+            if (!this.aiImgResultUrl) return;
+            try {
+                if (this.aiImgType === 'cover' && this.aiImgResultId) {
+                    // already set as thumbnail on server when purpose=cover
+                    this.showToast('کاور تایید و به عنوان تصویر شاخص ست شد', 'success');
+                } else if (this.aiImgResultHtml) {
+                    this.insertContentIntoEditor(this.aiImgResultHtml, 'append');
+                    this.showToast('تصویر درون محتوا درج شد', 'success');
+                }
+                await this.scanPostImages();
+                this.aiImgStep = 1;
+                this.aiImgResultUrl = '';
+                this.aiImgResultId = 0;
+            } catch (e) {
+                this.showToast((e && e.message) || 'خطا در تایید', 'error');
+            }
+        },
+
+        async compressLastAiImage() {
+            if (!this.aiImgResultId) return;
+            this.showToast('فشرده‌سازی تصویر…', 'info');
+            try {
+                this.optBusy = true;
+                // reuse existing optimize pipeline if available
+                if (typeof this.runOptimizeImages === 'function') {
+                    await this.runOptimizeImages();
+                }
+                this.showToast('فشرده‌سازی انجام شد', 'success');
+            } catch (e) {
+                this.showToast((e && e.message) || 'خطا در فشرده‌سازی', 'error');
+            } finally {
+                this.optBusy = false;
+            }
+        },
+
+        async watermarkLastAiImage() {
+            if (!this.aiImgResultId) return;
+            this.showToast('اعمال واترمارک…', 'info');
+            try {
+                this.optBusy = true;
+                if (typeof this.watermarkSingleImage === 'function') {
+                    await this.watermarkSingleImage({ attachment_id: this.aiImgResultId, src: this.aiImgResultUrl });
+                }
+                this.showToast('واترمارک اعمال شد', 'success');
+            } catch (e) {
+                this.showToast((e && e.message) || 'خطا در واترمارک', 'error');
+            } finally {
+                this.optBusy = false;
+            }
+        },
+
+        async generateAiArticleImage() {
+            // legacy entry → route to new 3-step flow
+            return this.startAiImageFlow();
         },
 
         async watermarkSingleImage(img) {

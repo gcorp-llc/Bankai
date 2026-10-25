@@ -111,7 +111,21 @@ class Bankai_Rest_API
         ]);
 
         // Sub-modules (seo_modules, speed_modules, …)
-        register_rest_route($this->namespace, '/module/(?P<id>[a-zA-Z0-9_-]+)', [
+        
+        register_rest_route($this->namespace, '/seo/module-settings', [
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [$this, 'get_seo_module_settings'],
+                'permission_callback' => static fn() => current_user_can('manage_options'),
+            ],
+            [
+                'methods'             => WP_REST_Server::CREATABLE,
+                'callback'            => [$this, 'save_seo_module_settings'],
+                'permission_callback' => static fn() => current_user_can('manage_options'),
+            ],
+        ]);
+
+register_rest_route($this->namespace, '/module/(?P<id>[a-zA-Z0-9_-]+)', [
             'methods'             => WP_REST_Server::EDITABLE,
             'callback'            => [$this, 'toggle_module'],
             'permission_callback' => [$this, 'check_permissions'],
@@ -363,7 +377,89 @@ class Bankai_Rest_API
     /**
      * Toggle sub-module inside seo_modules / speed_modules / …
      */
-    public function toggle_module(WP_REST_Request $request): WP_REST_Response
+    
+    public function get_seo_module_settings(WP_REST_Request $request): WP_REST_Response
+    {
+        $id = sanitize_key((string) $request->get_param('id'));
+        $all = get_option('bankai_seo_module_settings', []);
+        if (!is_array($all)) {
+            $all = [];
+        }
+        $data = is_array($all[$id] ?? null) ? $all[$id] : [];
+        // Merge live flags
+        if ($id === 'sitemap_pro' && class_exists('Bankai_SEO_Integrations')) {
+            $s = Bankai_SEO_Integrations::instance()->get_settings();
+            $data['enabled'] = !empty($s['sitemap_enabled']);
+            $data['include_images'] = !empty($s['sitemap_include_images']);
+        }
+        if ($id === 'llms_txt_builder' && function_exists('bankai_is_module_active')) {
+            $data['enabled'] = bankai_is_module_active('llms_txt');
+        }
+        return new WP_REST_Response(['success' => true, 'data' => $data], 200);
+    }
+
+    public function save_seo_module_settings(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params();
+        if (!is_array($params)) {
+            return new WP_REST_Response(['success' => false, 'message' => 'داده نامعتبر'], 400);
+        }
+        $id = sanitize_key((string) ($params['id'] ?? ''));
+        $settings = is_array($params['settings'] ?? null) ? $params['settings'] : [];
+        if ($id === '') {
+            return new WP_REST_Response(['success' => false, 'message' => 'شناسه خالی'], 400);
+        }
+        $clean = [];
+        foreach ($settings as $k => $v) {
+            $k = sanitize_key((string) $k);
+            if (is_bool($v) || $v === '0' || $v === '1' || $v === 0 || $v === 1) {
+                $clean[$k] = (bool) $v;
+            } elseif (is_numeric($v)) {
+                $clean[$k] = 0 + $v;
+            } else {
+                $clean[$k] = sanitize_text_field((string) $v);
+            }
+        }
+        $all = get_option('bankai_seo_module_settings', []);
+        if (!is_array($all)) {
+            $all = [];
+        }
+        $all[$id] = $clean;
+        update_option('bankai_seo_module_settings', $all, false);
+
+        // Side effects
+        if ($id === 'sitemap_pro' && class_exists('Bankai_SEO_Integrations')) {
+            $si = Bankai_SEO_Integrations::instance()->get_settings();
+            if (array_key_exists('enabled', $clean)) {
+                $si['sitemap_enabled'] = !empty($clean['enabled']);
+            }
+            if (array_key_exists('include_images', $clean)) {
+                $si['sitemap_include_images'] = !empty($clean['include_images']);
+            }
+            Bankai_SEO_Integrations::instance()->save_settings($si);
+            $mods = bankai_get_option('seo_modules', []);
+            if (!is_array($mods)) {
+                $mods = [];
+            }
+            $mods['sitemap_pro'] = !empty($clean['enabled']);
+            bankai_update_option('seo_modules', $mods);
+            flush_rewrite_rules(false);
+        }
+        if ($id === 'llms_txt_builder' && function_exists('bankai_set_module_active')) {
+            bankai_set_module_active('llms_txt', !empty($clean['enabled']));
+            $mods = bankai_get_option('seo_modules', []);
+            if (!is_array($mods)) {
+                $mods = [];
+            }
+            $mods['llms_txt_builder'] = !empty($clean['enabled']);
+            bankai_update_option('seo_modules', $mods);
+            flush_rewrite_rules(false);
+        }
+
+        return new WP_REST_Response(['success' => true, 'data' => $clean, 'message' => 'ذخیره شد'], 200);
+    }
+
+public function toggle_module(WP_REST_Request $request): WP_REST_Response
     {
         $module_id = sanitize_key((string) $request->get_param('id'));
         $enabled   = (bool) $request->get_param('enabled');
@@ -412,6 +508,18 @@ class Bankai_Rest_API
             if (class_exists('Bankai_Speed_Cache')) {
                 Bankai_Speed_Cache::sync_htaccess_rules_static();
             }
+        }
+
+        // Sync SEO feature flags with real endpoints
+        if ($target_group === 'seo_modules' && $module_id === 'sitemap_pro' && class_exists('Bankai_SEO_Integrations')) {
+            $si = Bankai_SEO_Integrations::instance()->get_settings();
+            $si['sitemap_enabled'] = $enabled;
+            Bankai_SEO_Integrations::instance()->save_settings($si);
+            flush_rewrite_rules(false);
+        }
+        if ($target_group === 'seo_modules' && $module_id === 'llms_txt_builder' && function_exists('bankai_set_module_active')) {
+            bankai_set_module_active('llms_txt', $enabled);
+            flush_rewrite_rules(false);
         }
 
         return new WP_REST_Response([

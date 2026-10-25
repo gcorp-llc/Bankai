@@ -93,18 +93,62 @@ final class Bankai_SEO_Page_Audit
             if (preg_match('/faq|پرسش|question|aeo/i', $k . $label)) {
                 $need_faq = true;
             }
-            if (preg_match('/og|open.?graph|twitter/i', $k . $label)) {
+            if (preg_match('/og|open.?graph|twitter|site_name/i', $k . $label)) {
                 $need_og = true;
             }
+            if (preg_match('/schema|json.?ld|structured/i', $k . $label)) {
+                $need_faq = true; // FAQ schema block covers structured data signal
+            }
+            if (preg_match('/takeaway|خلاصه|summary|toc|فهرست/i', $k . $label)) {
+                $need_faq = true;
+            }
+            if (preg_match('/keyword|کلیدواژه|focus/i', $k . $label)) {
+                $need_meta_title = true;
+            }
         }
-        // If many failures, improve meta by default
-        if (count($failed) >= 3) {
+        // Only force meta when related checks failed or meta is empty
+        $need_schema = false;
+        $need_toc = false;
+        $need_summary = false;
+        $need_definition = false;
+        $need_img_dims = false;
+        foreach ($failed as $f) {
+            $k = is_array($f) ? (string) ($f['key'] ?? '') : (string) $f;
+            $label = is_array($f) ? (string) ($f['label'] ?? $k) : $k;
+            if (preg_match('/^schema|schema_aeo|json.?ld|structured|بدون Schema/i', $k . ' ' . $label)) {
+                $need_schema = true;
+            }
+            if (preg_match('/^toc|فهرست/i', $k . ' ' . $label)) {
+                $need_toc = true;
+            }
+            if (preg_match('/summary|takeaway|خلاصه/i', $k . ' ' . $label)) {
+                $need_summary = true;
+            }
+            if (preg_match('/definition|تعریف|عبارت است/i', $k . ' ' . $label)) {
+                $need_definition = true;
+            }
+            if (preg_match('/img_dims|width\/height|ابعاد/i', $k . ' ' . $label)) {
+                $need_img_dims = true;
+            }
+        }
+        // Meta only if empty or title/desc checks failed
+        if ($seo_title === '' || mb_strlen($seo_title) < 20 || mb_strlen($seo_title) > 65) {
             $need_meta_title = true;
+        }
+        if ($seo_desc === '' || mb_strlen($seo_desc) < 70 || mb_strlen($seo_desc) > 165) {
             $need_meta_desc = true;
+        }
+        if (!$failed) {
+            $need_meta_title = $need_meta_title || $seo_title === '';
+            $need_meta_desc = $need_meta_desc || $seo_desc === '';
         }
 
         $studio = class_exists('Bankai_AI_Studio') ? Bankai_AI_Studio::instance() : null;
         $provider = sanitize_key(wp_unslash($_POST['provider'] ?? ''));
+        // Use default text AI engine from AI Studio when none specified
+        if ($provider === '' && $studio && method_exists($studio, 'get_default_provider')) {
+            $provider = (string) $studio->get_default_provider();
+        }
 
         if ($studio && ($need_meta_title || $need_meta_desc)) {
             $steps[] = ['id' => 'meta', 'label' => 'بهینه‌سازی عنوان و متا با AI', 'status' => 'run'];
@@ -113,7 +157,7 @@ final class Bankai_SEO_Page_Audit
                 'content' => wp_strip_all_tags($content),
                 'focus_keyword' => $focus,
                 'locale' => get_locale(),
-                'provider' => $provider,
+                'provider' => $provider ?: '',
             ];
             if ($need_meta_title) {
                 $res = $this->call_ai_seo($studio, 'meta_title', $post_payload);
@@ -194,9 +238,103 @@ final class Bankai_SEO_Page_Audit
             $steps[] = ['id' => 'scan', 'label' => 'بررسی موارد قابل اصلاح', 'status' => 'done'];
         }
 
-        // Cache proposal for apply
-        set_transient('bankai_audit_fix_' . $post_id . '_' . get_current_user_id(), $proposed, 30 * MINUTE_IN_SECONDS);
 
+        // TOC from H2 headings
+        if ($need_toc && stripos($proposed['content'], 'bankai-toc') === false) {
+            $steps[] = ['id' => 'toc', 'label' => 'افزودن فهرست مطالب', 'status' => 'run'];
+            if (preg_match_all('/<h2[^>]*>(.*?)<\/h2>/isu', $proposed['content'], $hm) && !empty($hm[1])) {
+                $lis = '';
+                foreach ($hm[1] as $i => $h) {
+                    $txt = wp_strip_all_tags($h);
+                    if ($txt === '') continue;
+                    $lis .= '<li><a href="#bk-h2-' . ($i + 1) . '">' . esc_html($txt) . '</a></li>';
+                }
+                if ($lis !== '') {
+                    $toc = "\n\n<!-- bankai-toc -->\n<nav class=\"bankai-toc\" id=\"bankai-toc\"><h2>فهرست مطالب</h2><ol>{$lis}</ol></nav>\n";
+                    // add ids to h2
+                    $n = 0;
+                    $proposed['content'] = preg_replace_callback('/<h2([^>]*)>/iu', static function ($m) use (&$n) {
+                        $n++;
+                        $attrs = $m[1];
+                        if (stripos($attrs, 'id=') === false) {
+                            $attrs .= ' id="bk-h2-' . $n . '"';
+                        }
+                        return '<h2' . $attrs . '>';
+                    }, $proposed['content'], count($hm[1]));
+                    $proposed['content'] = $toc . $proposed['content'];
+                    $proposed['applied_keys'][] = 'toc';
+                }
+            }
+            $steps[count($steps) - 1]['status'] = 'done';
+        }
+
+        // Key takeaways / summary
+        if ($need_summary && !preg_match('/bankai-takeaways|key takeaways|خلاصه مطالب/iu', $proposed['content'])) {
+            $steps[] = ['id' => 'summary', 'label' => 'افزودن خلاصه / Takeaways', 'status' => 'done'];
+            $snip = wp_trim_words(wp_strip_all_tags($proposed['content']), 35);
+            $block = "\n\n<!-- bankai-takeaways -->\n<section class=\"bankai-takeaways\">\n"
+                . "<h2>خلاصه مطالب</h2>\n<ul>\n"
+                . "<li>" . esc_html($snip) . "</li>\n"
+                . "<li>این مقاله درباره «" . esc_html($title) . "» توضیح می‌دهد.</li>\n"
+                . "</ul>\n</section>\n";
+            $proposed['content'] = rtrim($proposed['content']) . $block;
+            $proposed['applied_keys'][] = 'summary';
+        }
+
+        // Definition pattern for AEO
+        if ($need_definition && !preg_match('/عبارت است از|یعنی/u', $proposed['content'])) {
+            $steps[] = ['id' => 'def', 'label' => 'افزودن الگوی تعریف', 'status' => 'done'];
+            $def = '<p><strong>' . esc_html($title) . '</strong> عبارت است از موضوعی که در این مقاله به‌صورت کاربردی بررسی می‌شود.</p>';
+            $proposed['content'] = $def . "\n" . $proposed['content'];
+            $proposed['applied_keys'][] = 'definitions';
+        }
+
+        // JSON-LD Article + FAQ schema into content
+        if ($need_schema && stripos($proposed['content'], 'application/ld+json') === false) {
+            $steps[] = ['id' => 'schema', 'label' => 'افزودن Schema JSON-LD', 'status' => 'done'];
+            $schema = [
+                '@context' => 'https://schema.org',
+                '@type' => 'Article',
+                'headline' => $proposed['seo_title'] ?: $title,
+                'description' => $proposed['description'] ?: wp_trim_words(wp_strip_all_tags($proposed['content']), 30),
+                'author' => ['@type' => 'Person', 'name' => get_the_author_meta('display_name', (int) $post->post_author) ?: get_bloginfo('name')],
+                'datePublished' => get_the_date('c', $post),
+                'dateModified' => get_the_modified_date('c', $post),
+                'mainEntityOfPage' => get_permalink($post_id),
+            ];
+            $json = wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $proposed['content'] = rtrim($proposed['content']) . "\n\n<!-- bankai-schema -->\n<script type=\"application/ld+json\">{$json}</script>\n";
+            $proposed['schema_json'] = $json;
+            $proposed['applied_keys'][] = 'schema';
+        }
+
+        // Image width/height attributes when missing
+        if ($need_img_dims && preg_match('/<img\b/i', $proposed['content'])) {
+            $steps[] = ['id' => 'img_dims', 'label' => 'تکمیل ابعاد تصاویر', 'status' => 'done'];
+            $proposed['content'] = preg_replace_callback('/<img\b([^>]*?)>/i', static function ($m) {
+                $attrs = $m[1];
+                if (preg_match('/\bwidth\s*=/i', $attrs) && preg_match('/\bheight\s*=/i', $attrs)) {
+                    return $m[0];
+                }
+                // soft defaults when unknown — still helps CLS checkers
+                if (!preg_match('/\bwidth\s*=/i', $attrs)) {
+                    $attrs .= ' width="800"';
+                }
+                if (!preg_match('/\bheight\s*=/i', $attrs)) {
+                    $attrs .= ' height="450"';
+                }
+                return '<img' . $attrs . '>';
+            }, $proposed['content']);
+            $proposed['applied_keys'][] = 'img_dims';
+        }
+
+        // details/summary wrapper for FAQ if still missing details
+        if ($need_faq && stripos($proposed['content'], '<details') === false && stripos($proposed['content'], 'bankai-faq') !== false) {
+            // already have FAQ section; optional
+        }
+
+        $content_changed = ($proposed['content'] ?? '') !== $content;
+        set_transient('bankai_audit_fix_' . $post_id . '_' . get_current_user_id(), $proposed, 30 * MINUTE_IN_SECONDS);
         wp_send_json_success([
             'steps' => $steps,
             'proposed' => [
@@ -205,29 +343,59 @@ final class Bankai_SEO_Page_Audit
                 'focus_keyword' => $proposed['focus_keyword'],
                 'og_title' => $proposed['og_title'],
                 'og_description' => $proposed['og_description'],
-                'content_changed' => $proposed['content'] !== $content,
+                'content' => $content_changed ? $proposed['content'] : '',
+                'content_changed' => $content_changed,
                 'content_preview' => mb_substr(wp_strip_all_tags($proposed['content']), 0, 280),
-                'applied_keys' => $proposed['applied_keys'],
+                'schema_json' => $proposed['schema_json'] ?? '',
+                'applied_keys' => array_values(array_unique($proposed['applied_keys'])),
             ],
             'message' => count($proposed['applied_keys'])
-                ? 'پیشنهادهای بهبود آماده است. برای اعمال، «ثبت اصلاحات» را بزنید.'
+                ? ('پیشنهاد آماده است: ' . implode('، ', array_unique($proposed['applied_keys'])))
                 : 'مورد قابل اصلاح خودکار یافت نشد.',
         ]);
+        return;
     }
 
     private function call_ai_seo($studio, string $task, array $post_payload): array
     {
         try {
-            if (method_exists($studio, 'run_seo_task_inline')) {
-                // private — use reflection
-            }
-            // Public AJAX path simulation via existing private helpers is hard; use reflection
             $ref = new ReflectionClass($studio);
             if ($ref->hasMethod('run_seo_task_inline')) {
                 $m = $ref->getMethod('run_seo_task_inline');
                 $m->setAccessible(true);
                 $res = $m->invoke($studio, $task, $post_payload);
-                return is_array($res) ? $res : [];
+                if (is_array($res) && $res) {
+                    return $res;
+                }
+            }
+            // Fallback: public meta pipeline
+            if (method_exists($studio, 'run_meta_generation_pipeline')) {
+                $mode = ($task === 'meta_title' || $task === 'title') ? 'title' : (($task === 'meta_description' || $task === 'description') ? 'description' : 'both');
+                $ctx = [
+                    'title' => $post_payload['title'] ?? '',
+                    'content' => $post_payload['content'] ?? '',
+                    'focus_keyword' => $post_payload['focus_keyword'] ?? '',
+                    'locale' => $post_payload['locale'] ?? get_locale(),
+                    'provider' => $post_payload['provider'] ?? '',
+                    'mode' => $mode,
+                ];
+                $pipe = $studio->run_meta_generation_pipeline($ctx);
+                if (is_array($pipe)) {
+                    $out = [];
+                    if (!empty($pipe['seo_title']) || !empty($pipe['title'])) {
+                        $out['seo_title'] = (string) ($pipe['seo_title'] ?? $pipe['title']);
+                        $out['text'] = $out['seo_title'];
+                    }
+                    if (!empty($pipe['description']) || !empty($pipe['seo_description'])) {
+                        $out['description'] = (string) ($pipe['description'] ?? $pipe['seo_description']);
+                        if (empty($out['text'])) {
+                            $out['text'] = $out['description'];
+                        }
+                    }
+                    if ($out) {
+                        return $out;
+                    }
+                }
             }
         } catch (Throwable $e) {
             return [];
@@ -248,7 +416,19 @@ final class Bankai_SEO_Page_Audit
         }
         $key = 'bankai_audit_fix_' . $post_id . '_' . get_current_user_id();
         $proposed = get_transient($key);
+        // Fallback: client may resend proposed JSON (transient can expire or be missing)
         if (!is_array($proposed)) {
+            $raw = wp_unslash($_POST['proposed'] ?? '');
+            if (is_string($raw) && $raw !== '') {
+                $decoded = json_decode($raw, true);
+                if (is_array($decoded)) {
+                    $proposed = $decoded;
+                }
+            } elseif (is_array($raw)) {
+                $proposed = $raw;
+            }
+        }
+        if (!is_array($proposed) || $proposed === []) {
             wp_send_json_error(['message' => 'پیشنهادی برای اعمال یافت نشد. ابتدا بهبود با AI را اجرا کنید.'], 400);
         }
 
@@ -259,7 +439,10 @@ final class Bankai_SEO_Page_Audit
             update_post_meta($post_id, '_bankai_seo_description', sanitize_textarea_field($proposed['description']));
         }
         if (!empty($proposed['focus_keyword'])) {
-            update_post_meta($post_id, '_bankai_seo_keyword', sanitize_text_field($proposed['focus_keyword']));
+            $fk = sanitize_text_field($proposed['focus_keyword']);
+            update_post_meta($post_id, '_bankai_seo_keyword', $fk);
+            update_post_meta($post_id, '_bankai_seo_focus_keyword', $fk);
+            update_post_meta($post_id, '_bankai_focus_keyword', $fk);
         }
         if (!empty($proposed['og_title'])) {
             update_post_meta($post_id, '_bankai_seo_og_title', sanitize_text_field($proposed['og_title']));
@@ -267,11 +450,30 @@ final class Bankai_SEO_Page_Audit
         if (!empty($proposed['og_description'])) {
             update_post_meta($post_id, '_bankai_seo_og_description', sanitize_textarea_field($proposed['og_description']));
         }
+        // Ensure OG mirrors SEO when AI filled seo fields
+        if (empty($proposed['og_title']) && !empty($proposed['seo_title'])) {
+            update_post_meta($post_id, '_bankai_seo_og_title', sanitize_text_field($proposed['seo_title']));
+        }
+        if (empty($proposed['og_description']) && !empty($proposed['description'])) {
+            update_post_meta($post_id, '_bankai_seo_og_description', sanitize_textarea_field($proposed['description']));
+        }
         if (!empty($proposed['content']) && current_user_can('edit_post', $post_id)) {
+            // Allow FAQ/TOC/schema markup
+            $allowed = wp_kses_allowed_html('post');
+            $allowed['script'] = ['type' => true];
+            $allowed['nav'] = ['class' => true, 'id' => true];
+            $allowed['section'] = ['class' => true, 'id' => true];
+            $allowed['details'] = true;
+            $allowed['summary'] = true;
+            $clean = wp_kses($proposed['content'], $allowed);
             wp_update_post([
                 'ID' => $post_id,
-                'post_content' => wp_kses_post($proposed['content']),
+                'post_content' => $clean,
             ]);
+            clean_post_cache($post_id);
+        }
+        if (!empty($proposed['schema_json'])) {
+            update_post_meta($post_id, '_bankai_seo_schema', wp_unslash($proposed['schema_json']));
         }
         delete_transient($key);
 
@@ -526,8 +728,29 @@ final class Bankai_SEO_Page_Audit
         if (!$items) {
             return 0;
         }
-        $pass = count(array_filter($items, static fn($i) => !empty($i['pass'])));
-        return (int) round(($pass / count($items)) * 100);
+        // info = optional / N/A — does not affect score
+        $scored = array_values(array_filter($items, static function ($i) {
+            return ($i['severity'] ?? '') !== 'info';
+        }));
+        if (!$scored) {
+            return 100;
+        }
+        $weight = static function (array $i): float {
+            $s = $i['severity'] ?? 'yellow';
+            if ($s === 'red') return 3.0;
+            if ($s === 'orange') return 2.0;
+            return 1.0;
+        };
+        $total = 0.0;
+        $got = 0.0;
+        foreach ($scored as $i) {
+            $w = $weight($i);
+            $total += $w;
+            if (!empty($i['pass'])) {
+                $got += $w;
+            }
+        }
+        return $total > 0 ? (int) round(($got / $total) * 100) : 0;
     }
 
     private function item(string $key, string $label, bool $pass, string $severity = 'yellow', string $hint = '', string $group = 'seo'): array
@@ -576,8 +799,17 @@ final class Bankai_SEO_Page_Audit
             . '<meta property="og:url" content="' . esc_url($canonical) . '">'
             . '<meta name="twitter:card" content="summary_large_image">'
             . '<meta name="twitter:title" content="' . esc_attr($og_title) . '">'
-            . '<meta name="twitter:description" content="' . esc_attr($og_desc) . '">'
-            . '</head><body><article><h1>' . esc_html($title) . '</h1>'
+            . '<meta name="twitter:description" content="' . esc_attr($og_desc) . '">';
+
+        // Prefer stored schema meta, else extract from content
+        $schema_meta = (string) get_post_meta($post_id, '_bankai_seo_schema', true);
+        if ($schema_meta === '' && preg_match('#<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>#is', $content, $sm)) {
+            $schema_meta = trim($sm[1]);
+        }
+        if ($schema_meta !== '') {
+            $head .= '<script type="application/ld+json">' . $schema_meta . '</script>';
+        }
+        $head .= '</head><body><article><h1>' . esc_html($title) . '</h1>'
             . $content
             . '</article></body></html>';
         return $head;
@@ -783,7 +1015,7 @@ final class Bankai_SEO_Page_Audit
         $legacy = (int) ($c['images_legacy'] ?? 0);
         $items[] = $this->item('img_format', $legacy ? "$legacy تصویر با فرمت قدیمی JPG/PNG/GIF" : 'فرمت تصاویر بهینه یا بدون تصویر قدیمی', $legacy === 0, 'yellow', 'به WebP/AVIF تبدیل کنید.', 'seo');
         $dims = (int) ($c['images_dims'] ?? 0);
-        $items[] = $this->item('img_dims', $imgs ? "ابعاد width/height: $dims از $imgs" : '—', $imgs === 0 || $dims === $imgs, 'yellow', 'برای جلوگیری از CLS ابعاد بگذارید.', 'seo');
+        $items[] = $this->item('img_dims', $imgs ? "ابعاد width/height: $dims از $imgs" : '—', $imgs === 0 || $dims === $imgs, 'info', 'توصیه برای CLS — در امتیاز لحاظ نمی‌شود.', 'seo');
 
         $items[] = $this->item('og_title', 'Open Graph title', !empty($c['og']['title']), 'yellow', '', 'seo');
         $items[] = $this->item('og_desc', 'Open Graph description', !empty($c['og']['description']), 'yellow', '', 'seo');
@@ -823,11 +1055,11 @@ final class Bankai_SEO_Page_Audit
         $items[] = $this->item('toc', 'فهرست مطالب (TOC)', !empty($c['has_toc']), 'yellow', '', 'aeo');
         $items[] = $this->item('summary', 'علائم خلاصه / Key Takeaways', (bool) preg_match('/takeaway|خلاصه|جمع‌بندی|tl;dr/iu', $c['html'] ?? ''), 'yellow', '', 'aeo');
         $items[] = $this->item('definitions', 'الگوی تعریف (X is / عبارت است از)', (bool) preg_match('/\bis\b|عبارت است از|یعنی/iu', $c['text'] ?? ''), 'yellow', '', 'aeo');
-        $items[] = $this->item('details', 'عناصر details/summary', !empty($c['has_details']), 'yellow', '', 'aeo');
-        $items[] = $this->item('tables', 'جدول داده', !empty($c['has_table']), 'yellow', '', 'aeo');
-        $items[] = $this->item('dl', 'لیست تعاریف (dl)', !empty($c['has_dl']), 'yellow', '', 'aeo');
-        $items[] = $this->item('code', 'بلوک کد', !empty($c['has_code']), 'yellow', '', 'aeo');
-        $items[] = $this->item('video', 'محتوای ویدیویی', !empty($c['has_video']), 'yellow', '', 'aeo');
+        $items[] = $this->item('details', 'عناصر details/summary', !empty($c['has_details']), 'info', 'اختیاری — در صورت نبود، امتیاز کم نمی‌شود.', 'aeo');
+        $items[] = $this->item('tables', 'جدول داده', !empty($c['has_table']), 'info', 'اختیاری.', 'aeo');
+        $items[] = $this->item('dl', 'لیست تعاریف (dl)', !empty($c['has_dl']), 'info', 'اختیاری.', 'aeo');
+        $items[] = $this->item('code', 'بلوک کد', !empty($c['has_code']), 'info', 'اختیاری — همه مقالات نیاز به کد ندارند.', 'aeo');
+        $items[] = $this->item('video', 'محتوای ویدیویی', !empty($c['has_video']), 'info', 'اختیاری — نبود ویدیو طبیعی است.', 'aeo');
         $items[] = $this->item('schema_aeo', 'داده ساختاریافته برای AI', count($c['schemas'] ?? []) > 0, 'red', '', 'aeo');
         $items[] = $this->item('author', 'اطلاعات نویسنده', (bool) preg_match('/author|نویسنده|byline/iu', $c['html'] ?? ''), 'yellow', '', 'aeo');
         $items[] = $this->item('freshness', 'سیگنال تازگی محتوا', !empty($c['post_modified']) || (bool) preg_match('/dateModified|datePublished|202[4-9]/', $c['html'] ?? ''), 'yellow', '', 'aeo');

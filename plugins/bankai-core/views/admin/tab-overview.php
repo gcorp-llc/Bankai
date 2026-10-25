@@ -1,149 +1,228 @@
-<!-- Tab 1: Dashboard -->
-<div id="tab-overview" class="bankai-tab-pane" :class="{ 'is-active-tab': activeTab === 'overview' }" x-show="activeTab === 'overview'" x-cloak x-init="initDashboard && initDashboard()">
+<?php
+/**
+ * Dashboard — Health & overview (orange theme + Solar icons)
+ * @package Bankai
+ */
+defined('ABSPATH') || exit;
 
-    <!-- Modern dashboard (visual style inspired by SEO AI Tools — sidebar unchanged) -->
-    <div class="bk-dash-v2">
-        <div class="bk-dash-v2-welcome">
-            <div>
-                <h2 class="bk-dash-v2-title" x-text="isRtl ? 'خوش آمدید به پیشخوان Bankai' : 'Welcome to Bankai Dashboard'">خوش آمدید به پیشخوان Bankai</h2>
-                <p class="bk-dash-v2-sub" x-text="isRtl ? 'وضعیت محتوا، سئو و عملکرد را یک‌جا ببینید و برای بهینه‌سازی اقدام کنید.' : 'Track content, SEO and performance — then optimize with one click.'">وضعیت محتوا، سئو و عملکرد را یک‌جا ببینید و برای بهینه‌سازی اقدام کنید.</p>
-            </div>
-            <div class="bk-dash-v2-actions">
-                <button type="button" class="bk-btn bk-btn-primary" @click="setTab('articles')" x-text="isRtl ? 'مدیریت محتوا' : 'Content'">مدیریت محتوا</button>
-                <button type="button" class="bk-btn" @click="setTab('seo-engine')" x-text="isRtl ? 'موتور سئو' : 'SEO Engine'">موتور سئو</button>
-            </div>
+$posts_pub = (int) (wp_count_posts('post')->publish ?? 0);
+$pages_pub = (int) (wp_count_posts('page')->publish ?? 0);
+$indexable = $posts_pub + $pages_pub;
+$wp_ver    = get_bloginfo('version');
+$php_ver   = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
+$plugin_ver = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '—';
+$mem_limit = ini_get('memory_limit') ?: '—';
+$site_name = get_bloginfo('name');
+?>
+<div id="tab-overview" class="bankai-tab-pane bk-orange-shell" :class="{ 'is-active-tab': activeTab === 'overview' }" x-show="activeTab === 'overview'" x-cloak x-init="initDashboard && initDashboard()">
+
+  <header class="bk-top-head">
+    <div class="bk-top-head__brand">
+      <span class="bk-top-head__logo"><iconify-icon icon="solar:widget-2-bold-duotone" width="24" height="24"></iconify-icon></span>
+      <div>
+        <strong x-text="isRtl ? ('پیشخوان · ' + '<?php echo esc_js($site_name); ?>') : ('Dashboard · <?php echo esc_js($site_name); ?>')">پیشخوان</strong>
+        <small>سلامت سیستم · KPI · میانبرها · ماژول‌ها</small>
+      </div>
+    </div>
+    <div class="bk-top-head__actions">
+      <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="loadDashboardVisits && loadDashboardVisits()" :disabled="dashVisitsLoading">
+        <iconify-icon icon="solar:refresh-bold-duotone" width="16"></iconify-icon>
+        <span x-text="dashVisitsLoading ? '…' : (isRtl ? 'تازه‌سازی آمار' : 'Refresh stats')"></span>
+      </button>
+      <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="setTab('articles')">
+        <iconify-icon icon="solar:magic-stick-3-bold-duotone" width="16"></iconify-icon>
+        <span x-text="isRtl ? 'تولید محتوا' : 'Create content'"></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="bk-top-body bk-dash-body">
+
+    <!-- KPI row -->
+    <div class="bk-dash-kpis">
+      <div class="bk-dash-kpi">
+        <div class="bk-dash-kpi__ico" style="background:#fff5f3;color:#fc4c2f">
+          <iconify-icon icon="solar:document-text-bold-duotone" width="22"></iconify-icon>
         </div>
-
-        <div class="bk-dash-v2-kpis">
-            <div class="bk-dash-v2-kpi is-content">
-                <div class="bk-dash-v2-kpi-lab" x-text="isRtl ? 'محتوای قابل ایندکس' : 'Indexable content'">محتوای قابل ایندکس</div>
-                <div class="bk-dash-v2-kpi-val"><?php echo esc_html((string) ($state['stats']['indexable'] ?? $state['stats']['posts'] ?? '—')); ?></div>
-                <div class="bk-dash-v2-kpi-sub" x-text="isRtl ? 'کل مقالات / برگه‌ها' : 'Posts & pages'">کل مقالات / برگه‌ها</div>
-            </div>
-            <div class="bk-dash-v2-kpi is-seo">
-                <div class="bk-dash-v2-kpi-lab">Avg. SEO Score</div>
-                <div class="bk-dash-v2-kpi-val"><?php echo esc_html((string) ($state['stats']['avg_seo'] ?? $state['stats']['seo_score'] ?? '—')); ?></div>
-                <div class="bk-dash-v2-kpi-sub" x-text="isRtl ? 'میانگین امتیاز سئو' : 'Average post score'">میانگین امتیاز سئو</div>
-            </div>
-            <div class="bk-dash-v2-kpi is-up">
-                <div class="bk-dash-v2-kpi-lab">Uptime</div>
-                <div class="bk-dash-v2-kpi-val"><?php echo esc_html(($state['stats']['uptime'] ?? '99.9%')); ?></div>
-                <div class="bk-dash-v2-kpi-sub" x-text="isRtl ? 'پایداری سرویس' : 'Service stability'">پایداری سرویس</div>
-            </div>
-            <div class="bk-dash-v2-kpi is-speed">
-                <div class="bk-dash-v2-kpi-lab">TTFB</div>
-                <div class="bk-dash-v2-kpi-val"><?php
-                    $ttfb = $state['stats']['avg_ttfb'] ?? $state['stats']['avg_latency'] ?? null;
-                    echo esc_html($ttfb !== null && $ttfb !== '' ? (is_numeric($ttfb) ? $ttfb . 'ms' : (string) $ttfb) : '—');
-                ?></div>
-                <div class="bk-dash-v2-kpi-sub" x-text="isRtl ? 'میانگین تأخیر' : 'Avg latency'">میانگین تأخیر</div>
-            </div>
+        <div>
+          <span class="bk-dash-kpi__lab" x-text="isRtl ? 'محتوای قابل ایندکس' : 'Indexable content'"></span>
+          <strong class="bk-dash-kpi__val"><?php echo esc_html((string) ($state['stats']['indexable'] ?? $indexable)); ?></strong>
+          <span class="bk-dash-kpi__sub"><?php echo esc_html($posts_pub); ?> مقاله · <?php echo esc_html($pages_pub); ?> برگه</span>
         </div>
-
-        <div class="bk-dash-v2-grid">
-            <div class="bk-dash-v2-card bk-dash-v2-visits">
-                <div class="bk-dash-v2-card-head">
-                    <strong x-text="isRtl ? 'بازدید سایت (۷ روز)' : 'Site visits (7 days)'">بازدید سایت (۷ روز)</strong>
-                    <button type="button" class="bk-btn-ghost" style="font-size:12px;" @click="loadDashboardVisits()" :disabled="dashVisitsLoading" x-text="dashVisitsLoading ? '…' : (isRtl ? 'تازه‌سازی' : 'Refresh')">تازه‌سازی</button>
-                </div>
-                <div class="bk-dash-v2-visits-main">
-                    <div class="bk-dash-v2-visits-num" x-text="formatDashNum(dashVisits.total)">—</div>
-                    <div class="bk-dash-v2-visits-change">
-                        <span x-text="isRtl ? 'نسبت به هفته قبل' : 'vs previous week'"></span>
-                        <strong :class="(dashVisits.change||0) >= 0 ? 'is-up' : 'is-down'" x-text="((dashVisits.change||0) >= 0 ? '+' : '') + (dashVisits.change||0) + '%'"></strong>
-                    </div>
-                </div>
-                <div class="bk-dash-v2-devices">
-                    <div class="bk-dash-v2-device">
-                        <span x-text="isRtl ? 'رایانه' : 'Desktop'">رایانه</span>
-                        <strong x-text="formatDashNum(dashVisits.desktop)">0</strong>
-                        <div class="bk-dash-v2-bar"><i :style="'width:' + Math.min(100, (dashVisits.desktop && dashVisits.total) ? Math.round(dashVisits.desktop/dashVisits.total*100) : 0) + '%'"></i></div>
-                    </div>
-                    <div class="bk-dash-v2-device">
-                        <span x-text="isRtl ? 'موبایل' : 'Mobile'">موبایل</span>
-                        <strong x-text="formatDashNum(dashVisits.mobile)">0</strong>
-                        <div class="bk-dash-v2-bar is-teal"><i :style="'width:' + Math.min(100, (dashVisits.mobile && dashVisits.total) ? Math.round(dashVisits.mobile/dashVisits.total*100) : 0) + '%'"></i></div>
-                    </div>
-                    <div class="bk-dash-v2-device">
-                        <span x-text="isRtl ? 'تبلت' : 'Tablet'">تبلت</span>
-                        <strong x-text="formatDashNum(dashVisits.tablet)">0</strong>
-                        <div class="bk-dash-v2-bar is-amber"><i :style="'width:' + Math.min(100, (dashVisits.tablet && dashVisits.total) ? Math.round(dashVisits.tablet/dashVisits.total*100) : 0) + '%'"></i></div>
-                    </div>
-                </div>
-                <p class="bk-dash-v2-error" x-show="dashVisits.error" x-text="dashVisits.error"></p>
-            </div>
-
-            <div class="bk-dash-v2-card">
-                <div class="bk-dash-v2-card-head">
-                    <strong x-text="isRtl ? 'میانبرهای سریع' : 'Quick actions'">میانبرهای سریع</strong>
-                </div>
-                <div class="bk-dash-v2-quick">
-                    <button type="button" class="bk-dash-v2-quick-item" @click="setTab('articles')">
-                        <span class="ico">📝</span>
-                        <span x-text="isRtl ? 'تولید مقاله با AI' : 'Generate article'">تولید مقاله با AI</span>
-                    </button>
-                    <button type="button" class="bk-dash-v2-quick-item" @click="setTab('seo-engine')">
-                        <span class="ico">🎯</span>
-                        <span x-text="isRtl ? 'تنظیمات سئو' : 'SEO settings'">تنظیمات سئو</span>
-                    </button>
-                    <button type="button" class="bk-dash-v2-quick-item" @click="setTab('ai-studio')">
-                        <span class="ico">✨</span>
-                        <span x-text="isRtl ? 'استودیو AI' : 'AI Studio'">استودیو AI</span>
-                    </button>
-                    <button type="button" class="bk-dash-v2-quick-item" @click="setTab('speed-cache')">
-                        <span class="ico">⚡</span>
-                        <span x-text="isRtl ? 'کش و سرعت' : 'Cache & Speed'">کش و سرعت</span>
-                    </button>
-                </div>
-            </div>
+      </div>
+      <div class="bk-dash-kpi">
+        <div class="bk-dash-kpi__ico" style="background:#ecfdf5;color:#059669">
+          <iconify-icon icon="solar:chart-bold-duotone" width="22"></iconify-icon>
         </div>
+        <div>
+          <span class="bk-dash-kpi__lab">SEO Score</span>
+          <strong class="bk-dash-kpi__val"><?php echo esc_html((string) ($state['stats']['avg_seo'] ?? $state['stats']['seo_score'] ?? '—')); ?></strong>
+          <span class="bk-dash-kpi__sub" x-text="isRtl ? 'میانگین امتیاز سئو' : 'Average score'"></span>
+        </div>
+      </div>
+      <div class="bk-dash-kpi">
+        <div class="bk-dash-kpi__ico" style="background:#eff6ff;color:#2563eb">
+          <iconify-icon icon="solar:server-bold-duotone" width="22"></iconify-icon>
+        </div>
+        <div>
+          <span class="bk-dash-kpi__lab">Uptime</span>
+          <strong class="bk-dash-kpi__val"><?php echo esc_html($state['stats']['uptime'] ?? '99.9%'); ?></strong>
+          <span class="bk-dash-kpi__sub" x-text="isRtl ? 'پایداری سرویس' : 'Service stability'"></span>
+        </div>
+      </div>
+      <div class="bk-dash-kpi">
+        <div class="bk-dash-kpi__ico" style="background:#fff7ed;color:#ea580c">
+          <iconify-icon icon="solar:bolt-bold-duotone" width="22"></iconify-icon>
+        </div>
+        <div>
+          <span class="bk-dash-kpi__lab">TTFB</span>
+          <strong class="bk-dash-kpi__val"><?php
+            $ttfb = $state['stats']['avg_ttfb'] ?? $state['stats']['avg_latency'] ?? null;
+            echo esc_html($ttfb !== null && $ttfb !== '' ? (is_numeric($ttfb) ? $ttfb . 'ms' : (string) $ttfb) : '—');
+          ?></strong>
+          <span class="bk-dash-kpi__sub" x-text="isRtl ? 'میانگین تأخیر' : 'Avg latency'"></span>
+        </div>
+      </div>
     </div>
 
-
-    <!-- Core modules with descriptions + toggles -->
-    <div class="bankai-card" style="padding:20px;margin-bottom:18px;">
-        <h3 style="margin:0 0 6px;font-size:15px;font-weight:800;" x-text="isRtl ? 'ماژول‌های هسته' : 'Core modules'">ماژول‌های هسته</h3>
-        <p style="margin:0 0 14px;font-size:12px;color:#8b90a0;" x-text="isRtl ? 'هر ماژول را فعال یا غیرفعال کنید. توضیح کوتاه زیر نام آمده است.' : 'Enable or disable each module. Short description under the name.'">هر ماژول را فعال یا غیرفعال کنید.</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
-            <template x-for="mod in coreModuleCards" :key="mod.key">
-                <div class="bk-core-mod-card" :class="{ 'is-on': moduleActive[mod.key] !== false }">
-                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
-                        <div style="min-width:0;">
-                            <div style="font-weight:800;font-size:13px;color:#1a1433;" x-text="isRtl ? mod.title_fa : mod.title"></div>
-                            <div style="font-size:12px;color:#64748b;line-height:1.55;margin-top:4px;" x-text="isRtl ? mod.desc_fa : mod.desc"></div>
-                        </div>
-                        <label class="bankai-switch" style="flex-shrink:0;">
-                            <input type="checkbox"
-                                   :checked="moduleActive[mod.key] !== false"
-                                   @change="toggleCoreModule(mod.key, $event.target.checked)">
-                            <span class="bankai-slider"></span>
-                        </label>
-                    </div>
-                    <div style="margin-top:10px;font-size:11px;font-weight:700;"
-                         :style="moduleActive[mod.key] !== false ? 'color:#16a34a' : 'color:#94a3b8'"
-                         x-text="moduleActive[mod.key] !== false ? (isRtl ? 'فعال' : 'Active') : (isRtl ? 'غیرفعال' : 'Off')"></div>
-                </div>
-            </template>
+    <div class="bk-dash-grid">
+      <!-- Visits -->
+      <div class="bk-dash-card">
+        <div class="bk-dash-card__head">
+          <div class="bk-dash-card__title">
+            <iconify-icon icon="solar:graph-up-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
+            <strong x-text="isRtl ? 'بازدید ۷ روز اخیر' : 'Visits (7 days)'"></strong>
+          </div>
+          <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" style="padding:6px 10px;font-size:11px" @click="loadDashboardVisits()" :disabled="dashVisitsLoading">
+            <iconify-icon icon="solar:refresh-bold-duotone" width="14"></iconify-icon>
+          </button>
         </div>
+        <div class="bk-dash-visits">
+          <div class="bk-dash-visits__num" x-text="formatDashNum(dashVisits.total)">—</div>
+          <div class="bk-dash-visits__change">
+            <span x-text="isRtl ? 'نسبت به هفته قبل' : 'vs previous week'"></span>
+            <strong :class="(dashVisits.change||0) >= 0 ? 'is-up' : 'is-down'"
+                    x-text="((dashVisits.change||0) >= 0 ? '+' : '') + (dashVisits.change||0) + '%'"></strong>
+          </div>
+        </div>
+        <div class="bk-dash-devices">
+          <div class="bk-dash-device">
+            <span><iconify-icon icon="solar:monitor-bold-duotone" width="14"></iconify-icon> <span x-text="isRtl ? 'رایانه' : 'Desktop'"></span></span>
+            <strong x-text="formatDashNum(dashVisits.desktop)">0</strong>
+            <div class="bk-dash-bar"><i :style="'width:' + Math.min(100, (dashVisits.desktop && dashVisits.total) ? Math.round(dashVisits.desktop/dashVisits.total*100) : 0) + '%'"></i></div>
+          </div>
+          <div class="bk-dash-device">
+            <span><iconify-icon icon="solar:smartphone-bold-duotone" width="14"></iconify-icon> <span x-text="isRtl ? 'موبایل' : 'Mobile'"></span></span>
+            <strong x-text="formatDashNum(dashVisits.mobile)">0</strong>
+            <div class="bk-dash-bar is-teal"><i :style="'width:' + Math.min(100, (dashVisits.mobile && dashVisits.total) ? Math.round(dashVisits.mobile/dashVisits.total*100) : 0) + '%'"></i></div>
+          </div>
+          <div class="bk-dash-device">
+            <span><iconify-icon icon="solar:tablet-bold-duotone" width="14"></iconify-icon> <span x-text="isRtl ? 'تبلت' : 'Tablet'"></span></span>
+            <strong x-text="formatDashNum(dashVisits.tablet)">0</strong>
+            <div class="bk-dash-bar is-amber"><i :style="'width:' + Math.min(100, (dashVisits.tablet && dashVisits.total) ? Math.round(dashVisits.tablet/dashVisits.total*100) : 0) + '%'"></i></div>
+          </div>
+        </div>
+        <p class="bk-dash-error" x-show="dashVisits.error" x-text="dashVisits.error"></p>
+      </div>
+
+      <!-- Quick links -->
+      <div class="bk-dash-card">
+        <div class="bk-dash-card__head">
+          <div class="bk-dash-card__title">
+            <iconify-icon icon="solar:map-arrow-right-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
+            <strong x-text="isRtl ? 'میانبرهای سریع' : 'Quick actions'"></strong>
+          </div>
+        </div>
+        <div class="bk-dash-quick">
+          <button type="button" class="bk-dash-quick__item" @click="setTab('articles')">
+            <span class="bk-dash-quick__ico"><iconify-icon icon="solar:document-text-bold-duotone" width="20"></iconify-icon></span>
+            <span x-text="isRtl ? 'مدیریت محتوا' : 'Content'"></span>
+          </button>
+          <button type="button" class="bk-dash-quick__item" @click="setTab('seo-engine')">
+            <span class="bk-dash-quick__ico"><iconify-icon icon="solar:magnifer-bold-duotone" width="20"></iconify-icon></span>
+            <span x-text="isRtl ? 'موتور سئو' : 'SEO Engine'"></span>
+          </button>
+          <button type="button" class="bk-dash-quick__item" @click="setTab('ai-studio')">
+            <span class="bk-dash-quick__ico"><iconify-icon icon="solar:ghost-bold-duotone" width="20"></iconify-icon></span>
+            <span x-text="isRtl ? 'استودیو AI' : 'AI Studio'"></span>
+          </button>
+          <button type="button" class="bk-dash-quick__item" @click="setTab('speed-cache')">
+            <span class="bk-dash-quick__ico"><iconify-icon icon="solar:bolt-bold-duotone" width="20"></iconify-icon></span>
+            <span x-text="isRtl ? 'کش و سرعت' : 'Cache & Speed'"></span>
+          </button>
+          <button type="button" class="bk-dash-quick__item" @click="setTab('media-watermark')">
+            <span class="bk-dash-quick__ico"><iconify-icon icon="solar:gallery-bold-duotone" width="20"></iconify-icon></span>
+            <span x-text="isRtl ? 'رسانه' : 'Media'"></span>
+          </button>
+          <button type="button" class="bk-dash-quick__item" @click="setTab('settings-license')">
+            <span class="bk-dash-quick__ico"><iconify-icon icon="solar:settings-bold-duotone" width="20"></iconify-icon></span>
+            <span x-text="isRtl ? 'تنظیمات' : 'Settings'"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- System health -->
+      <div class="bk-dash-card bk-dash-health">
+        <div class="bk-dash-card__head">
+          <div class="bk-dash-card__title">
+            <iconify-icon icon="solar:heart-pulse-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
+            <strong x-text="isRtl ? 'سلامت سیستم' : 'System health'"></strong>
+          </div>
+          <span class="bk-dash-badge is-ok">OK</span>
+        </div>
+        <div class="bk-dash-health-grid">
+          <div class="bk-dash-health-row">
+            <span><iconify-icon icon="solar:code-bold-duotone" width="16"></iconify-icon> PHP</span>
+            <strong><?php echo esc_html($php_ver); ?></strong>
+          </div>
+          <div class="bk-dash-health-row">
+            <span><iconify-icon icon="solar:notebook-bold-duotone" width="16"></iconify-icon> WordPress</span>
+            <strong><?php echo esc_html($wp_ver); ?></strong>
+          </div>
+          <div class="bk-dash-health-row">
+            <span><iconify-icon icon="solar:cpu-bolt-bold-duotone" width="16"></iconify-icon> Memory</span>
+            <strong><?php echo esc_html($mem_limit); ?></strong>
+          </div>
+          <div class="bk-dash-health-row">
+            <span><iconify-icon icon="solar:box-bold-duotone" width="16"></iconify-icon> Bankai</span>
+            <strong>v<?php echo esc_html($plugin_ver); ?></strong>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">
-        <button type="button" class="bankai-card" style="padding:16px;text-align:start;cursor:pointer;" @click="setTab('seo-engine')">
-            <div style="font-weight:800;margin-bottom:4px;" x-text="isRtl ? 'سئو و اسکیما' : 'SEO & Schema'"></div>
-            <div style="font-size:12px;color:#8b90a0;" x-text="isRtl ? 'ممیزی و ماژول‌ها' : 'Audit & modules'"></div>
-        </button>
-        <button type="button" class="bankai-card" style="padding:16px;text-align:start;cursor:pointer;" @click="setTab('ai-studio')">
-            <div style="font-weight:800;margin-bottom:4px;" x-text="isRtl ? 'استودیو AI' : 'AI Studio'"></div>
-            <div style="font-size:12px;color:#8b90a0;" x-text="isRtl ? 'موتورهای متن و تصویر' : 'Text & image engines'"></div>
-        </button>
-        <button type="button" class="bankai-card" style="padding:16px;text-align:start;cursor:pointer;" @click="setTab('speed-cache')">
-            <div style="font-weight:800;margin-bottom:4px;" x-text="isRtl ? 'کش و سرعت' : 'Cache & Speed'"></div>
-            <div style="font-size:12px;color:#8b90a0;" x-text="isRtl ? 'بهینه‌سازی عملکرد' : 'Performance tools'"></div>
-        </button>
-        <button type="button" class="bankai-card" style="padding:16px;text-align:start;cursor:pointer;" @click="setTab('settings-license')">
-            <div style="font-weight:800;margin-bottom:4px;" x-text="isRtl ? 'تنظیمات و لایسنس' : 'Settings & License'"></div>
-            <div style="font-size:12px;color:#8b90a0;" x-text="isRtl ? 'پیکربندی عمومی' : 'General config'"></div>
-        </button>
+    <!-- Core modules -->
+    <div class="bk-dash-card" style="margin-top:16px">
+      <div class="bk-dash-card__head">
+        <div class="bk-dash-card__title">
+          <iconify-icon icon="solar:widget-4-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
+          <strong x-text="isRtl ? 'ماژول‌های هسته' : 'Core modules'"></strong>
+        </div>
+        <span class="bk-dash-hint" x-text="isRtl ? 'فعال / غیرفعال کردن ماژول‌ها' : 'Toggle modules on or off'"></span>
+      </div>
+      <div class="bk-dash-mods">
+        <template x-for="mod in coreModuleCards" :key="mod.key">
+          <div class="bk-dash-mod" :class="{ 'is-on': moduleActive[mod.key] !== false }">
+            <div class="bk-dash-mod__top">
+              <div class="bk-dash-mod__ico">
+                <iconify-icon :icon="mod.icon || 'solar:widget-bold-duotone'" width="20"></iconify-icon>
+              </div>
+              <label class="bankai-switch">
+                <input type="checkbox"
+                       :checked="moduleActive[mod.key] !== false"
+                       @change="toggleCoreModule(mod.key, $event.target.checked)">
+                <span class="bankai-slider"></span>
+              </label>
+            </div>
+            <div class="bk-dash-mod__name" x-text="isRtl ? mod.title_fa : mod.title"></div>
+            <div class="bk-dash-mod__desc" x-text="isRtl ? mod.desc_fa : mod.desc"></div>
+            <div class="bk-dash-mod__status"
+                 :class="moduleActive[mod.key] !== false ? 'is-on' : 'is-off'"
+                 x-text="moduleActive[mod.key] !== false ? (isRtl ? 'فعال' : 'Active') : (isRtl ? 'غیرفعال' : 'Off')"></div>
+          </div>
+        </template>
+      </div>
     </div>
+
+  </div>
 </div>
-<!-- /tab-overview root -->

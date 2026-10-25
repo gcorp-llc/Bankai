@@ -700,9 +700,7 @@ if ($post_id && !$post) {
                         <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
                             <input type="checkbox" x-model="optOptions.convertWebp"> تبدیل به WebP / AVIF
                         </label>
-                        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                            <input type="checkbox" x-model="optOptions.watermark"> درج واترمارک
-                        </label>
+                        
                     </div>
                 </div>
 
@@ -758,24 +756,14 @@ if ($post_id && !$post) {
                                     <span class="bk-media-badge is-fmt" x-text="(img.format_after || img.format_before || img.format || '—').toUpperCase()"></span>
                                     <span class="bk-media-badge" style="background:#e0f2fe; color:#0369a1;" x-show="calcSavingsPercent(img) !== null" x-text="calcSavingsPercent(img) + '% کاهش حجم'"></span>
                                 </div>
-                                <div class="bk-media-size-row" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:11px; color:#475569; margin:4px 0;">
-                                    <span>حجم قبل: <strong x-text="img.size_before || img.size || '—'"></strong></span>
-                                    <span x-show="img.size_after && img.size_after !== img.size_before">حجم بعد: <strong x-text="img.size_after"></strong></span>
-                                    <span x-show="img.dimensions || img.width" style="color:#64748b;">ابعاد: <strong x-text="(img.dimensions || (img.width ? (img.width + 'x' + (img.height||'?')) : ''))"></strong></span>
-                                </div>
-                                <!-- BEFORE / AFTER COMPARE PREVIEW -->
-                                <div class="bk-compare-preview-box" x-show="img.original_src && img.src && img.original_src !== img.src" style="margin: 8px 0; padding: 6px; background: #f1f5f9; border-radius: 6px;">
-                                    <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px;">مقایسه پیش‌نمایش تصویر:</div>
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                                        <div style="text-align: center;">
-                                            <div style="font-size: 10px; color: #64748b;">قبل (اصلی)</div>
-                                            <img :src="img.original_src" style="max-height: 60px; max-width: 100%; border-radius: 4px; object-fit: contain;">
-                                        </div>
-                                        <div style="text-align: center;">
-                                            <div style="font-size: 10px; color: #0284c7;">بعد (پردازش‌شده)</div>
-                                            <img :src="img.src" style="max-height: 60px; max-width: 100%; border-radius: 4px; object-fit: contain;">
-                                        </div>
-                                    </div>
+                                <div class="bk-media-size-row" style="display:flex;flex-direction:column;gap:2px;font-size:11px;color:#475569;margin:6px 0 4px;">
+                                    <span>حجم قبلی: <strong x-text="img.size_before || img.size || '—'"></strong>
+                                      <template x-if="img.dimensions || img.width"><span style="color:#94a3b8;margin-right:6px"> · <span x-text="img.dimensions || (img.width + '×' + (img.height||'?'))"></span></span></template>
+                                    </span>
+                                    <span x-show="img.size_after && img.size_after !== img.size_before" class="bk-size-after">
+                                      حجم جدید: <strong x-text="img.size_after"></strong>
+                                      <span x-show="calcSavingsPercent(img) !== null" x-text="' (−' + calcSavingsPercent(img) + '%)'"></span>
+                                    </span>
                                 </div>
                                 <div class="bk-media-alt-row">
                                     <template x-if="!img.editingAlt">
@@ -914,14 +902,18 @@ if ($post_id && !$post) {
                 </div>
 
                 <!-- HERO ONE-CLICK AUTO OPTIMIZE - Expanded with GEO/AEO/Image Gen -->
-                <div class="bk-action-card bk-hero-action-card" @click="openAiModal('auto_all')" style="margin-bottom:14px;cursor:pointer;width:calc(100% + 20px);margin-left:-10px;">
-                    <div class="bk-action-badge">پیشنهادی 🚀</div>
+                <div class="bk-action-card bk-hero-action-card bk-ai-wizard-card" style="margin-bottom:14px;width:calc(100% + 20px);margin-left:-10px;">
+                    <div class="bk-action-badge">ویزارد</div>
                     <div class="bk-action-content">
-                        <h4 style="margin-bottom:4px">بهینه‌سازی یک‌پارچه مقاله (Auto-Optimize All)</h4>
-                        <p style="margin-bottom:10px;font-size:11px">اجرای کامل تحلیل مقاله، اصلاح عنوان و متادیسکریپشن، استخراج کلیدواژه‌ها، پیشنهاد لینک داخلی، سئوی تصاویر و اسکیما با AI.</p>
+                        <h4 style="margin-bottom:4px;display:flex;align-items:center;gap:6px">
+                          <iconify-icon icon="solar:magic-stick-3-bold-duotone" width="18"></iconify-icon>
+                          ویزارد هوشمند سئو
+                        </h4>
+                        <p style="margin-bottom:10px;font-size:11px">اجرای خودکار تمام گزینه‌ها: عنوان و متا، کلیدواژه، لینک داخلی، Alt تصاویر، فشرده‌سازی، FAQ/AEO، اسکیما و خلاصه GEO.</p>
                     </div>
-                    <button type="button" class="bk-btn-primary bk-full" :disabled="aiLoading">
-                        شروع بهینه‌سازی هوشمند
+                    <button type="button" class="bk-btn-primary bk-full" @click.stop="openAiModal('auto_all')" :disabled="aiLoading || aiBusy">
+                        <iconify-icon icon="solar:play-circle-bold-duotone" width="16" style="vertical-align:-3px"></iconify-icon>
+                        <span x-text="(aiLoading || aiBusy) ? 'ویزارد در حال اجرا…' : 'شروع ویزارد کامل'"></span>
                     </button>
                 </div>
 
@@ -1101,31 +1093,82 @@ if ($post_id && !$post) {
                                 </button>
                             </div>
 
-                            <!-- IMAGES SUBTAB -->
+                            <!-- IMAGES SUBTAB — Visual 3-step flow -->
                             <div x-show="modalSubTab === 'images'" x-cloak>
-                                <div style="font-size:12px; font-weight:700; color:#0f172a; margin-bottom:4px;">تولید تصویر با هوش مصنوعی</div>
-                                <div style="font-size:10.5px; color:#64748b; margin-bottom:10px;">ایجاد تصویر کاور و تصاویر بدنه محتوا با سبکی مدرن و حرفه‌ای.</div>
-                                <div class="bk-field" style="margin-bottom:8px;">
-                                    <label style="font-size:11px; font-weight:600; color:#475569;">نوع تصویر</label>
-                                    <select x-model="aiImgType" style="width:100%; font-size:11px; padding:4px 8px; border-radius:6px; border:1px solid #cbd5e1;">
-                                        <option value="cover">تصویر کاور (Featured Cover)</option>
-                                        <option value="inline">تصویر درون محتوا (Inline Body)</option>
-                                    </select>
+                                <!-- Step 1: Purpose + Style (visual cards) -->
+                                <div x-show="aiImgStep === 1" x-cloak>
+                                    <div style="font-size:12px; font-weight:700; color:#0f172a; margin-bottom:6px;">مرحله ۱ — انتخاب نوع و سبک تصویر</div>
+                                    <div style="font-size:10.5px; color:#64748b; margin-bottom:10px;">ابتدا هدف تصویر و سبک بصری را انتخاب کنید.</div>
+
+                                                                        <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:6px;">نوع تصویر</div>
+                                    <div class="bk-ai-img-choice-grid">
+                                        <button type="button" class="bk-ai-img-choice" :class="{ 'is-on': aiImgType==='cover' }" @click="aiImgType='cover'">
+                                            <iconify-icon icon="solar:gallery-wide-bold-duotone" width="22"></iconify-icon>
+                                            <strong>کاور مقاله</strong>
+                                            <small>۱۶:۹ · تصویر شاخص</small>
+                                        </button>
+                                        <button type="button" class="bk-ai-img-choice" :class="{ 'is-on': aiImgType==='inline' }" @click="aiImgType='inline'">
+                                            <iconify-icon icon="solar:gallery-bold-duotone" width="22"></iconify-icon>
+                                            <strong>تصویر محتوا</strong>
+                                            <small>داخل متن مقاله</small>
+                                        </button>
+                                    </div>
+                                                                        <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:6px;">سبک بصری</div>
+                                    <div class="bk-ai-img-style-grid">
+                                        <button type="button" class="bk-ai-img-style" :class="{ 'is-on': aiImgStyle==='photorealistic' }" @click="aiImgStyle='photorealistic'">
+                                            <iconify-icon icon="solar:camera-bold-duotone" width="18"></iconify-icon> واقع‌گرا
+                                        </button>
+                                        <button type="button" class="bk-ai-img-style" :class="{ 'is-on': aiImgStyle==='editorial' }" @click="aiImgStyle='editorial'">
+                                            <iconify-icon icon="solar:notebook-bold-duotone" width="18"></iconify-icon> تحریریه
+                                        </button>
+                                        <button type="button" class="bk-ai-img-style" :class="{ 'is-on': aiImgStyle==='cinematic' }" @click="aiImgStyle='cinematic'">
+                                            <iconify-icon icon="solar:clapperboard-bold-duotone" width="18"></iconify-icon> سینمایی
+                                        </button>
+                                        <button type="button" class="bk-ai-img-style" :class="{ 'is-on': aiImgStyle==='illustration' }" @click="aiImgStyle='illustration'">
+                                            <iconify-icon icon="solar:pallete-2-bold-duotone" width="18"></iconify-icon> تصویرسازی
+                                        </button>
+                                    </div>
+
+
+                                    <button type="button" class="bk-btn-primary bk-full" @click="startAiImageFlow()" :disabled="aiBusy || optBusy">
+                                        <iconify-icon icon="solar:magic-stick-3-bold-duotone" width="16"></iconify-icon>
+                                        <span>تولید تصویر واقع‌گرا</span>
+                                    </button>
                                 </div>
-                                <div class="bk-field" style="margin-bottom:10px;">
-                                    <label style="font-size:11px; font-weight:600; color:#475569;">سبک طراحی بصری</label>
-                                    <select x-model="aiImgStyle" style="width:100%; font-size:11px; padding:4px 8px; border-radius:6px; border:1px solid #cbd5e1;">
-                                        <option value="photorealistic">واقع‌گرایانه (Photorealistic / High Detail)</option>
-                                        <option value="minimalist">مینیمال و مدرن (Minimalist Corporate)</option>
-                                        <option value="vector">تصویرسازی برداری (Vector Illustration)</option>
-                                        <option value="render_3d">رندر سه‌بعدی (3D Digital Art / Render)</option>
-                                        <option value="cinematic">سینمایی و استودیویی (Cinematic Studio Lighting)</option>
-                                        <option value="infographic">اینفوگرافیک و آموزشی (Infographic Style)</option>
-                                    </select>
+
+                                <!-- Step 2: Progress -->
+                                <div x-show="aiImgStep === 2" x-cloak>
+                                    <div style="font-size:12px; font-weight:700; color:#0f172a; margin-bottom:8px;">مرحله ۲ — آماده‌سازی و تولید</div>
+                                    <div class="bk-ai-progress-ring-wrap" style="margin:12px 0;">
+                                        <div class="bk-ai-progress-pct" x-text="(aiImgProgress || 0) + '%'"></div>
+                                        <div class="bk-ai-progress-track">
+                                            <div class="bk-ai-progress-fill" :style="'width:' + (aiImgProgress || 0) + '%'"></div>
+                                        </div>
+                                        <p class="bk-ai-progress-step" x-text="aiImgStepText || 'در حال آماده‌سازی…'" style="font-size:11px;color:#64748b;margin-top:8px;"></p>
+                                    </div>
+                                    <div style="font-size:10.5px;color:#94a3b8;text-align:center;">ترجمه پرامپت به انگلیسی → ارسال به موتور تصویر → ذخیره در رسانه</div>
                                 </div>
-                                <button type=button class="bk-btn-primary bk-full" @click="generateAiArticleImage()" :disabled="aiBusy || optBusy">
-                                    <span>تولید و افزودن تصویر با AI</span>
-                                </button>
+
+                                <!-- Step 3: Result -->
+                                <div x-show="aiImgStep === 3" x-cloak>
+                                    <div style="font-size:12px; font-weight:700; color:#0f172a; margin-bottom:8px;">مرحله ۳ — نتیجه و اقدامات</div>
+                                    <div style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:10px;background:#f8fafc;min-height:120px;display:flex;align-items:center;justify-content:center;">
+                                        <template x-if="aiImgResultUrl">
+                                            <img :src="aiImgResultUrl" alt="AI generated" style="max-width:100%;max-height:220px;display:block;">
+                                        </template>
+                                        <template x-if="!aiImgResultUrl">
+                                            <span style="font-size:11px;color:#94a3b8;">تصویر آماده نیست</span>
+                                        </template>
+                                    </div>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+                                        <button type="button" class="bk-btn-ghost" style="font-size:11px;padding:8px;" @click="aiImgStep=1; aiImgResultUrl='';" :disabled="aiBusy">تولید مجدد</button>
+                                        <button type="button" class="bk-btn-primary" style="font-size:11px;padding:8px;" @click="confirmAiImage()" :disabled="aiBusy || !aiImgResultUrl">تایید و درج</button>
+                                    </div>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                                        <button type="button" class="bk-btn-ghost" style="font-size:11px;padding:8px;" @click="compressLastAiImage()" :disabled="aiBusy || !aiImgResultId">فشرده‌سازی</button>
+                                        <button type="button" class="bk-btn-ghost" style="font-size:11px;padding:8px;" @click="watermarkLastAiImage()" :disabled="aiBusy || !aiImgResultId">واترمارک</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

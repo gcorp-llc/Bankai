@@ -19,7 +19,12 @@ document.addEventListener('alpine:init', () => {
             savingRd: false
         },
         wizardBusy: false,
-        seoAudit: { running: false, score: 0, items: [] },
+        seoAudit: { running: false, score: 0, items: [], passed: 0, total: 0 },
+        modDrawer: {
+            open: false, id: '', title: '', loading: false, saving: false,
+            fields: {}, message: ''
+        },
+
         an: {
             loading: false, range: '30d', visits: 0, prev_visits: 0, visits_change: 0,
             series: [], country_count: 0, countries: [], top_posts: [],
@@ -224,8 +229,10 @@ document.addEventListener('alpine:init', () => {
             });
         },
         initEngine: function () {
+            try { this.loadSitewide(); } catch (e) {}
+
             var self = this;
-            setTimeout(function () { if (self.seoPanel === 'tools') self.loadAnalyticsReport(); }, 300);
+            setTimeout(function () { if (self.seoPanel === 'analytics') self.loadAnalyticsReport(); }, 300);
             // Seed module toggles from server-rendered state if empty
             if (!this.seoState || !Object.keys(this.seoState).length) {
                 var mods = (window.bankaiState && window.bankaiState.seoModules) || [];
@@ -350,19 +357,141 @@ document.addEventListener('alpine:init', () => {
             }
         },
         runSeoAuditInline: function() {
-            this.seoAudit.running = true;
-            setTimeout(() => {
-                this.seoAudit = {
+            var self = this;
+            self.seoAudit.running = true;
+            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
+            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
+            fetch(root + 'seo/site-audit', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: { 'X-WP-Nonce': nonce, 'Accept': 'application/json' }
+            }).then(function (r) { return r.json(); }).then(function (j) {
+                var d = (j && j.data) ? j.data : (j || {});
+                self.seoAudit = {
                     running: false,
-                    score: 88,
-                    items: [
-                        { key: 'title', label: 'ساختار عناوین و متای صفحات', pass: true },
-                        { key: 'sitemap', label: 'فعال بودن نقشه سایت XML', pass: !!this.integEdit.sitemap },
-                        { key: 'robots', label: 'تنظیمات صحیح robots.txt', pass: true },
-                        { key: 'ga4', label: 'اتصال گوگل آنالیتیکس (GA4)', pass: !!this.integEdit.ga4 }
-                    ]
+                    score: d.score || 0,
+                    passed: d.passed || 0,
+                    total: d.total || 0,
+                    items: Array.isArray(d.items) ? d.items : []
                 };
-            }, 600);
+            }).catch(function () {
+                self.seoAudit.running = false;
+                if (window.bankaiShowToast) window.bankaiShowToast('خطا در ممیزی سایت', 'error');
+            });
+        },
+
+        openSeoDrawer: function (modId, title) {
+            this.modDrawer.open = true;
+            this.modDrawer.id = modId;
+            this.modDrawer.title = title || modId;
+            this.modDrawer.message = '';
+            this.modDrawer.loading = false;
+            this.modDrawer.fields = this.defaultModFields(modId);
+            var self = this;
+            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
+            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
+            // Soft merge saved settings without blocking UI
+            fetch(root + 'seo/module-settings?id=' + encodeURIComponent(modId), {
+                method: 'GET', credentials: 'same-origin',
+                headers: { 'X-WP-Nonce': nonce }
+            }).then(function (r) { return r.json(); }).then(function (j) {
+                if (j && j.success && j.data && self.modDrawer.id === modId) {
+                    self.modDrawer.fields = Object.assign({}, self.modDrawer.fields, j.data);
+                }
+            }).catch(function () {});
+        },
+
+        closeSeoDrawer: function () {
+            this.modDrawer.open = false;
+            this.modDrawer.id = '';
+            this.modDrawer.message = '';
+        },
+
+        defaultModFields: function (modId) {
+            var map = {
+                auto_meta: {
+                    auto_title: true, auto_description: true, auto_schema: true,
+                    title_template: '%title% %sep% %sitename%',
+                    desc_length: 155
+                },
+                sitemap_pro: {
+                    enabled: true, include_images: true, include_posts: true,
+                    include_pages: true, include_tax: true, ping_search: true
+                },
+                canonical_guard: {
+                    enabled: true, force_trailing: false, strip_params: true
+                },
+                open_graph_ai: {
+                    enabled: true, default_image: '', twitter_card: 'summary_large_image'
+                },
+                local_seo_schema: {
+                    enabled: false, business_type: 'Organization', phone: '', address: ''
+                },
+                llms_txt_builder: {
+                    enabled: true, include_posts: true, max_posts: 50, full_version: true
+                }
+            };
+            return Object.assign({}, map[modId] || { enabled: true });
+        },
+
+        saveModDrawer: function () {
+            var self = this;
+            if (!self.modDrawer.id) return;
+            self.modDrawer.saving = true;
+            self.modDrawer.message = '';
+            var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
+            var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
+            fetch(root + 'seo/module-settings', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce },
+                body: JSON.stringify({ id: self.modDrawer.id, settings: self.modDrawer.fields })
+            }).then(function (r) { return r.json(); }).then(function (j) {
+                self.modDrawer.saving = false;
+                if (j && j.success) {
+                    self.modDrawer.message = 'ذخیره شد';
+                    if (window.bankaiShowToast) window.bankaiShowToast('تنظیمات ماژول ذخیره شد', 'success');
+                    // Sync related toggles
+                    if (self.modDrawer.id === 'sitemap_pro' && typeof self.modDrawer.fields.enabled !== 'undefined') {
+                        self.seoState = self.seoState || {};
+                        self.seoState.sitemap_pro = !!self.modDrawer.fields.enabled;
+                    }
+                    self.runSeoAuditInline();
+                    setTimeout(function () { self.closeSeoDrawer(); }, 700);
+                } else {
+                    self.modDrawer.message = (j && j.message) || 'خطا در ذخیره';
+                    if (window.bankaiShowToast) window.bankaiShowToast(self.modDrawer.message, 'error');
+                }
+            }).catch(function () {
+                self.modDrawer.saving = false;
+                self.modDrawer.message = 'خطای شبکه';
+            });
+        },
+
+        pickOrgLogo: function () {
+            var self = this;
+            if (typeof wp === 'undefined' || !wp.media) {
+                if (window.bankaiShowToast) window.bankaiShowToast('کتابخانه رسانه در دسترس نیست', 'error');
+                return;
+            }
+            var frame = wp.media({
+                title: 'انتخاب لوگوی سازمان',
+                button: { text: 'انتخاب لوگو' },
+                library: { type: 'image' },
+                multiple: false
+            });
+            frame.on('select', function () {
+                var att = frame.state().get('selection').first().toJSON();
+                if (!self.sw.settings) self.sw.settings = {};
+                self.sw.settings.org_logo = att.url || '';
+                self.sw.settings.org_logo_id = att.id || 0;
+            });
+            frame.open();
+        },
+
+        clearOrgLogo: function () {
+            if (!this.sw.settings) this.sw.settings = {};
+            this.sw.settings.org_logo = '';
+            this.sw.settings.org_logo_id = 0;
         }
     };
 

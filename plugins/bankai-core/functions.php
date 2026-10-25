@@ -138,6 +138,7 @@ if (!function_exists('bankai_core_module_keys')) {
             'llms_txt',
             'jalali_calendar',
             'settings_license',
+            'store',
         ];
     }
 }

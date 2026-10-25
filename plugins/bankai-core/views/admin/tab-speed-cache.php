@@ -1,7 +1,9 @@
 <?php
 /**
- * Tab: Cache & Performance — GitHub Light / Primer Design System
- * Pure Vanilla JS rendering without Alpine.js or HTMX directives.
+ * Tab: Speed & Cache — Professional 3-column settings layout
+ * Inspired by modern performance plugin admin UX (sidebar + content + quick actions).
+ *
+ * @package Bankai
  */
 defined('ABSPATH') || exit;
 
@@ -13,6 +15,9 @@ if (!$stats && class_exists('Bankai_Speed_Cache')) {
 $hit   = esc_html($stats['hit_ratio'] ?? '—');
 $ttfb  = esc_html($stats['ttfb'] ?? '—');
 $redis = esc_html($stats['redis_latency'] ?? '—');
+$page_files = (int) ($stats['page_files'] ?? 0);
+$cache_size = esc_html($stats['cache_size'] ?? '—');
+$last_purge = esc_html($stats['last_purge'] ?? '—');
 
 $cfg = function_exists('bankai_get_option') ? (bankai_get_option('speed_config', []) ?: []) : [];
 if (!is_array($cfg)) { $cfg = []; }
@@ -20,389 +25,220 @@ $cfg_json = wp_json_encode($cfg, JSON_UNESCAPED_UNICODE);
 $psi_key  = function_exists('bankai_get_option') ? (bankai_get_option('psi_api_key', '') ?: '') : get_option('bankai_psi_api_key', '');
 ?>
 
-<div id="tab-speed-cache" class="bankai-tab-pane bk-speed-tab-root"
+<div id="tab-speed-cache" class="bankai-tab-pane bk-speed-tab-root wpr-like"
      :class="{ 'is-active-tab': activeTab === 'speed-cache' }"
      x-show="activeTab === 'speed-cache'"
      x-cloak>
 
-    <!-- Hero Header -->
-    <div class="bk-speed-hero">
-        <div class="bk-speed-hero__info">
-            <div class="bk-speed-hero__icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            </div>
-            <div>
-                <div class="bk-speed-hero__title-row">
-                    <h2>مدیریت کش و شتاب‌دهنده سرعت</h2>
-                    <span class="bk-speed-pill">Performance Lab</span>
-                </div>
-                <p class="bk-speed-hero__desc">کش صفحات استاتیک، فشرده‌سازی CSS/JS، بهینه‌سازی CWV، Redis Object Cache و تحلیل‌گر Performance</p>
-            </div>
-        </div>
-        <div class="bk-speed-hero__actions">
-            <button type="button" class="bk-btn-secondary" id="bk-speed-rebuild-btn">
-                <span class="bk-spin" style="display:none"></span>
-                بازسازی فایل‌های بهینه‌شده
-            </button>
-            <button type="button" class="bk-btn-secondary" id="bk-speed-purge-btn">
-                <span class="bk-spin" style="display:none"></span>
-                تخلیه کامل کش
-            </button>
-            <button type="button" class="bk-btn-primary" id="bk-speed-preload-btn">
-                <span class="bk-spin" style="display:none"></span>
-                پیش‌بارگذاری کش (Preload)
-            </button>
-        </div>
+<div class="bk-wpr-wrap">
+  <aside class="bk-wpr-nav" id="bk-wpr-nav">
+    <div class="bk-wpr-nav__brand">
+      <span class="bk-wpr-nav__logo"><iconify-icon icon="solar:bolt-bold-duotone" width="22" height="22"></iconify-icon></span>
+      <div>
+        <strong>شتاب‌دهنده بنکای</strong>
+        <small>Speed &amp; Cache</small>
+      </div>
+    </div>
+    <nav class="bk-wpr-nav__menu" role="tablist">
+      <button type="button" class="bk-wpr-nav__item is-active" data-section="dashboard"><span class="bk-wpr-nav__icon"><iconify-icon icon="solar:home-2-bold-duotone" width="20"></iconify-icon></span><span>داشبورد</span></button>
+      <button type="button" class="bk-wpr-nav__item" data-section="cache"><span class="bk-wpr-nav__icon"><iconify-icon icon="solar:document-bold-duotone" width="20"></iconify-icon></span><span>کش صفحه</span></button>
+      <button type="button" class="bk-wpr-nav__item" data-section="files"><span class="bk-wpr-nav__icon"><iconify-icon icon="solar:code-file-bold-duotone" width="20"></iconify-icon></span><span>بهینه‌سازی فایل‌ها</span></button>
+      <button type="button" class="bk-wpr-nav__item" data-section="media"><span class="bk-wpr-nav__icon"><iconify-icon icon="solar:gallery-bold-duotone" width="20"></iconify-icon></span><span>رسانه و تصاویر</span></button>
+      <button type="button" class="bk-wpr-nav__item" data-section="preload"><span class="bk-wpr-nav__icon"><iconify-icon icon="solar:refresh-bold-duotone" width="20"></iconify-icon></span><span>پیش‌بارگذاری</span></button>
+      <button type="button" class="bk-wpr-nav__item" data-section="rules"><span class="bk-wpr-nav__icon"><iconify-icon icon="solar:settings-bold-duotone" width="20"></iconify-icon></span><span>قوانین پیشرفته</span></button>
+      <button type="button" class="bk-wpr-nav__item" data-section="database"><span class="bk-wpr-nav__icon"><iconify-icon icon="solar:database-bold-duotone" width="20"></iconify-icon></span><span>دیتابیس</span></button>
+      <button type="button" class="bk-wpr-nav__item" data-section="cdn"><span class="bk-wpr-nav__icon"><iconify-icon icon="solar:global-bold-duotone" width="20"></iconify-icon></span><span>CDN و Object Cache</span></button>
+      <button type="button" class="bk-wpr-nav__item" data-section="tools"><span class="bk-wpr-nav__icon"><iconify-icon icon="solar:widget-bold-duotone" width="20"></iconify-icon></span><span>ابزار و تست</span></button>
+    </nav>
+  </aside>
+
+  <main class="bk-wpr-content" id="bk-wpr-content">
+    <div class="bk-wpr-progress" id="bk-speed-op-progress" style="display:none">
+      <div class="bk-wpr-progress__head"><strong id="bk-op-title">در حال اجرا…</strong><span id="bk-op-pct">0%</span></div>
+      <div class="bk-wpr-progress__track"><div class="bk-wpr-progress__fill" id="bk-op-fill" style="width:0%"></div></div>
+      <div class="bk-wpr-progress__steps" id="bk-op-steps"></div>
+      <p class="bk-wpr-progress__msg" id="bk-op-msg">آماده‌سازی…</p>
     </div>
 
-
-    <!-- Boost Modes -->
-    <div class="bk-speed-boost" id="bk-speed-boost">
-        <div class="bk-speed-boost__label">حالت شتاب‌دهی یک‌کلیکه</div>
-        <div class="bk-speed-boost__modes" role="group" aria-label="Boost presets">
-            <button type="button" class="bk-boost-chip" data-mode="safe" title="امن — کمترین تداخل با اسکریپت‌ها">
-                <span class="bk-boost-chip__dot"></span> ایمن (Safe)
-            </button>
-            <button type="button" class="bk-boost-chip is-active" data-mode="balanced" title="تعادل بین سرعت و سازگاری">
-                <span class="bk-boost-chip__dot"></span> متعادل (Balanced)
-            </button>
-            <button type="button" class="bk-boost-chip" data-mode="aggressive" title="حداکثر بهینه‌سازی">
-                <span class="bk-boost-chip__dot"></span> تهاجمی (Max)
-            </button>
-            <button type="button" class="bk-boost-chip" data-mode="apply" id="bk-boost-apply" style="margin-right:auto;background:#eef2ff;border-color:#a5b4fc;color:#4338ca">
-                اعمال روی ماژول‌ها
-            </button>
+    <section class="bk-wpr-section is-active" data-section="dashboard">
+      <header class="bk-wpr-section__head"><h2>داشبورد</h2><p>وضعیت کلی، آمار کش و دسترسی سریع</p></header>
+      <div class="bk-wpr-cards">
+        <div class="bk-wpr-card"><span class="bk-wpr-card__label">TTFB</span><strong class="bk-wpr-card__val" id="bk-stat-ttfb"><?php echo $ttfb; ?></strong><span class="bk-wpr-card__hint">هدف: &lt; ۲۰۰ms</span></div>
+        <div class="bk-wpr-card"><span class="bk-wpr-card__label">نرخ Hit کش</span><strong class="bk-wpr-card__val" id="bk-stat-hit"><?php echo $hit; ?></strong><span class="bk-wpr-card__hint">درخواست از کش</span></div>
+        <div class="bk-wpr-card"><span class="bk-wpr-card__label">فایل‌های کش</span><strong class="bk-wpr-card__val" id="bk-stat-files"><?php echo $page_files; ?></strong><span class="bk-wpr-card__hint">آخرین پاک‌سازی: <?php echo $last_purge; ?></span></div>
+        <div class="bk-wpr-card"><span class="bk-wpr-card__label">حجم کش</span><strong class="bk-wpr-card__val" id="bk-stat-size"><?php echo $cache_size; ?></strong><span class="bk-wpr-card__hint">HTML + فشرده</span></div>
+      </div>
+      <div class="bk-wpr-field-group">
+        <h3 class="bk-wpr-field-group__title">وضعیت لایه‌ها</h3>
+        <div class="bk-wpr-status-grid">
+          <div class="bk-wpr-status-item"><span class="bk-wpr-dot is-on"></span> کش صفحه <strong>فعال</strong></div>
+          <div class="bk-wpr-status-item"><span class="bk-wpr-dot is-on"></span> بهینه‌سازی فایل‌ها <strong>فعال</strong></div>
+          <div class="bk-wpr-status-item"><span class="bk-wpr-dot <?php echo $redis !== '—' ? 'is-on' : 'is-off'; ?>"></span> Object Cache <strong><?php echo $redis !== '—' ? 'متصل' : 'غیرفعال'; ?></strong></div>
+          <div class="bk-wpr-status-item"><span class="bk-wpr-dot is-on"></span> کش مرورگر <strong>فعال</strong></div>
         </div>
+      </div>
+    </section>
+
+    <section class="bk-wpr-section" data-section="cache">
+      <header class="bk-wpr-section__head"><h2>کش صفحه</h2><p>ذخیره HTML عمومی و تحویل سریع بدون اجرای مجدد PHP</p></header>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-page-cache-enable" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>فعال‌سازی کش صفحه</strong><p>نسخه HTML صفحات عمومی ذخیره و در درخواست‌های بعدی تحویل داده می‌شود.</p></div></div></div>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><div><strong>مدت اعتبار کش (TTL)</strong><p>پس از این مدت، فایل کش منقضی می‌شود.</p></div></div><div class="bk-wpr-field__control"><input type="number" id="cfg-page-cache-ttl" value="86400" min="300" step="60" dir="ltr" class="bk-wpr-input"><span class="bk-wpr-unit">ثانیه</span></div></div>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><div><strong>استثناها (URLهایی که کش نشوند)</strong><p>هر خط یک الگو</p></div></div><div class="bk-wpr-field__control bk-wpr-field__control--full"><textarea id="cfg-page-cache-excl" rows="3" class="bk-wpr-textarea" dir="ltr" placeholder="/cart/&#10;/checkout/"></textarea></div></div>
+    </section>
+
+    <section class="bk-wpr-section" data-section="files">
+      <header class="bk-wpr-section__head"><h2>بهینه‌سازی فایل‌ها</h2><p>کاهش حجم و زمان‌بندی بارگذاری CSS و JavaScript</p></header>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-assets-enable" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>فعال‌سازی بهینه‌سازی دارایی‌ها</strong><p>Minify، Defer و Delay</p></div></div></div>
+      <h3 class="bk-wpr-subtitle">CSS</h3>
+      <div class="bk-wpr-field bk-wpr-field--child"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-asset-minify-css" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>Minify فایل‌های CSS</strong><p>حذف فاصله و توضیحات غیرضروری</p></div></div></div>
+      <h3 class="bk-wpr-subtitle">JavaScript</h3>
+      <div class="bk-wpr-field bk-wpr-field--child"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-asset-minify-js" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>Minify فایل‌های JavaScript</strong><p>کاهش حجم اسکریپت‌ها</p></div></div></div>
+      <div class="bk-wpr-field bk-wpr-field--child"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-asset-defer-js" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>بارگذاری معوق (Defer)</strong><p>اجرا پس از تجزیه HTML</p></div></div></div>
+      <div class="bk-wpr-field bk-wpr-field--child"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-asset-delay-js" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>تأخیر تا تعامل کاربر (Delay JS)</strong><p>اسکریپت‌های غیرضروری تا حرکت موس/اسکرول اجرا نمی‌شوند</p></div></div></div>
+    </section>
+
+    <section class="bk-wpr-section" data-section="media">
+      <header class="bk-wpr-section__head"><h2>رسانه، تصاویر و فونت</h2><p>Lazy Load، اولویت LCP و میزبانی محلی فونت‌ها</p></header>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-media-enable" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>LazyLoad برای تصاویر</strong><p>تصاویر پایین صفحه هنگام نزدیک شدن به دید بارگذاری می‌شوند. تصویر LCP (بزرگ‌ترین عنصر محتوایی) از Lazy Load خارج می‌شود.</p></div></div></div>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-cwv-enable" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>بهینه‌سازی Core Web Vitals</strong><p>اولویت تصویر LCP، ابعاد تصاویر و کاهش جابه‌جایی چیدمان (CLS)</p></div></div></div>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-preload-enable" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>Preload منابع بحرانی</strong><p>فقط فونت‌ها و منابع واقعاً بالای صفحه زودتر درخواست می‌شوند</p></div></div></div>
+
+      <h3 class="bk-wpr-subtitle">فونت‌های محلی (Self-Host)</h3>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-fonts-local" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>میزبانی محلی فونت‌ها</strong><p>Google Fonts و فونت‌های خارجی به‌جای درخواست شبکه، از سرور خود سایت سرو می‌شوند — کاهش وابستگی خارجی و بهبود TTFB/LCP.</p></div></div></div>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-fonts-display-swap" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>font-display: swap</strong><p>متن بلافاصله با فونت جایگزین نمایش داده می‌شود تا FOIT رخ ندهد</p></div></div></div>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-fonts-preload-critical" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>Preload فونت‌های بحرانی</strong><p>فقط وزن‌های واقعاً استفاده‌شده در بالای صفحه (معمولاً ۴۰۰ و ۷۰۰)</p></div></div></div>
+      <div class="bk-wpr-field">
+        <div class="bk-wpr-field__main"><div><strong>دانلود و محلی‌سازی Google Fonts</strong><p>فونت‌های شناسایی‌شده را به پوشه uploads/bankai-fonts منتقل و CSS محلی تولید می‌کند.</p></div></div>
+        <div class="bk-wpr-field__control">
+          <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" id="bk-fonts-localize-btn">
+            <span class="bk-spin" style="display:none"></span>
+            <iconify-icon icon="solar:download-minimalistic-bold-duotone" width="18"></iconify-icon>
+            محلی‌سازی فونت‌ها
+          </button>
+        </div>
+      </div>
+      <div id="bk-fonts-status" style="display:none;margin-top:8px;font-size:12px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px"></div>
+    </section>
+
+    <section class="bk-wpr-section" data-section="preload">
+      <header class="bk-wpr-section__head"><h2>پیش‌بارگذاری کش</h2><p>تولید از پیش فایل‌های کش با نرخ کنترل‌شده</p></header>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><div><strong>پیش‌گرم هوشمند</strong><p>URLها اولویت‌بندی و با محدودیت بار سرور کش می‌شوند.</p></div></div><div class="bk-wpr-field__control"><button type="button" class="bk-wpr-btn bk-wpr-btn--primary" id="bk-speed-preload-btn"><span class="bk-spin" style="display:none"></span>شروع پیش‌بارگذاری</button></div></div>
+    </section>
+
+    <section class="bk-wpr-section" data-section="rules">
+      <header class="bk-wpr-section__head"><h2>قوانین پیشرفته</h2><p>Heartbeat و کش مرورگر</p></header>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-browser-enable" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>کش مرورگر</strong><p>هدرهای Expires برای فایل‌های ثابت</p></div></div></div>
+      <div class="bk-wpr-field"><div class="bk-wpr-field__main"><label class="bk-wpr-toggle"><input type="checkbox" id="cfg-heartbeat-enable" checked><span class="bk-wpr-toggle__slider"></span></label><div><strong>کاهش فعالیت Heartbeat</strong><p>فاصله درخواست‌های admin-ajax افزایش می‌یابد</p></div></div></div>
+    </section>
+
+    <section class="bk-wpr-section" data-section="database">
+      <header class="bk-wpr-section__head"><h2>بهینه‌سازی دیتابیس</h2><p>پاکسازی داده‌های قدیمی — قبل از اجرا از پشتیبان مطمئن شوید</p></header>
+      <div class="bk-wpr-chips" id="bk-db-chips">
+        <label class="bk-wpr-chip is-checked"><input type="checkbox" data-db-opt="revisions" checked> رونوشت‌ها</label>
+        <label class="bk-wpr-chip is-checked"><input type="checkbox" data-db-opt="auto_drafts" checked> پیش‌نویس خودکار</label>
+        <label class="bk-wpr-chip is-checked"><input type="checkbox" data-db-opt="trash" checked> زباله‌دان</label>
+        <label class="bk-wpr-chip is-checked"><input type="checkbox" data-db-opt="spam" checked> دیدگاه اسپم</label>
+        <label class="bk-wpr-chip is-checked"><input type="checkbox" data-db-opt="transients" checked> Transient منقضی</label>
+      </div>
+      <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" id="bk-run-db-opt-btn"><span class="bk-spin" style="display:none"></span>اجرای پاکسازی</button>
+
+      <div id="bk-db-progress" class="bk-db-progress" style="display:none;margin-top:18px">
+        <div class="bk-db-progress__bar"><i id="bk-db-progress-fill" style="width:0%"></i></div>
+        <div class="bk-db-progress__label" id="bk-db-progress-label">آماده‌سازی…</div>
+        <ul class="bk-db-steps" id="bk-db-steps">
+          <li data-step="revisions"><span class="bk-db-st">…</span> پاکسازی رونوشت‌ها</li>
+          <li data-step="auto_drafts"><span class="bk-db-st">…</span> پیش‌نویس‌های خودکار</li>
+          <li data-step="trash"><span class="bk-db-st">…</span> زباله‌دان</li>
+          <li data-step="spam"><span class="bk-db-st">…</span> دیدگاه اسپم</li>
+          <li data-step="transients"><span class="bk-db-st">…</span> Transient منقضی</li>
+          <li data-step="optimize"><span class="bk-db-st">…</span> بهینه‌سازی جداول</li>
+        </ul>
+      </div>
+      <div id="db-opt-result" class="bk-db-report" style="display:none"></div>
+    </section>
+
+        <section class="bk-wpr-section" data-section="cdn">
+      <header class="bk-wpr-section__head"><h2>CDN و Object Cache</h2><p>کش آبجکت مکمل کش صفحه است — فرم‌ها عمودی و بدون اسکرول افقی</p></header>
+
+      <div class="bk-cdn-stack">
+        <div class="bk-cdn-card">
+          <h3 class="bk-cdn-card__title"><iconify-icon icon="solar:server-bold-duotone" width="18"></iconify-icon> Redis / Memcached</h3>
+          <label class="bk-cdn-field">Host<input type="text" id="redis-host" value="127.0.0.1" dir="ltr" class="bk-wpr-input"></label>
+          <label class="bk-cdn-field">Port<input type="number" id="redis-port" value="6379" dir="ltr" class="bk-wpr-input"></label>
+          <label class="bk-cdn-field">Password<input type="password" id="redis-password" dir="ltr" class="bk-wpr-input" autocomplete="new-password"></label>
+          <label class="bk-cdn-field">DB Index<input type="number" id="redis-db" value="0" dir="ltr" class="bk-wpr-input"></label>
+          <div class="bk-cdn-actions">
+            <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" id="bk-test-redis-btn"><span class="bk-spin" style="display:none"></span>تست اتصال</button>
+            <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" id="bk-save-redis-btn"><span class="bk-spin" style="display:none"></span>ذخیره و فعال‌سازی</button>
+          </div>
+          <span id="redis-status-msg" class="bk-cdn-status"></span>
+        </div>
+
+        <div class="bk-cdn-card">
+          <h3 class="bk-cdn-card__title"><iconify-icon icon="solar:global-bold-duotone" width="18"></iconify-icon> CDN</h3>
+          <label class="bk-cdn-field">CDN CNAME / URL<input type="url" id="cdn-url" placeholder="https://cdn.example.com" dir="ltr" class="bk-wpr-input"></label>
+          <label class="bk-cdn-field bk-cdn-check"><input type="checkbox" id="cdn-enabled"> فعال‌سازی بازنویسی URL دارایی‌ها</label>
+          <label class="bk-cdn-field bk-cdn-check"><input type="checkbox" id="cdn-ssl" checked> اجبار HTTPS روی CDN</label>
+          <div class="bk-cdn-actions">
+            <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" id="bk-save-cdn-btn"><span class="bk-spin" style="display:none"></span>ذخیره CDN</button>
+          </div>
+          <span id="cdn-status-msg" class="bk-cdn-status"></span>
+        </div>
+      </div>
+    </section>
+
+<section class="bk-wpr-section" data-section="tools">
+      <header class="bk-wpr-section__head"><h2>ابزار و تست عملکرد</h2><p>تحلیل و رفع خودکار با امکان بازگشت</p></header>
+      <div class="bk-wpr-field-group">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+          <input type="url" id="bk-audit-url" class="bk-wpr-input" style="flex:1;min-width:200px" value="<?php echo esc_attr(home_url('/')); ?>" dir="ltr">
+          <div class="bk-wpr-device-toggle">
+            <button type="button" class="bk-wpr-device-btn is-active" data-strategy="mobile">موبایل</button>
+            <button type="button" class="bk-wpr-device-btn" data-strategy="desktop">دسکتاپ</button>
+          </div>
+          <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" id="bk-run-audit-btn"><span class="bk-spin" style="display:none"></span>اجرای تست</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
+          <input type="text" id="bk-psi-key-input" class="bk-wpr-input" placeholder="کلید PageSpeed API (اختیاری)" value="<?php echo esc_attr($psi_key); ?>" dir="ltr" style="flex:1">
+          <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" id="bk-save-psi-key-btn">ذخیره کلید</button>
+        </div>
+      </div>
+      <div class="bk-wpr-field-group">
+        <h3 class="bk-wpr-field-group__title">رفع هوشمند (Fix All)</h3>
+        <p style="font-size:13px;color:#64748b;margin:0 0 12px">Snapshot → تشخیص → اعمال → اعتبارسنجی → پیش‌گرم</p>
+        <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" id="bk-fix-all-btn"><span class="bk-spin" style="display:none"></span>شروع Fix All</button>
+        <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" id="bk-rollback-btn" style="display:none;margin-right:8px">بازگشت به Snapshot</button>
+        <div id="bk-fix-all-stages" style="display:none;margin-top:14px">
+          <div class="bk-wpr-stage" data-stage="snapshot"><span class="bk-wpr-stage__n">1</span> ایجاد Snapshot <span class="bk-wpr-stage__st">—</span></div>
+          <div class="bk-wpr-stage" data-stage="diagnose"><span class="bk-wpr-stage__n">2</span> تشخیص گلوگاه <span class="bk-wpr-stage__st">—</span></div>
+          <div class="bk-wpr-stage" data-stage="apply"><span class="bk-wpr-stage__n">3</span> اعمال بهینه‌سازی <span class="bk-wpr-stage__st">—</span></div>
+          <div class="bk-wpr-stage" data-stage="validate"><span class="bk-wpr-stage__n">4</span> اعتبارسنجی <span class="bk-wpr-stage__st">—</span></div>
+          <div class="bk-wpr-stage" data-stage="warmup"><span class="bk-wpr-stage__n">5</span> پیش‌گرم کش <span class="bk-wpr-stage__st">—</span></div>
+        </div>
+      </div>
+      <div id="bk-audit-results" style="display:none;margin-top:16px"></div>
+    </section>
+
+    <div class="bk-wpr-savebar">
+      <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" id="bk-save-speed-cfg-btn"><span class="bk-spin" style="display:none"></span>ذخیره تغییرات</button>
     </div>
+  </main>
 
-    <!-- Quick Stats Cards Row -->
-    <div class="bk-speed-stats-row">
-        <div class="bk-speed-stat-card" data-tone="cyan">
-            <span class="bk-speed-stat-card__label">زمان پاسخ‌دهی (TTFB)</span>
-            <span class="bk-speed-stat-card__val" id="bk-stat-ttfb"><?php echo $ttfb; ?></span>
-            <span class="bk-speed-stat-card__sub"><span class="bk-speed-pulse"></span> سرعت پاسخ سرور</span>
-        </div>
-        <div class="bk-speed-stat-card" data-tone="green">
-            <span class="bk-speed-stat-card__label">نرخ موفقیت کش (Hit Ratio)</span>
-            <span class="bk-speed-stat-card__val" id="bk-stat-hit"><?php echo $hit; ?></span>
-            <span class="bk-speed-stat-card__sub">درخواست‌های سروشده از کش</span>
-        </div>
-        <div class="bk-speed-stat-card" data-tone="violet">
-            <span class="bk-speed-stat-card__label">وضعیت Redis Object Cache</span>
-            <span class="bk-speed-stat-card__val" id="bk-stat-redis"><?php echo $redis; ?></span>
-            <span class="bk-speed-stat-card__sub">بک‌اند کش پایگاه‌داده</span>
-        </div>
-        <div class="bk-speed-stat-card" data-tone="amber">
-            <span class="bk-speed-stat-card__label">فایل‌های کش صفحات</span>
-            <span class="bk-speed-stat-card__val" id="bk-stat-files"><?php echo (int)($stats['page_files'] ?? 0); ?></span>
-            <span class="bk-speed-stat-card__sub">نسخه‌های ذخیره‌شده HTML</span>
-        </div>
+  <aside class="bk-wpr-sidebar">
+    <div class="bk-wpr-sidebar__box">
+      <h3>اقدامات سریع</h3>
+      <p class="bk-wpr-sidebar__desc">عملیات پرکاربرد</p>
+      <div class="bk-wpr-qa"><span class="bk-wpr-qa__label">پاک‌سازی فایل‌های کش</span><button type="button" class="bk-wpr-btn bk-wpr-btn--action" id="bk-speed-purge-btn"><span class="bk-spin" style="display:none"></span><iconify-icon icon="solar:trash-bin-trash-bold-duotone" width="16"></iconify-icon> CLEAR CACHE</button></div>
+      <div class="bk-wpr-qa"><span class="bk-wpr-qa__label">شروع پیش‌بارگذاری</span><button type="button" class="bk-wpr-btn bk-wpr-btn--action" id="bk-speed-preload-btn-side"><span class="bk-spin" style="display:none"></span><iconify-icon icon="solar:refresh-circle-bold-duotone" width="16"></iconify-icon> PRELOAD CACHE</button></div>
+      <div class="bk-wpr-qa"><span class="bk-wpr-qa__label">بازسازی دارایی‌ها</span><button type="button" class="bk-wpr-btn bk-wpr-btn--action" id="bk-speed-rebuild-btn"><span class="bk-spin" style="display:none"></span><iconify-icon icon="solar:restart-bold-duotone" width="16"></iconify-icon> REBUILD ASSETS</button></div>
+      <div class="bk-wpr-qa"><span class="bk-wpr-qa__label">پاک‌سازی + پیش‌بارگذاری</span><button type="button" class="bk-wpr-btn bk-wpr-btn--action" id="bk-speed-purge-preload-btn"><span class="bk-spin" style="display:none"></span><iconify-icon icon="solar:bolt-bold-duotone" width="16"></iconify-icon> CLEAR &amp; PRELOAD</button></div>
     </div>
-
-    <!-- Subtab Navigation Bar -->
-    <div class="bk-capsule-tabs bk-speed-tabs-nav" role="tablist">
-        <button type="button" class="bk-speed-tab-btn bk-capsule-tab is-active" data-subtab="auditor">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.69l1.88 1.88a.75.75 0 1 1-1.06 1.06l-2.2-2.2A.75.75 0 0 1 7 8.75v-4a.75.75 0 0 1 1.5 0Z"/></svg>
-            تست عملکرد و Fix All
-        </button>
-        <button type="button" class="bk-speed-tab-btn bk-capsule-tab" data-subtab="config">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v12.5A1.75 1.75 0 0 1 14.25 16H1.75A1.75 1.75 0 0 1 0 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25ZM3.5 7.75a.75.75 0 0 1 .75-.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1-.75-.75Zm.75 2.25a.75.75 0 0 0 0 1.5h4a.75.75 0 0 0 0-1.5Z"/></svg>
-            پیکربندی کش و دارایی‌ها
-        </button>
-        <button type="button" class="bk-speed-tab-btn bk-capsule-tab" data-subtab="redis">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25ZM1.75 2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25Z"/></svg>
-            تنظیمات Redis
-        </button>
-        <button type="button" class="bk-speed-tab-btn bk-capsule-tab" data-subtab="db">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 0 0-1.5.14v1.53A6.5 6.5 0 1 1 1.67 8H.14A8 8 0 1 0 8 0ZM2.5 8a5.5 5.5 0 1 0 5.5-5.5V8Z"/></svg>
-            بهینه‌سازی دیتابیس
-        </button>
+    <div class="bk-wpr-sidebar__box">
+      <h3>نکته</h3>
+      <p style="font-size:12px;color:#64748b;line-height:1.55;margin:0">پس از هر تغییر مهم، یک‌بار Clear &amp; Preload بزنید. همه گزینه‌ها را هم‌زمان فعال نکنید.</p>
     </div>
+  </aside>
+</div>
 
-    <!-- PANE 1: Performance Auditor & Fix All -->
-    <div class="bk-speed-tab-pane is-active" id="bk-pane-auditor">
-        <div class="bk-audit-form-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-                <div>
-                    <strong style="font-size:15px;color:#1f2328">ابزار تحلیل جامع Performance ( PageSpeed / Lighthouse )</strong>
-                    <p style="margin:4px 0 0;font-size:12px;color:#636c76">آدرس صفحه سایت را وارد کنید تا تمام شاخص‌های حیاتی وب و فرصت‌های بهینه‌سازی سنجیده شوند.</p>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                    <input type="text" id="bk-psi-key-input" placeholder="کلید PageSpeed API (اختیاری)" value="<?php echo esc_attr($psi_key); ?>" style="font-size:12px;padding:6px 10px;border:1px solid #d0d7de;border-radius:6px;width:200px" dir="ltr">
-                    <button type="button" class="bk-btn-secondary" id="bk-save-psi-key-btn" style="padding:6px 12px;font-size:12px">ذخیره کلید</button>
-                </div>
-            </div>
-
-            <div class="bk-audit-form-row">
-                <input type="url" id="bk-audit-url" class="bk-audit-url-input" value="<?php echo esc_attr(home_url('/')); ?>" placeholder="https://example.com">
-                <div class="bk-audit-device-toggle">
-                    <button type="button" class="bk-audit-device-btn is-active" data-strategy="mobile">
-                        📱 موبایل
-                    </button>
-                    <button type="button" class="bk-audit-device-btn" data-strategy="desktop">
-                        💻 دسکتاپ
-                    </button>
-                </div>
-                <button type="button" class="bk-btn-primary" id="bk-run-audit-btn" style="padding:10px 20px">
-                    <span class="bk-spin" style="display:none"></span>
-                    اجرای تست عملکرد
-                </button>
-            </div>
-        </div>
-
-        <!-- Fix All Guided Drawer -->
-        <div class="bk-fix-all-panel" id="bk-fix-all-panel">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-                <div>
-                    <strong style="font-size:15px;color:#1f2328">رفع هوشمند و یک‌کلیکه تمام مشکلات (Fix All Issues)</strong>
-                    <p style="margin:4px 0 0;font-size:12px;color:#636c76">ایجاد خودکار نسخه پشتیبان (Snapshot)، اصلاح تنظیمات پربازده و سنجش مجدد نتایج جهت اطمینان از عدم اختلال.</p>
-                </div>
-                <div style="display:flex;align-items:center;gap:10px">
-                    <button type="button" class="bk-btn-primary" id="bk-fix-all-btn" style="background:#0969da;border-color:#0969da">
-                        <span class="bk-spin" style="display:none"></span>
-                        ⚡ اجرای Fix All و بهینه‌سازی خودکار
-                    </button>
-                    <button type="button" class="bk-btn-secondary" id="bk-rollback-btn" style="display:none">
-                        بازگردانی آخرین Snapshot
-                    </button>
-                </div>
-            </div>
-            <div id="bk-fix-all-log" style="display:none;font-size:12px;background:#ffffff;border:1px solid #d0d7de;border-radius:8px;padding:12px;max-height:180px;overflow-y:auto"></div>
-        </div>
-
-        <!-- Audit Score Cards & Gauges -->
-        <div id="bk-audit-results-container" style="display:none">
-            <div class="bk-audit-gauges-grid">
-                <div class="bk-gauge-card">
-                    <div class="bk-gauge-circle" id="gauge-perf">—</div>
-                    <span class="bk-gauge-label">Performance</span>
-                </div>
-                <div class="bk-gauge-card">
-                    <div class="bk-gauge-circle" id="gauge-access">—</div>
-                    <span class="bk-gauge-label">Accessibility</span>
-                </div>
-                <div class="bk-gauge-card">
-                    <div class="bk-gauge-circle" id="gauge-bp">—</div>
-                    <span class="bk-gauge-label">Best Practices</span>
-                </div>
-                <div class="bk-gauge-card">
-                    <div class="bk-gauge-circle" id="gauge-seo">—</div>
-                    <span class="bk-gauge-label">SEO</span>
-                </div>
-            </div>
-
-            <!-- Vital Metrics Cards Row -->
-            <div class="bk-vitals-grid" style="margin-top:16px">
-                <div class="bk-vital-card">
-                    <span class="bk-vital-card__title">First Contentful Paint (FCP)</span>
-                    <span class="bk-vital-card__val" id="vital-fcp">—</span>
-                    <span class="bk-vital-card__status" id="status-fcp">—</span>
-                </div>
-                <div class="bk-vital-card">
-                    <span class="bk-vital-card__title">Largest Contentful Paint (LCP)</span>
-                    <span class="bk-vital-card__val" id="vital-lcp">—</span>
-                    <span class="bk-vital-card__status" id="status-lcp">—</span>
-                </div>
-                <div class="bk-vital-card">
-                    <span class="bk-vital-card__title">Total Blocking Time (TBT)</span>
-                    <span class="bk-vital-card__val" id="vital-tbt">—</span>
-                    <span class="bk-vital-card__status" id="status-tbt">—</span>
-                </div>
-                <div class="bk-vital-card">
-                    <span class="bk-vital-card__title">Cumulative Layout Shift (CLS)</span>
-                    <span class="bk-vital-card__val" id="vital-cls">—</span>
-                    <span class="bk-vital-card__status" id="status-cls">—</span>
-                </div>
-                <div class="bk-vital-card">
-                    <span class="bk-vital-card__title">Speed Index</span>
-                    <span class="bk-vital-card__val" id="vital-si">—</span>
-                    <span class="bk-vital-card__status" id="status-si">—</span>
-                </div>
-            </div>
-
-            <!-- Issues & Opportunities List -->
-            <div style="margin-top:20px">
-                <h3 style="font-size:16px;font-weight:700;color:#1f2328;margin-bottom:12px">فرصت‌های بهینه‌سازی و مشکلات شناسایی‌شده</h3>
-                <div class="bk-issue-list" id="bk-opportunities-list"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- PANE 2: Configuration & Modules -->
-    <div class="bk-speed-tab-pane" id="bk-pane-config">
-        <div class="bk-mod-grid">
-            <!-- Page Caching Card -->
-            <div class="bk-mod-card is-on">
-                <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">کش صفحات استاتیک (Page Cache)</span>
-                    <label class="bk-toggle" title="فعال/غیرفعال"><input type="checkbox" id="cfg-page-cache-enable" checked><span class="bk-toggle__track"></span></label>
-                </div>
-                <p class="bk-mod-card__desc">ذخیره نسخه کامل HTML صفحات برای کاربران ناشناس جهت کاهش TTFB به کمتر از ۲۰۰ میلی‌ثانیه.</p>
-                <div class="bk-mod-card__foot">
-                    <span style="font-size:12px;color:#1f883d;font-weight:600">فعال</span>
-                    <button type="button" class="bk-btn-secondary" style="padding:4px 10px;font-size:12px" onclick="document.getElementById('opt-details-page-cache').style.display=document.getElementById('opt-details-page-cache').style.display==='none'?'block':'none'">تنظیمات</button>
-                </div>
-                <div id="opt-details-page-cache" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #f0f2f5">
-                    <label style="font-size:12px;display:block;margin-bottom:6px">عمر اعتبار کش (ثانیه)
-                        <input type="number" id="cfg-page-cache-ttl" value="86400" style="width:100%;font-size:12px;padding:6px;border:1px solid #d0d7de;border-radius:6px">
-                    </label>
-                    <label style="font-size:12px;display:block;margin-bottom:6px">استثنائات آدرس (هر خط یک آدرس/الگو)
-                        <textarea id="cfg-page-cache-excl" rows="2" style="width:100%;font-size:12px;padding:6px;border:1px solid #d0d7de;border-radius:6px"></textarea>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Asset Optimization Card -->
-            <div class="bk-mod-card is-on">
-                <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">بهینه‌سازی CSS و JavaScript</span><span class="bk-mod-impact is-high">تأثیر بالا</span>
-                    <label class="bk-toggle"><input type="checkbox" id="cfg-assets-enable" checked><span class="bk-toggle__track"></span></label>
-                </div>
-                <p class="bk-mod-card__desc">فشرده‌سازی Minify، اجرای به تعویق انداخته (Defer / Delay) و حذف CSS/JS استفاده‌نشده.</p>
-                <div class="bk-mod-card__foot">
-                    <span style="font-size:12px;color:#1f883d;font-weight:600">فعال</span>
-                    <button type="button" class="bk-btn-secondary" style="padding:4px 10px;font-size:12px" onclick="document.getElementById('opt-details-assets').style.display=document.getElementById('opt-details-assets').style.display==='none'?'block':'none'">تنظیمات</button>
-                </div>
-                <div id="opt-details-assets" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #f0f2f5">
-                    <label style="font-size:12px;display:block;margin-bottom:4px"><input type="checkbox" id="cfg-asset-minify-css" checked> Minify CSS</label>
-                    <label style="font-size:12px;display:block;margin-bottom:4px"><input type="checkbox" id="cfg-asset-minify-js" checked> Minify JS</label>
-                    <label style="font-size:12px;display:block;margin-bottom:4px"><input type="checkbox" id="cfg-asset-defer-js" checked> Defer JS</label>
-                    <label style="font-size:12px;display:block;margin-bottom:4px"><input type="checkbox" id="cfg-asset-delay-js" checked> Delay اسکریپت‌های شخص‌ثالث</label>
-                </div>
-            </div>
-
-            <!-- Core Web Vitals Card -->
-            <div class="bk-mod-card is-on">
-                <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">Core Web Vitals (CLS و فونت)</span><span class="bk-mod-impact is-high">تأثیر بالا</span>
-                    <label class="bk-toggle"><input type="checkbox" id="cfg-cwv-enable" checked><span class="bk-toggle__track"></span></label>
-                </div>
-                <p class="bk-mod-card__desc">تعیین ابعاد صریح تصاویر جهت صفر کردن CLS، تنظیم font-display: swap و محدودسازی Preconnect.</p>
-                <div class="bk-mod-card__foot">
-                    <span style="font-size:12px;color:#1f883d;font-weight:600">فعال</span>
-                </div>
-            </div>
-
-            <!-- Media Lazy Load Card -->
-            <div class="bk-mod-card is-on">
-                <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">بارگذاری تنبل رسانه‌ها</span><span class="bk-mod-impact is-med">تأثیر متوسط</span>
-                    <label class="bk-toggle"><input type="checkbox" id="cfg-media-enable" checked><span class="bk-toggle__track"></span></label>
-                </div>
-                <p class="bk-mod-card__desc">بارگذاری تنبل تصاویر، iframeها و ویدیوهای یوتیوب تا اولین رندر سریع‌تر انجام شود.</p>
-                <div class="bk-mod-card__foot">
-                    <span style="font-size:12px;color:#1f883d;font-weight:600">فعال</span>
-                </div>
-            </div>
-
-            <!-- Preload & Hints Card -->
-            <div class="bk-mod-card is-on">
-                <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">Preload و DNS Prefetch</span><span class="bk-mod-impact is-med">تأثیر متوسط</span>
-                    <label class="bk-toggle"><input type="checkbox" id="cfg-preload-enable" checked><span class="bk-toggle__track"></span></label>
-                </div>
-                <p class="bk-mod-card__desc">Preload فونت‌های حیاتی و برقراری پیش‌فرض اتصال به دامنه‌های خارجی مانند گوگل‌فونت.</p>
-                <div class="bk-mod-card__foot">
-                    <span style="font-size:12px;color:#1f883d;font-weight:600">فعال</span>
-                </div>
-            </div>
-
-            <!-- Heartbeat Control Card -->
-            <div class="bk-mod-card is-on">
-                <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">کنترل Heartbeat API</span><span class="bk-mod-impact is-low">تأثیر کم</span>
-                    <label class="bk-toggle"><input type="checkbox" id="cfg-heartbeat-enable" checked><span class="bk-toggle__track"></span></label>
-                </div>
-                <p class="bk-mod-card__desc">کاهش یا غیرفعال‌سازی پایش‌های AJAX وردپرس در فرانت‌اند برای سبک‌تر شدن بار پردازش سرور.</p>
-                <div class="bk-mod-card__foot">
-                    <span style="font-size:12px;color:#1f883d;font-weight:600">فعال</span>
-                </div>
-            </div>
-
-            <!-- Browser Cache Card -->
-            <div class="bk-mod-card is-on">
-                <div class="bk-mod-card__head">
-                    <span class="bk-mod-card__title">کش مرورگر و فشرده‌سازی سرور</span>
-                    <label class="bk-toggle"><input type="checkbox" id="cfg-browser-enable" checked><span class="bk-toggle__track"></span></label>
-                </div>
-                <p class="bk-mod-card__desc">تولید خودکار قواعد .htaccess برای mod_expires، mod_headers و فشرده‌سازی Gzip/Deflate.</p>
-                <div class="bk-mod-card__foot">
-                    <span style="font-size:12px;color:#1f883d;font-weight:600">فعال</span>
-                </div>
-            </div>
-        </div>
-
-        <div style="margin-top:16px;display:flex;justify-content:flex-end">
-            <button type="button" class="bk-btn-primary" id="bk-save-config-btn" style="padding:10px 24px">
-                <span class="bk-spin" style="display:none"></span>
-                ذخیره تنظیمات
-            </button>
-        </div>
-    </div>
-
-    <!-- PANE 3: Redis Settings -->
-    <div class="bk-speed-tab-pane" id="bk-pane-redis">
-        <div class="bk-audit-form-card">
-            <h3 style="font-size:16px;font-weight:700;margin:0 0 12px">پیکربندی Redis Object Cache</h3>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
-                <label style="font-size:12px;display:block;grid-column:1/-1">
-                    <input type="checkbox" id="redis-enabled"> فعال‌سازی Redis Object Cache
-                </label>
-                <label style="font-size:12px">Host
-                    <input type="text" id="redis-host" value="127.0.0.1" dir="ltr" style="width:100%;font-size:13px;padding:8px;border:1px solid #d0d7de;border-radius:6px;margin-top:4px">
-                </label>
-                <label style="font-size:12px">Port
-                    <input type="number" id="redis-port" value="6379" dir="ltr" style="width:100%;font-size:13px;padding:8px;border:1px solid #d0d7de;border-radius:6px;margin-top:4px">
-                </label>
-                <label style="font-size:12px">Password
-                    <input type="password" id="redis-password" dir="ltr" style="width:100%;font-size:13px;padding:8px;border:1px solid #d0d7de;border-radius:6px;margin-top:4px">
-                </label>
-                <label style="font-size:12px">Database Index
-                    <input type="number" id="redis-db" value="0" dir="ltr" style="width:100%;font-size:13px;padding:8px;border:1px solid #d0d7de;border-radius:6px;margin-top:4px">
-                </label>
-            </div>
-            <div style="margin-top:16px;display:flex;align-items:center;gap:12px">
-                <button type="button" class="bk-btn-secondary" id="bk-test-redis-btn">
-                    <span class="bk-spin" style="display:none"></span>
-                    تست اتصال Redis
-                </button>
-                <button type="button" class="bk-btn-primary" id="bk-save-redis-btn">
-                    <span class="bk-spin" style="display:none"></span>
-                    ذخیره و فعال‌سازی Drop-in
-                </button>
-                <span id="redis-status-msg" style="font-size:12px;font-weight:600"></span>
-            </div>
-            <div style="margin-top:12px">
-                <div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b;margin-bottom:4px">
-                    <span>سلامت اتصال</span>
-                    <span id="bk-redis-meter-label">—</span>
-                </div>
-                <div class="bk-redis-meter"><div class="bk-redis-meter__bar" id="bk-redis-meter-bar"></div></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- PANE 4: Database Optimizer -->
-    <div class="bk-speed-tab-pane" id="bk-pane-db">
-        <div class="bk-audit-form-card">
-            <h3 style="font-size:16px;font-weight:800;margin:0 0 6px">پاکسازی هوشمند پایگاه داده</h3>
-            <p style="font-size:12px;color:#64748b;margin:0 0 4px">مواردی که می‌خواهید پاک شوند را انتخاب کنید؛ قبل از حذف سنگین از پشتیبان مطمئن شوید.</p>
-            <div class="bk-db-chips" id="bk-db-chips">
-                <label class="bk-db-chip is-checked"><input type="checkbox" data-db-opt="revisions" checked> رونوشت‌ها</label>
-                <label class="bk-db-chip is-checked"><input type="checkbox" data-db-opt="auto_drafts" checked> پیش‌نویس خودکار</label>
-                <label class="bk-db-chip is-checked"><input type="checkbox" data-db-opt="trash" checked> زباله‌دان</label>
-                <label class="bk-db-chip is-checked"><input type="checkbox" data-db-opt="spam" checked> دیدگاه اسپم</label>
-                <label class="bk-db-chip is-checked"><input type="checkbox" data-db-opt="transients" checked> Transient منقضی</label>
-            </div>
-            <button type="button" class="bk-btn-primary" id="bk-run-db-opt-btn" style="width:fit-content">
-                <span class="bk-spin" style="display:none"></span>
-                اجرای پاکسازی انتخاب‌شده
-            </button>
-            <div id="db-opt-result" style="display:none;margin-top:14px;font-size:12px;padding:12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px"></div>
-        </div>
-    </div>
-
-<!-- Pass Initial Config Payload to Vanilla JS -->
-<script>
-window.bankaiSpeedInitialCfg = <?php echo $cfg_json; ?>;
-</script>
+<script>window.bankaiSpeedInitialCfg = <?php echo $cfg_json; ?>;</script>
+</div>

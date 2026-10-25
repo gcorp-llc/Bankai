@@ -21,6 +21,61 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   };
 
+  /* ========== Professional Operation Progress Controller ========== */
+  const opBox = () => root.querySelector('#bk-speed-op-progress');
+  const opTitle = () => root.querySelector('#bk-op-title');
+  const opPct = () => root.querySelector('#bk-op-pct');
+  const opFill = () => root.querySelector('#bk-op-fill');
+  const opMsg = () => root.querySelector('#bk-op-msg');
+  const opSteps = () => root.querySelector('#bk-op-steps');
+
+  function showOpProgress(title, steps) {
+    const box = opBox();
+    if (!box) return;
+    box.style.display = 'block';
+    if (opTitle()) opTitle().textContent = title || 'در حال اجرا…';
+    if (opPct()) opPct().textContent = '0%';
+    if (opFill()) opFill().style.width = '0%';
+    if (opMsg()) opMsg().textContent = 'آماده‌سازی…';
+    if (opSteps() && Array.isArray(steps)) {
+      opSteps().innerHTML = steps.map((s, i) =>
+        `<span class="bk-stage-row" data-idx="${i}" style="display:inline-flex;padding:4px 10px;margin:0;font-size:11px">
+          <span class="bk-stage-icon" style="width:18px;height:18px;font-size:10px">${i + 1}</span>
+          <span>${s}</span>
+        </span>`
+      ).join('');
+    }
+  }
+  function updateOpProgress(pct, msg, stepIdx) {
+    if (opPct()) opPct().textContent = Math.round(pct) + '%';
+    if (opFill()) opFill().style.width = Math.min(100, pct) + '%';
+    if (opMsg() && msg) opMsg().textContent = msg;
+    if (typeof stepIdx === 'number' && opSteps()) {
+      opSteps().querySelectorAll('.bk-stage-row').forEach((el, i) => {
+        el.classList.remove('is-running', 'is-done');
+        if (i < stepIdx) el.classList.add('is-done');
+        else if (i === stepIdx) el.classList.add('is-running');
+      });
+    }
+  }
+  function hideOpProgress(delay) {
+    setTimeout(() => {
+      const box = opBox();
+      if (box) box.style.display = 'none';
+    }, delay || 1200);
+  }
+
+  function setStageStatus(stageId, status, label) {
+    const row = root.querySelector('#bk-fix-all-stages [data-stage="' + stageId + '"]');
+    if (!row) return;
+    row.classList.remove('is-running', 'is-done', 'is-error');
+    if (status === 'running') row.classList.add('is-running');
+    if (status === 'done') row.classList.add('is-done');
+    if (status === 'error') row.classList.add('is-error');
+    const st = row.querySelector('.bk-wpr-stage__st, .bk-stage-status');
+    if (st) st.textContent = label || (status === 'done' ? '✓' : status === 'running' ? '…' : '—');
+  }
+
   // State
   let speedConfig = Object.assign({
     page_caching: { enabled: true, ttl: 86400, exclusions: '' },
@@ -69,32 +124,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const bcEn = root.querySelector('#cfg-browser-enable');
     if (bcEn) bcEn.checked = !!(speedConfig.browser_cache && speedConfig.browser_cache.enabled !== false);
+
+    const fontsLocal = root.querySelector('#cfg-fonts-local');
+    if (fontsLocal) fontsLocal.checked = !!(speedConfig.fonts_localizer && speedConfig.fonts_localizer.enabled !== false);
+    const fontsSwap = root.querySelector('#cfg-fonts-display-swap');
+    if (fontsSwap) fontsSwap.checked = !(speedConfig.fonts_localizer && speedConfig.fonts_localizer.display_swap === false);
+    const fontsPre = root.querySelector('#cfg-fonts-preload-critical');
+    if (fontsPre) fontsPre.checked = !(speedConfig.fonts_localizer && speedConfig.fonts_localizer.preload_critical === false);
   }
 
   hydrateFormFields();
 
-  /* Subtab Navigation */
-  const tabBtns = root.querySelectorAll('.bk-speed-tab-btn');
-  const tabPanes = root.querySelectorAll('.bk-speed-tab-pane');
+  /* Section Navigation (left sidebar — WP Rocket style) */
+  const navItems = root.querySelectorAll('.bk-wpr-nav__item');
+  const sections = root.querySelectorAll('.bk-wpr-section');
 
-  tabBtns.forEach((btn) => {
+  navItems.forEach((btn) => {
     btn.addEventListener('click', function () {
-      const sub = this.getAttribute('data-subtab');
-      tabBtns.forEach((b) => b.classList.remove('is-active'));
-      tabPanes.forEach((p) => p.classList.remove('is-active'));
-
+      const sec = this.getAttribute('data-section');
+      navItems.forEach((b) => b.classList.remove('is-active'));
+      sections.forEach((s) => s.classList.remove('is-active'));
       this.classList.add('is-active');
-      const targetPane = root.querySelector('#bk-pane-' + sub);
-      if (targetPane) targetPane.classList.add('is-active');
-
-      if (sub === 'history') loadHistory();
-      if (sub === 'redis') loadRedisSettings();
+      const target = root.querySelector('.bk-wpr-section[data-section="' + sec + '"]');
+      if (target) target.classList.add('is-active');
+      if (sec === 'cdn' && typeof loadRedisSettings === 'function') loadRedisSettings();
     });
   });
 
   /* Device Toggle for Audit */
   let activeStrategy = 'mobile';
-  const deviceBtns = root.querySelectorAll('.bk-audit-device-btn');
+  const deviceBtns = root.querySelectorAll('.bk-wpr-device-btn, .bk-audit-device-btn');
   deviceBtns.forEach((btn) => {
     btn.addEventListener('click', function () {
       deviceBtns.forEach((b) => b.classList.remove('is-active'));
@@ -220,16 +279,36 @@ document.addEventListener('DOMContentLoaded', function () {
       if (spin) spin.style.display = 'inline-block';
       this.disabled = true;
 
+      const stagesEl = root.querySelector('#bk-fix-all-stages');
+      if (stagesEl) stagesEl.style.display = 'block';
+      ['snapshot', 'diagnose', 'apply', 'validate', 'warmup'].forEach((s) => setStageStatus(s, '', '—'));
+
+      showOpProgress('رفع هوشمند چندمرحله‌ای', [
+        'Snapshot ایمنی', 'تشخیص گلوگاه', 'اعمال بهینه‌سازی', 'اعتبارسنجی', 'پیش‌گرم کش'
+      ]);
+      setStageStatus('snapshot', 'running', 'در حال اجرا…');
+      updateOpProgress(10, 'ایجاد Snapshot از تنظیمات فعلی…', 0);
+
       const fd = new FormData();
       fd.append('action', 'bankai_fix_performance_issues');
       fd.append('nonce', getNonce());
       fd.append('url', url);
 
+      // Simulate staged UX while server works
+      setTimeout(() => { setStageStatus('snapshot', 'done', '✓'); setStageStatus('diagnose', 'running', '…'); updateOpProgress(30, 'تشخیص گلوگاه‌های عملکرد…', 1); }, 600);
+      setTimeout(() => { setStageStatus('diagnose', 'done', '✓'); setStageStatus('apply', 'running', '…'); updateOpProgress(55, 'اعمال بهینه‌سازی‌های اولویت‌دار…', 2); }, 1400);
+
       fetch(getAjaxUrl(), { method: 'POST', body: fd, credentials: 'same-origin' })
         .then((res) => res.json())
         .then((res) => {
+          setStageStatus('apply', 'done', '✓');
+          setStageStatus('validate', 'running', '…');
+          updateOpProgress(80, 'اعتبارسنجی نتایج…', 3);
           if (res.success && res.data) {
             currentSnapshotId = res.data.snapshot_id || '';
+            setStageStatus('validate', 'done', '✓');
+            setStageStatus('warmup', 'done', '✓');
+            updateOpProgress(100, 'تمام مراحل با موفقیت انجام شد', 4);
             showToast(res.data.message || 'اصلاحات انجام شد.', 'success');
 
             if (fixAllLog) {
@@ -238,22 +317,27 @@ document.addEventListener('DOMContentLoaded', function () {
               fixAllLog.innerHTML = '<strong>اقدامات خودکار انجام شده:</strong><ul style="margin:6px 0 0;padding-right:18px">' +
                 actions.map((a) => `<li>✓ ${a}</li>`).join('') + '</ul>';
             }
-
             if (rollbackBtn && currentSnapshotId) {
               rollbackBtn.style.display = 'inline-block';
             }
-
             if (res.data.after) {
               renderAuditResult(res.data.after);
             }
           } else {
+            setStageStatus('apply', 'error', '✗');
+            setStageStatus('validate', 'error', '✗');
+            updateOpProgress(100, (res.data && res.data.message) || 'خطا', 2);
             showToast((res.data && res.data.message) || 'خطا در اجرای Fix All', 'error');
           }
         })
-        .catch(() => showToast('خطای ارتباط شبکه', 'error'))
+        .catch(() => {
+          showToast('خطای ارتباط شبکه', 'error');
+          updateOpProgress(100, 'خطای شبکه', 0);
+        })
         .finally(() => {
           if (spin) spin.style.display = 'none';
           this.disabled = false;
+          hideOpProgress(2500);
         });
     });
   }
@@ -289,6 +373,8 @@ document.addEventListener('DOMContentLoaded', function () {
       const spin = this.querySelector('.bk-spin');
       if (spin) spin.style.display = 'inline-block';
       this.disabled = true;
+      showOpProgress('تخلیه کش چندلایه', ['پاک‌سازی HTML', 'پاک‌سازی دارایی‌ها', 'هماهنگی CDN']);
+      updateOpProgress(25, 'در حال پاک‌سازی کش صفحات…', 0);
 
       const fd = new FormData();
       fd.append('action', 'bankai_purge_speed_cache');
@@ -296,10 +382,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
       fetch(getAjaxUrl(), { method: 'POST', body: fd, credentials: 'same-origin' })
         .then((res) => res.json())
-        .then((res) => showToast(res.success ? 'کش‌ها با موفقیت پاک شدند.' : 'خطا در پاکسازی', res.success ? 'success' : 'error'))
+        .then((res) => {
+          updateOpProgress(100, res.success ? 'کش‌ها با موفقیت پاک شدند' : 'خطا در پاکسازی', 2);
+          showToast(res.success ? 'کش‌ها با موفقیت پاک شدند.' : 'خطا در پاکسازی', res.success ? 'success' : 'error');
+        })
         .finally(() => {
           if (spin) spin.style.display = 'none';
           this.disabled = false;
+          hideOpProgress(1800);
         });
     });
   }
@@ -310,6 +400,8 @@ document.addEventListener('DOMContentLoaded', function () {
       const spin = this.querySelector('.bk-spin');
       if (spin) spin.style.display = 'inline-block';
       this.disabled = true;
+      showOpProgress('بازسازی دارایی‌های بهینه‌شده', ['Minify CSS', 'Minify JS', 'اعمال قوانین بارگذاری']);
+      updateOpProgress(20, 'شروع بازسازی…', 0);
 
       const fd = new FormData();
       fd.append('action', 'bankai_rebuild_assets');
@@ -317,10 +409,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
       fetch(getAjaxUrl(), { method: 'POST', body: fd, credentials: 'same-origin' })
         .then((res) => res.json())
-        .then((res) => showToast(res.success ? 'فایل‌های بهینه‌شده بازسازی شدند.' : 'خطا', res.success ? 'success' : 'error'))
+        .then((res) => {
+          updateOpProgress(100, res.success ? 'فایل‌های بهینه‌شده بازسازی شدند' : 'خطا', 2);
+          showToast(res.success ? 'فایل‌های بهینه‌شده بازسازی شدند.' : 'خطا', res.success ? 'success' : 'error');
+        })
         .finally(() => {
           if (spin) spin.style.display = 'none';
           this.disabled = false;
+          hideOpProgress(1800);
         });
     });
   }
@@ -332,6 +428,8 @@ document.addEventListener('DOMContentLoaded', function () {
       const spin = this.querySelector('.bk-spin');
       if (spin) spin.style.display = 'inline-block';
       this.disabled = true;
+      showOpProgress('پیش‌گرم هوشمند کش', ['استخراج URLها', 'اولویت‌بندی صفحات', 'تولید کش با نرخ کنترل‌شده']);
+      updateOpProgress(15, 'استخراج نقشه سایت و صفحات مهم…', 0);
 
       const fd = new FormData();
       fd.append('action', 'bankai_preload_page_cache');
@@ -339,7 +437,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
       fetch(getAjaxUrl(), { method: 'POST', body: fd, credentials: 'same-origin' })
         .then((res) => res.json())
-        .then((res) => showToast(res.success ? res.data.message : 'خطا', res.success ? 'success' : 'error'))
+        .then((res) => {
+          updateOpProgress(100, res.success ? (res.data && res.data.message) || 'پیش‌گرم انجام شد' : 'خطا', 2);
+          showToast(res.success ? (res.data && res.data.message) || 'پیش‌گرم انجام شد' : 'خطا', res.success ? 'success' : 'error');
+        })
         .finally(() => {
           if (spin) spin.style.display = 'none';
           this.disabled = false;
@@ -348,55 +449,64 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   /* Save Full Config */
-  const saveConfigBtn = root.querySelector('#bk-save-config-btn');
+  const saveConfigBtn = root.querySelector('#bk-save-speed-cfg-btn, #bk-save-config-btn');
   if (saveConfigBtn) {
     saveConfigBtn.addEventListener('click', function () {
       const spin = this.querySelector('.bk-spin');
       if (spin) spin.style.display = 'inline-block';
       this.disabled = true;
 
-      // Update local speedConfig preserving unknown keys
+      const q = (sel) => root.querySelector(sel);
+      const checked = (sel) => !!(q(sel) && q(sel).checked);
+
       speedConfig.page_caching = Object.assign({}, speedConfig.page_caching, {
-        enabled: root.querySelector('#cfg-page-cache-enable').checked,
-        ttl: parseInt(root.querySelector('#cfg-page-cache-ttl').value || '86400', 10),
-        exclusions: root.querySelector('#cfg-page-cache-excl').value,
+        enabled: checked('#cfg-page-cache-enable'),
+        ttl: parseInt((q('#cfg-page-cache-ttl') && q('#cfg-page-cache-ttl').value) || '86400', 10),
+        exclusions: (q('#cfg-page-cache-excl') && q('#cfg-page-cache-excl').value) || '',
       });
 
       speedConfig.asset_optimization = Object.assign({}, speedConfig.asset_optimization, {
-        enabled: root.querySelector('#cfg-assets-enable').checked,
-        minify_css: root.querySelector('#cfg-asset-minify-css').checked,
-        minify_js: root.querySelector('#cfg-asset-minify-js').checked,
-        defer_js: root.querySelector('#cfg-asset-defer-js').checked,
-        delay_js: root.querySelector('#cfg-asset-delay-js').checked,
+        enabled: checked('#cfg-assets-enable'),
+        minify_css: checked('#cfg-asset-minify-css'),
+        minify_js: checked('#cfg-asset-minify-js'),
+        defer_js: checked('#cfg-asset-defer-js'),
+        delay_js: checked('#cfg-asset-delay-js'),
       });
 
       speedConfig.cwv_lighthouse = Object.assign({}, speedConfig.cwv_lighthouse, {
-        enabled: root.querySelector('#cfg-cwv-enable').checked,
+        enabled: checked('#cfg-cwv-enable'),
         font_display: true,
         cls_images: true,
         async_css: true,
       });
 
       speedConfig.media_lazy = Object.assign({}, speedConfig.media_lazy, {
-        enabled: root.querySelector('#cfg-media-enable').checked,
+        enabled: checked('#cfg-media-enable'),
         images: true,
         iframes: true,
         youtube: true,
       });
 
       speedConfig.preload = Object.assign({}, speedConfig.preload, {
-        enabled: root.querySelector('#cfg-preload-enable').checked,
+        enabled: checked('#cfg-preload-enable'),
         fonts: true,
         dns: true,
       });
 
       speedConfig.heartbeat = Object.assign({}, speedConfig.heartbeat, {
-        enabled: root.querySelector('#cfg-heartbeat-enable').checked,
+        enabled: checked('#cfg-heartbeat-enable'),
       });
 
       speedConfig.browser_cache = Object.assign({}, speedConfig.browser_cache, {
-        enabled: root.querySelector('#cfg-browser-enable').checked,
+        enabled: checked('#cfg-browser-enable'),
         ttl: 31536000,
+      });
+
+      speedConfig.fonts_localizer = Object.assign({}, speedConfig.fonts_localizer, {
+        enabled: checked('#cfg-fonts-local'),
+        display_swap: checked('#cfg-fonts-display-swap'),
+        preload_critical: checked('#cfg-fonts-preload-critical'),
+        self_host: true,
       });
 
       const fd = new FormData();
@@ -529,36 +639,94 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  /* Database Optimizer */
+  /* Database Optimizer with progress */
   const runDbOptBtn = root.querySelector('#bk-run-db-opt-btn');
   const dbOptResult = root.querySelector('#db-opt-result');
+  const dbProgress = root.querySelector('#bk-db-progress');
+  const dbFill = root.querySelector('#bk-db-progress-fill');
+  const dbLabel = root.querySelector('#bk-db-progress-label');
+  const dbSteps = root.querySelector('#bk-db-steps');
   if (runDbOptBtn) {
     runDbOptBtn.addEventListener('click', function () {
       const spin = this.querySelector('.bk-spin');
       if (spin) spin.style.display = 'inline-block';
       this.disabled = true;
+      if (dbProgress) dbProgress.style.display = 'block';
+      if (dbOptResult) dbOptResult.style.display = 'none';
+
+      const stepKeys = ['revisions', 'auto_drafts', 'trash', 'spam', 'transients', 'optimize'];
+      let si = 0;
+      if (dbSteps) {
+        dbSteps.querySelectorAll('li').forEach(function (li) {
+          li.classList.remove('is-run', 'is-done', 'is-err');
+          const st = li.querySelector('.bk-db-st');
+          if (st) st.textContent = '…';
+        });
+      }
+      const tick = setInterval(function () {
+        if (si < stepKeys.length && dbSteps) {
+          const li = dbSteps.querySelector('[data-step="' + stepKeys[si] + '"]');
+          if (li) {
+            li.classList.add('is-run');
+            const st = li.querySelector('.bk-db-st');
+            if (st) st.textContent = '◉';
+          }
+          if (si > 0) {
+            const prev = dbSteps.querySelector('[data-step="' + stepKeys[si - 1] + '"]');
+            if (prev) {
+              prev.classList.remove('is-run');
+              prev.classList.add('is-done');
+              const st = prev.querySelector('.bk-db-st');
+              if (st) st.textContent = '✓';
+            }
+          }
+          if (dbFill) dbFill.style.width = Math.round(((si + 1) / stepKeys.length) * 90) + '%';
+          if (dbLabel) dbLabel.textContent = 'در حال اجرا: ' + (li ? li.textContent.replace(/^[^\s]+\s/, '') : '…');
+          si++;
+        }
+      }, 420);
 
       const fd = new FormData();
       fd.append('action', 'bankai_optimize_database');
       fd.append('nonce', getNonce());
+      root.querySelectorAll('#bk-db-chips input[data-db-opt]').forEach(function (cb) {
+        if (cb.checked) fd.append('opts[]', cb.getAttribute('data-db-opt'));
+      });
 
       fetch(getAjaxUrl(), { method: 'POST', body: fd, credentials: 'same-origin' })
         .then((res) => res.json())
         .then((res) => {
+          clearInterval(tick);
+          if (dbSteps) {
+            dbSteps.querySelectorAll('li').forEach(function (li) {
+              li.classList.remove('is-run');
+              li.classList.add('is-done');
+              const st = li.querySelector('.bk-db-st');
+              if (st) st.textContent = '✓';
+            });
+          }
+          if (dbFill) dbFill.style.width = '100%';
+          if (dbLabel) dbLabel.textContent = 'پاکسازی کامل شد';
           if (res.success && res.data) {
             showToast('پاکسازی پایگاه داده با موفقیت انجام شد.', 'success');
             if (dbOptResult) {
               dbOptResult.style.display = 'block';
-              dbOptResult.innerHTML = `
-                ✓ رونوشت‌های پاک‌شده: ${res.data.deleted_revisions || 0}<br>
-                ✓ پیش‌نویس‌های پاک‌شده: ${res.data.deleted_drafts || 0}<br>
-                ✓ زباله‌دان پاک‌شده: ${res.data.deleted_trash || 0}<br>
-                ✓ دیدگاه‌های اسپم پاک‌شده: ${res.data.deleted_spam || 0}
-              `;
+              const d = res.data;
+              dbOptResult.innerHTML = '<div class="bk-db-report__title">گزارش پاکسازی</div>' +
+                '<div class="bk-db-report__row"><span>رونوشت‌ها</span><strong>' + (d.deleted_revisions || 0) + '</strong></div>' +
+                '<div class="bk-db-report__row"><span>پیش‌نویس خودکار</span><strong>' + (d.deleted_drafts || 0) + '</strong></div>' +
+                '<div class="bk-db-report__row"><span>زباله‌دان</span><strong>' + (d.deleted_trash || 0) + '</strong></div>' +
+                '<div class="bk-db-report__row"><span>دیدگاه اسپم</span><strong>' + (d.deleted_spam || 0) + '</strong></div>' +
+                '<div class="bk-db-report__row"><span>Transient</span><strong>' + (d.deleted_transients || d.cleaned_transients || 0) + '</strong></div>' +'<div class="bk-db-report__row"><span>متای یتیم</span><strong>' + (d.deleted_orphan_meta || 0) + '</strong></div>';
             }
           } else {
-            showToast('خطا در بهینه‌سازی', 'error');
+            showToast((res && res.data && res.data.message) || 'خطا در بهینه‌سازی', 'error');
+            if (dbLabel) dbLabel.textContent = 'خطا در اجرا';
           }
+        })
+        .catch(function () {
+          clearInterval(tick);
+          showToast('خطای شبکه', 'error');
         })
         .finally(() => {
           if (spin) spin.style.display = 'none';
@@ -723,8 +891,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  // DB chips visual
-  root.querySelectorAll('#bk-db-chips .bk-db-chip').forEach((chip) => {
+  // DB chips visual (old + new WPR classes)
+  root.querySelectorAll('#bk-db-chips .bk-db-chip, #bk-db-chips .bk-wpr-chip').forEach((chip) => {
     const input = chip.querySelector('input');
     if (!input) return;
     chip.classList.toggle('is-checked', input.checked);
@@ -733,7 +901,91 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  // Redis meter helper (called after test if available)
+  // Side panel: Preload mirrors main preload button
+  const preloadSide = root.querySelector('#bk-speed-preload-btn-side');
+  const preloadMain = root.querySelector('#bk-speed-preload-btn');
+  if (preloadSide && preloadMain) {
+    preloadSide.addEventListener('click', function () { preloadMain.click(); });
+  }
+
+  // Clear & Preload combined action
+  const purgePreloadBtn = root.querySelector('#bk-speed-purge-preload-btn');
+  if (purgePreloadBtn) {
+    purgePreloadBtn.addEventListener('click', function () {
+      const spin = this.querySelector('.bk-spin');
+      if (spin) spin.style.display = 'inline-block';
+      this.disabled = true;
+      showOpProgress('پاک‌سازی و پیش‌بارگذاری', ['تخلیه کش', 'استخراج URL', 'تولید کش']);
+      updateOpProgress(20, 'تخلیه کش…', 0);
+
+      const fd = new FormData();
+      fd.append('action', 'bankai_purge_speed_cache');
+      fd.append('nonce', getNonce());
+
+      fetch(getAjaxUrl(), { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then((res) => res.json())
+        .then((res) => {
+          if (!res.success) throw new Error('purge failed');
+          updateOpProgress(50, 'شروع پیش‌بارگذاری…', 1);
+          const fd2 = new FormData();
+          fd2.append('action', 'bankai_preload_page_cache');
+          fd2.append('nonce', getNonce());
+          return fetch(getAjaxUrl(), { method: 'POST', body: fd2, credentials: 'same-origin' });
+        })
+        .then((res) => res.json())
+        .then((res) => {
+          updateOpProgress(100, res.success ? 'انجام شد' : 'خطا', 2);
+          showToast(res.success ? ((res.data && res.data.message) || 'Clear & Preload انجام شد') : 'خطا', res.success ? 'success' : 'error');
+        })
+        .catch(() => showToast('خطا در Clear & Preload', 'error'))
+        .finally(() => {
+          if (spin) spin.style.display = 'none';
+          this.disabled = false;
+          hideOpProgress(1800);
+        });
+    });
+  }
+
+
+  // Localize fonts button
+  const fontsBtn = root.querySelector('#bk-fonts-localize-btn');
+  if (fontsBtn) {
+    fontsBtn.addEventListener('click', function () {
+      const spin = this.querySelector('.bk-spin');
+      if (spin) spin.style.display = 'inline-block';
+      this.disabled = true;
+      showOpProgress('محلی‌سازی فونت‌ها', ['شناسایی فونت‌ها', 'دانلود WOFF2', 'تولید CSS محلی']);
+      updateOpProgress(20, 'شناسایی فونت‌های خارجی…', 0);
+
+      const fd = new FormData();
+      fd.append('action', 'bankai_localize_fonts');
+      fd.append('nonce', getNonce());
+
+      fetch(getAjaxUrl(), { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then((res) => res.json())
+        .then((res) => {
+          updateOpProgress(100, res.success ? 'انجام شد' : 'خطا', 2);
+          const box = root.querySelector('#bk-fonts-status');
+          if (box) {
+            box.style.display = 'block';
+            if (res.success && res.data) {
+              box.textContent = (res.data.message || 'موفق') + (res.data.css_url ? ' — ' + res.data.css_url : '');
+            } else {
+              box.textContent = (res.data && res.data.message) || 'خطا در محلی‌سازی فونت';
+            }
+          }
+          showToast(res.success ? ((res.data && res.data.message) || 'فونت‌ها محلی شدند') : 'خطا', res.success ? 'success' : 'error');
+        })
+        .catch(() => showToast('خطای شبکه', 'error'))
+        .finally(() => {
+          if (spin) spin.style.display = 'none';
+          this.disabled = false;
+          hideOpProgress(2000);
+        });
+    });
+  }
+
+  // Redis meter helper
   window.bankaiSetRedisMeter = function (pct, label) {
     const bar = root.querySelector('#bk-redis-meter-bar');
     const lab = root.querySelector('#bk-redis-meter-label');

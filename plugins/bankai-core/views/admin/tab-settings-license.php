@@ -1,292 +1,327 @@
-<?php defined('ABSPATH') || exit; ?>
-<!-- Tab: Settings & License Management -->
-<div id="tab-settings-license" class="bankai-tab-pane" style="width:100%;max-width:100%;box-sizing:border-box"
+<?php
+/**
+ * Settings & License — orange theme + Solar icons
+ * @package Bankai
+ */
+defined('ABSPATH') || exit;
+
+$plugin_ver = defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0';
+$wp_ver     = get_bloginfo('version');
+$php_ver    = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . '.' . PHP_RELEASE_VERSION;
+$site_url   = home_url('/');
+?>
+<div id="tab-settings-license"
+     class="bankai-tab-pane bk-orange-shell"
      x-show="activeTab === 'settings-license'"
      :class="{ 'is-active-tab': activeTab === 'settings-license' }"
-     x-cloak>
-    <div class="bk-lg-header bk-wm-hero bk-page-hero">
-        <div class="bk-wm-hero__main">
-            <div class="bk-wm-hero__icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
-            </div>
-            <div>
-                <div class="bk-wm-hero__title-row">
-                    <h2>تنظیمات و لایسنس</h2>
-                    <span class="bk-wm-pill">Core Config</span>
-                </div>
-                <p>لایسنس، کلیدهای سراسری ماژول‌ها، بازنشانی کارخانه و گزارش عیب‌یابی</p>
-            </div>
-        </div>
+     x-cloak
+     x-init="typeof loadPwa === 'function' && loadPwa()">
+
+  <header class="bk-top-head">
+    <div class="bk-top-head__brand">
+      <span class="bk-top-head__logo"><iconify-icon icon="solar:settings-bold-duotone" width="24" height="24"></iconify-icon></span>
+      <div>
+        <strong>تنظیمات و لایسنس</strong>
+        <small>لایسنس · ماژول‌ها · PWA · پشتیبان · عیب‌یابی</small>
+      </div>
     </div>
-<div class="bankai-card" style="padding:18px;">
-            <div style="font-weight:800;margin-bottom:8px;" x-text="isRtl ? 'وضعیت لایسنس' : 'License status'">وضعیت لایسنس</div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                <span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
-                <strong style="color:#15803d;" x-text="isRtl ? 'فعال و تأیید شده' : 'Active & verified'">فعال و تأیید شده</strong>
-            </div>
-            <div style="font-size:12px;color:#94a3b8;" x-text="isRtl ? 'دسترسی کامل به ماژول‌های سئو، AI و کش' : 'Full access to SEO, AI and cache modules'">دسترسی کامل به ماژول‌های سئو، AI و کش</div>
-        </div>
+    <div class="bk-top-head__actions">
+      <button type="button"
+              id="btn-save-all-settings"
+              class="bk-wpr-btn bk-wpr-btn--primary"
+              @click="triggerSaveLoader({ title: isRtl ? 'در حال ذخیره‌سازی تنظیمات…' : 'Saving settings…', message: isRtl ? 'همگام‌سازی با دیتابیس' : 'Syncing database', duration: 700 })">
+        <iconify-icon icon="solar:diskette-bold-duotone" width="16"></iconify-icon>
+        <span x-text="isRtl ? 'ذخیره تنظیمات' : 'Save settings'"></span>
+      </button>
+    </div>
+  </header>
 
-    <!-- Header -->
-    <div class="bankai-card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px; flex-wrap: wrap; gap: 14px;">
-        <div>
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap;">
-                <h2 style="font-size: 18px; font-weight: 800; color: #1F2328; margin: 0; display: flex; align-items: center; gap: 8px;">
-                    <svg class="solar-icon" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                        <polyline points="9 12 11 14 15 10" />
-                    </svg>
-                    <span x-text="t('settingsTitle')">Platform Settings, Modular Switcher &amp; License</span>
-                </h2>
-                <span style="background-color: rgba(31, 136, 61, 0.2); border: 1px solid rgba(31, 136, 61, 0.5); color: #1A7F37; font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 700;">
-                    ✓ <span x-text="isRtl ? 'نسخه حرفه‌ای سازمانی تایید شده' : 'Verified Pro Enterprise'">Verified Pro Enterprise</span>
-                </span>
-            </div>
-            <p style="font-size: 12px; color: #8C959F; margin: 0;" x-text="t('settingsSubtitle')">
-                Global feature flags, license activation, role permissions, JSON configuration export/import &amp; system diagnostics.
-            </p>
-        </div>
+  <nav class="bk-top-tabs" role="tablist">
+    <button type="button" class="bk-top-tab" :class="{ 'is-active': settingsPanel === 'license' }" @click="settingsPanel = 'license'">
+      <iconify-icon icon="solar:shield-check-bold-duotone" width="18"></iconify-icon>
+      <span>لایسنس</span>
+    </button>
+    <button type="button" class="bk-top-tab" :class="{ 'is-active': settingsPanel === 'modules' }" @click="settingsPanel = 'modules'">
+      <iconify-icon icon="solar:widget-4-bold-duotone" width="18"></iconify-icon>
+      <span>ماژول‌ها</span>
+    </button>
+    <button type="button" class="bk-top-tab" :class="{ 'is-active': settingsPanel === 'pwa' }" @click="settingsPanel = 'pwa'; loadPwa()">
+      <iconify-icon icon="solar:smartphone-bold-duotone" width="18"></iconify-icon>
+      <span>PWA</span>
+    </button>
+    <button type="button" class="bk-top-tab" :class="{ 'is-active': settingsPanel === 'tools' }" @click="settingsPanel = 'tools'">
+      <iconify-icon icon="solar:wrench-bold-duotone" width="18"></iconify-icon>
+      <span>ابزارها</span>
+    </button>
+  </nav>
 
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button type="button"
-                    id="btn-save-all-settings"
-                    @click="triggerSaveLoader({ title: isRtl ? 'در حال ذخیره‌سازی تمامی تنظیمات پلتفرم...' : 'Saving All Platform Settings...', message: isRtl ? 'در حال اعمال پرچم‌های ماژولار و هماهنگ‌سازی دیتابیس...' : 'Updating modular flags and synchronizing database...', duration: 700 })"
-                    style="background-color: #0969DA; border: 1px solid #0969DA; color: #FFFFFF; padding: 10px 18px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 3px rgba(9, 105, 218, 0.3);">
-                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                    <polyline points="17 21 17 13 7 13 7 21" />
-                    <polyline points="7 3 7 8 15 8" />
-                </svg>
-                <span x-text="isRtl ? 'ذخیره تمامی تنظیمات' : 'Save All Settings'">Save All Settings</span>
+  <div class="bk-top-body">
+
+    <!-- LICENSE -->
+    <div x-show="settingsPanel === 'license'" x-cloak>
+      <div class="bk-product-hero">
+        <div class="bk-product-hero__logo">
+          <iconify-icon icon="solar:atom-bold-duotone" width="40" height="40"></iconify-icon>
+        </div>
+        <div class="bk-product-hero__text">
+          <h2>Bankai Core</h2>
+          <p class="bk-product-hero__tag">موتور یکپارچه سئو · هوش مصنوعی · سرعت · رسانه برای وردپرس</p>
+          <div class="bk-product-hero__meta">
+            <span class="bk-product-chip">نسخه <?php echo esc_html($plugin_ver); ?></span>
+            <span class="bk-product-chip">WordPress <?php echo esc_html($wp_ver); ?></span>
+            <span class="bk-product-chip">PHP <?php echo esc_html($php_ver); ?></span>
+          </div>
+          <p class="bk-product-hero__dev">توسعه‌دهنده: <strong>Dr Manhatan</strong></p>
+        </div>
+      </div>
+
+      <div class="bk-product-features">
+        <div class="bk-product-feat"><iconify-icon icon="solar:magnifer-bold-duotone" width="20"></iconify-icon><div><strong>موتور سئو و اسکیما</strong><span>آنالیز SEO/AEO/GEO · Sitemap · llms.txt · Organization Schema</span></div></div>
+        <div class="bk-product-feat"><iconify-icon icon="solar:ghost-bold-duotone" width="20"></iconify-icon><div><strong>استودیو هوش مصنوعی</strong><span>چند موتور متنی و تصویری · تولید مقاله · بهینه‌سازی محتوا</span></div></div>
+        <div class="bk-product-feat"><iconify-icon icon="solar:bolt-bold-duotone" width="20"></iconify-icon><div><strong>کش و سرعت</strong><span>کش صفحه · بهینه‌سازی دارایی · دیتابیس · CDN / Object Cache</span></div></div>
+        <div class="bk-product-feat"><iconify-icon icon="solar:gallery-bold-duotone" width="20"></iconify-icon><div><strong>رسانه و واترمارک</strong><span>فشرده‌سازی · WebP · واترمارک هوشمند</span></div></div>
+        <div class="bk-product-feat"><iconify-icon icon="solar:smartphone-bold-duotone" width="20"></iconify-icon><div><strong>PWA</strong><span>مانیفست · Service Worker · نصب‌پذیری موبایل</span></div></div>
+        <div class="bk-product-feat"><iconify-icon icon="solar:calendar-bold-duotone" width="20"></iconify-icon><div><strong>تقویم جلالی و ابزارها</strong><span>نمایش تاریخ شمسی · پشتیبان · عیب‌یابی</span></div></div>
+      </div>
+
+      <div class="bk-set-grid">
+        <div class="bk-dash-card bk-set-license">
+          <div class="bk-dash-card__head">
+            <div class="bk-dash-card__title">
+              <iconify-icon icon="solar:verified-check-bold-duotone" width="20" style="color:#16a34a"></iconify-icon>
+              <strong x-text="isRtl ? 'وضعیت لایسنس' : 'License status'"></strong>
+            </div>
+            <span class="bk-dash-badge is-ok" x-text="isRtl ? 'فعال' : 'Active'"></span>
+          </div>
+          <div class="bk-set-license__body">
+            <div class="bk-set-license__row">
+              <span x-text="isRtl ? 'نوع اشتراک' : 'Plan'"></span>
+              <strong x-text="isRtl ? 'نسخه سازمانی (Enterprise)' : 'Enterprise'"></strong>
+            </div>
+            <div class="bk-set-license__row">
+              <span x-text="isRtl ? 'وضعیت' : 'Status'"></span>
+              <strong style="color:#15803d" x-text="isRtl ? 'تأیید شده' : 'Verified'"></strong>
+            </div>
+            <div class="bk-set-license__row">
+              <span x-text="isRtl ? 'دسترسی' : 'Access'"></span>
+              <strong x-text="isRtl ? 'سئو · AI · کش · رسانه' : 'SEO · AI · Cache · Media'"></strong>
+            </div>
+            <div class="bk-set-license__row">
+              <span x-text="isRtl ? 'نسخه افزونه' : 'Plugin version'"></span>
+              <strong>v<?php echo esc_html($plugin_ver); ?></strong>
+            </div>
+          </div>
+          <div class="bk-set-license__actions">
+            <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="showToast && showToast(isRtl ? 'لایسنس مجدداً اعتبارسنجی شد' : 'License revalidated', 'success')">
+              <iconify-icon icon="solar:refresh-circle-bold-duotone" width="16"></iconify-icon>
+              <span x-text="isRtl ? 'اعتبارسنجی مجدد' : 'Revalidate'"></span>
             </button>
+          </div>
+        </div>
 
-            <button type="button"
-                    @click="exportConfiguration()"
-                    style="background-color: #FFFFFF; border: 1px solid #D0D7DE; color: #1F2328; padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(46, 52, 64, 0.04);">
-                <svg class="solar-icon solar-icon-sm" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                </svg>
-                <span x-text="t('exportConfig')">Export Config JSON</span>
+        <div class="bk-dash-card">
+          <div class="bk-dash-card__head">
+            <div class="bk-dash-card__title">
+              <iconify-icon icon="solar:info-circle-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
+              <strong x-text="isRtl ? 'اطلاعات محیط' : 'Environment'"></strong>
+            </div>
+          </div>
+          <div class="bk-dash-health-grid">
+            <div class="bk-dash-health-row">
+              <span>WordPress</span>
+              <strong><?php echo esc_html($wp_ver); ?></strong>
+            </div>
+            <div class="bk-dash-health-row">
+              <span>PHP</span>
+              <strong><?php echo esc_html($php_ver); ?></strong>
+            </div>
+            <div class="bk-dash-health-row">
+              <span x-text="isRtl ? 'آدرس سایت' : 'Site URL'"></span>
+              <strong style="font-size:11px;word-break:break-all"><?php echo esc_html($site_url); ?></strong>
+            </div>
+            <div class="bk-dash-health-row">
+              <span>Bankai Core</span>
+              <strong>v<?php echo esc_html($plugin_ver); ?></strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULES -->
+    <div x-show="settingsPanel === 'modules'" x-cloak>
+      <div class="bk-dash-card">
+        <div class="bk-dash-card__head">
+          <div class="bk-dash-card__title">
+            <iconify-icon icon="solar:widget-4-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
+            <strong x-text="isRtl ? 'کلیدهای سراسری ماژول‌ها' : 'Global module switches'"></strong>
+          </div>
+          <span class="bk-dash-hint" x-text="isRtl ? 'غیرفعال کردن هر ماژول، منوی مربوطه را هم مخفی می‌کند' : 'Disabling a module also hides its menu item'"></span>
+        </div>
+        <div class="bk-dash-mods">
+          <template x-for="mod in coreModuleCards" :key="'set-'+mod.key">
+            <div class="bk-dash-mod" :class="{ 'is-on': moduleActive[mod.key] !== false }">
+              <div class="bk-dash-mod__top">
+                <div class="bk-dash-mod__ico">
+                  <iconify-icon :icon="mod.icon || 'solar:widget-bold-duotone'" width="20"></iconify-icon>
+                </div>
+                <label class="bankai-switch">
+                  <input type="checkbox"
+                         :checked="moduleActive[mod.key] !== false"
+                         @change="toggleCoreModule(mod.key, $event.target.checked)">
+                  <span class="bankai-slider"></span>
+                </label>
+              </div>
+              <div class="bk-dash-mod__name" x-text="isRtl ? mod.title_fa : mod.title"></div>
+              <div class="bk-dash-mod__desc" x-text="isRtl ? mod.desc_fa : mod.desc"></div>
+              <div class="bk-dash-mod__status"
+                   :class="moduleActive[mod.key] !== false ? 'is-on' : 'is-off'"
+                   x-text="moduleActive[mod.key] !== false ? (isRtl ? 'فعال' : 'Active') : (isRtl ? 'غیرفعال' : 'Off')"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- PWA -->
+    <div x-show="settingsPanel === 'pwa'" x-cloak>
+      <div class="bk-dash-card" style="margin-bottom:14px">
+        <div class="bk-dash-card__head">
+          <div class="bk-dash-card__title">
+            <iconify-icon icon="solar:smartphone-bold-duotone" width="20" style="color:#fc4c2f"></iconify-icon>
+            <strong>اپلیکیشن وب پیشرفته (PWA)</strong>
+          </div>
+          <label class="bankai-switch" title="فعال‌سازی PWA">
+            <input type="checkbox" x-model="pwa.enabled">
+            <span class="bankai-slider"></span>
+          </label>
+        </div>
+        <p class="bk-set-tools__desc" style="margin:0">
+          مانیفست، Service Worker، آیکون‌ها و دکمه نصب اپ. ماژول «PWA» باید از تب ماژول‌ها فعال باشد.
+          <span x-show="!moduleActive.pwa && moduleActive.pwa !== undefined" style="color:#dc2626;font-weight:700"> — ماژول PWA فعلاً خاموش است.</span>
+        </p>
+      </div>
+
+      <div class="bk-dash-card" x-show="pwa.enabled" x-cloak>
+        <div class="bk-pwa-grid">
+          <div class="bk-field"><label>نام اپ</label><input type="text" x-model="pwa.name"></div>
+          <div class="bk-field"><label>نام کوتاه</label><input type="text" x-model="pwa.short_name" maxlength="12"></div>
+          <div class="bk-field" style="grid-column:1/-1"><label>توضیح</label><input type="text" x-model="pwa.description"></div>
+          <div class="bk-field"><label>Start URL</label><input type="text" dir="ltr" x-model="pwa.start_url" placeholder="/"></div>
+          <div class="bk-field"><label>Scope</label><input type="text" dir="ltr" x-model="pwa.scope" placeholder="/"></div>
+          <div class="bk-field"><label>حالت نمایش</label>
+            <select x-model="pwa.display">
+              <option value="standalone">Standalone</option>
+              <option value="fullscreen">Fullscreen</option>
+              <option value="minimal-ui">Minimal UI</option>
+              <option value="browser">Browser</option>
+            </select>
+          </div>
+          <div class="bk-field"><label>جهت</label>
+            <select x-model="pwa.orientation">
+              <option value="any">Any</option>
+              <option value="portrait">Portrait</option>
+              <option value="landscape">Landscape</option>
+            </select>
+          </div>
+          <div class="bk-field"><label>رنگ تم</label><input type="color" x-model="pwa.theme_color"></div>
+          <div class="bk-field"><label>رنگ پس‌زمینه</label><input type="color" x-model="pwa.background_color"></div>
+          <div class="bk-field" style="grid-column:1/-1"><label>آیکون ۱۹۲×۱۹۲ (PNG مربعی)</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <input type="url" dir="ltr" x-model="pwa.icon_192" placeholder="https://…/icon-192.png" style="flex:1;min-width:200px">
+              <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="pickPwaIcon('192')">رسانه</button>
+              <img x-show="pwa.icon_192" :src="pwa.icon_192" alt="" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid #e5e5e5">
+            </div>
+          </div>
+          <div class="bk-field" style="grid-column:1/-1"><label>آیکون ۵۱۲×۵۱۲ (PNG مربعی)</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <input type="url" dir="ltr" x-model="pwa.icon_512" placeholder="https://…/icon-512.png" style="flex:1;min-width:200px">
+              <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="pickPwaIcon('512')">رسانه</button>
+              <img x-show="pwa.icon_512" :src="pwa.icon_512" alt="" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid #e5e5e5">
+            </div>
+          </div>
+          <label class="bk-switch-row"><span>Service Worker (کش آفلاین)</span><input type="checkbox" x-model="pwa.service_worker"></label>
+          <label class="bk-switch-row"><span>کش آفلاین صفحات بازدیدشده</span><input type="checkbox" x-model="pwa.offline_cache"></label>
+          <label class="bk-switch-row"><span>دکمه «نصب اپ» در فرانت</span><input type="checkbox" x-model="pwa.install_prompt"></label>
+        </div>
+
+        <div class="bk-set-tools__row" style="margin-top:16px">
+          <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="savePwa()" :disabled="pwaSaving">
+            <iconify-icon icon="solar:diskette-bold-duotone" width="16"></iconify-icon>
+            <span x-text="pwaSaving ? 'در حال ذخیره…' : 'ذخیره تنظیمات PWA'"></span>
+          </button>
+          <a class="bk-wpr-btn bk-wpr-btn--secondary" :href="pwaManifestUrl" target="_blank" rel="noopener" x-show="pwaManifestUrl">
+            <iconify-icon icon="solar:link-bold-duotone" width="16"></iconify-icon>
+            مشاهده مانیفست
+          </a>
+        </div>
+        <p style="margin:12px 0 0;font-size:11px;color:#94a3b8;line-height:1.6">
+          پس از ذخیره، یک‌بار پیوندهای یکتا (Permalinks) را ذخیره کنید اگر مانیفست 404 داد.
+          آدرس مانیفست: <code dir="ltr">/manifest.webmanifest</code> · Service Worker: <code dir="ltr">/bankai-sw.js</code>
+          · سایت باید روی <strong>HTTPS</strong> باشد.
+        </p>
+      </div>
+    </div>
+
+    <!-- TOOLS -->
+    <div x-show="settingsPanel === 'tools'" x-cloak>
+      <div class="bk-set-tools">
+        <div class="bk-dash-card">
+          <div class="bk-dash-card__head">
+            <div class="bk-dash-card__title">
+              <iconify-icon icon="solar:export-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
+              <strong x-text="isRtl ? 'پشتیبان پیکربندی' : 'Config backup'"></strong>
+            </div>
+          </div>
+          <p class="bk-set-tools__desc" x-text="isRtl ? 'خروجی JSON از تنظیمات برای انتقال به سایت دیگر یا بازیابی سریع.' : 'Export JSON config for migration or restore.'"></p>
+          <div class="bk-set-tools__row">
+            <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="typeof exportConfiguration === 'function' && exportConfiguration()">
+              <iconify-icon icon="solar:download-minimalistic-bold-duotone" width="16"></iconify-icon>
+              <span x-text="isRtl ? 'خروجی تنظیمات' : 'Export config'"></span>
             </button>
-
-            <button type="button"
-                    @click="confirmFactoryReset()"
-                    style="background-color: rgba(207, 34, 46, 0.12); border: 1px solid rgba(207, 34, 46, 0.4); color: #CF222E; padding: 10px 18px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                    <line x1="12" y1="9" x2="12" y2="13" />
-                    <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-                <span x-text="isRtl ? 'بازنشانی کارخانه' : 'Factory Reset'">بازنشانی کارخانه</span>
+            <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="typeof importConfiguration === 'function' && importConfiguration()">
+              <iconify-icon icon="solar:upload-minimalistic-bold-duotone" width="16"></iconify-icon>
+              <span x-text="isRtl ? 'ورود تنظیمات' : 'Import config'"></span>
             </button>
-        </div>
-    </div>
-
-    <!-- License Card -->
-    <div class="bankai-card" style="padding: 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-            <div style="width: 50px; height: 50px; border-radius: 12px; background-color: rgba(9, 105, 218, 0.12); border: 1px solid rgba(9, 105, 218, 0.3); display: flex; align-items: center; justify-content: center; color: #0969DA;">
-                <svg class="solar-icon solar-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <circle cx="12" cy="8" r="7" />
-                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
-                </svg>
-            </div>
-            <div>
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <h3 style="font-size: 16px; font-weight: 800; color: #1F2328; margin: 0;"
-                        x-text="isRtl ? 'لایسنس فعال نسخه تجاری و دائمی پلتفرم' : 'Bankai Core Pro License Key'">
-                        Bankai Core Pro License Key
-                    </h3>
-                    <span style="background-color: rgba(31, 136, 61, 0.25); color: #1A7F37; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(31, 136, 61, 0.5);"
-                          x-text="isRtl ? 'فعال و تایید شده' : 'ACTIVE & VERIFIED'">
-                        ACTIVE &amp; VERIFIED
-                    </span>
-                </div>
-                <div style="font-size: 12px; color: #8C959F; margin-top: 4px;">
-                    <span x-text="isRtl ? 'کد لایسنس:' : 'Key:'">Key:</span>
-                    <code style="color: #0969DA; background-color: #F6F8FA; border: 1px solid #D0D7DE; padding: 2px 6px; border-radius: 4px; font-family: monospace;">BNK-PRO-8849-2049-9941-X9</code>
-                    &bull; <span x-text="isRtl ? 'سطح دائمی نامحدود (Lifetime)' : 'Lifetime Tier'">Lifetime Tier</span>
-                    &bull; <span x-text="isRtl ? 'دامنه نامحدود' : 'Unlimited Domains'">Unlimited Domains</span>
-                </div>
-            </div>
+          </div>
         </div>
 
-        <button type="button"
-                @click="checkLicenseUpdates()"
-                style="background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #0969DA; padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-            <svg class="solar-icon solar-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M19.95 11a8 8 0 1 0-.5 4m.5-4h-5m5 0V6" />
-            </svg>
-            <span x-text="isRtl ? 'اعتبارسنجی مجدد لایسنس' : 'Revalidate License'">اعتبارسنجی مجدد لایسنس</span>
-        </button>
-    </div>
-
-    <!-- Global Module Switcher -->
-    <div class="bankai-card" style="padding: 24px; margin-bottom: 24px;">
-        <h3 style="font-size: 15px; font-weight: 700; color: #1F2328; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
-            <svg class="solar-icon" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" />
-                <line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" />
-                <line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
-                <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" />
-            </svg>
-            <span x-text="isRtl ? 'کلیدهای سراسری مدیریت ماژول‌ها' : 'Modular Global Architecture Switcher'">کلیدهای سراسری مدیریت ماژول‌ها</span>
-        </h3>
-
-        <div class="bankai-grid-2">
-            <div style="background-color: #F6F8FA; border: 1px solid #D0D7DE; border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'موتور سئو خودکار و اسکیما' : 'Autonomous SEO Engine'">Autonomous SEO Engine</div>
-                    <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'سوئیچ اصلی برای اسکیما، متادیتا و پایش ۴۰۴' : 'Master toggle for SEO, Schema and 404 monitoring'">Master toggle for SEO, Schema and 404 monitoring</div>
-                </div>
-                <label class="bankai-switch">
-                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی پرچم موتور سئو...' : 'Updating SEO Engine Flag...', savedTitle: isRtl ? 'تنظیمات سئو ذخیره شد' : 'SEO Setting Saved' })">
-                    <span class="bankai-slider"></span>
-                </label>
+        <div class="bk-dash-card">
+          <div class="bk-dash-card__head">
+            <div class="bk-dash-card__title">
+              <iconify-icon icon="solar:bug-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
+              <strong x-text="isRtl ? 'عیب‌یابی' : 'Diagnostics'"></strong>
             </div>
-
-            <div style="background-color: #F6F8FA; border: 1px solid #D0D7DE; border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'شتاب‌دهنده سرعت و کش' : 'Speed Cache Accelerator'">Speed Cache Accelerator</div>
-                    <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'سوئیچ اصلی برای کش صفحات، فشرده‌سازی و Redis' : 'Master toggle for page cache, minification & Redis'">Master toggle for page cache, minification &amp; Redis</div>
-                </div>
-                <label class="bankai-switch">
-                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی شتاب‌دهنده سرعت...' : 'Updating Speed Accelerator Flag...', savedTitle: isRtl ? 'تنظیمات سرعت ذخیره شد' : 'Speed Setting Saved' })">
-                    <span class="bankai-slider"></span>
-                </label>
-            </div>
-
-            <div style="background-color: #F6F8FA; border: 1px solid #D0D7DE; border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'استودیو رسانه و واترمارک' : 'Media & Dynamic Watermark Studio'">Media &amp; Dynamic Watermark Studio</div>
-                    <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'سوئیچ اصلی برای WebP/AVIF و واترمارک' : 'Master toggle for WebP/AVIF and watermarks'">Master toggle for WebP/AVIF and watermarks</div>
-                </div>
-                <label class="bankai-switch">
-                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی استودیو رسانه...' : 'Updating Media Studio Flag...', savedTitle: isRtl ? 'تنظیمات رسانه ذخیره شد' : 'Media Setting Saved' })">
-                    <span class="bankai-slider"></span>
-                </label>
-            </div>
-
-            <div style="background-color: #F6F8FA; border: 1px solid #D0D7DE; border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'استودیو هوش مصنوعی چندمدلی' : 'Generative AI Studio & Multi-LLM'">Generative AI Studio &amp; Multi-LLM</div>
-                    <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'سوئیچ اصلی برای Gemini، OpenAI و Claude' : 'Master toggle for Gemini, OpenAI, Claude & DeepSeek'">Master toggle for Gemini, OpenAI, Claude &amp; DeepSeek</div>
-                </div>
-                <label class="bankai-switch">
-                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی هوش مصنوعی...' : 'Updating AI Studio Flag...', savedTitle: isRtl ? 'تنظیمات هوش مصنوعی ذخیره شد' : 'AI Setting Saved' })">
-                    <span class="bankai-slider"></span>
-                </label>
-            </div>
-
-            <div style="background-color: #F6F8FA; border: 1px solid #D0D7DE; border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'استاندارد llms.txt و مانیفست' : 'Standard llms.txt & Manifest API'">Standard llms.txt &amp; Manifest API</div>
-                    <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'فعال‌سازی /llms.txt برای ربات‌های AI' : 'Enables /llms.txt endpoints for AI crawlers'">Enables /llms.txt endpoints for AI crawlers</div>
-                </div>
-                <label class="bankai-switch">
-                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی llms.txt...' : 'Updating llms.txt Configuration...', savedTitle: isRtl ? 'تنظیمات llms.txt ذخیره شد' : 'llms.txt Config Saved' })">
-                    <span class="bankai-slider"></span>
-                </label>
-            </div>
-
-            <div style="background-color: #F6F8FA; border: 1px solid #D0D7DE; border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-weight: 700; font-size: 13px; color: #1F2328;" x-text="isRtl ? 'ایندکس آنی (Google & IndexNow)' : 'Instant Indexing API (Google & IndexNow)'">Instant Indexing API (Google &amp; IndexNow)</div>
-                    <div style="font-size: 11px; color: #8C959F;" x-text="isRtl ? 'اطلاع‌رسانی بلادرنگ به موتورهای جستجو' : 'Pings search engines instantly on publish'">Pings search engines instantly on publish</div>
-                </div>
-                <label class="bankai-switch">
-                    <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال فعال‌سازی ایندکس آنی...' : 'Updating Instant Indexing...', savedTitle: isRtl ? 'تنظیمات ایندکس آنی ذخیره شد' : 'Instant Indexing Saved' })">
-                    <span class="bankai-slider"></span>
-                </label>
-            </div>
-        </div>
-    </div>
-
-    <!-- RBAC + Config Portability -->
-    <div class="bankai-grid-split" style="margin-bottom: 24px;">
-        <div class="bankai-card" style="padding: 24px;">
-            <h3 style="font-size: 15px; font-weight: 700; color: #1F2328; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
-                <svg class="solar-icon" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                <span x-text="isRtl ? 'سطوح دسترسی نقش‌های کاربری' : 'Role-Based Access Permissions'">Role-Based Access Permissions</span>
-            </h3>
-
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; background-color: #F6F8FA; padding: 10px 14px; border-radius: 8px; border: 1px solid #D0D7DE;">
-                    <span style="font-size: 12px; color: #1F2328; font-weight: 600;" x-text="isRtl ? 'مدیران کل (دسترسی کامل)' : 'Administrators (Full Access)'">Administrators (Full Access)</span>
-                    <span style="color: #1A7F37; font-weight: 700; font-size: 11px;" x-text="isRtl ? 'اجباری و فعال' : 'Enforced'">Enforced</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; background-color: #F6F8FA; padding: 10px 14px; border-radius: 8px; border: 1px solid #D0D7DE;">
-                    <span style="font-size: 12px; color: #1F2328; font-weight: 600;" x-text="isRtl ? 'ویرایشگران (سئو و AI محتوا)' : 'Editors (SEO & Content AI Tools)'">Editors (SEO &amp; Content AI Tools)</span>
-                    <label class="bankai-switch">
-                        <input type="checkbox" checked @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی دسترسی ویرایشگر...' : 'Updating Editor Permissions...', savedTitle: isRtl ? 'دسترسی ویرایشگر ذخیره شد' : 'Permissions Saved' })">
-                        <span class="bankai-slider"></span>
-                    </label>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; background-color: #F6F8FA; padding: 10px 14px; border-radius: 8px; border: 1px solid #D0D7DE;">
-                    <span style="font-size: 12px; color: #1F2328; font-weight: 600;" x-text="isRtl ? 'نویسندگان (فقط طرح اولیه AI)' : 'Authors (AI Outlines Only)'">Authors (AI Outlines Only)</span>
-                    <label class="bankai-switch">
-                        <input type="checkbox" @change="triggerSaveLoader({ title: isRtl ? 'در حال به‌روزرسانی دسترسی نویسنده...' : 'Updating Author Permissions...', savedTitle: isRtl ? 'دسترسی نویسنده ذخیره شد' : 'Permissions Saved' })">
-                        <span class="bankai-slider"></span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div class="bankai-card" style="padding: 24px;">
-            <h3 style="font-size: 15px; font-weight: 700; color: #1F2328; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
-                <svg class="solar-icon" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <polyline points="21 8 21 21 3 21 3 8" />
-                    <rect x="1" y="3" width="22" height="5" />
-                    <line x1="10" y1="12" x2="14" y2="12" />
-                </svg>
-                <span x-text="isRtl ? 'پشتیبان‌گیری و انتقال تنظیمات' : 'Configuration Backup & Migration'">Configuration Backup &amp; Migration</span>
-            </h3>
-
-            <p style="font-size: 12px; color: #656D76; line-height: 1.5; margin: 0 0 16px 0;"
-               x-text="isRtl ? 'برون‌بری تمام تنظیمات فعال، مختصات واترمارک و الگوهای AI به فایل JSON.' : 'Export all active settings, watermark coordinates and prompt manifests to a portable JSON file.'">
-                Export all active settings, watermark coordinates and prompt manifests to a portable JSON file.
-            </p>
-
-            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                <button type="button"
-                        @click="exportConfiguration()"
-                        style="flex: 1; min-width: 130px; background-color: #0969DA; border: none; color: #FFFFFF; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(9, 105, 218, 0.35);"
-                        x-text="isRtl ? 'دانلود فایل JSON' : 'Download JSON'">
-                    Download JSON
-                </button>
-                <label style="flex: 1; min-width: 130px; text-align: center; background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #1F2328; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                    <span x-text="isRtl ? 'درون‌ریزی فایل JSON' : 'Import JSON'">Import JSON</span>
-                    <input type="file" style="display: none;" @change="confirmImportConfig()">
-                </label>
-            </div>
-        </div>
-    </div>
-
-    <!-- System Diagnostic -->
-    <div class="bankai-card" style="padding: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-            <h3 style="font-size: 15px; font-weight: 700; color: #1F2328; margin: 0; display: flex; align-items: center; gap: 8px;">
-                <svg class="solar-icon" style="color: #0969DA;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-                </svg>
-                <span x-text="isRtl ? 'گزارش عیب‌یابی سیستم' : 'System Diagnostic Log Report'">گزارش عیب‌یابی سیستم</span>
-            </h3>
-            <button type="button"
-                    @click="copySystemReport()"
-                    style="background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #0969DA; padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;"
-                    x-text="isRtl ? 'کپی متن لاگ عیب‌یابی' : 'Copy Diagnostic Log'">
-                Copy Diagnostic Log
+          </div>
+          <p class="bk-set-tools__desc" x-text="isRtl ? 'گزارش کوتاه از نسخه PHP، وردپرس و وضعیت ماژول‌ها برای پشتیبانی.' : 'Short report of PHP, WordPress and modules for support.'"></p>
+          <div class="bk-set-tools__row">
+            <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary"
+                    @click="showToast && showToast('WP <?php echo esc_js($wp_ver); ?> · PHP <?php echo esc_js($php_ver); ?> · Bankai <?php echo esc_js($plugin_ver); ?>', 'info', 5000)">
+              <iconify-icon icon="solar:clipboard-list-bold-duotone" width="16"></iconify-icon>
+              <span x-text="isRtl ? 'نمایش خلاصه سیستم' : 'Show system summary'"></span>
             </button>
+          </div>
         </div>
 
-        <textarea readonly rows="8"
-                  style="width: 100%; background-color: #F6F8FA; border: 1px solid #D0D7DE; color: #656D76; font-family: monospace; font-size: 12px; padding: 12px; border-radius: 8px; line-height: 1.6; resize: none; direction: ltr; text-align: left;"><?php echo esc_textarea($state['systemReport'] ?? ''); ?></textarea>
+        <div class="bk-dash-card bk-set-danger">
+          <div class="bk-dash-card__head">
+            <div class="bk-dash-card__title">
+              <iconify-icon icon="solar:danger-triangle-bold-duotone" width="18" style="color:#dc2626"></iconify-icon>
+              <strong x-text="isRtl ? 'منطقه خطر' : 'Danger zone'"></strong>
+            </div>
+          </div>
+          <p class="bk-set-tools__desc" x-text="isRtl ? 'بازنشانی تنظیمات افزونه به حالت اولیه. این عمل برگشت‌پذیر نیست.' : 'Reset plugin settings to defaults. This cannot be undone.'"></p>
+          <div class="bk-set-tools__row">
+            <button type="button" class="bk-wpr-btn bk-wpr-btn--danger"
+                    @click="if (confirm(isRtl ? 'آیا از بازنشانی کارخانه مطمئن هستید؟' : 'Reset all settings to factory defaults?')) { showToast && showToast(isRtl ? 'درخواست بازنشانی ثبت شد' : 'Reset requested', 'warning'); }">
+              <iconify-icon icon="solar:trash-bin-trash-bold-duotone" width="16"></iconify-icon>
+              <span x-text="isRtl ? 'بازنشانی کارخانه' : 'Factory reset'"></span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
-<!-- end tab-settings-license -->
+
+  </div>
 </div>
-<!-- /tab-settings-license root -->

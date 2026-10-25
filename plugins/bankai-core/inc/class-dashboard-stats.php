@@ -224,6 +224,13 @@ final class Bankai_Dashboard_Stats
                 'desc'     => 'llms.txt and AI-friendly site index endpoints.',
                 'desc_fa'  => 'فایل llms.txt و اندپوینت ایندکس مناسب عامل‌های هوش مصنوعی.',
             ],
+            'store' => [
+                'label'    => 'Store (WooCommerce)',
+                'label_fa' => 'فروشگاه',
+                'desc'     => 'Product SEO wizard and store dashboard (requires WooCommerce).',
+                'desc_fa'  => 'داشبورد فروشگاه و ویزارد سئوی محصول (نیاز به ووکامرس).',
+                'icon'     => 'solar:shop-bold-duotone',
+            ],
         ];
 
         $out = [];
