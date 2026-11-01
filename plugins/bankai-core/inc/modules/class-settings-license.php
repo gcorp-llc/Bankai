@@ -27,6 +27,7 @@ class Bankai_Settings_License {
     private function __construct() {
         add_action('wp_ajax_bankai_save_settings', [$this, 'handle_save_settings']);
         add_action('wp_ajax_bankai_revalidate_license', [$this, 'handle_revalidate_license']);
+        add_action('wp_ajax_bankai_activate_rtl_license', [$this, 'handle_activate_rtl_license']);
         add_action('wp_ajax_bankai_export_config', [$this, 'handle_export_config']);
         add_action('wp_ajax_bankai_factory_reset', [$this, 'handle_factory_reset']);
     }
@@ -46,7 +47,12 @@ class Bankai_Settings_License {
         $report .= 'MySQL Version: ' . $wpdb->db_version() . "\n";
         $report .= 'Active Theme: ' . wp_get_theme()->get('Name') . "\n";
         $report .= 'Multisite: ' . (is_multisite() ? 'Yes' : 'No') . "\n";
-        $report .= 'Active License: BANKAI-PRO-9984-X721-LIFETIME (Lifetime Tier)' . "\n";
+        $rtl = function_exists('bankai_rtl_license_status') ? bankai_rtl_license_status() : [];
+        $report .= 'RTL License: ' . (!empty($rtl['active']) ? 'ACTIVE' : 'INACTIVE') . "\n";
+        if (!empty($rtl['message'])) {
+            $report .= 'RTL Status: ' . $rtl['message'] . "\n";
+        }
+        $report .= 'ionCube Loader: ' . (extension_loaded('ionCube Loader') ? 'Yes' : 'No') . "\n";
         $report .= 'Generated: ' . current_time('mysql') . "\n";
 
         return $report;
@@ -56,16 +62,26 @@ class Bankai_Settings_License {
      * Get all platform settings
      */
     public function get_settings(): array {
+        $rtl_active = function_exists('bankai_rtl_license_is_active')
+            ? bankai_rtl_license_is_active()
+            : false;
+
         $defaults = [
             'auto_update'      => true,
             'telemetry'        => true,
             'debug_mode'       => false,
-            'license_key'      => 'BANKAI-PRO-9984-X721-LIFETIME',
-            'license_active'   => true,
+            'license_key'      => '',
+            'license_active'   => $rtl_active,
         ];
 
         $saved = get_option($this->option_name, []);
-        return wp_parse_args(is_array($saved) ? $saved : [], $defaults);
+        $out = wp_parse_args(is_array($saved) ? $saved : [], $defaults);
+        // Always reflect live RTL license status for admin UI
+        $out['license_active'] = $rtl_active;
+        if (function_exists('bankai_rtl_license_status')) {
+            $out['rtl_status'] = bankai_rtl_license_status();
+        }
+        return $out;
     }
 
     /**
@@ -104,11 +120,27 @@ class Bankai_Settings_License {
         }
         check_ajax_referer('bankai_admin_nonce', 'nonce');
 
-        // In real implementation this would call a remote license server
-        wp_send_json_success([
-            'status'  => 'valid',
-            'tier'    => 'Lifetime Enterprise',
-            'message' => __('اعتبارسنجی لایسنس با موفقیت انجام شد.', 'bankai-core'),
+        $status = function_exists('bankai_rtl_license_status')
+            ? bankai_rtl_license_status()
+            : ['active' => false, 'message' => __('لایسنس راست‌چین در دسترس نیست.', 'bankai-core')];
+
+        $settings = $this->get_settings();
+        $settings['license_active'] = !empty($status['active']);
+        update_option($this->option_name, $settings, false);
+
+        if (!empty($status['active'])) {
+            wp_send_json_success([
+                'status'  => 'valid',
+                'tier'    => 'RTL Licensed',
+                'message' => $status['message'] ?? __('لایسنس فعال است.', 'bankai-core'),
+                'rtl'     => $status,
+            ]);
+        }
+
+        wp_send_json_error([
+            'status'  => 'invalid',
+            'message' => $status['message'] ?? __('لایسنس غیرفعال است.', 'bankai-core'),
+            'rtl'     => $status,
         ]);
     }
 

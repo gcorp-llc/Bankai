@@ -261,6 +261,7 @@
             watermarkStudio: watermarkStudio,
             mediaDrawer: { show: false, id: '', title: '' },
             mediaSubTab: 'watermark',
+            mediaDetail: { open: false, item: null, saving: false, busy: false, message: '', action: '', resultState: '', resultStats: [], flash: false },
             wmFontBusy: false,
             wmBulkModal: { show: false, running: false, progress: 0, progressText: '', items: [], title: '', alsoCompress: false },
 
@@ -270,13 +271,17 @@
                 items: [],
                 page: 1,
                 hasMore: false,
-                loading: false,
+                loading: true,
                 busy: false,
                 progress: 0,
                 progressText: '',
                 doneCount: 0,
                 totalCount: 0,
-                savedBytes: 0
+                savedBytes: 0,
+                action: '',
+                resultState: '',
+                resultMessage: '',
+                resultStats: []
             },
             moduleActive: moduleActive,
             dashVisitsLoading: false,
@@ -288,8 +293,29 @@
 
             dashVisits: { total: 0, change: 0, desktop: 0, mobile: 0, tablet: 0, error: '' },
             settingsPanel: 'license',
+            licenseBusy: false,
+            licenseState: (function () {
+                var c = window.bankaiCoreData || window.bankaiData || {};
+                var L = c.license || {};
+                return {
+                    active: L.active === true || L.active === 1 || L.active === '1',
+                    dev: !!L.dev,
+                    loader: !!L.loader,
+                    class: !!L.class,
+                    message: L.message || '',
+                    code: L.code || '',
+                    username: L.username || ''
+                };
+            })(),
+            licenseForm: (function () {
+                var c = window.bankaiCoreData || window.bankaiData || {};
+                var L = c.license || {};
+                return { code: L.code || '', username: L.username || '' };
+            })(),
+
             pwaSaving: false,
             pwaManifestUrl: '',
+            pwaIconBusy: false,
             pwa: {
                 enabled: false,
                 name: '',
@@ -409,6 +435,18 @@
                         if (on) el.removeAttribute('x-cloak');
                     });
                 } catch (e) {}
+                try {
+                    var c = window.bankaiCoreData || window.bankaiData || {};
+                    if (c.license && typeof c.license === 'object') {
+                        this.licenseState = Object.assign({}, this.licenseState, c.license, {
+                            active: c.license.active === true || c.license.active === 1 || c.license.active === '1'
+                        });
+                        this.licenseForm = {
+                            code: c.license.code || this.licenseForm.code || '',
+                            username: c.license.username || this.licenseForm.username || ''
+                        };
+                    }
+                } catch (e2) {}
             },
 
             t: function (key) {
@@ -477,7 +515,34 @@
                     self.showToast(self.isRtl ? 'خطا در ذخیره PWA' : 'PWA save failed', 'error');
                 });
             },
-            pickPwaIcon: function (size) {
+            generatePwaIcons: function () {
+                var self = this;
+                if (self.pwaIconBusy) return;
+                self.pwaIconBusy = true;
+                var body = {
+                    force: true,
+                    source: (self.pwa && (self.pwa.icon_512 || self.pwa.icon_192)) || ''
+                };
+                rest('/pwa/generate-icons', { method: 'POST', body: JSON.stringify(body) }).then(function (j) {
+                    self.pwaIconBusy = false;
+                    if (j && j.success && j.data) {
+                        if (j.data.icon_192) self.pwa.icon_192 = j.data.icon_192;
+                        if (j.data.icon_512) self.pwa.icon_512 = j.data.icon_512;
+                        if (j.data.settings) {
+                            if (j.data.settings.icon_192) self.pwa.icon_192 = j.data.settings.icon_192;
+                            if (j.data.settings.icon_512) self.pwa.icon_512 = j.data.settings.icon_512;
+                        }
+                        self.showToast(j.message || j.data.message || 'آیکون‌های PWA ساخته شدند', 'success');
+                        if (self.loadPwa) self.loadPwa();
+                    } else {
+                        self.showToast((j && (j.message || (j.data && j.data.message))) || 'ساخت آیکون ناموفق بود', 'error');
+                    }
+                }).catch(function () {
+                    self.pwaIconBusy = false;
+                    self.showToast('خطا در ساخت آیکون PWA', 'error');
+                });
+            },
+                        pickPwaIcon: function (size) {
                 var self = this;
                 if (typeof wp === 'undefined' || !wp.media) {
                     self.showToast(self.isRtl ? 'رسانه وردپرس در دسترس نیست' : 'WP media unavailable', 'error');
@@ -692,9 +757,17 @@ openStoreTab: function () {
                 }
                 var woo = !!(window.bankaiData && bankaiData.wooActive) || !!(window.bankaiCoreData && bankaiCoreData.wooActive);
                 this.wooActive = !!woo;
-                // Always open the tab so the dependency empty-state (install/activate WC) is visible
+                // Show WooCommerce missing alert only once (persisted)
                 if (!woo) {
-                    this.showToast(this.isRtl ? 'ووکامرس نصب یا فعال نیست — راهنما در صفحه فروشگاه نمایش داده می‌شود.' : 'WooCommerce is not active — see Store tab guidance.', 'warning');
+                    try {
+                        var k = 'bankai_woo_alert_seen';
+                        if (!window.localStorage || !localStorage.getItem(k)) {
+                            this.showToast(this.isRtl ? 'ووکامرس نصب یا فعال نیست — راهنما در صفحه فروشگاه نمایش داده می‌شود.' : 'WooCommerce is not active — see Store tab guidance.', 'warning');
+                            if (window.localStorage) localStorage.setItem(k, '1');
+                        }
+                    } catch (eWoo) {
+                        this.showToast(this.isRtl ? 'ووکامرس نصب یا فعال نیست — راهنما در صفحه فروشگاه نمایش داده می‌شود.' : 'WooCommerce is not active — see Store tab guidance.', 'warning');
+                    }
                 }
                 this.setTab('store');
             },
@@ -707,10 +780,21 @@ openStoreTab: function () {
                 if (key === 'store' && enabled) {
                     var wooOn = !!(window.bankaiData && bankaiData.wooActive) || !!(window.bankaiCoreData && bankaiCoreData.wooActive);
                     if (!wooOn) {
-                        self.showToast(self.isRtl
-                            ? 'ووکامرس نصب/فعال نیست. از افزونه‌ها → نصب WooCommerce سپس این تیک را بزنید.'
-                            : 'WooCommerce is not active. Install it from Plugins, then enable Store.',
-                            'warning', 5000);
+                        try {
+                            var k2 = 'bankai_woo_enable_alert_seen';
+                            if (!window.localStorage || !localStorage.getItem(k2)) {
+                                self.showToast(self.isRtl
+                                    ? 'ووکامرس نصب/فعال نیست. از افزونه‌ها → نصب WooCommerce سپس این تیک را بزنید.'
+                                    : 'WooCommerce is not active. Install it from Plugins, then enable Store.',
+                                    'warning', 5000);
+                                if (window.localStorage) localStorage.setItem(k2, '1');
+                            }
+                        } catch (eW2) {
+                            self.showToast(self.isRtl
+                                ? 'ووکامرس نصب/فعال نیست. از افزونه‌ها → نصب WooCommerce سپس این تیک را بزنید.'
+                                : 'WooCommerce is not active. Install it from Plugins, then enable Store.',
+                                'warning', 5000);
+                        }
                     }
                 }
 
@@ -1981,6 +2065,40 @@ initSeoImport: function () {
                 }
             },
 
+            
+            scheduleHideMediaResult: function (target, delayMs) {
+                var self = this;
+                var ms = typeof delayMs === 'number' ? delayMs : 4500;
+                target = target || 'lib'; // 'lib' | 'detail'
+                if (target === 'lib') {
+                    if (self._mediaLibResultTimer) {
+                        clearTimeout(self._mediaLibResultTimer);
+                        self._mediaLibResultTimer = null;
+                    }
+                    self._mediaLibResultTimer = setTimeout(function () {
+                        if (!self.mediaLib) return;
+                        // Don't hide while still loading/busy
+                        if (self.mediaLib.busy || self.mediaLib.resultState === 'loading') return;
+                        self.mediaLib.resultState = '';
+                        self.mediaLib.resultMessage = '';
+                        self.mediaLib.resultStats = [];
+                        self.mediaLib.progress = 0;
+                        self.mediaLib.progressText = '';
+                    }, ms);
+                } else {
+                    if (self._mediaDetailResultTimer) {
+                        clearTimeout(self._mediaDetailResultTimer);
+                        self._mediaDetailResultTimer = null;
+                    }
+                    self._mediaDetailResultTimer = setTimeout(function () {
+                        if (!self.mediaDetail) return;
+                        if (self.mediaDetail.busy || self.mediaDetail.resultState === 'loading') return;
+                        self.mediaDetail.resultState = '';
+                        self.mediaDetail.message = '';
+                        self.mediaDetail.resultStats = [];
+                    }, ms);
+                }
+            },
             formatMediaBytes: function (n) {
                 n = Number(n) || 0;
                 if (n < 1024) return n + ' B';
@@ -1988,31 +2106,134 @@ initSeoImport: function () {
                 return (n / 1048576).toFixed(2) + ' MB';
             },
 
+            
+            refreshLicenseStatus: function () {
+                var self = this;
+                var root = (window.bankaiCoreData && bankaiCoreData.restUrl) ? bankaiCoreData.restUrl : '/wp-json/bankai/v1/';
+                var nonce = (window.bankaiCoreData && bankaiCoreData.nonce) ? bankaiCoreData.nonce : '';
+                // Prefer AJAX for consistency with activate
+                if (typeof ajax === 'function') {
+                    return ajax('bankai_revalidate_license', {}).then(function (res) {
+                        var st = (res && res.data && res.data.rtl) || (res && res.data && res.data.status) || {};
+                        if (res && res.success && res.data && res.data.rtl) st = res.data.rtl;
+                        if (st && typeof st === 'object') {
+                            self.licenseState = Object.assign({}, self.licenseState, st);
+                            if (st.code) self.licenseForm.code = st.code;
+                            if (st.username) self.licenseForm.username = st.username;
+                        }
+                        // If revalidate returns active via success
+                        if (res && res.success && res.data && res.data.status === 'valid') {
+                            self.licenseState.active = true;
+                        }
+                        if (res && !res.success && res.data && res.data.rtl) {
+                            self.licenseState = Object.assign({}, self.licenseState, res.data.rtl);
+                        }
+                    }).catch(function () {});
+                }
+                return Promise.resolve();
+            },
+            activateRtlLicense: function () {
+                var self = this;
+                var code = (this.licenseForm && this.licenseForm.code) ? String(this.licenseForm.code).trim() : '';
+                var username = (this.licenseForm && this.licenseForm.username) ? String(this.licenseForm.username).trim() : '';
+                if (!code) {
+                    this.showToast(this.isRtl ? 'کد لایسنس را وارد کنید' : 'Enter license code', 'warning');
+                    return;
+                }
+                this.licenseBusy = true;
+                ajax('bankai_activate_rtl_license', {
+                    code: code,
+                    username: username
+                }, 60000).then(function (res) {
+                    self.licenseBusy = false;
+                    var st = (res && res.data && res.data.status) || {};
+                    if (st && typeof st === 'object') {
+                        self.licenseState = Object.assign({}, self.licenseState, st);
+                    }
+                    if (res && res.success) {
+                        self.licenseState.active = true;
+                        self.showToast((res.data && res.data.message) || (self.isRtl ? 'لایسنس فعال شد' : 'License activated'), 'success');
+                        // Reload so gated modules boot
+                        setTimeout(function () { window.location.reload(); }, 900);
+                    } else {
+                        self.licenseState.active = !!(st && st.active);
+                        self.showToast((res && res.data && res.data.message) || (self.isRtl ? 'فعال‌سازی ناموفق' : 'Activation failed'), 'error');
+                    }
+                }).catch(function () {
+                    self.licenseBusy = false;
+                    self.showToast(self.t('error') || 'خطا', 'error');
+                });
+            },
             loadMediaLibrary: function (reset) {
                 var self = this;
-                if (self.mediaLib.loading) return;
+                if (!self.mediaLib) {
+                    self.mediaLib = {
+                        mode: 'compress', items: [], page: 1, hasMore: false,
+                        loading: false, busy: false, progress: 0, progressText: '',
+                        doneCount: 0, totalCount: 0, savedBytes: 0
+                    };
+                }
+                // Allow force-reload (reset) even if a previous load left loading=true stuck
+                if (self.mediaLib.loading && !reset) return;
                 if (reset) {
                     self.mediaLib.page = 1;
                     self.mediaLib.items = [];
                     self.mediaLib.hasMore = false;
                 }
                 self.mediaLib.loading = true;
+                var page = self.mediaLib.page || 1;
+                var reqId = (self.mediaLib._reqId = (self.mediaLib._reqId || 0) + 1);
+                // Safety: never leave spinner forever
+                if (self.mediaLib._loadTimer) {
+                    try { clearTimeout(self.mediaLib._loadTimer); } catch (e0) {}
+                }
+                self.mediaLib._loadTimer = setTimeout(function () {
+                    if (self.mediaLib && self.mediaLib._reqId === reqId && self.mediaLib.loading) {
+                        self.mediaLib.loading = false;
+                        if (self.showToast) self.showToast('بارگذاری رسانه بیش از حد طول کشید — دوباره تلاش کنید', 'warning');
+                    }
+                }, 25000);
                 ajax('bankai_list_media_library', {
-                    page: self.mediaLib.page,
+                    page: page,
                     per_page: 18
-                }).then(function (res) {
+                }, 22000).then(function (res) {
+                    if (self.mediaLib._reqId !== reqId) return;
+                    if (res && res.success === false) {
+                        var msg = (res.data && res.data.message) || res.message || (self.t('error') || 'خطا در بارگذاری رسانه');
+                        if (self.showToast) self.showToast(msg, 'error');
+                        self.mediaLib.items = self.mediaLib.items || [];
+                        return;
+                    }
+                    // REST/AJAX shapes: {success,data:{items}} or nested
                     var d = (res && res.data) || res || {};
-                    var items = (d.items || []).map(function (it) {
-                        return Object.assign({ working: false, optimized: false, bytes_after: 0 }, it);
+                    if (d.data && (d.data.items || d.data.posts)) d = d.data;
+                    var raw = Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : []);
+                    var items = raw.map(function (it) {
+                        return Object.assign({
+                            working: false,
+                            optimized: false,
+                            bytes_after: 0,
+                            selected: !!it.selected
+                        }, it || {});
                     });
-                    if (reset) self.mediaLib.items = items;
-                    else self.mediaLib.items = self.mediaLib.items.concat(items);
+                    if (reset) {
+                        self.mediaLib.items = items;
+                    } else {
+                        self.mediaLib.items = (self.mediaLib.items || []).concat(items);
+                    }
                     self.mediaLib.hasMore = !!d.has_more;
-                    if (d.has_more) self.mediaLib.page = (self.mediaLib.page || 1) + 1;
-                }).catch(function () {
-                    self.showToast(self.t('error'), 'error');
+                    if (d.has_more) self.mediaLib.page = page + 1;
+                }).catch(function (err) {
+                    if (self.mediaLib._reqId !== reqId) return;
+                    if (self.showToast) self.showToast(self.t('error') || 'خطا در بارگذاری رسانه', 'error');
+                    if (typeof console !== 'undefined') console.warn('loadMediaLibrary', err);
                 }).finally(function () {
+                    if (self.mediaLib._reqId !== reqId) return;
                     self.mediaLib.loading = false;
+                    if (self.mediaLib._loadTimer) {
+                        try { clearTimeout(self.mediaLib._loadTimer); } catch (e1) {}
+                        self.mediaLib._loadTimer = null;
+                    }
                 });
             },
 
@@ -2024,33 +2245,6 @@ initSeoImport: function () {
                 }
             },
 
-            compressOneMedia: function (img) {
-                var self = this;
-                if (!img || img.working || self.mediaLib.busy) return;
-                img.working = true;
-                ajax('bankai_compress_attachment', {
-                    id: img.id,
-                    format: self.compressOpts.format,
-                    quality: self.compressOpts.quality,
-                    max_width: self.compressOpts.maxWidth || 0
-                }).then(function (res) {
-                    var d = (res && res.data) || res || {};
-                    if (res.success) {
-                        img.bytes_after = d.bytes_after || img.bytes;
-                        img.format = d.format || img.format;
-                        img.thumb = d.thumb || img.thumb;
-                        img.url = d.url || img.url;
-                        img.optimized = true;
-                        self.showToast(d.message || self.t('saved'), 'success');
-                    } else {
-                        self.showToast((d && d.message) || self.t('error'), 'error');
-                    }
-                }).catch(function () {
-                    self.showToast(self.t('error'), 'error');
-                }).finally(function () {
-                    img.working = false;
-                });
-            },
 
             compressAllMedia: async function () {
                 var self = this;
@@ -2201,31 +2395,77 @@ initSeoImport: function () {
                 this.mediaLib.busy = true;
                 this.mediaLib.selectedOnly = !!selectedOnly;
                 this.mediaLib.mode = 'compress';
+                this.mediaLib.action = 'compress';
                 this.mediaLib.progress = 0;
-                this.mediaLib.progressText = this.isRtl ? 'شروع فشرده‌سازی…' : 'Starting…';
-                var i = 0, ok = 0, fail = 0;
+                this.mediaLib.progressText = this.isRtl ? 'شروع فشرده‌سازی گروهی…' : 'Starting bulk compress…';
+                this.mediaLib.resultState = 'loading';
+                this.mediaLib.resultMessage = this.mediaLib.progressText;
+                this.mediaLib.resultStats = [
+                    { label: this.isRtl ? 'تعداد: ' : 'Count: ', value: String(targets.length) }
+                ];
+                var i = 0, ok = 0, fail = 0, savedTotal = 0, beforeTotal = 0, afterTotal = 0;
+                function fmt(n) { return self.formatMediaBytes ? self.formatMediaBytes(n) : (n + ' B'); }
                 function next() {
                     if (i >= targets.length) {
                         self.mediaLib.busy = false;
+                        self.mediaLib.action = '';
                         self.mediaLib.progress = 100;
-                        self.mediaLib.progressText = self.isRtl
-                            ? (ok + ' موفق · ' + fail + ' ناموفق')
-                            : (ok + ' ok · ' + fail + ' fail');
-                        self.showToast(self.mediaLib.progressText, fail ? 'warning' : 'success');
-                        setTimeout(function () { self.mediaLib.progress = 0; }, 1500);
+                        var pct = beforeTotal > 0 ? Math.round((savedTotal / beforeTotal) * 100) : 0;
+                        self.mediaLib.resultState = (fail && !ok) ? 'err' : 'ok';
+                        self.scheduleHideMediaResult('lib', 5000);
+                        self.mediaLib.resultMessage = self.isRtl
+                            ? ((fail && !ok) ? 'فشرده‌سازی گروهی ناموفق بود' : ('فشرده‌سازی گروهی انجام شد' + (fail ? ' (با چند خطا)' : '')))
+                            : ((fail && !ok) ? 'Bulk compress failed' : 'Bulk compress finished');
+                        self.mediaLib.progressText = self.mediaLib.resultMessage;
+                        self.mediaLib.resultStats = [
+                            { label: self.isRtl ? 'موفق: ' : 'OK: ', value: String(ok) },
+                            { label: self.isRtl ? 'ناموفق: ' : 'Failed: ', value: String(fail) },
+                            { label: self.isRtl ? 'حجم قبل: ' : 'Before: ', value: fmt(beforeTotal) },
+                            { label: self.isRtl ? 'حجم بعد: ' : 'After: ', value: fmt(afterTotal) },
+                            { label: self.isRtl ? 'صرفه‌جویی: ' : 'Saved: ', value: fmt(savedTotal) + (pct ? ' (' + pct + '%)' : '') }
+                        ];
+                        self.mediaLib.savedBytes = savedTotal;
+                        self.showToast(self.mediaLib.resultMessage, (fail && ok) ? 'warning' : (fail ? 'error' : 'success'));
+                        self.scheduleHideMediaResult('lib', 5000);
                         if (self.loadMediaLibrary) self.loadMediaLibrary(true);
                         return;
                     }
                     var img = targets[i];
-                    self.mediaLib.progress = Math.round((i / targets.length) * 100);
+                    self.mediaLib.progress = Math.round((i / Math.max(1, targets.length)) * 100);
                     self.mediaLib.progressText = (i + 1) + ' / ' + targets.length + ' — ' + (img.title || img.id);
+                    self.mediaLib.resultMessage = (self.isRtl ? 'در حال فشرده‌سازی: ' : 'Compressing: ') + (img.title || ('#' + img.id));
+                    self.mediaLib.resultStats = [
+                        { label: self.isRtl ? 'پیشرفت: ' : 'Progress: ', value: (i + 1) + ' / ' + targets.length },
+                        { label: self.isRtl ? 'موفق تا الان: ' : 'OK so far: ', value: String(ok) }
+                    ];
                     ajax('bankai_compress_attachment', {
                         id: img.id,
                         format: (self.compressOpts && self.compressOpts.format) || 'webp',
                         quality: (self.compressOpts && self.compressOpts.quality) || 82,
                         max_width: (self.compressOpts && self.compressOpts.maxWidth) || 1600
                     }, 60000).then(function (res) {
-                        if (res && res.success) ok++; else fail++;
+                        if (res && res.success) {
+                            ok++;
+                            var d = res.data || {};
+                            beforeTotal += Number(d.bytes || 0);
+                            afterTotal += Number(d.bytes_after != null ? d.bytes_after : (d.bytes || 0));
+                            savedTotal += Number(d.saved || 0);
+                            if (img && d.url) {
+                                var bust = (String(d.url).indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+                                img.url = d.url + bust;
+                                img.thumb = (d.thumb || d.url) + bust;
+                                if (d.format) {
+                                    img.format = d.format;
+                                    img.mime = 'image/' + String(d.format).replace('jpg', 'jpeg');
+                                }
+                                if (d.bytes_after != null) {
+                                    img.size = d.bytes_after;
+                                    img.size_label = fmt(d.bytes_after);
+                                }
+                            }
+                        } else {
+                            fail++;
+                        }
                     }).catch(function () { fail++; }).finally(function () {
                         i++;
                         setTimeout(next, 80);
@@ -2235,6 +2475,325 @@ initSeoImport: function () {
             },
             selectedMediaCount: function () {
                 return ((this.mediaLib && this.mediaLib.items) || []).filter(function (i) { return i.selected; }).length;
+            },
+            selectAllMedia: function () {
+                var items = (this.mediaLib && this.mediaLib.items) || [];
+                if (!items.length) return;
+                var allOn = items.every(function (i) { return i.selected; });
+                items.forEach(function (i) { i.selected = !allOn; });
+                this.mediaLib.items = items.slice();
+            },
+            startSelectedWatermark: function () {
+                var self = this;
+                var items = ((this.mediaLib && this.mediaLib.items) || []).filter(function (i) { return i.selected; });
+                if (!items.length) {
+                    this.showToast(this.isRtl ? 'حداقل یک تصویر انتخاب کنید' : 'Select images', 'warning');
+                    return;
+                }
+                var ids = items.map(function (i) { return i.id; });
+                this.mediaLib.busy = true;
+                this.mediaLib.action = 'watermark';
+                this.mediaLib.progress = 5;
+                this.mediaLib.progressText = this.isRtl ? 'شروع واترمارک گروهی…' : 'Starting bulk watermark…';
+                this.mediaLib.resultState = 'loading';
+                this.mediaLib.resultMessage = this.mediaLib.progressText;
+                this.mediaLib.resultStats = [
+                    { label: this.isRtl ? 'تعداد: ' : 'Count: ', value: String(ids.length) }
+                ];
+                var w = this.watermarkStudio || {};
+                ajax('bankai_bulk_watermark_ids', {
+                    ids: JSON.stringify(ids),
+                    apply: '1',
+                    wm_settings: JSON.stringify({
+                        enabled: true,
+                        type: w.type || 'text',
+                        position: w.position || 'bottom-right',
+                        opacity: w.opacity != null ? w.opacity : 75,
+                        text: w.text || '',
+                        text_size: w.text_size || 18,
+                        text_color: w.text_color || '#FFFFFF',
+                        text_font: w.text_font || 'default',
+                        box_enabled: !!w.box_enabled,
+                        box_padding: w.box_padding || 8,
+                        box_radius: w.box_radius || 6,
+                        box_color: w.box_color || '#000000',
+                        box_opacity: w.box_opacity != null ? w.box_opacity : 45,
+                        box_style: w.box_style || 'solid',
+                        text_cover: w.text_cover || 'none',
+                        min_dimension: 0
+                    })
+                }, 120000).then(function (res) {
+                    self.mediaLib.busy = false;
+                    self.mediaLib.action = '';
+                    self.mediaLib.progress = 100;
+                    if (res && res.success) {
+                        var d = res.data || {};
+                        var ok = Number(d.ok || 0);
+                        var fail = Number(d.fail || 0);
+                        var skip = Number(d.skip || 0);
+                        self.mediaLib.resultState = (ok || !fail) ? 'ok' : 'err';
+                        self.scheduleHideMediaResult('lib', 5000);
+                        self.mediaLib.resultMessage = self.isRtl
+                            ? ((ok) ? ('واترمارک گروهی انجام شد' + (fail ? ' (با چند خطا)' : '')) : 'واترمارک اعمال نشد')
+                            : (ok ? 'Bulk watermark done' : 'Watermark failed');
+                        self.mediaLib.progressText = self.mediaLib.resultMessage;
+                        self.mediaLib.resultStats = [
+                            { label: self.isRtl ? 'موفق: ' : 'OK: ', value: String(ok) },
+                            { label: self.isRtl ? 'ردشده: ' : 'Skipped: ', value: String(skip) },
+                            { label: self.isRtl ? 'ناموفق: ' : 'Failed: ', value: String(fail) },
+                            { label: self.isRtl ? 'نوع: ' : 'Type: ', value: (w.type === 'image') ? (self.isRtl ? 'لوگو' : 'Logo') : (self.isRtl ? 'متن' : 'Text') }
+                        ];
+                        self.showToast(self.mediaLib.resultMessage, fail ? 'warning' : 'success');
+                        self.scheduleHideMediaResult('lib', 5000);
+                        if (self.loadMediaLibrary) self.loadMediaLibrary(true);
+                    } else {
+                        self.mediaLib.resultState = 'err';
+                        self.mediaLib.resultMessage = (res && res.data && res.data.message) || self.t('error');
+                        self.mediaLib.resultStats = [];
+                        self.showToast(self.mediaLib.resultMessage, 'error');
+                        self.scheduleHideMediaResult('lib', 5000);
+                    }
+                }).catch(function () {
+                    self.mediaLib.busy = false;
+                    self.mediaLib.action = '';
+                    self.mediaLib.resultState = 'err';
+                    self.mediaLib.resultMessage = self.t('error');
+                    self.mediaLib.resultStats = [];
+                    self.showToast(self.t('error'), 'error');
+                    self.scheduleHideMediaResult('lib', 5000);
+                });
+            },
+            openMediaDetail: function (img) {
+                if (!img) return;
+                this.mediaDetail = {
+                    open: true,
+                    item: Object.assign({}, img),
+                    saving: false,
+                    busy: false,
+                    message: '',
+                    action: '',
+                    resultState: '',
+                    resultStats: [],
+                    flash: false
+                };
+            },
+            saveMediaDetail: function () {
+                var self = this;
+                var item = this.mediaDetail && this.mediaDetail.item;
+                if (!item || !item.id) return;
+                this.mediaDetail.saving = true;
+                this.mediaDetail.message = this.isRtl ? 'در حال ذخیره…' : 'Saving…';
+                this.mediaDetail.resultState = 'loading';
+                this.mediaDetail.resultStats = [];
+                ajax('bankai_update_media_meta', {
+                    id: item.id,
+                    title: item.title || '',
+                    alt: item.alt || '',
+                    caption: item.caption || ''
+                }).then(function (res) {
+                    self.mediaDetail.saving = false;
+                    if (res && res.success) {
+                        self.mediaDetail.resultState = 'ok';
+                        self.scheduleHideMediaResult('detail', 4500);
+                        self.mediaDetail.message = self.isRtl ? 'جزئیات تصویر ذخیره شد' : 'Details saved';
+                        var d = res.data || {};
+                        self.mediaLib.items = (self.mediaLib.items || []).map(function (it) {
+                            if (it.id !== item.id) return it;
+                            return Object.assign({}, it, {
+                                title: d.title != null ? d.title : item.title,
+                                alt: d.alt != null ? d.alt : item.alt,
+                                caption: d.caption != null ? d.caption : item.caption
+                            });
+                        });
+                        self.showToast(self.mediaDetail.message, 'success');
+                    } else {
+                        self.mediaDetail.resultState = 'err';
+                        self.scheduleHideMediaResult('detail', 4500);
+                        self.mediaDetail.message = (res && res.data && res.data.message) || self.t('error');
+                    }
+                }).catch(function () {
+                    self.mediaDetail.saving = false;
+                    self.mediaDetail.resultState = 'err';
+                    self.scheduleHideMediaResult('detail', 4500);
+                    self.mediaDetail.message = self.t('error');
+                });
+            },
+            compressOneMedia: function (item) {
+                var self = this;
+                if (!item || !item.id) return;
+                this.mediaDetail.busy = true;
+                this.mediaDetail.action = 'compress';
+                this.mediaDetail.resultState = 'loading';
+                this.mediaDetail.resultStats = [];
+                this.mediaDetail.message = this.isRtl ? 'در حال فشرده‌سازی تصویر…' : 'Compressing image…';
+                this.mediaDetail.flash = false;
+                ajax('bankai_compress_attachment', {
+                    id: item.id,
+                    format: (this.compressOpts && this.compressOpts.format) || 'webp',
+                    quality: (this.compressOpts && this.compressOpts.quality) || 82,
+                    max_width: (this.compressOpts && this.compressOpts.maxWidth) || 1600
+                }, 60000).then(function (res) {
+                    self.mediaDetail.busy = false;
+                    self.mediaDetail.action = '';
+                    if (res && res.success) {
+                        var d = res.data || {};
+                        self.mediaDetail.resultState = 'ok';
+                        self.scheduleHideMediaResult('detail', 4500);
+                        self.mediaDetail.message = d.message || (self.isRtl ? 'فشرده‌سازی با موفقیت انجام شد' : 'Compressed successfully');
+                        var stats = [];
+                        if (d.bytes != null && d.bytes_after != null) {
+                            var fmt = function (n) {
+                                n = Number(n) || 0;
+                                if (n >= 1048576) return (n / 1048576).toFixed(2) + ' MB';
+                                if (n >= 1024) return (n / 1024).toFixed(1) + ' KB';
+                                return n + ' B';
+                            };
+                            stats.push({ label: self.isRtl ? 'قبل: ' : 'Before: ', value: fmt(d.bytes) });
+                            stats.push({ label: self.isRtl ? 'بعد: ' : 'After: ', value: fmt(d.bytes_after) });
+                            if (d.saved > 0) {
+                                var pct = d.bytes > 0 ? Math.round((d.saved / d.bytes) * 100) : 0;
+                                stats.push({ label: self.isRtl ? 'صرفه‌جویی: ' : 'Saved: ', value: fmt(d.saved) + (pct ? ' (' + pct + '%)' : '') });
+                            }
+                        }
+                        if (d.format) {
+                            stats.push({ label: self.isRtl ? 'فرمت: ' : 'Format: ', value: String(d.format).toUpperCase() });
+                        }
+                        self.mediaDetail.resultStats = stats;
+                        if (d.url) {
+                            var bust = (d.url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+                            self.mediaDetail.item.url = d.url + bust;
+                            self.mediaDetail.item.thumb = (d.thumb || d.url) + bust;
+                            if (d.format) {
+                                self.mediaDetail.item.mime = 'image/' + String(d.format).replace('jpg', 'jpeg');
+                                self.mediaDetail.item.format = d.format;
+                            }
+                            if (d.bytes_after != null) {
+                                var after = Number(d.bytes_after) || 0;
+                                self.mediaDetail.item.size = after;
+                                self.mediaDetail.item.size_label = after >= 1048576
+                                    ? (after / 1048576).toFixed(2) + ' MB'
+                                    : (after / 1024).toFixed(1) + ' KB';
+                            }
+                        }
+                        self.mediaDetail.flash = true;
+                        setTimeout(function () { self.mediaDetail.flash = false; }, 800);
+                        if (self.loadMediaLibrary) self.loadMediaLibrary(true);
+                        self.showToast(self.mediaDetail.message, 'success');
+                        self.scheduleHideMediaResult('detail', 4500);
+                    } else {
+                        self.mediaDetail.resultState = 'err';
+                        self.scheduleHideMediaResult('detail', 4500);
+                        self.mediaDetail.resultStats = [];
+                        self.mediaDetail.message = (res && res.data && res.data.message) || self.t('error');
+                    }
+                }).catch(function () {
+                    self.mediaDetail.busy = false;
+                    self.mediaDetail.action = '';
+                    self.mediaDetail.resultState = 'err';
+                    self.mediaDetail.resultStats = [];
+                    self.mediaDetail.message = self.t('error');
+                    self.scheduleHideMediaResult('detail', 4500);
+                });
+            },
+            watermarkOneMedia: function (item) {
+                var self = this;
+                if (!item || !item.id) return;
+                this.mediaDetail.busy = true;
+                this.mediaDetail.action = 'watermark';
+                this.mediaDetail.resultState = 'loading';
+                this.mediaDetail.resultStats = [];
+                this.mediaDetail.message = this.isRtl ? 'در حال اعمال واترمارک…' : 'Applying watermark…';
+                this.mediaDetail.flash = false;
+                var w = this.watermarkStudio || {};
+                ajax('bankai_bulk_watermark_ids', {
+                    ids: JSON.stringify([item.id]),
+                    apply: '1',
+                    wm_settings: JSON.stringify({
+                        enabled: true,
+                        type: w.type || 'text',
+                        position: w.position || 'bottom-right',
+                        opacity: w.opacity != null ? w.opacity : 75,
+                        quality: w.quality != null ? w.quality : 90,
+                        text: w.text || '',
+                        text_size: w.text_size || 18,
+                        text_size_type: w.text_size_type || 'scale',
+                        text_scale_percent: w.text_scale_percent != null ? w.text_scale_percent : 3.5,
+                        min_font_size: w.min_font_size || 12,
+                        max_font_size: w.max_font_size || 72,
+                        margin_percent: w.margin_percent != null ? w.margin_percent : 2,
+                        text_color: w.text_color || '#FFFFFF',
+                        text_font: w.text_font || 'default',
+                        image_id: w.image_id || 0,
+                        image_scale: w.image_scale || 20,
+                        box_enabled: !!w.box_enabled,
+                        box_padding: w.box_padding || 8,
+                        box_radius: w.box_radius || 6,
+                        box_color: w.box_color || '#000000',
+                        box_opacity: w.box_opacity != null ? w.box_opacity : 45,
+                        box_style: w.box_style || 'solid',
+                        text_cover: w.text_cover || 'none',
+                        exclude_patterns: '',
+                        min_dimension: 0,
+                        keep_original: true
+                    })
+                }, 120000).then(function (res) {
+                    self.mediaDetail.busy = false;
+                    self.mediaDetail.action = '';
+                    if (res && res.success) {
+                        var d = res.data || {};
+                        var ok = d.ok != null ? Number(d.ok) : 1;
+                        var fail = d.fail != null ? Number(d.fail) : 0;
+                        var skip = d.skip != null ? Number(d.skip) : 0;
+                        if (ok > 0 && fail === 0) {
+                            self.mediaDetail.resultState = 'ok';
+                            self.scheduleHideMediaResult('detail', 4500);
+                            self.mediaDetail.message = self.isRtl ? 'واترمارک با موفقیت اعمال شد' : 'Watermark applied successfully';
+                        } else if (ok > 0) {
+                            self.mediaDetail.resultState = 'ok';
+                            self.scheduleHideMediaResult('detail', 4500);
+                            self.mediaDetail.message = self.isRtl ? 'واترمارک اعمال شد (با هشدار)' : 'Watermark applied with warnings';
+                        } else {
+                            self.mediaDetail.resultState = 'err';
+                            self.scheduleHideMediaResult('detail', 4500);
+                            self.mediaDetail.message = (d.message) || (self.isRtl ? 'واترمارک اعمال نشد' : 'Watermark failed');
+                        }
+                        var stats = [];
+                        if (ok) stats.push({ label: self.isRtl ? 'موفق: ' : 'OK: ', value: String(ok) });
+                        if (skip) stats.push({ label: self.isRtl ? 'ردشده: ' : 'Skipped: ', value: String(skip) });
+                        if (fail) stats.push({ label: self.isRtl ? 'ناموفق: ' : 'Failed: ', value: String(fail) });
+                        if (w.type) stats.push({ label: self.isRtl ? 'نوع: ' : 'Type: ', value: w.type === 'image' ? (self.isRtl ? 'لوگو' : 'Logo') : (self.isRtl ? 'متن' : 'Text') });
+                        if (w.position) stats.push({ label: self.isRtl ? 'موقعیت: ' : 'Position: ', value: String(w.position) });
+                        self.mediaDetail.resultStats = stats;
+                        if (self.mediaDetail.item) {
+                            var bust = '?wm=' + Date.now();
+                            var u = (self.mediaDetail.item.url || '').split('?')[0];
+                            var th = (self.mediaDetail.item.thumb || u || '').split('?')[0];
+                            if (u) self.mediaDetail.item.url = u + bust;
+                            if (th) self.mediaDetail.item.thumb = th + bust;
+                            // Force <img> reload even if browser ignores query on same node
+                            self.mediaDetail.flash = true;
+                            setTimeout(function () { self.mediaDetail.flash = false; }, 700);
+                        }
+                        if (self.mediaDetail.resultState === 'ok') {
+                            self.mediaDetail.flash = true;
+                            setTimeout(function () { self.mediaDetail.flash = false; }, 800);
+                        }
+                        if (self.loadMediaLibrary) self.loadMediaLibrary(true);
+                        self.showToast(self.mediaDetail.message, self.mediaDetail.resultState === 'ok' ? 'success' : 'error');
+                    } else {
+                        self.mediaDetail.resultState = 'err';
+                        self.scheduleHideMediaResult('detail', 4500);
+                        self.mediaDetail.resultStats = [];
+                        self.mediaDetail.message = (res && res.data && res.data.message) || self.t('error');
+                    }
+                }).catch(function () {
+                    self.mediaDetail.busy = false;
+                    self.mediaDetail.action = '';
+                    self.mediaDetail.resultState = 'err';
+                    self.scheduleHideMediaResult('detail', 4500);
+                    self.mediaDetail.resultStats = [];
+                    self.mediaDetail.message = self.t('error');
+                });
             },
             openWmBulkApply: function () {
                 var self = this;

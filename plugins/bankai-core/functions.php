@@ -139,6 +139,7 @@ if (!function_exists('bankai_core_module_keys')) {
             'jalali_calendar',
             'settings_license',
             'store',
+            'pwa',
         ];
     }
 }

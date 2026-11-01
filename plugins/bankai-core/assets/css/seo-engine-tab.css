@@ -730,3 +730,53 @@ body.rtl .bk-mod-drawer { animation-name: bk-drawer-in-rtl; }
   align-items: center;
   justify-content: center;
 }
+
+
+/* Sitewide status cards */
+.bk-sitewide-status {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 1100px) {
+  .bk-sitewide-status { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .bk-sitewide-status { grid-template-columns: 1fr; }
+}
+.bk-sitewide-status .bk-site-conn-card {
+  position: relative;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color .15s, box-shadow .15s;
+}
+.bk-sitewide-status .bk-site-conn-card.is-ok {
+  border-color: #bbf7d0;
+  box-shadow: 0 1px 0 rgba(22,163,74,.06);
+}
+.bk-sitewide-status .bk-site-conn-card.is-off {
+  border-color: #fecaca;
+}
+.bk-site-conn-card__top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.bk-site-status-tick {
+  width: 26px; height: 26px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 900;
+}
+.bk-site-status-tick.is-pass {
+  background: #dcfce7; color: #16a34a;
+}
+.bk-site-status-tick.is-fail {
+  background: #fee2e2; color: #dc2626;
+}
+.bk-sitewide-status .bk-site-conn-card strong {
+  display: block; font-size: 13px; color: #0f172a; margin-bottom: 4px;
+}
+.bk-sitewide-status .bk-site-conn-card p {
+  margin: 0 0 8px; font-size: 11px; color: #64748b; line-height: 1.5; min-height: 2.2em;
+}

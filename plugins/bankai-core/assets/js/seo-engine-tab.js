@@ -264,21 +264,32 @@ document.addEventListener('alpine:init', () => {
             }
         },
         loadArticles: async function () {
+            try {
+                if (this._articlesAbort) this._articlesAbort.abort();
+            } catch (e0) {}
+            this._articlesAbort = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            var signal = this._articlesAbort ? this._articlesAbort.signal : undefined;
+
             this.loading = true;
             try {
                 const c = this.cfg();
                 const base = (c.restUrl || '/wp-json/bankai/v1/').replace(/\/?$/, '/');
-                const url = `${base}seo/articles?page=${this.page}&per_page=${this.perPage}&search=${encodeURIComponent(this.searchQ || '')}&orderby=${this.orderby}&order=${this.order}`;
-                
-                const r = await fetch(url, { credentials: 'same-origin', headers: { 'X-WP-Nonce': c.nonce || '' } });
+                const url = `${base}seo/articles?page=${this.page}&per_page=${this.perPage}&search=${encodeURIComponent(this.searchQ || '')}&orderby=${this.orderby}&order=${this.order}&light=1`;
+
+                const r = await fetch(url, {
+                    credentials: 'same-origin',
+                    headers: { 'X-WP-Nonce': c.nonce || '' },
+                    signal: signal
+                });
                 const j = await r.json();
-                
+
                 if (j && j.success && j.data) {
                     this.articles = j.data.items || [];
                     this.total = j.data.total || 0;
                     this.totalPages = j.data.total_pages || 1;
                 }
             } catch (e) {
+                if (e && e.name === 'AbortError') return;
                 console.error('Error loading articles:', e);
             } finally {
                 this.loading = false;
@@ -356,6 +367,22 @@ document.addEventListener('alpine:init', () => {
                 this.edit.saving = false;
             }
         },
+        auditItem: function (key) {
+            var items = (this.seoAudit && this.seoAudit.items) || [];
+            for (var i = 0; i < items.length; i++) {
+                if (items[i] && items[i].key === key) return items[i];
+            }
+            return null;
+        },
+        auditPass: function (key) {
+            var it = this.auditItem(key);
+            return !!(it && it.pass);
+        },
+        auditDetail: function (key) {
+            var it = this.auditItem(key);
+            return it && it.detail ? it.detail : '';
+        },
+
         runSeoAuditInline: function() {
             var self = this;
             self.seoAudit.running = true;

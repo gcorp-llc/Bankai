@@ -1441,6 +1441,14 @@ final class Bankai_AI_Studio
             'rewrite_style' => $rewrite_style ?? 'seo',
         ];
 
+        // Always supply REAL site posts for internal-link tasks (prevents example.com hallucinations)
+        $post_id_for_links = absint($_POST['post_id'] ?? $_POST['id'] ?? 0);
+        if ($task === 'smart_internal_links') {
+            $catalog = $this->build_internal_link_catalog($post_id_for_links, $focus, $title, $content);
+            $extra['articles_data'] = wp_json_encode($catalog, JSON_UNESCAPED_UNICODE);
+            $extra['articles_catalog'] = $catalog;
+        }
+
         $prompts = $this->build_seo_prompts($task, $title, $content, $focus, $is_fa, $extra);
         if ($prompts === null) {
             wp_send_json_error(['message' => 'Unknown task: ' . $task], 400);
@@ -1455,7 +1463,7 @@ final class Bankai_AI_Studio
             wp_send_json_error(['message' => $e->getMessage()], 500);
         }
 
-        $data = $this->parse_seo_response($task, $raw, $focus, $is_fa);
+        $data = $this->parse_seo_response($task, $raw, $focus, $is_fa, $extra);
 
         if ($is_fa && in_array($task, ['meta_title', 'title', 'meta_description', 'description'], true)) {
             $check = (string) ($data['seo_title'] ?? $data['description'] ?? $data['text'] ?? '');
@@ -1692,15 +1700,15 @@ final class Bankai_AI_Studio
                     : '[]';
                 if ($is_fa) {
                     return [
-                        'system' => $base_sys . ' فقط یک آرایه JSON از پیشنهاد لینک داخلی. هر آیتم: keyword (عبارت لنگر فارسی موجود یا مناسب در متن)، target_post_id (عدد از لیست)، target_title، target_url، reason (یک جمله فارسی). فقط از مقالات همین لیست استفاده کن. بدون markdown.',
-                        'user'   => "برای این مقاله لینک داخلی هوشمند پیشنهاد بده (حداکثر ۸ مورد).\nعنوان: {$title}\nکلمه کلیدی: {$focus}\nگزیده مقاله:\n{$snippet}\n\nمقالات موجود سایت (فقط از این‌ها انتخاب کن):\n{$art_str}",
+                        'system' => $base_sys . ' فقط یک آرایه JSON از پیشنهاد لینک داخلی. هر آیتم: keyword (عبارت لنگر فارسی)، target_post_id (فقط عدد id از لیست داده‌شده)، target_title (عنوان همان ردیف)، reason. هرگز URL نساز و هرگز از دامنه example.com یا دامنه ساختگی استفاده نکن. target_url را خالی بگذار یا عیناً از فیلد url همان ردیف کپی کن. فقط از مقالات لیست. بدون markdown.',
+                        'user'   => "برای این مقاله لینک داخلی پیشنهاد بده (حداکثر ۸). فقط از لیست زیر با id واقعی.\nعنوان: {$title}\nکلمه کلیدی: {$focus}\nگزیده:\n{$snippet}\n\nمقالات واقعی سایت (JSON: id,title,url):\n{$art_str}",
                         'temperature' => 0.35,
                         'max_tokens'  => 1200,
                     ];
                 }
                 return [
-                    'system' => $base_sys . ' Output ONLY JSON array of internal link objects with keyword, target_post_id, target_title, target_url, reason. Use only listed articles.',
-                    'user'   => "Recommend internal links.\nTitle: {$title}\nFocus: {$focus}\nSnippet:\n{$snippet}\n\nSite articles:\n{$art_str}",
+                    'system' => $base_sys . ' Output ONLY JSON array: keyword, target_post_id (from list only), target_title, reason. Do NOT invent URLs or example.com. Copy url from list if needed. Listed articles only.',
+                    'user'   => "Recommend internal links (max 8) using ONLY the JSON list (id,title,url).\nTitle: {$title}\nFocus: {$focus}\nSnippet:\n{$snippet}\n\nSite articles:\n{$art_str}",
                     'temperature' => 0.4,
                     'max_tokens'  => 1000,
                 ];
@@ -1744,7 +1752,7 @@ final class Bankai_AI_Studio
         }
     }
 
-    private function parse_seo_response(string $task, string $raw, string $focus, bool $is_fa): array
+    private function parse_seo_response(string $task, string $raw, string $focus, bool $is_fa, array $extra = []): array
     {
         $text = trim($raw);
         // Strip common markdown fences
@@ -1860,25 +1868,75 @@ final class Bankai_AI_Studio
                     $decoded = json_decode($text, true);
                 }
                 if (is_array($decoded)) {
-                    // Handle { "links": [...] }
                     if (isset($decoded['links']) && is_array($decoded['links'])) {
                         $decoded = $decoded['links'];
                     }
+                    $catalog = [];
+                    if (!empty($extra['articles_catalog']) && is_array($extra['articles_catalog'])) {
+                        foreach ($extra['articles_catalog'] as $row) {
+                            if (!is_array($row)) {
+                                continue;
+                            }
+                            $cid = absint($row['id'] ?? $row['target_post_id'] ?? 0);
+                            if ($cid > 0) {
+                                $catalog[$cid] = $row;
+                            }
+                        }
+                    }
+                    $home_host = wp_parse_url(home_url('/'), PHP_URL_HOST);
+                    $home_host = is_string($home_host) ? strtolower(preg_replace('/^www\./', '', $home_host)) : '';
+
                     foreach ($decoded as $item) {
                         if (!is_array($item)) {
                             continue;
                         }
                         $kw  = sanitize_text_field((string) ($item['keyword'] ?? $item['anchor'] ?? $item['phrase'] ?? ''));
-                        $url = esc_url_raw((string) ($item['target_url'] ?? $item['url'] ?? $item['permalink'] ?? ''));
                         $pid = absint($item['target_post_id'] ?? $item['post_id'] ?? $item['id'] ?? 0);
                         $ttl = sanitize_text_field((string) ($item['target_title'] ?? $item['title'] ?? ''));
-                        if ($pid > 0 && $url === '') {
+                        $url = '';
+
+                        // Prefer real permalink from post ID / catalog — never trust AI-invented domains
+                        if ($pid > 0 && get_post_status($pid)) {
                             $url = (string) get_permalink($pid);
+                            if ($ttl === '') {
+                                $ttl = (string) get_the_title($pid);
+                            }
+                        } elseif ($pid > 0 && isset($catalog[$pid])) {
+                            $url = (string) ($catalog[$pid]['url'] ?? $catalog[$pid]['permalink'] ?? '');
+                            if ($ttl === '') {
+                                $ttl = (string) ($catalog[$pid]['title'] ?? '');
+                            }
+                        } elseif ($ttl !== '') {
+                            // Match catalog by title
+                            foreach ($catalog as $cid => $row) {
+                                $rt = (string) ($row['title'] ?? '');
+                                if ($rt !== '' && mb_strtolower($rt) === mb_strtolower($ttl)) {
+                                    $pid = $cid;
+                                    $url = (string) ($row['url'] ?? $row['permalink'] ?? '');
+                                    break;
+                                }
+                            }
                         }
-                        if ($pid > 0 && $ttl === '') {
-                            $ttl = get_the_title($pid);
+
+                        // Reject empty / external / example.com
+                        if ($url === '') {
+                            continue;
                         }
-                        if ($kw === '' || $url === '') {
+                        $host = wp_parse_url($url, PHP_URL_HOST);
+                        $host = is_string($host) ? strtolower(preg_replace('/^www\./', '', $host)) : '';
+                        if ($host === '' || str_contains($host, 'example.com') || str_contains($host, 'example.org')) {
+                            continue;
+                        }
+                        if ($home_host !== '' && $host !== $home_host) {
+                            // relative URLs are ok
+                            if (!str_starts_with($url, '/')) {
+                                continue;
+                            }
+                        }
+                        if ($kw === '') {
+                            $kw = $ttl !== '' ? $ttl : 'مطلب مرتبط';
+                        }
+                        if ($pid <= 0 || $url === '') {
                             continue;
                         }
                         $links[] = [
@@ -1890,11 +1948,116 @@ final class Bankai_AI_Studio
                         ];
                     }
                 }
+                // If AI returned nothing usable, fall back to catalog keyword matches
+                if (!$links && !empty($extra['articles_catalog']) && is_array($extra['articles_catalog'])) {
+                    foreach (array_slice($extra['articles_catalog'], 0, 6) as $row) {
+                        if (!is_array($row)) {
+                            continue;
+                        }
+                        $pid = absint($row['id'] ?? 0);
+                        $url = (string) ($row['url'] ?? $row['permalink'] ?? '');
+                        $ttl = (string) ($row['title'] ?? '');
+                        if ($pid <= 0 || $url === '') {
+                            continue;
+                        }
+                        $links[] = [
+                            'keyword'        => $ttl,
+                            'target_post_id' => $pid,
+                            'target_title'   => $ttl,
+                            'target_url'     => $url,
+                            'reason'         => 'پیشنهاد بر اساس مقالات منتشرشده سایت',
+                        ];
+                    }
+                }
                 $out['links'] = array_slice($links, 0, 12);
+                $out['smartLinks'] = $out['links'];
                 break;
         }
 
         return $out;
+    }
+
+
+    /**
+     * Build a catalog of real published posts for internal linking (id, title, url).
+     *
+     * @return list<array{id:int,title:string,url:string,permalink:string}>
+     */
+    private function build_internal_link_catalog(int $exclude_id, string $focus, string $title, string $content): array
+    {
+        $catalog = [];
+        $seen = [];
+
+        $push = static function (array &$catalog, array &$seen, int $id) {
+            if ($id <= 0 || isset($seen[$id])) {
+                return;
+            }
+            $p = get_post($id);
+            if (!$p || $p->post_status !== 'publish') {
+                return;
+            }
+            if (!in_array($p->post_type, ['post', 'page'], true)) {
+                return;
+            }
+            $url = (string) get_permalink($id);
+            if ($url === '' || str_contains($url, 'example.com')) {
+                return;
+            }
+            $seen[$id] = true;
+            $catalog[] = [
+                'id'        => $id,
+                'title'     => get_the_title($id),
+                'url'       => $url,
+                'permalink' => $url,
+            ];
+        };
+
+        // Keyword search
+        $terms = array_values(array_filter(array_unique([
+            trim($focus),
+            trim($title),
+        ])));
+        foreach ($terms as $term) {
+            if ($term === '' || mb_strlen($term) < 2) {
+                continue;
+            }
+            $q = new WP_Query([
+                's'              => $term,
+                'post_type'      => ['post', 'page'],
+                'post_status'    => 'publish',
+                'posts_per_page' => 12,
+                'post__not_in'   => $exclude_id > 0 ? [$exclude_id] : [],
+                'fields'         => 'ids',
+                'no_found_rows'  => true,
+            ]);
+            foreach ($q->posts as $id) {
+                $push($catalog, $seen, (int) $id);
+            }
+            wp_reset_postdata();
+        }
+
+        // Recent posts fill
+        if (count($catalog) < 8) {
+            $q2 = new WP_Query([
+                'post_type'      => ['post', 'page'],
+                'post_status'    => 'publish',
+                'posts_per_page' => 20,
+                'post__not_in'   => $exclude_id > 0 ? [$exclude_id] : [],
+                'orderby'        => 'date',
+                'order'          => 'DESC',
+                'fields'         => 'ids',
+                'no_found_rows'  => true,
+            ]);
+            foreach ($q2->posts as $id) {
+                $push($catalog, $seen, (int) $id);
+                if (count($catalog) >= 24) {
+                    break;
+                }
+            }
+            wp_reset_postdata();
+        }
+
+        return array_slice($catalog, 0, 24);
     }
 
     private function clean_one_line(string $text, int $max): string
@@ -4250,14 +4413,18 @@ final class Bankai_AI_Studio
         string $focus = ''
     ): string {
         $style_map = [
-            'photorealistic' => 'photorealistic, high detail, cinematic lighting',
-            'minimalist'     => 'minimalist modern corporate style, clean composition',
-            'vector'         => 'vector illustration, flat design, clean lines',
-            'render_3d'      => '3D digital render, studio lighting, high quality',
-            'cinematic'      => 'cinematic studio lighting, dramatic atmosphere, film still',
-            'infographic'    => 'infographic style, educational illustration, clear visual hierarchy',
+            'photorealistic' => 'ultra-photorealistic photography, natural skin and material textures, shallow depth of field, soft natural light, 85mm lens look, highly detailed, no illustration',
+            'minimalist'     => 'minimalist editorial design, large negative space, soft solid pastel background, single focal subject, clean geometric composition, no clutter, modern magazine style',
+            'vector'         => 'flat vector illustration, bold clean outlines, limited color palette, geometric shapes, no gradients photorealism, poster illustration style',
+            'render_3d'      => 'octane-quality 3D render, soft studio HDRI lighting, subtle subsurface scattering, crisp materials, product visualization look',
+            'cinematic'      => 'cinematic film still, anamorphic bokeh, dramatic volumetric light, teal-and-orange grade, wide composition, story atmosphere',
+            'infographic'    => 'clean infographic illustration, labeled visual hierarchy, icons and simple charts, educational flat-color design, white or light background',
         ];
-        $style_en = $style_map[$style] ?? $style_map['photorealistic'];
+        $style_key = sanitize_key($style);
+        if (!isset($style_map[$style_key])) {
+            $style_key = 'photorealistic';
+        }
+        $style_en = $style_map[$style_key];
 
         $has_persian = (bool) preg_match('/[\x{0600}-\x{06FF}]/u', $raw_prompt . $title . $section . $focus);
 
@@ -4282,14 +4449,27 @@ final class Bankai_AI_Studio
         }
 
         $purpose_line = $purpose === 'cover'
-            ? 'Create a professional editorial blog cover image (16:9) that represents this article content.'
-            : 'Create a high-quality illustrative photo suitable for an article body section.';
+            ? 'Create a professional editorial blog COVER image, widescreen 16:9 composition, strong focal subject, suitable as WordPress featured image.'
+            : 'Create a high-quality INLINE article illustration that matches the surrounding section, composition that works inside blog content (not a full-bleed poster).';
+
+        $neg = 'Avoid: text, letters, watermarks, logos, UI screenshots, deformed hands, low-res, blurry, collage spam.';
 
         $parts = [
             $purpose_line,
-            'Visual style: ' . $style_en . '.',
-            'Content description: ' . $content_en,
+            'MANDATORY visual style (must visibly match): ' . $style_en . '.',
+            'Style id: ' . $style_key . '.',
+            'Content / scene: ' . $content_en,
         ];
+        if ($title !== '') {
+            $parts[] = 'Article title context: ' . $title . '.';
+        }
+        if ($focus !== '') {
+            $parts[] = 'Focus keyword mood: ' . $focus . '.';
+        }
+        if ($section !== '') {
+            $parts[] = 'Section context: ' . mb_substr($section, 0, 400) . '.';
+        }
+        $parts[] = $neg;
         if ($title !== '') {
             $parts[] = 'Article title (for context only): ' . $title;
         }

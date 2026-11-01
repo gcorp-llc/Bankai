@@ -293,12 +293,12 @@ class Bankai_Admin_Menu {
             true
         );
 
-        // Articles hub module (Alpine.data) — must register before Alpine boots
+        // Store hub — must register before Alpine boots
         if (is_file(BANKAI_CORE_DIR . 'assets/js/store-hub.js')) {
             wp_enqueue_script(
                 'bankai-store-hub',
                 bankai_asset_url('js/store-hub.js'),
-                ['bankai-admin'],
+                ['bankai-admin-js'],
                 $js_ver('store-hub.js'),
                 true
             );
@@ -307,7 +307,7 @@ class Bankai_Admin_Menu {
             wp_enqueue_style(
                 'bankai-store-hub-css',
                 bankai_asset_url('css/store-hub.css'),
-                ['bankai-admin'],
+                ['bankai-admin-css'],
                 (defined('BANKAI_CORE_VERSION') ? BANKAI_CORE_VERSION : '1.0.0') . '.' . (string) filemtime(BANKAI_CORE_DIR . 'assets/css/store-hub.css')
             );
         }
@@ -412,6 +412,7 @@ class Bankai_Admin_Menu {
             bankai_asset_url('js/alpine.min.js'),
             array_values(array_filter([
                 'bankai-admin-js',
+                is_file(BANKAI_CORE_DIR . 'assets/js/store-hub.js') ? 'bankai-store-hub' : null,
                 is_file(BANKAI_CORE_DIR . 'assets/js/articles-hub.js') ? 'bankai-articles-hub' : null,
                 is_file(BANKAI_CORE_DIR . 'assets/js/seo-engine-tab.js') ? 'bankai-seo-engine-tab' : null,
                 is_file(BANKAI_CORE_DIR . 'assets/js/ai-studio-tab.js') ? 'bankai-ai-studio-tab' : null,
@@ -422,6 +423,10 @@ class Bankai_Admin_Menu {
         );
         // Do NOT defer Alpine — it auto-starts and must see prior registrations
 
+
+        $license_status = function_exists('bankai_rtl_license_status')
+            ? bankai_rtl_license_status()
+            : ['active' => false, 'dev' => false, 'loader' => false, 'class' => false, 'message' => '', 'code' => '', 'username' => ''];
 
         $core_data = [
             'ajaxUrl'    => admin_url('admin-ajax.php'),
@@ -434,6 +439,7 @@ class Bankai_Admin_Menu {
             'version'    => BANKAI_CORE_VERSION,
             'activeTab'  => $this->get_current_tab(),
             'wooActive'  => class_exists('WooCommerce'),
+            'license'    => $license_status,
             'i18n'       => [
                 'saving'  => __('در حال ذخیره‌سازی...', 'bankai-core'),
                 'saved'   => __('ذخیره شد', 'bankai-core'),

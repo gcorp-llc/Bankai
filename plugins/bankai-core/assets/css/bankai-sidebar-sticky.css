@@ -61,3 +61,12 @@ body.no-admin-bar .bankai-sidebar {
 .bankai-save-loader-overlay {
     display: none !important;
 }
+
+/* pistachio sidebar tint when sticky */
+#bankai-admin-sidebar.bankai-sidebar,
+.bankai-sidebar {
+  background: linear-gradient(180deg, #0B2E2B 0%, #0E3733 100%) !important;
+  border: none !important;
+  border-radius: 24px !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,.25) !important;
+}

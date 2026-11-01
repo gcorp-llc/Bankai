@@ -66,9 +66,7 @@ $is_on = static function (string $key) use ($active_map): bool {
                 </div>
                 <span x-text="isRtl ? 'منوی مدیریت' : 'Navigation'">Navigation</span>
             </div>
-            <button type="button" class="bankai-mobile-close-btn" @click="closeMobileMenu()" aria-label="Close">
-                <svg class="solar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
+            <!-- Close is handled by topbar toggle (X) + overlay; avoid double close controls -->
         </div>
 
         <div class="bankai-brand-card bankai-ekit-brand">
@@ -159,20 +157,20 @@ $is_on = static function (string $key) use ($active_map): bool {
         <div class="telemetry-header">
             <div class="telemetry-status">
                 <span class="ping-container"><span class="ping-pulse"></span><span class="ping-dot"></span></span>
-                <span class="status-title" style="color:#334155;font-weight:800"><?php echo esc_html__('همه سیستم‌ها عادی', 'bankai-core'); ?></span>
+                <span class="status-title"><?php echo esc_html__('همه سیستم‌ها عادی', 'bankai-core'); ?></span>
             </div>
             <span class="php-badge">PHP <?php echo esc_html($bk_tel['php']); ?></span>
         </div>
         <div class="telemetry-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:10px;line-height:1.4;">
-            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">MySQL</span><strong style="color:#0f172a;font-weight:800;font-size:11px;word-break:break-all"><?php echo esc_html(wp_html_excerpt($bk_tel['mysql'], 24, '…')); ?></strong></div>
-            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">حافظه PHP</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['memory_usage']); ?> / <?php echo esc_html($bk_tel['memory_limit']); ?></strong></div>
-            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">بار پردازنده</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['load']); ?></strong></div>
-            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">دیسک آزاد</span><strong style="color:#0f172a;font-weight:800" font-size:10px"><?php echo esc_html($bk_tel['disk']); ?></strong></div>
-            <div class="tel-item" style="grid-column:1/-1"><span style="color:#475569;display:block;font-weight:700">دامنه</span><strong style="color:#0f172a;font-weight:800" dir="ltr" font-size:11px"><?php echo esc_html($bk_tel['domain']); ?></strong></div>
-            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">وردپرس</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['wp']); ?></strong></div>
-            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">آپلود</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['upload_max']); ?></strong></div>
-            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">max_exec</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['max_exec']); ?></strong></div>
-            <div class="tel-item"><span style="color:#475569;display:block;font-weight:700">سیستم</span><strong style="color:#0f172a;font-weight:800"><?php echo esc_html($bk_tel['os'] . ' / ' . $bk_tel['sapi']); ?></strong></div>
+            <div class="tel-item"><span class="tel-label">MySQL</span><strong class="tel-value" style="word-break:break-all"><?php echo esc_html(wp_html_excerpt($bk_tel['mysql'], 24, '…')); ?></strong></div>
+            <div class="tel-item"><span class="tel-label">حافظه PHP</span><strong class="tel-value"><?php echo esc_html($bk_tel['memory_usage']); ?> / <?php echo esc_html($bk_tel['memory_limit']); ?></strong></div>
+            <div class="tel-item"><span class="tel-label">بار پردازنده</span><strong class="tel-value"><?php echo esc_html($bk_tel['load']); ?></strong></div>
+            <div class="tel-item"><span class="tel-label">دیسک آزاد</span><strong class="tel-value" font-size:10px"><?php echo esc_html($bk_tel['disk']); ?></strong></div>
+            <div class="tel-item" style="grid-column:1/-1"><span class="tel-label">دامنه</span><strong class="tel-value" dir="ltr" font-size:11px"><?php echo esc_html($bk_tel['domain']); ?></strong></div>
+            <div class="tel-item"><span class="tel-label">وردپرس</span><strong class="tel-value"><?php echo esc_html($bk_tel['wp']); ?></strong></div>
+            <div class="tel-item"><span class="tel-label">آپلود</span><strong class="tel-value"><?php echo esc_html($bk_tel['upload_max']); ?></strong></div>
+            <div class="tel-item"><span class="tel-label">max_exec</span><strong class="tel-value"><?php echo esc_html($bk_tel['max_exec']); ?></strong></div>
+            <div class="tel-item"><span class="tel-label">سیستم</span><strong class="tel-value"><?php echo esc_html($bk_tel['os'] . ' / ' . $bk_tel['sapi']); ?></strong></div>
         </div>
     </div>
 </aside>

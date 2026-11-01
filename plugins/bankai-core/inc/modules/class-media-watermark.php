@@ -34,7 +34,7 @@ class Bankai_Media_Watermark
         add_filter('wp_handle_upload', [$this, 'process_uploaded_image'], 20);
 
         // Content filters — optimized image loading
-        if ($this->is_sub_active('lazy_loading') || $this->setting('lazy_load', true)) {
+        if ($this->is_sub_active('lazy_loading') && $this->setting('lazy_load', true)) {
             add_filter('the_content', [$this, 'filter_content_lazy'], 20);
             add_filter('post_thumbnail_html', [$this, 'filter_thumb_lazy'], 20, 5);
             add_filter('wp_get_attachment_image_attributes', [$this, 'filter_attachment_attrs'], 20, 3);
@@ -43,7 +43,7 @@ class Bankai_Media_Watermark
         }
 
         // Reduce oversized originals & default quality
-        if ($this->is_sub_active('webp_avif_converter') || $this->setting('convert_webp', true)) {
+        if ($this->is_sub_active('webp_avif_converter') && $this->setting('convert_webp', true)) {
             add_filter('jpeg_quality', [$this, 'filter_jpeg_quality']);
             add_filter('wp_editor_set_quality', [$this, 'filter_jpeg_quality']);
             add_filter('big_image_size_threshold', [$this, 'filter_big_image_threshold']);
@@ -66,6 +66,7 @@ class Bankai_Media_Watermark
         add_action('wp_ajax_bankai_optimize_post_images', [$this, 'ajax_optimize_post_images']);
         add_action('wp_ajax_bankai_scan_post_images', [$this, 'ajax_scan_post_images']);
         add_action('wp_ajax_bankai_update_image_alt', [$this, 'ajax_update_image_alt']);
+        add_action('wp_ajax_bankai_update_media_meta', [$this, 'ajax_update_media_meta']);
         add_action('wp_ajax_bankai_remove_image_watermark', [$this, 'ajax_remove_image_watermark']);
         add_action('wp_ajax_bankai_list_media_library', [$this, 'ajax_list_media_library']);
         add_action('wp_ajax_bankai_list_media', [$this, 'ajax_list_media_library']);
@@ -204,9 +205,25 @@ watermark",
         return $upload;
     }
 
+    private function is_animated_webp(string $file, string $mime): bool
+    {
+        if (strtolower($mime) !== 'image/webp' || !is_readable($file)) {
+            return false;
+        }
+
+        $handle = @fopen($file, 'rb');
+        if (!$handle) {
+            return false;
+        }
+        $header = (string) fread($handle, 1024 * 1024);
+        fclose($handle);
+
+        return strpos($header, 'ANIM') !== false || strpos($header, 'ANMF') !== false;
+    }
+
     private function strip_exif(string $file, string $mime): void
     {
-        if (!extension_loaded('gd')) {
+        if (!extension_loaded('gd') || $this->is_animated_webp($file, $mime)) {
             return;
         }
         $img = $this->load_image($file, $mime);
@@ -219,14 +236,21 @@ watermark",
             if (!empty($exif['Orientation'])) {
                 switch ((int) $exif['Orientation']) {
                     case 3:
-                        $img = imagerotate($img, 180, 0);
+                        $rotated = imagerotate($img, 180, 0);
                         break;
                     case 6:
-                        $img = imagerotate($img, -90, 0);
+                        $rotated = imagerotate($img, -90, 0);
                         break;
                     case 8:
-                        $img = imagerotate($img, 90, 0);
+                        $rotated = imagerotate($img, 90, 0);
                         break;
+                    default:
+                        $rotated = false;
+                        break;
+                }
+                if (!empty($rotated)) {
+                    imagedestroy($img);
+                    $img = $rotated;
                 }
             }
         }
@@ -234,20 +258,22 @@ watermark",
         imagedestroy($img);
     }
 
-    private function maybe_create_webp(string $file, string $mime, int $quality): void
+    private function maybe_create_webp(string $file, string $mime, int $quality): bool
     {
         if (!function_exists('imagewebp')) {
-            return;
+            return false;
         }
         $img = $this->load_image($file, $mime);
         if (!$img) {
-            return;
+            return false;
         }
         $webp = preg_replace('/\.(jpe?g|png)$/i', '.webp', $file);
+        $ok = false;
         if ($webp && $webp !== $file) {
-            imagewebp($img, $webp, max(10, min(100, $quality)));
+            $ok = (bool) @imagewebp($img, $webp, max(10, min(100, $quality)));
         }
         imagedestroy($img);
+        return $ok && is_file((string) $webp) && filesize((string) $webp) > 0;
     }
 
     /**
@@ -255,13 +281,25 @@ watermark",
      */
     public function apply_watermark(string $file_path, ?array $settings = null): bool
     {
-        if (!file_exists($file_path) || !is_writable($file_path)) {
+        if (!is_string($file_path) || $file_path === '' || !file_exists($file_path) || !is_readable($file_path)) {
+            return false;
+        }
+        if (!is_writable($file_path) && !is_writable(dirname($file_path))) {
             return false;
         }
 
         $s = $settings ?? $this->get_settings();
+        if (!is_array($s)) {
+            $s = $this->get_settings();
+        }
+        // Force enabled for explicit apply calls
+        $s['enabled'] = true;
+        // Empty text fallback
+        if (($s['type'] ?? 'text') === 'text' && trim((string) ($s['text'] ?? '')) === '') {
+            $s['text'] = get_bloginfo('name') ?: 'BANKAI';
+        }
 
-        // Backup original once for restore
+        // Backup original once
         if (!empty($s['keep_original'] ?? true)) {
             $bak = $file_path . '.bk-orig';
             if (!file_exists($bak)) {
@@ -269,22 +307,27 @@ watermark",
             }
         }
 
-        // Process on temporary working file first to guarantee atomic write & non-destructive failure
-        $tmp_file = $file_path . '.tmp-' . wp_generate_password(6, false);
-        if (!@copy($file_path, $tmp_file)) {
+        $dir = dirname($file_path);
+        $tmp = trailingslashit($dir) . 'bk-wm-' . wp_generate_password(10, false) . '.tmp';
+        if (!@copy($file_path, $tmp)) {
             return false;
         }
 
-        $ok = $this->apply_watermark_inner($tmp_file, $s, $file_path);
-        if ($ok && file_exists($tmp_file) && filesize($tmp_file) > 0) {
-            @rename($tmp_file, $file_path);
-            return true;
+        $ok = $this->apply_watermark_inner($tmp, $s, $file_path);
+        if (!$ok || !file_exists($tmp) || filesize($tmp) < 32) {
+            @unlink($tmp);
+            return false;
         }
 
-        if (file_exists($tmp_file)) {
-            @unlink($tmp_file);
+        // Prefer an atomic same-directory rename; fall back to copy on platforms
+        // that cannot replace an existing destination with rename().
+        $written = @rename($tmp, $file_path);
+        if (!$written) {
+            $written = @copy($tmp, $file_path);
+            @unlink($tmp);
         }
-        return false;
+        clearstatcache(true, $file_path);
+        return $written && file_exists($file_path) && filesize($file_path) > 0;
     }
 
     private function apply_watermark_inner(string $file_path, array $s, string $original_ref_path = ''): bool
@@ -307,10 +350,29 @@ watermark",
             return false;
         }
 
-        $mime  = $info['mime'];
+        $mime = (string) $info['mime'];
+        if ($mime === 'image/gif' || $this->is_animated_webp($file_path, $mime)) {
+            return false;
+        }
         $image = $this->load_image($file_path, $mime);
         if (!$image) {
             return false;
+        }
+        // Convert palette images to truecolor so text/alpha watermark works
+        if (function_exists('imageistruecolor') && !imageistruecolor($image)) {
+            $w = imagesx($image);
+            $h = imagesy($image);
+            $true = imagecreatetruecolor($w, $h);
+            if ($true) {
+                imagealphablending($true, false);
+                imagesavealpha($true, true);
+                $transparent = imagecolorallocatealpha($true, 0, 0, 0, 127);
+                imagefill($true, 0, 0, $transparent);
+                imagealphablending($true, true);
+                imagecopy($true, $image, 0, 0, 0, 0, $w, $h);
+                imagedestroy($image);
+                $image = $true;
+            }
         }
         if (function_exists('imagealphablending')) {
             imagealphablending($image, true);
@@ -342,12 +404,13 @@ watermark",
                         $ww = imagesx($wm);
                         $wh = imagesy($wm);
                         $pct = max(5, min(50, (int) ($s['image_scale'] ?? 20)));
-                        $target_w = max(20, (int) ($width * ($pct / 100)));
-                        // Cap watermark width so it doesn't overflow
-                        $target_w = min($target_w, max(10, $width - ($margin * 2)));
-                        $scale    = $target_w / max(1, $ww);
-                        $nw       = (int) max(10, round($ww * $scale));
-                        $nh       = (int) max(10, round($wh * $scale));
+                        $available_w = max(1, $width - ($margin * 2));
+                        $available_h = max(1, $height - ($margin * 2));
+                        $target_w = max(1, min((int) round($width * ($pct / 100)), $available_w));
+                        $target_h = max(1, min((int) round($height * ($pct / 100)), $available_h));
+                        $scale = min($target_w / max(1, $ww), $target_h / max(1, $wh));
+                        $nw = max(1, (int) round($ww * $scale));
+                        $nh = max(1, (int) round($wh * $scale));
                         $wm_scaled = imagecreatetruecolor($nw, $nh);
                         imagealphablending($wm_scaled, false);
                         imagesavealpha($wm_scaled, true);
@@ -427,16 +490,20 @@ watermark",
     private function resolve_font_path(string $font_key): string
     {
         $s = $this->get_settings();
+        $plugin_root = defined('BANKAI_CORE_FILE') ? dirname(BANKAI_CORE_FILE) : dirname(__DIR__);
+        $plugin_fonts = trailingslashit($plugin_root) . 'assets/fonts/';
+
         // Custom uploaded font (TTF/OTF only — GD imagettftext requirement)
         if ($font_key === 'custom' || $font_key === 'custom_font' || str_starts_with($font_key, 'cf_')) {
-            // try list entry by id
             if (str_starts_with($font_key, 'cf_')) {
                 foreach ((array) ($s['custom_fonts'] ?? []) as $cf) {
                     if (($cf['id'] ?? '') === $font_key) {
                         $path = (string) ($cf['path'] ?? '');
                         if ($path && is_readable($path)) {
                             $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-                            if (in_array($ext, ['ttf', 'otf'], true)) return $path;
+                            if (in_array($ext, ['ttf', 'otf'], true)) {
+                                return $path;
+                            }
                         }
                     }
                 }
@@ -449,10 +516,7 @@ watermark",
                 }
             }
         }
-        // If settings force custom_font_url and text_font is custom
-        if (!empty($s['custom_font_url']) && ($font_key === 'custom' || empty($font_key) || $font_key === 'default')) {
-            // only prefer custom when explicitly selected as custom
-        }
+
         if ($font_key === 'custom' && !empty($s['custom_font_name'])) {
             $custom = $this->resolve_custom_font_file($s);
             if ($custom !== '') {
@@ -460,92 +524,88 @@ watermark",
             }
         }
 
-        $map = [
-            'default' => '',
-            'vazirmatn' => '',
-            'vazirmatn-bold' => '',
-            'tahoma' => '',
-            'arial' => '',
-            'georgia' => '',
-            'roboto' => '',
-            'inter' => '',
-            'dejavu'  => '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-            'dejavu-bold' => '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-            'liberation' => '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
-            'free-sans' => '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
+        $bundled = [
+            'default'        => $plugin_fonts . 'Vazirmatn-Regular.ttf',
+            'vazir'          => $plugin_fonts . 'Vazirmatn-Regular.ttf',
+            'vazirmatn'      => $plugin_fonts . 'Vazirmatn-Regular.ttf',
+            'vazirmatn-bold' => $plugin_fonts . 'Vazirmatn-Bold.ttf',
+            'vazir-bold'     => $plugin_fonts . 'Vazirmatn-Bold.ttf',
+            'dejavu'         => $plugin_fonts . 'DejaVuSans.ttf',
+            'dejavu-bold'    => $plugin_fonts . 'DejaVuSans-Bold.ttf',
+            'tahoma'         => $plugin_fonts . 'Vazirmatn-Regular.ttf', // system Tahoma rarely on Linux servers
+            'arial'          => $plugin_fonts . 'DejaVuSans.ttf',
+            'liberation'     => '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+            'free-sans'      => '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
         ];
-        $path = $map[$font_key] ?? '';
+
+        $path = $bundled[$font_key] ?? '';
         if ($path && is_readable($path)) {
             return $path;
         }
-        // system fallbacks useful for Persian glyphs
+
+        // System fallbacks (Arabic-capable preferred)
         $fallbacks = [
+            $plugin_fonts . 'Vazirmatn-Regular.ttf',
+            $plugin_fonts . 'DejaVuSans.ttf',
             '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf',
+            '/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf',
             '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
             '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
-            '/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf',
             'C:/Windows/Fonts/tahoma.ttf',
             'C:/Windows/Fonts/arial.ttf',
         ];
-        foreach ($fallbacks as $p) {
-            if ($p && is_readable($p)) {
-                return $p;
+        foreach ($fallbacks as $fb) {
+            if ($fb && is_readable($fb)) {
+                return $fb;
             }
         }
         return '';
     }
 
-    /**
-     * Map custom_font_url / custom_font_name to local filesystem path for GD.
-     */
     private function resolve_custom_font_file(array $s): string
     {
-        if (!empty($s['custom_font_path']) && is_readable((string) $s['custom_font_path'])) {
-            $ext = strtolower(pathinfo((string) $s['custom_font_path'], PATHINFO_EXTENSION));
-            if (in_array($ext, ['ttf', 'otf'], true)) {
-                return (string) $s['custom_font_path'];
-            }
-        }
-        $name = (string) ($s['custom_font_name'] ?? '');
-        $url  = (string) ($s['custom_font_url'] ?? '');
         $upload = wp_upload_dir();
-        $dir = trailingslashit($upload['basedir']) . 'bankai-fonts';
+        $font_dir = trailingslashit((string) ($upload['basedir'] ?? '')) . 'bankai-fonts';
+        $real_dir = realpath($font_dir);
+        if (!$real_dir) {
+            return '';
+        }
 
-        if ($name !== '') {
-            $candidate = $dir . '/' . ltrim($name, '/');
-            if (is_readable($candidate)) {
-                $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION));
-                if (in_array($ext, ['ttf', 'otf', 'woff', 'woff2'], true)) {
-                    return $candidate;
+        $candidates = [];
+        if (!empty($s['custom_font_path'])) {
+            $candidates[] = (string) $s['custom_font_path'];
+        }
+        if (!empty($s['custom_font_name'])) {
+            $candidates[] = trailingslashit($font_dir) . sanitize_file_name((string) $s['custom_font_name']);
+        }
+        if (!empty($s['custom_font_url'])) {
+            $url = (string) $s['custom_font_url'];
+            $base_url = trailingslashit((string) ($upload['baseurl'] ?? ''));
+            if ($base_url !== '' && strpos($url, $base_url) === 0) {
+                $relative = rawurldecode(substr($url, strlen($base_url)));
+                if (strpos($relative, 'bankai-fonts/') === 0) {
+                    $candidates[] = trailingslashit((string) $upload['basedir']) . $relative;
                 }
             }
         }
-        if ($url !== '') {
-            // Convert URL under uploads to path
-            $baseurl = trailingslashit($upload['baseurl']);
-            if (str_starts_with($url, $baseurl)) {
-                $rel = substr($url, strlen($baseurl));
-                $candidate = trailingslashit($upload['basedir']) . ltrim($rel, '/');
-                if (is_readable($candidate)) {
-                    $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION));
-                    if (in_array($ext, ['ttf', 'otf'], true)) {
-                        return $candidate;
-                    }
-                }
+
+        foreach ($candidates as $candidate) {
+            $real = realpath($candidate);
+            if (!$real || !is_file($real) || !is_readable($real)) {
+                continue;
             }
-            // Absolute path stored by mistake
-            if (is_readable($url)) {
-                return $url;
+            $normalized = wp_normalize_path($real);
+            $normalized_dir = trailingslashit(wp_normalize_path($real_dir));
+            if (strpos($normalized, $normalized_dir) !== 0) {
+                continue;
+            }
+            $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
+            if (in_array($ext, ['ttf', 'otf'], true)) {
+                return $real;
             }
         }
-        // last: any ttf in bankai-fonts
-        if (is_dir($dir)) {
-            foreach (array_merge(glob($dir . '/*.ttf') ?: [], glob($dir . '/*.otf') ?: [], glob($dir . '/*.woff') ?: [], glob($dir . '/*.woff2') ?: []) as $f) {
-                if (is_readable($f)) {
-                    return $f;
-                }
-            }
-        }
+
         return '';
     }
 
@@ -577,9 +637,9 @@ watermark",
         // Isolate Arabic runs and reshape each
         $out = '';
         $buf = '';
-        $len = mb_strlen($text, 'UTF-8');
+        $len = $this->utf8_strlen($text);
         for ($i = 0; $i < $len; $i++) {
-            $ch = mb_substr($text, $i, 1, 'UTF-8');
+            $ch = $this->utf8_substr($text, $i, 1);
             $o = $this->utf8_ord($ch);
             $is_ar = ($o >= 0x0600 && $o <= 0x06FF) || ($o >= 0x0750 && $o <= 0x077F)
                 || ($o >= 0x08A0 && $o <= 0x08FF) || ($o >= 0xFB50 && $o <= 0xFDFF)
@@ -602,8 +662,72 @@ watermark",
 
     private function utf8_ord(string $ch): int
     {
-        $u = unpack('N', mb_convert_encoding($ch, 'UCS-4BE', 'UTF-8'));
-        return (int) ($u[1] ?? 0);
+        return $this->utf8_codepoint($ch);
+    }
+
+    private function utf8_codepoint(string $char): int
+    {
+        $bytes = array_values(unpack('C*', $char) ?: []);
+        $count = count($bytes);
+        if ($count === 0) {
+            return 0;
+        }
+        if ($bytes[0] < 0x80) {
+            return $bytes[0];
+        }
+        if ($count >= 2 && ($bytes[0] & 0xE0) === 0xC0) {
+            return (($bytes[0] & 0x1F) << 6) | ($bytes[1] & 0x3F);
+        }
+        if ($count >= 3 && ($bytes[0] & 0xF0) === 0xE0) {
+            return (($bytes[0] & 0x0F) << 12) | (($bytes[1] & 0x3F) << 6) | ($bytes[2] & 0x3F);
+        }
+        if ($count >= 4) {
+            return (($bytes[0] & 0x07) << 18) | (($bytes[1] & 0x3F) << 12)
+                | (($bytes[2] & 0x3F) << 6) | ($bytes[3] & 0x3F);
+        }
+        return 0;
+    }
+
+    private function utf8_chr(int $codepoint): string
+    {
+        if ($codepoint <= 0x7F) {
+            return chr($codepoint);
+        }
+        if ($codepoint <= 0x7FF) {
+            return chr(0xC0 | ($codepoint >> 6)) . chr(0x80 | ($codepoint & 0x3F));
+        }
+        if ($codepoint <= 0xFFFF) {
+            return chr(0xE0 | ($codepoint >> 12))
+                . chr(0x80 | (($codepoint >> 6) & 0x3F))
+                . chr(0x80 | ($codepoint & 0x3F));
+        }
+        return chr(0xF0 | ($codepoint >> 18))
+            . chr(0x80 | (($codepoint >> 12) & 0x3F))
+            . chr(0x80 | (($codepoint >> 6) & 0x3F))
+            . chr(0x80 | ($codepoint & 0x3F));
+    }
+
+    private function utf8_strlen(string $value): int
+    {
+        if (function_exists('mb_strlen')) {
+            return mb_strlen($value, 'UTF-8');
+        }
+        if (preg_match_all('/./us', $value, $matches)) {
+            return count($matches[0]);
+        }
+        return strlen($value);
+    }
+
+    private function utf8_substr(string $value, int $start, ?int $length = null): string
+    {
+        if (function_exists('mb_substr')) {
+            return mb_substr($value, $start, $length, 'UTF-8');
+        }
+        if (preg_match_all('/./us', $value, $matches)) {
+            $chars = $matches[0];
+            return implode('', array_slice($chars, $start, $length));
+        }
+        return substr($value, $start, $length);
     }
 
     private function reshape_arabic_run(string $run): string
@@ -661,9 +785,9 @@ watermark",
         }
 
         $chars = [];
-        $n = mb_strlen($run, 'UTF-8');
+        $n = $this->utf8_strlen($run);
         for ($i = 0; $i < $n; $i++) {
-            $ch = mb_substr($run, $i, 1, 'UTF-8');
+            $ch = $this->utf8_substr($run, $i, 1);
             $chars[] = $this->utf8_ord($ch);
         }
 
@@ -675,7 +799,7 @@ watermark",
                 continue;
             }
             if (!isset($forms[$cp])) {
-                $shaped[] = mb_convert_encoding(pack('N', $cp), 'UTF-8', 'UCS-4BE');
+                $shaped[] = $this->utf8_chr($cp);
                 continue;
             }
             $prev = null;
@@ -703,7 +827,7 @@ watermark",
             } else {
                 $form = $forms[$cp][0]; // isolated
             }
-            $shaped[] = mb_convert_encoding(pack('N', $form), 'UTF-8', 'UCS-4BE');
+            $shaped[] = $this->utf8_chr($form);
         }
         // Visual order for RTL: reverse the shaped glyphs
         return implode('', array_reverse($shaped));
@@ -750,7 +874,7 @@ watermark",
         }
         if ($tw <= 0) {
             $gd = min(5, max(1, (int) round($size / 6)));
-            $tw = imagefontwidth($gd) * mb_strlen($text, 'UTF-8');
+            $tw = imagefontwidth($gd) * $this->utf8_strlen($text);
             $th = imagefontheight($gd);
         }
 
@@ -773,13 +897,26 @@ watermark",
             $text_col = imagecolorallocate($image, $tr, $tg, $tb);
         }
 
-        if ($font_path && $bbox && function_exists('imagettftext')) {
-            $baseline = $ty + $th;
-            @imagettftext($image, $size, 0, $tx, $baseline, $text_col, $font_path, $text);
-        } else {
-            $gd = min(5, max(1, (int) round($size / 6)));
-            imagestring($image, $gd, $tx, $ty, $text, $text_col);
+        if ($font_path && function_exists('imagettftext')) {
+            // Always use TTF path for UTF-8 / Persian — never imagestring (Latin-only, produces garbage)
+            if (!$bbox) {
+                $bbox = @imagettfbbox($size, 0, $font_path, $text);
+                if (is_array($bbox)) {
+                    $th = abs($bbox[7] - $bbox[1]);
+                }
+            }
+            $baseline = $ty + max(1, (int) $th);
+            $ok = @imagettftext($image, $size, 0, $tx, $baseline, $text_col, $font_path, $text);
+            if ($ok === false) {
+                // Retry with bundled Vazirmatn if selected font failed
+                $plugin_root = defined('BANKAI_CORE_FILE') ? dirname(BANKAI_CORE_FILE) : dirname(__DIR__);
+                $fallback = trailingslashit($plugin_root) . 'assets/fonts/Vazirmatn-Regular.ttf';
+                if (is_readable($fallback) && $fallback !== $font_path) {
+                    @imagettftext($image, $size, 0, $tx, $baseline, $text_col, $fallback, $text);
+                }
+            }
         }
+        // Intentionally no imagestring fallback for non-Latin text
     }
 
     private function calc_position(string $pos, int $w, int $h, int $ew, int $eh, int $margin): array
@@ -817,6 +954,8 @@ watermark",
                 $y = $h - $eh - $margin;
                 break;
         }
+        $x = max(0, min($w - max(1, $ew), $x));
+        $y = max(0, min($h - max(1, $eh), $y));
         return [$x, $y];
     }
 
@@ -966,16 +1105,38 @@ watermark",
     /** @param resource|\GdImage $image */
     private function save_image($image, string $file, string $mime, int $quality): bool
     {
+        $quality = max(10, min(100, (int) $quality));
+        $mime = strtolower(trim((string) $mime));
+        if (in_array($mime, ['image/jpg', 'image/pjpeg', 'image/x-jpeg'], true)) {
+            $mime = 'image/jpeg';
+        }
+        $ok = false;
         switch ($mime) {
             case 'image/jpeg':
-                return (bool) imagejpeg($image, $file, max(10, min(100, $quality)));
+                $ok = function_exists('imagejpeg') && @imagejpeg($image, $file, $quality);
+                break;
             case 'image/png':
-                return (bool) imagepng($image, $file, (int) round((100 - $quality) / 10));
+                $level = (int) max(0, min(9, round((100 - $quality) / 11)));
+                $ok = function_exists('imagepng') && @imagepng($image, $file, $level);
+                break;
             case 'image/webp':
-                return function_exists('imagewebp') && imagewebp($image, $file, max(10, min(100, $quality)));
+                $ok = function_exists('imagewebp') && @imagewebp($image, $file, $quality);
+                break;
+            case 'image/gif':
+                $ok = function_exists('imagegif') && @imagegif($image, $file);
+                break;
             default:
-                return false;
+                // Try by extension
+                $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                if (in_array($ext, ['jpg', 'jpeg', 'jpe'], true) && function_exists('imagejpeg')) {
+                    $ok = (bool) @imagejpeg($image, $file, $quality);
+                } elseif ($ext === 'png' && function_exists('imagepng')) {
+                    $ok = (bool) @imagepng($image, $file, 6);
+                } elseif ($ext === 'webp' && function_exists('imagewebp')) {
+                    $ok = (bool) @imagewebp($image, $file, $quality);
+                }
         }
+        return (bool) $ok && file_exists($file) && filesize($file) > 0;
     }
 
     /* ---------- Lazy load ---------- */
@@ -1057,7 +1218,6 @@ watermark",
 
     public function filter_attachment_attrs(array $attr, $attachment = null, $size = null): array
     {
-        $is_lcp = is_singular() && empty($attr['loading']);
         // Default lazy; callers for featured can override via filter order
         if (empty($attr['loading'])) {
             $attr['loading'] = 'lazy';
@@ -1159,7 +1319,7 @@ watermark",
         $min_dim = isset($_POST['min_dimension']) ? absint($_POST['min_dimension']) : 300;
 
         $text = isset($_POST['text']) ? sanitize_text_field(wp_unslash($_POST['text'])) : '© BANKAI MEDIA';
-        $text = mb_substr($text, 0, 80);
+        $text = $this->utf8_substr($text, 0, 80);
 
         $image_id = isset($_POST['image_id']) ? absint($_POST['image_id']) : 0;
         $image_url = $image_id ? (string) wp_get_attachment_url($image_id) : '';
@@ -1283,17 +1443,18 @@ watermark",
                 continue;
             }
             $mime = get_post_mime_type($id) ?: '';
-            if (!empty($s['convert_webp'])) {
-                $this->maybe_create_webp($path, $mime, (int) $s['quality']);
-                $converted++;
+            if (!empty($s['strip_exif'])) {
+                $this->strip_exif($path, $mime);
             }
             if (!empty($s['enabled']) && !empty($s['apply_content']) && extension_loaded('gd')) {
                 if ($this->apply_watermark($path, $s)) {
                     $watermarked++;
                 }
             }
-            if (!empty($s['strip_exif'])) {
-                $this->strip_exif($path, $mime);
+            // Create the sidecar after all source-image transformations so it
+            // contains the same orientation and watermark as the original.
+            if (!empty($s['convert_webp']) && $this->maybe_create_webp($path, $mime, (int) $s['quality'])) {
+                $converted++;
             }
         }
 
@@ -1396,7 +1557,7 @@ watermark",
             'imagick' => $imagick,
             'webp'    => $webp,
             'avif'    => $avif,
-            'settings'=> (new self())->get_settings(),
+            'settings'=> self::instance()->get_settings(),
         ];
     }
 
@@ -1411,6 +1572,9 @@ watermark",
         }
 
         $post_id = absint($_POST['post_id'] ?? 0);
+        if ($post_id > 0 && !current_user_can('edit_post', $post_id)) {
+            wp_send_json_error(['message' => 'اجازه ویرایش این نوشته را ندارید.'], 403);
+        }
         $html    = isset($_POST['content']) ? wp_unslash((string) $_POST['content']) : '';
         if ($html === '' && $post_id > 0) {
             $post = get_post($post_id);
@@ -1472,6 +1636,13 @@ watermark",
         }
 
         $post_id      = absint($_POST['post_id'] ?? 0);
+        if ($post_id > 0 && !current_user_can('edit_post', $post_id)) {
+            wp_send_json_error(['message' => 'اجازه ویرایش این نوشته را ندارید.'], 403);
+        }
+        if ((!empty($_POST['convert_webp']) || !empty($_POST['resize']) || !empty($_POST['watermark']))
+            && !current_user_can('upload_files')) {
+            wp_send_json_error(['message' => 'برای تغییر فایل‌های رسانه مجوز بارگذاری فایل لازم است.'], 403);
+        }
         $html         = isset($_POST['content']) ? wp_unslash((string) $_POST['content']) : '';
         $do_webp      = !empty($_POST['convert_webp']);
         $do_resize    = !empty($_POST['resize']);
@@ -1542,8 +1713,16 @@ watermark",
             }
 
             $path = $this->url_to_path($src);
-            $att_id = attachment_url_to_postid($src);
+            $att_id = absint(attachment_url_to_postid($src));
             $item['attachment_id'] = $att_id;
+
+            if ($att_id && !current_user_can('edit_post', $att_id)
+                && ($do_webp || $do_resize || $do_watermark || $do_alt)) {
+                $item['ok'] = false;
+                $item['message'] = 'اجازه ویرایش این تصویر رسانه را ندارید.';
+                $report[] = $item;
+                continue;
+            }
 
             if (!$path || !file_exists($path)) {
                 // Remote or missing — only alt fill possible
@@ -1567,12 +1746,25 @@ watermark",
             $new_src = $src;
 
             // Resize
-            if ($do_resize && $info && !empty($info[0]) && $info[0] > $max_width) {
-                $resized = $this->resize_image_file($path, $max_width, $quality);
+            if ($do_resize && $info && !empty($info[0]) && ($info[0] > $max_width || ($max_height > 0 && !empty($info[1]) && $info[1] > $max_height))) {
+                $resized = $this->resize_image_file($path, $max_width, $quality, $max_height);
                 if ($resized) {
                     $item['resized'] = true;
                     $item['actions'][] = 'resize';
                     $info = @getimagesize($path);
+                }
+            }
+
+            // Watermark
+            if ($do_watermark && file_exists($work_path)) {
+                $ok = $this->apply_watermark($work_path);
+                if ($ok) {
+                    $item['watermarked'] = true;
+                    $item['actions'][] = 'watermark';
+                    if ($att_id) {
+                        update_post_meta($att_id, '_bankai_watermarked', 1);
+                        update_post_meta($att_id, '_bankai_original_backup', $work_path . '.bk-orig');
+                    }
                 }
             }
 
@@ -1602,19 +1794,6 @@ watermark",
                 $item['format_after'] = $item['format_before'];
             }
 
-            // Watermark
-            if ($do_watermark && file_exists($work_path)) {
-                $ok = $this->apply_watermark($work_path);
-                if ($ok) {
-                    $item['watermarked'] = true;
-                    $item['actions'][] = 'watermark';
-                    if ($att_id) {
-                        update_post_meta($att_id, '_bankai_watermarked', 1);
-                        update_post_meta($att_id, '_bankai_original_backup', $path);
-                    }
-                }
-            }
-
             // Alt
             if ($do_alt && trim($item['alt']) === '') {
                 $new_alt = $default_alt !== '' ? $default_alt : $this->guess_alt_from_src($new_src, $post_id);
@@ -1624,8 +1803,18 @@ watermark",
                     $updated_html = $this->replace_img_alt($updated_html, $item['original_src'], $new_alt);
                 }
                 $item['actions'][] = 'alt';
-                if ($att_id) {
+                if ($att_id && current_user_can('edit_post', $att_id)) {
                     update_post_meta($att_id, '_wp_attachment_image_alt', $new_alt);
+                }
+            }
+
+            if ($att_id && (!empty($item['resized']) || !empty($item['watermarked']))) {
+                if (!function_exists('wp_generate_attachment_metadata')) {
+                    require_once ABSPATH . 'wp-admin/includes/image.php';
+                }
+                $attachment_meta = wp_generate_attachment_metadata($att_id, $path);
+                if (is_array($attachment_meta)) {
+                    wp_update_attachment_metadata($att_id, $attachment_meta);
                 }
             }
 
@@ -1671,17 +1860,31 @@ watermark",
                     'message'        => '',
                 ];
                 $path = get_attached_file($cover_id);
-                if ($path && is_file($path) && !$this->path_is_excluded($path, $this->get_settings())) {
+                if (!current_user_can('edit_post', $cover_id)) {
+                    $citem['ok'] = false;
+                    $citem['message'] = 'اجازه ویرایش تصویر شاخص را ندارید.';
+                } elseif ($path && is_file($path) && !$this->path_is_excluded($path, $this->get_settings())) {
                     $citem['size_before'] = (int) @filesize($path);
                     $info = @getimagesize($path);
                     $mime = $info['mime'] ?? '';
                     $citem['format_before'] = $this->mime_to_ext($mime);
                     $citem['format_after'] = $citem['format_before'];
 
-                    if ($do_resize && $info && !empty($info[0]) && $info[0] > $max_width) {
-                        if ($this->resize_image_file($path, $max_width, $quality)) {
+                    if ($do_resize && $info && !empty($info[0]) && ($info[0] > $max_width || ($max_height > 0 && !empty($info[1]) && $info[1] > $max_height))) {
+                        if ($this->resize_image_file($path, $max_width, $quality, $max_height)) {
                             $citem['resized'] = true;
                             $citem['actions'][] = 'resize';
+                        }
+                    }
+                    if ($do_watermark) {
+                        if ($this->apply_watermark($path)) {
+                            $citem['watermarked'] = true;
+                            $citem['actions'][] = 'watermark';
+                            update_post_meta($cover_id, '_bankai_watermarked', 1);
+                            update_post_meta($cover_id, '_bankai_original_backup', $path . '.bk-orig');
+                        } else {
+                            $citem['ok'] = false;
+                            $citem['message'] = 'اعمال واترمارک روی تصویر شاخص ناموفق بود.';
                         }
                     }
                     if ($do_webp && $mime && $mime !== 'image/webp') {
@@ -1699,18 +1902,22 @@ watermark",
                             }
                         }
                     }
-                    if ($do_watermark) {
-                        $this->apply_watermark($path);
-                        $citem['watermarked'] = true;
-                        $citem['actions'][] = 'watermark';
-                    }
-                    if ($do_alt && trim($citem['alt']) === '') {
+                    if ($do_alt && trim($citem['alt']) === '' && current_user_can('edit_post', $cover_id)) {
                         $new_alt = $default_alt !== '' ? $default_alt : $this->guess_alt_from_src($cover_src, $post_id);
                         if ($new_alt !== '') {
                             update_post_meta($cover_id, '_wp_attachment_image_alt', $new_alt);
                             $citem['new_alt'] = $new_alt;
                             $citem['alt'] = $new_alt;
                             $citem['actions'][] = 'alt';
+                        }
+                    }
+                    if (!empty($citem['resized']) || !empty($citem['watermarked'])) {
+                        if (!function_exists('wp_generate_attachment_metadata')) {
+                            require_once ABSPATH . 'wp-admin/includes/image.php';
+                        }
+                        $cover_meta = wp_generate_attachment_metadata($cover_id, $path);
+                        if (is_array($cover_meta)) {
+                            wp_update_attachment_metadata($cover_id, $cover_meta);
                         }
                     }
                     $citem['size_after'] = is_file($path) ? (int) @filesize($path) : $citem['size_before'];
@@ -1722,14 +1929,6 @@ watermark",
             }
         }
 
-        // Never clear featured image
-        if ($post_id > 0 && $cover_id) {
-            $still = (int) get_post_thumbnail_id($post_id);
-            if ($still !== $cover_id) {
-                set_post_thumbnail($post_id, $cover_id);
-            }
-        }
-
         wp_send_json_success([
             'report'  => $report,
             'content' => $updated_html,
@@ -1737,6 +1936,30 @@ watermark",
             'message' => sprintf('%d تصویر پردازش شد.', count($report)),
             'cover_id'=> $cover_id,
             'cover_src'=> $cover_src,
+        ]);
+    }
+
+
+    public function ajax_update_media_meta(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        $id = absint($_POST['id'] ?? 0);
+        if ($id <= 0 || get_post_type($id) !== 'attachment' || !current_user_can('edit_post', $id)) {
+            wp_send_json_error(['message' => __('دسترسی مجاز نیست یا شناسه نامعتبر است.', 'bankai-core')], 403);
+        }
+        $title = sanitize_text_field(wp_unslash($_POST['title'] ?? ''));
+        $alt = sanitize_text_field(wp_unslash($_POST['alt'] ?? ''));
+        $caption = sanitize_textarea_field(wp_unslash($_POST['caption'] ?? ''));
+        if ($title !== '') {
+            wp_update_post(['ID' => $id, 'post_title' => $title]);
+        }
+        update_post_meta($id, '_wp_attachment_image_alt', $alt);
+        wp_update_post(['ID' => $id, 'post_excerpt' => $caption]);
+        wp_send_json_success([
+            'id' => $id,
+            'title' => get_the_title($id),
+            'alt' => (string) get_post_meta($id, '_wp_attachment_image_alt', true),
+            'caption' => (string) get_post_field('post_excerpt', $id),
         ]);
     }
 
@@ -1753,8 +1976,8 @@ watermark",
             wp_send_json_error(['message' => 'پارامتر ناقص'], 400);
         }
         $updated = $this->replace_img_alt($html, $src, $alt);
-        $att_id = attachment_url_to_postid($src);
-        if ($att_id) {
+        $att_id = absint(attachment_url_to_postid($src));
+        if ($att_id && get_post_type($att_id) === 'attachment' && current_user_can('edit_post', $att_id)) {
             update_post_meta($att_id, '_wp_attachment_image_alt', $alt);
         }
         wp_send_json_success(['content' => $updated, 'alt' => $alt]);
@@ -1766,24 +1989,60 @@ watermark",
         if (!current_user_can('upload_files')) {
             wp_send_json_error(['message' => 'Permission denied'], 403);
         }
+
         $src = esc_url_raw(wp_unslash($_POST['src'] ?? ''));
         $att_id = absint($_POST['attachment_id'] ?? 0);
-        if (!$att_id && $src) {
-            $att_id = attachment_url_to_postid($src);
+        if (!$att_id && $src !== '') {
+            $att_id = absint(attachment_url_to_postid($src));
         }
-        if (!$att_id) {
-            wp_send_json_error(['message' => 'پیوست یافت نشد'], 404);
+        if (!$att_id || get_post_type($att_id) !== 'attachment' || !wp_attachment_is_image($att_id)
+            || !current_user_can('edit_post', $att_id)) {
+            wp_send_json_error(['message' => 'پیوست یافت نشد یا اجازه ویرایش آن را ندارید.'], 404);
         }
-        $backup = (string) get_post_meta($att_id, '_bankai_original_backup', true);
+
         $current = get_attached_file($att_id);
-        if ($backup && file_exists($backup) && $current) {
-            @copy($backup, $current);
-            delete_post_meta($att_id, '_bankai_watermarked');
-            wp_send_json_success(['message' => 'واترمارک حذف شد (بازگردانی از نسخه پشتیبان).', 'src' => wp_get_attachment_url($att_id)]);
+        if (!$current || !is_file($current)) {
+            wp_send_json_error(['message' => 'فایل اصلی پیوست در دسترس نیست.'], 404);
         }
-        // Soft flag remove if no backup
-        delete_post_meta($att_id, '_bankai_watermarked');
-        wp_send_json_success(['message' => 'پرچم واترمارک حذف شد. فایل اصلی در دسترس نبود.', 'src' => $src]);
+
+        $backup = $current . '.bk-orig';
+        if (!is_file($backup)) {
+            // Backward compatibility: accept a stored backup path only when it is
+            // inside this site's uploads directory and is not the current file.
+            $legacy = (string) get_post_meta($att_id, '_bankai_original_backup', true);
+            $uploads = wp_get_upload_dir();
+            $base = realpath((string) ($uploads['basedir'] ?? ''));
+            $real_legacy = $legacy !== '' ? realpath($legacy) : false;
+            $real_current = realpath($current);
+            if ($base && $real_legacy && $real_current && $real_legacy !== $real_current
+                && strpos(wp_normalize_path($real_legacy), trailingslashit(wp_normalize_path($base))) === 0) {
+                $backup = $real_legacy;
+            }
+        }
+
+        $backup_info = is_file($backup) ? @getimagesize($backup) : false;
+        $current_mime = (string) get_post_mime_type($att_id);
+        if (is_file($backup) && is_readable($backup) && $backup_info
+            && (!empty($backup_info['mime']) && $backup_info['mime'] === $current_mime)
+            && @copy($backup, $current)) {
+            delete_post_meta($att_id, '_bankai_watermarked');
+            delete_post_meta($att_id, '_bankai_original_backup');
+
+            if (!function_exists('wp_generate_attachment_metadata')) {
+                require_once ABSPATH . 'wp-admin/includes/image.php';
+            }
+            $meta = wp_generate_attachment_metadata($att_id, $current);
+            if (is_array($meta)) {
+                wp_update_attachment_metadata($att_id, $meta);
+            }
+
+            wp_send_json_success([
+                'message' => 'واترمارک از نسخه پشتیبان اصلی حذف شد.',
+                'src' => (string) wp_get_attachment_url($att_id),
+            ]);
+        }
+
+        wp_send_json_error(['message' => 'نسخه پشتیبان معتبر پیدا نشد؛ فایل تغییری نکرد.'], 404);
     }
 
     private function parse_content_images(string $html): array
@@ -1826,20 +2085,43 @@ watermark",
     private function url_to_path(string $url): string
     {
         $uploads = wp_get_upload_dir();
-        $baseurl = $uploads['baseurl'] ?? '';
-        $basedir = $uploads['basedir'] ?? '';
-        if ($baseurl && $basedir && str_starts_with($url, $baseurl)) {
-            $rel = substr($url, strlen($baseurl));
-            $path = $basedir . $rel;
-            return file_exists($path) ? $path : '';
+        $baseurl = (string) ($uploads['baseurl'] ?? '');
+        $basedir = (string) ($uploads['basedir'] ?? '');
+        if ($baseurl === '' || $basedir === '') {
+            return '';
         }
-        $home = home_url('/');
-        if (str_starts_with($url, $home)) {
-            $rel = substr($url, strlen($home));
-            $path = ABSPATH . ltrim($rel, '/');
-            return file_exists($path) ? $path : '';
+
+        $url_parts = wp_parse_url($url);
+        $base_parts = wp_parse_url($baseurl);
+        if (!$url_parts || !$base_parts) {
+            return '';
         }
-        return '';
+
+        $url_host = strtolower((string) ($url_parts['host'] ?? ''));
+        $base_host = strtolower((string) ($base_parts['host'] ?? ''));
+        if ($url_host !== '' && $base_host !== '' && $url_host !== $base_host) {
+            return '';
+        }
+
+        $base_path = untrailingslashit((string) ($base_parts['path'] ?? ''));
+        $url_path = (string) ($url_parts['path'] ?? '');
+        if ($base_path === '' || strpos($url_path, trailingslashit($base_path)) !== 0) {
+            return '';
+        }
+
+        $relative = rawurldecode(ltrim(substr($url_path, strlen($base_path)), '/'));
+        if ($relative === '' || preg_match('#(^|/)\\.\\.(?:/|$)#', $relative)) {
+            return '';
+        }
+
+        $candidate = trailingslashit($basedir) . $relative;
+        $real_base = realpath($basedir);
+        $real_file = realpath($candidate);
+        if (!$real_base || !$real_file || strpos(wp_normalize_path($real_file), trailingslashit(wp_normalize_path($real_base))) !== 0) {
+            return '';
+        }
+
+        return is_file($real_file) && is_readable($real_file) ? $real_file : '';
     }
 
     private function path_to_url(string $path): string
@@ -1872,7 +2154,7 @@ watermark",
         if ($name === '' && $post_id) {
             $name = get_the_title($post_id);
         }
-        return mb_substr($name, 0, 120);
+        return $this->utf8_substr($name, 0, 120);
     }
 
     private function replace_img_alt(string $html, string $src, string $alt): string
@@ -1898,21 +2180,35 @@ watermark",
         return $html;
     }
 
-    private function resize_image_file(string $path, int $max_width, int $quality): bool
+    private function resize_image_file(string $path, int $max_width, int $quality, int $max_height = 0): bool
     {
         $info = @getimagesize($path);
-        if (!$info || empty($info[0]) || $info[0] <= $max_width) {
+        if (!$info || empty($info[0]) || empty($info[1])) {
             return false;
         }
-        $mime = $info['mime'];
+        if (($max_width <= 0 || $info[0] <= $max_width) && ($max_height <= 0 || $info[1] <= $max_height)) {
+            return false;
+        }
+        $mime = (string) $info['mime'];
+        if ($mime === 'image/gif' || $this->is_animated_webp($path, $mime)) {
+            return false;
+        }
         $img = $this->load_image($path, $mime);
         if (!$img) {
             return false;
         }
         $w = imagesx($img);
         $h = imagesy($img);
-        $nw = $max_width;
-        $nh = (int) round($h * ($nw / max(1, $w)));
+        $scale = min(1, $max_width > 0 ? ($max_width / max(1, $w)) : 1);
+        if ($max_height > 0) {
+            $scale = min($scale, $max_height / max(1, $h));
+        }
+        if ($scale >= 1) {
+            imagedestroy($img);
+            return false;
+        }
+        $nw = max(1, (int) round($w * $scale));
+        $nh = max(1, (int) round($h * $scale));
         $dst = imagecreatetruecolor($nw, $nh);
         if (in_array($mime, ['image/png', 'image/webp'], true)) {
             imagealphablending($dst, false);
@@ -1953,10 +2249,13 @@ watermark",
         if (!current_user_can('upload_files')) {
             wp_send_json_error(['message' => __('دسترسی مجاز نیست.', 'bankai-core')], 403);
         }
-        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        $nonce = isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '';
+        if ($nonce === '' || (!wp_verify_nonce($nonce, 'bankai_admin_nonce') && !wp_verify_nonce($nonce, 'bankai_core_admin'))) {
+            wp_send_json_error(['message' => __('نشست منقضی شده — صفحه را تازه کنید.', 'bankai-core')], 403);
+        }
 
-        $page     = max(1, (int) ($_POST['page'] ?? 1));
-        $per_page = min(48, max(6, (int) ($_POST['per_page'] ?? 18)));
+        $page     = max(1, absint($_POST['page'] ?? $_REQUEST['page'] ?? 1));
+        $per_page = min(48, max(6, absint($_POST['per_page'] ?? $_REQUEST['per_page'] ?? 18)));
 
         $q = new WP_Query([
             'post_type'      => 'attachment',
@@ -1986,9 +2285,12 @@ watermark",
             }
             $thumb = wp_get_attachment_image_url($id, 'medium') ?: wp_get_attachment_url($id);
             $size_label = $bytes > 0 ? size_format($bytes) : '—';
+            $meta = wp_get_attachment_metadata($id);
             $items[] = [
                 'id'         => $id,
                 'title'      => get_the_title($id) ?: ('#' . $id),
+                'alt'        => (string) get_post_meta($id, '_wp_attachment_image_alt', true),
+                'caption'    => (string) $post->post_excerpt,
                 'url'        => (string) wp_get_attachment_url($id),
                 'thumb'      => (string) $thumb,
                 'mime'       => $mime,
@@ -1996,6 +2298,8 @@ watermark",
                 'bytes'      => $bytes,
                 'size'       => $size_label,
                 'size_label' => $size_label,
+                'width'      => (int) ($meta['width'] ?? 0),
+                'height'     => (int) ($meta['height'] ?? 0),
                 'selected'   => false,
             ];
         }
@@ -2020,8 +2324,9 @@ watermark",
         check_ajax_referer('bankai_admin_nonce', 'nonce');
 
         $id = absint($_POST['id'] ?? 0);
-        if ($id <= 0) {
-            wp_send_json_error(['message' => __('شناسه نامعتبر.', 'bankai-core')]);
+        if ($id <= 0 || get_post_type($id) !== 'attachment' || !wp_attachment_is_image($id)
+            || !current_user_can('edit_post', $id)) {
+            wp_send_json_error(['message' => __('شناسه نامعتبر است یا اجازه ویرایش تصویر را ندارید.', 'bankai-core')], 403);
         }
 
         $format    = sanitize_key($_POST['format'] ?? 'webp');
@@ -2045,119 +2350,170 @@ watermark",
         if (!extension_loaded('gd')) {
             return new WP_Error('no_gd', __('افزونه GD در دسترس نیست.', 'bankai-core'));
         }
+        if (get_post_type($id) !== 'attachment' || !wp_attachment_is_image($id)) {
+            return new WP_Error('invalid_attachment', __('شناسه به یک تصویر پیوست‌شده تعلق ندارد.', 'bankai-core'));
+        }
 
         $file = get_attached_file($id);
-        if (!$file || !file_exists($file)) {
-            return new WP_Error('missing', __('فایل یافت نشد.', 'bankai-core'));
+        if (!$file || !is_file($file) || !is_readable($file)
+            || !is_writable($file) || !is_writable(dirname($file))) {
+            return new WP_Error('missing', __('فایل یا پوشه تصویر یافت نشد یا قابل نوشتن نیست.', 'bankai-core'));
         }
 
-        $mime   = get_post_mime_type($id) ?: '';
+        $quality = max(40, min(95, $quality));
+        $max_width = max(0, min(4000, $max_width));
+        $format = sanitize_key($format);
+        if (!in_array($format, ['webp', 'png', 'jpeg', 'jpg', 'keep'], true)) {
+            return new WP_Error('format', __('فرمت خروجی معتبر نیست.', 'bankai-core'));
+        }
+
+        $info = @getimagesize($file);
+        if (!$info || empty($info['mime'])) {
+            return new WP_Error('invalid_image', __('ساختار فایل تصویر معتبر نیست.', 'bankai-core'));
+        }
+        $mime = strtolower((string) $info['mime']);
+        if ($mime === 'image/gif' || $this->is_animated_webp($file, $mime)) {
+            return new WP_Error('animated_image', __('برای جلوگیری از حذف فریم‌ها، فشرده‌سازی GIF یا WebP متحرک با GD انجام نمی‌شود.', 'bankai-core'));
+        }
         $before = (int) filesize($file);
-        $image  = $this->load_image($file, $mime);
-        if (!$image) {
-            $detail = $mime !== '' ? $mime : (pathinfo($file, PATHINFO_EXTENSION) ?: 'unknown');
-            if (!extension_loaded('gd')) {
-                return new WP_Error('load', __('افزونه GD در PHP فعال نیست.', 'bankai-core'));
-            }
-            return new WP_Error(
-                'load',
-                sprintf(
-                    /* translators: %s: mime or extension */
-                    __('بارگذاری تصویر ممکن نشد (%s). فرمت پشتیبانی‌نشده یا فایل خراب است.', 'bankai-core'),
-                    $detail
-                )
-            );
-        }
-
-        $w = imagesx($image);
-        $h = imagesy($image);
-        if ($max_width > 0 && $w > $max_width) {
-            $nw = $max_width;
-            $nh = (int) round($h * ($max_width / $w));
-            $resized = imagecreatetruecolor($nw, $nh);
-            if ($resized) {
-                imagealphablending($resized, false);
-                imagesavealpha($resized, true);
-                imagecopyresampled($resized, $image, 0, 0, 0, 0, $nw, $nh, $w, $h);
-                imagedestroy($image);
-                $image = $resized;
-            }
-        }
-
-        $pathinfo = pathinfo($file);
-        $dir  = $pathinfo['dirname'] ?? dirname($file);
-        $base = $pathinfo['filename'] ?? 'image';
 
         if ($format === 'keep') {
-            if (str_contains($mime, 'png')) {
+            if ($mime === 'image/png') {
                 $format = 'png';
-            } elseif (str_contains($mime, 'webp')) {
+            } elseif ($mime === 'image/webp') {
                 $format = 'webp';
             } else {
                 $format = 'jpeg';
             }
         }
-
-        $new_path = $file;
-        $new_mime = $mime;
-        $ext = 'jpg';
-        $ok  = false;
-
-        if ($format === 'webp' && function_exists('imagewebp')) {
-            $new_path = $dir . '/' . $base . '.webp';
-            $ok = imagewebp($image, $new_path, $quality);
-            $new_mime = 'image/webp';
-            $ext = 'webp';
-        } elseif ($format === 'png') {
-            $new_path = $dir . '/' . $base . '.png';
-            imagesavealpha($image, true);
-            $ok = imagepng($image, $new_path, (int) max(0, min(9, round((100 - $quality) / 11))));
-            $new_mime = 'image/png';
-            $ext = 'png';
-        } else {
-            $new_path = $dir . '/' . $base . '.jpg';
-            $ok = imagejpeg($image, $new_path, $quality);
-            $new_mime = 'image/jpeg';
-            $ext = 'jpg';
+        if ($format === 'webp' && !function_exists('imagewebp')) {
+            return new WP_Error('webp_unavailable', __('سرور GD از خروجی WebP پشتیبانی نمی‌کند.', 'bankai-core'));
         }
 
+        $image = $this->load_image($file, $mime);
+        if (!$image) {
+            return new WP_Error('load', __('بارگذاری تصویر ممکن نشد؛ فرمت پشتیبانی‌نشده یا فایل خراب است.', 'bankai-core'));
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        if ($max_width > 0 && $width > $max_width) {
+            $new_width = $max_width;
+            $new_height = max(1, (int) round($height * ($new_width / max(1, $width))));
+            $resized = imagecreatetruecolor($new_width, $new_height);
+            if (!$resized) {
+                imagedestroy($image);
+                return new WP_Error('resize', __('ساخت تصویر تغییراندازه‌یافته ناموفق بود.', 'bankai-core'));
+            }
+            imagealphablending($resized, false);
+            imagesavealpha($resized, true);
+            $transparent = imagecolorallocatealpha($resized, 0, 0, 0, 127);
+            imagefill($resized, 0, 0, $transparent);
+            imagecopyresampled($resized, $image, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
+            imagedestroy($image);
+            $image = $resized;
+        }
+
+        $path_info = pathinfo($file);
+        $directory = (string) ($path_info['dirname'] ?? dirname($file));
+        $base = (string) ($path_info['filename'] ?? 'image');
+        $extension = $format === 'jpeg' || $format === 'jpg' ? 'jpg' : $format;
+        $new_mime = $format === 'webp' ? 'image/webp' : ($format === 'png' ? 'image/png' : 'image/jpeg');
+        $destination = trailingslashit($directory) . $base . '.' . $extension;
+
+        // Avoid overwriting a different attachment's file.
+        if (wp_normalize_path($destination) !== wp_normalize_path($file) && file_exists($destination)) {
+            $destination = trailingslashit($directory) . wp_unique_filename($directory, $base . '.' . $extension);
+        }
+
+        $temporary = trailingslashit($directory) . '.bankai-' . wp_generate_password(12, false) . '.' . $extension;
+        $saved = false;
+        if ($format === 'webp') {
+            $saved = @imagewebp($image, $temporary, $quality);
+        } elseif ($format === 'png') {
+            imagesavealpha($image, true);
+            $level = (int) max(0, min(9, round((100 - $quality) / 11)));
+            $saved = @imagepng($image, $temporary, $level);
+        } else {
+            $saved = @imagejpeg($image, $temporary, $quality);
+        }
         imagedestroy($image);
 
-        if (!$ok || !file_exists($new_path)) {
+        if (!$saved || !is_file($temporary) || filesize($temporary) < 32) {
+            @unlink($temporary);
             return new WP_Error('save', __('ذخیره فایل فشرده ممکن نشد.', 'bankai-core'));
         }
 
-        if (wp_normalize_path($new_path) !== wp_normalize_path($file)) {
-            update_attached_file($id, $new_path);
-            wp_update_post([
-                'ID'             => $id,
+        $old_backup = $file . '.bk-before-compress';
+        if (!file_exists($old_backup) && !@copy($file, $old_backup)) {
+            @unlink($temporary);
+            return new WP_Error('backup', __('تهیه نسخه پشتیبان پیش از فشرده‌سازی ناموفق بود؛ فایل اصلی تغییر نکرد.', 'bankai-core'));
+        }
+
+        $same_path = wp_normalize_path($destination) === wp_normalize_path($file);
+        if ($same_path) {
+            if (!@rename($temporary, $file)) {
+                if (!@copy($temporary, $file)) {
+                    @unlink($temporary);
+                    return new WP_Error('replace', __('جایگزینی فایل تصویر ناموفق بود.', 'bankai-core'));
+                }
+                @unlink($temporary);
+            }
+        } else {
+            if (!@rename($temporary, $destination)) {
+                if (!@copy($temporary, $destination)) {
+                    @unlink($temporary);
+                    return new WP_Error('replace', __('انتقال فایل فشرده ناموفق بود.', 'bankai-core'));
+                }
+                @unlink($temporary);
+            }
+        }
+
+        if (!$same_path) {
+            update_attached_file($id, $destination);
+            $updated = wp_update_post([
+                'ID' => $id,
                 'post_mime_type' => $new_mime,
-            ]);
-            if (file_exists($file) && wp_normalize_path($file) !== wp_normalize_path($new_path)) {
-                @unlink($file);
+            ], true);
+
+            if (is_wp_error($updated)) {
+                update_attached_file($id, $file);
+                @unlink($destination);
+                @copy($old_backup, $file);
+                return $updated;
+            }
+        } else {
+            // Keep attachment MIME in sync when "keep" maps a legacy extension to JPEG.
+            if ((string) get_post_mime_type($id) !== $new_mime) {
+                wp_update_post(['ID' => $id, 'post_mime_type' => $new_mime]);
             }
         }
 
         if (!function_exists('wp_generate_attachment_metadata')) {
             require_once ABSPATH . 'wp-admin/includes/image.php';
         }
-        $meta = wp_generate_attachment_metadata($id, $new_path);
-        if (is_array($meta)) {
-            wp_update_attachment_metadata($id, $meta);
+        $metadata = wp_generate_attachment_metadata($id, $destination);
+        if (is_array($metadata)) {
+            wp_update_attachment_metadata($id, $metadata);
         }
 
-        $after = (int) filesize($new_path);
+        if (!$same_path && is_file($file)) {
+            @unlink($file);
+        }
+
+        clearstatcache(true, $destination);
+        $after = is_file($destination) ? (int) filesize($destination) : 0;
         $thumb = wp_get_attachment_image_url($id, 'medium') ?: wp_get_attachment_url($id);
 
         return [
-            'id'          => $id,
-            'bytes'       => $before,
+            'id' => $id,
+            'bytes' => $before,
             'bytes_after' => $after,
-            'saved'       => max(0, $before - $after),
-            'format'      => $ext,
-            'url'         => (string) wp_get_attachment_url($id),
-            'thumb'       => (string) $thumb,
-            'message'     => sprintf(
+            'saved' => max(0, $before - $after),
+            'format' => $extension,
+            'url' => (string) wp_get_attachment_url($id),
+            'thumb' => (string) $thumb,
+            'message' => sprintf(
                 __('فشرده شد: %1$s → %2$s', 'bankai-core'),
                 size_format($before),
                 size_format($after)
@@ -2166,7 +2522,7 @@ watermark",
     }
 
 
-    
+
     public function register_cdn_routes(): void {
         register_rest_route('bankai/v1', '/media/cdn', [
             'methods' => 'GET',
@@ -2202,6 +2558,9 @@ watermark",
         if (!empty($s['secret_key'])) {
             $s['secret_key'] = '********';
         }
+        if (!empty($s['access_key'])) {
+            $s['access_key'] = '********';
+        }
         return new \WP_REST_Response($s, 200);
     }
 
@@ -2223,6 +2582,9 @@ watermark",
         if ($s['secret_key'] === '********' || $s['secret_key'] === '') {
             $s['secret_key'] = $prev['secret_key'] ?? '';
         }
+        if ($s['access_key'] === '********' || $s['access_key'] === '') {
+            $s['access_key'] = $prev['access_key'] ?? '';
+        }
         if (function_exists('bankai_update_option')) {
             bankai_update_option('cdn_settings', $s);
         } else {
@@ -2230,7 +2592,10 @@ watermark",
         }
         return new \WP_REST_Response([
             'success' => true,
-            'data' => array_merge($s, ['secret_key' => $s['secret_key'] ? '********' : '']),
+            'data' => array_merge($s, [
+                'secret_key' => $s['secret_key'] ? '********' : '',
+                'access_key' => $s['access_key'] ? '********' : '',
+            ]),
         ], 200);
     }
 
@@ -2266,7 +2631,7 @@ watermark",
      */
     public function ajax_bulk_watermark_ids(): void
     {
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('manage_options') && !current_user_can('upload_files')) {
             wp_send_json_error(['message' => __('دسترسی مجاز نیست.', 'bankai-core')], 403);
         }
         check_ajax_referer('bankai_admin_nonce', 'nonce');
@@ -2281,8 +2646,14 @@ watermark",
         if (!is_array($ids_raw)) {
             $ids_raw = [];
         }
-        $ids = array_values(array_filter(array_map('absint', $ids_raw)));
-        $apply = !empty($_POST['apply']) && ($_POST['apply'] === '1' || $_POST['apply'] === 'true' || $_POST['apply'] === true);
+        $ids = array_values(array_unique(array_filter(array_map('absint', $ids_raw))));
+        if (!isset($_POST['apply'])) {
+            wp_send_json_error(['message' => __('عملیات واترمارک مشخص نشده است.', 'bankai-core')], 400);
+        }
+        $apply = in_array((string) wp_unslash($_POST['apply']), ['1', 'true'], true);
+        if (count($ids) > 100) {
+            wp_send_json_error(['message' => __('در هر نوبت حداکثر ۱۰۰ تصویر انتخاب کنید.', 'bankai-core')], 400);
+        }
 
         if (!$ids) {
             wp_send_json_error(['message' => __('هیچ تصویری انتخاب نشده است.', 'bankai-core')]);
@@ -2290,7 +2661,7 @@ watermark",
 
         $s = $this->get_settings();
         // Allow live studio settings override from POST (so bulk uses current UI values)
-        if (!empty($_POST['wm_settings'])) {
+        if (!empty($_POST['wm_settings']) && current_user_can('manage_options')) {
             $raw = wp_unslash($_POST['wm_settings']);
             if (is_string($raw)) {
                 $decoded = json_decode($raw, true);
@@ -2316,7 +2687,12 @@ watermark",
         $ok = 0;
         $skip = 0;
         $fail = 0;
+        $errors = [];
         foreach ($ids as $id) {
+            if (get_post_type($id) !== 'attachment' || !wp_attachment_is_image($id) || !current_user_can('edit_post', $id)) {
+                $skip++;
+                continue;
+            }
             $path = get_attached_file($id);
             if (!$path || !file_exists($path)) {
                 $fail++;
@@ -2330,23 +2706,40 @@ watermark",
             if ($apply) {
                 if ($this->apply_watermark($path, $s)) {
                     $ok++;
-                    // regenerate metadata so sizes refresh
+                    update_post_meta($id, '_bankai_watermarked', 1);
+                    update_post_meta($id, '_bankai_original_backup', $path . '.bk-orig');
+                    // Bust intermediate sizes so front/media library show watermarked file
                     if (function_exists('wp_generate_attachment_metadata')) {
                         require_once ABSPATH . 'wp-admin/includes/image.php';
                         $meta = wp_generate_attachment_metadata($id, $path);
-                        if ($meta) {
+                        if (is_array($meta) && $meta) {
                             wp_update_attachment_metadata($id, $meta);
                         }
                     }
+                    // Touch attachment modified time for cache-busting CDNs
+                    wp_update_post([
+                        'ID'                => $id,
+                        'post_modified'     => current_time('mysql'),
+                        'post_modified_gmt' => current_time('mysql', true),
+                    ]);
                 } else {
                     $fail++;
+                    $errors[] = sprintf('#%d: %s', $id, __('اعمال روی فایل ناموفق (مجوز نوشتن/GD/فرمت)', 'bankai-core'));
                 }
             } else {
                 // restore original if we kept backup
                 $backup = $path . '.bk-orig';
-                if (file_exists($backup)) {
-                    @copy($backup, $path);
+                if (is_file($backup) && @copy($backup, $path)) {
                     $ok++;
+                    delete_post_meta($id, '_bankai_watermarked');
+                    delete_post_meta($id, '_bankai_original_backup');
+                    if (!function_exists('wp_generate_attachment_metadata')) {
+                        require_once ABSPATH . 'wp-admin/includes/image.php';
+                    }
+                    $meta = wp_generate_attachment_metadata($id, $path);
+                    if (is_array($meta)) {
+                        wp_update_attachment_metadata($id, $meta);
+                    }
                 } else {
                     $skip++;
                 }
@@ -2380,12 +2773,19 @@ watermark",
             }
         }
 
-        wp_send_json_success([
+        $payload = [
             'message' => $msg,
             'ok'      => $ok,
             'skip'    => $skip,
             'fail'    => $fail,
-        ]);
+        ];
+        if (!empty($errors)) {
+            $payload['errors'] = array_slice($errors, 0, 5);
+            if ($ok === 0 && $fail > 0) {
+                $payload['message'] = $msg . ' — ' . $errors[0];
+            }
+        }
+        wp_send_json_success($payload);
     }
 
 
@@ -2415,121 +2815,193 @@ watermark",
 
     public function ajax_upload_wm_font(): void
     {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => __('دسترسی مجاز نیست.', 'bankai-core')], 403);
         }
-        check_ajax_referer('bankai_admin_nonce', 'nonce');
-        if (empty($_FILES['font'])) {
-            wp_send_json_error(['message' => __('فایلی ارسال نشد.', 'bankai-core')]);
+        if (empty($_FILES['font']) || !is_array($_FILES['font'])) {
+            wp_send_json_error(['message' => __('فایلی ارسال نشد.', 'bankai-core')], 400);
         }
+
         $file = $_FILES['font'];
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, ['ttf', 'otf', 'woff', 'woff2'], true)) {
-            wp_send_json_error(['message' => __('فقط ttf/otf/woff مجاز است.', 'bankai-core')]);
+        if (!empty($file['error']) || empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            wp_send_json_error(['message' => __('آپلود فونت کامل یا معتبر نیست.', 'bankai-core')], 400);
         }
-        // WOFF/WOFF2 allowed for CSS live preview; GD raster uses TTF/OTF or system fallback
-        require_once ABSPATH . 'wp-admin/includes/file.php';
-        $overrides = ['test_form' => false, 'mimes' => [
-            'ttf' => 'font/ttf', 'otf' => 'font/otf', 'woff' => 'font/woff', 'woff2' => 'font/woff2',
-        ]];
-        // WP may reject font mimes — store manually in uploads/bankai-fonts
+        if (!empty($file['size']) && (int) $file['size'] > 10 * 1024 * 1024) {
+            wp_send_json_error(['message' => __('حداکثر حجم فونت ۱۰ مگابایت است.', 'bankai-core')], 400);
+        }
+
+        $ext = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+        $allowed_signatures = [
+            'ttf'  => ["\x00\x01\x00\x00", 'true', 'typ1'],
+            'otf'  => ['OTTO'],
+            'woff' => ['wOFF'],
+            'woff2'=> ['wOF2'],
+        ];
+        if (!isset($allowed_signatures[$ext])) {
+            wp_send_json_error(['message' => __('فقط فایل‌های TTF، OTF، WOFF و WOFF2 مجاز هستند.', 'bankai-core')], 400);
+        }
+
+        $handle = @fopen($file['tmp_name'], 'rb');
+        $signature = $handle ? (string) fread($handle, 4) : '';
+        if ($handle) {
+            fclose($handle);
+        }
+        if (!in_array($signature, $allowed_signatures[$ext], true)) {
+            wp_send_json_error(['message' => __('محتوای فایل با پسوند فونت مطابقت ندارد.', 'bankai-core')], 400);
+        }
+
         $upload = wp_upload_dir();
+        if (!empty($upload['error'])) {
+            wp_send_json_error(['message' => (string) $upload['error']], 500);
+        }
         $dir = trailingslashit($upload['basedir']) . 'bankai-fonts';
-        if (!is_dir($dir)) {
-            wp_mkdir_p($dir);
+        if (!wp_mkdir_p($dir) || !is_writable($dir)) {
+            wp_send_json_error(['message' => __('پوشه فونت‌ها قابل نوشتن نیست.', 'bankai-core')], 500);
         }
-        $safe = sanitize_file_name(pathinfo($file['name'], PATHINFO_FILENAME)) . '.' . $ext;
-        $dest = $dir . '/' . $safe;
-        $ok = false;
-        if (!empty($file['tmp_name']) && is_uploaded_file($file['tmp_name'])) {
-            $ok = @move_uploaded_file($file['tmp_name'], $dest);
+
+        $base = sanitize_file_name(pathinfo((string) $file['name'], PATHINFO_FILENAME));
+        if ($base === '') {
+            $base = 'bankai-font';
         }
-        if (!$ok && !empty($file['tmp_name']) && file_exists($file['tmp_name'])) {
-            $ok = @copy($file['tmp_name'], $dest);
-            @unlink($file['tmp_name']);
+        $filename = wp_unique_filename($dir, $base . '.' . $ext);
+        $destination = trailingslashit($dir) . $filename;
+        if (!@move_uploaded_file($file['tmp_name'], $destination) || !is_file($destination)) {
+            wp_send_json_error(['message' => __('ذخیره فونت در پوشه uploads ناموفق بود.', 'bankai-core')], 500);
         }
-        if (!$ok || !file_exists($dest)) {
-            wp_send_json_error(['message' => __('آپلود ناموفق بود. مجوز پوشه uploads را بررسی کنید.', 'bankai-core')]);
-        }
-        $url = trailingslashit($upload['baseurl']) . 'bankai-fonts/' . $safe;
-        $s = $this->get_settings();
-        $s['custom_font_url'] = $url;
-        $s['custom_font_name'] = $safe;
-        $s['custom_font_path'] = $dest;
-        $s['text_font'] = 'custom';
-        $list = is_array($s['custom_fonts'] ?? null) ? $s['custom_fonts'] : [];
-        $id = 'cf_' . md5($safe);
-        $found = false;
-        foreach ($list as &$it) {
-            if (($it['name'] ?? '') === $safe || ($it['id'] ?? '') === $id) {
-                $it = ['id' => $id, 'name' => $safe, 'url' => $url, 'path' => $dest];
-                $found = true;
-                break;
-            }
-        }
-        unset($it);
-        if (!$found) {
-            $list[] = ['id' => $id, 'name' => $safe, 'url' => $url, 'path' => $dest];
-        }
-        $s['custom_fonts'] = $list;
-        $this->save_settings($s);
-        $hint = in_array($ext, ['woff', 'woff2'], true)
-            ? ' ' . __('(WOFF برای پیش‌نمایش؛ رندر فایل روی سرور با فونت سیستم تکمیل می‌شود)', 'bankai-core')
-            : '';
+
+        $url = trailingslashit($upload['baseurl']) . 'bankai-fonts/' . rawurlencode($filename);
+        $settings = $this->get_settings();
+        $settings['custom_font_url'] = esc_url_raw($url);
+        $settings['custom_font_name'] = $filename;
+        $settings['custom_font_path'] = $destination;
+        $settings['text_font'] = 'custom';
+
+        $font_id = 'cf_' . md5($filename . '|' . filesize($destination));
+        $fonts = is_array($settings['custom_fonts'] ?? null) ? $settings['custom_fonts'] : [];
+        $fonts[] = ['id' => $font_id, 'name' => $filename, 'url' => $url, 'path' => $destination];
+        $settings['custom_fonts'] = $fonts;
+        $this->save_settings($settings);
+
         wp_send_json_success([
-            'url'  => $url,
-            'name' => $safe,
-            'path' => $dest,
-            'message' => __('فونت ذخیره شد و برای واترمارک ثبت شد.', 'bankai-core') . $hint,
+            'url' => $url,
+            'name' => $filename,
+            'message' => __('فونت معتبر ذخیره و به کتابخانه فونت‌ها اضافه شد.', 'bankai-core'),
+            'server_render_supported' => in_array($ext, ['ttf', 'otf'], true),
         ]);
     }
 
 
     public function ajax_bulk_compress_media(): void
     {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Forbidden'], 403);
         }
-        check_ajax_referer('bankai_admin_nonce', 'nonce');
+
         $ids_raw = $_POST['ids'] ?? [];
         if (is_string($ids_raw)) {
-            $decoded = json_decode(wp_unslash($ids_raw), true);
-            $ids_raw = is_array($decoded) ? $decoded : preg_split('/[,\s]+/', $ids_raw);
+            $raw = wp_unslash($ids_raw);
+            $decoded = json_decode($raw, true);
+            $ids_raw = is_array($decoded) ? $decoded : preg_split('/[,\s]+/', $raw);
         }
-        $ids = array_values(array_filter(array_map('absint', (array) $ids_raw)));
+        $ids = array_values(array_unique(array_filter(array_map('absint', (array) $ids_raw))));
+        if (!$ids) {
+            wp_send_json_error(['message' => __('هیچ تصویری انتخاب نشده است.', 'bankai-core')], 400);
+        }
+        if (count($ids) > 100) {
+            wp_send_json_error(['message' => __('در هر نوبت حداکثر ۱۰۰ تصویر انتخاب کنید.', 'bankai-core')], 400);
+        }
+
         $quality = max(40, min(95, (int) ($_POST['quality'] ?? 82)));
-        $max_w = max(400, min(4000, (int) ($_POST['max_width'] ?? 1600)));
-        $format = sanitize_key($_POST['format'] ?? 'webp');
+        $max_width = max(0, min(4000, (int) ($_POST['max_width'] ?? 1600)));
+        $format = sanitize_key(wp_unslash($_POST['format'] ?? 'webp'));
+        if (!in_array($format, ['webp', 'jpeg', 'jpg', 'png', 'keep'], true)) {
+            wp_send_json_error(['message' => __('فرمت خروجی پشتیبانی نمی‌شود.', 'bankai-core')], 400);
+        }
+
         $done = 0;
+        $failed = 0;
+        $converted = 0;
+        $resized = 0;
+        $errors = [];
+
         foreach ($ids as $id) {
-            $path = get_attached_file($id);
-            if (!$path || !file_exists($path)) {
+            if (get_post_type($id) !== 'attachment' || !wp_attachment_is_image($id)) {
+                $failed++;
                 continue;
             }
-            $mime = get_post_mime_type($id) ?: '';
-            if ($format === 'webp' && method_exists($this, 'maybe_create_webp')) {
-                $this->maybe_create_webp($path, $mime, $quality);
+
+            $path = get_attached_file($id);
+            if (!$path || !is_file($path) || !is_readable($path) || !is_writable($path)) {
+                $failed++;
+                continue;
             }
+
+            $before = (int) filesize($path);
             $info = @getimagesize($path);
-            if ($info && !empty($info[0]) && $info[0] > $max_w && extension_loaded('gd') && method_exists($this, 'resize_image_file')) {
-                $this->resize_image_file($path, $mime, $max_w, $quality);
-            } elseif ($info && !empty($info[0]) && $info[0] > $max_w && extension_loaded('gd')) {
-                // inline resize
-                $img = $this->load_image($path, $mime);
-                if ($img) {
-                    $w = imagesx($img); $h = imagesy($img);
-                    $nw = $max_w; $nh = (int) round($h * ($max_w / max(1,$w)));
-                    $dst = imagecreatetruecolor($nw, $nh);
-                    imagecopyresampled($dst, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
-                    $this->save_image($dst, $path, $mime, $quality);
-                    imagedestroy($img); imagedestroy($dst);
+            if (!$info || empty($info['mime'])) {
+                $failed++;
+                continue;
+            }
+
+            // JPEG/PNG are real attachment conversions; let the single-image
+            // routine make the backup before any resize or format change.
+            if (in_array($format, ['jpeg', 'jpg', 'png'], true)) {
+                $result = $this->compress_attachment_file($id, $format, $quality, $max_width);
+                if (is_wp_error($result)) {
+                    $errors[] = sprintf('#%d: %s', $id, $result->get_error_message());
+                    $failed++;
+                    continue;
+                }
+                $done++;
+                $converted++;
+                continue;
+            }
+
+            $changed = false;
+            if ($max_width > 0 && !empty($info[0]) && $info[0] > $max_width) {
+                $resize_backup = $path . '.bk-before-compress';
+                if (!file_exists($resize_backup) && !@copy($path, $resize_backup)) {
+                    $errors[] = sprintf('#%d: %s', $id, __('تهیه نسخه پشتیبان ناموفق بود.', 'bankai-core'));
+                    $failed++;
+                    continue;
+                }
+                if ($this->resize_image_file($path, $max_width, $quality)) {
+                    $changed = true;
+                    $resized++;
+                    if (!function_exists('wp_generate_attachment_metadata')) {
+                        require_once ABSPATH . 'wp-admin/includes/image.php';
+                    }
+                    $metadata = wp_generate_attachment_metadata($id, $path);
+                    if (is_array($metadata)) {
+                        wp_update_attachment_metadata($id, $metadata);
+                    }
                 }
             }
-            $done++;
+
+            if ($format === 'webp') {
+                $current_info = @getimagesize($path);
+                $mime = (string) ($current_info['mime'] ?? '');
+                if ($mime !== 'image/webp' && $this->maybe_create_webp($path, $mime, $quality)) {
+                    $changed = true;
+                    $converted++;
+                    update_post_meta($id, '_bankai_webp_path', preg_replace('/\.(jpe?g|png)$/i', '.webp', $path));
+                }
+            }
+
+            if ($changed) {
+                $done++;
+            }
         }
+
         wp_send_json_success([
-            'message' => sprintf(__('%d تصویر پردازش شد.', 'bankai-core'), $done),
+            'message' => sprintf(__('%1$d تصویر پردازش شد؛ %2$d مورد ناموفق.', 'bankai-core'), $done, $failed),
             'done' => $done,
+            'failed' => $failed,
+            'converted' => $converted,
+            'resized' => $resized,
+            'errors' => array_slice($errors, 0, 5),
         ]);
     }
 

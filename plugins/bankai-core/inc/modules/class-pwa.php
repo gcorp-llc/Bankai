@@ -51,15 +51,17 @@ final class Bankai_PWA
     public static function defaults(): array
     {
         $name = get_bloginfo('name') ?: 'Site';
-        $icon = '';
+        $icon_192 = '';
+        $icon_512 = '';
         if (function_exists('get_site_icon_url')) {
-            $icon = (string) get_site_icon_url(512);
+            $icon_192 = (string) get_site_icon_url(192);
+            $icon_512 = (string) get_site_icon_url(512);
         }
 
         return [
             'enabled'         => true,
             'name'            => $name,
-            'short_name'      => mb_substr($name, 0, 12),
+            'short_name'      => self::truncate_text($name, 12),
             'description'     => get_bloginfo('description') ?: $name,
             'start_url'       => '/',
             'scope'           => '/',
@@ -67,8 +69,8 @@ final class Bankai_PWA
             'orientation'     => 'any',
             'theme_color'     => '#fc4c2f',
             'background_color'=> '#ffffff',
-            'icon_192'        => $icon,
-            'icon_512'        => $icon,
+            'icon_192'        => $icon_192,
+            'icon_512'        => $icon_512,
             'service_worker'  => true,
             'install_prompt'  => true,
             'offline_cache'   => true,
@@ -112,10 +114,10 @@ final class Bankai_PWA
                 $hex = sanitize_hex_color((string) $in[$k]);
                 $cur[$k] = $hex ?: $v;
             } elseif ($k === 'start_url' || $k === 'scope') {
-                $path = sanitize_text_field((string) $in[$k]);
-                $cur[$k] = $path !== '' ? $path : '/';
+                $fallback = '/';
+                $cur[$k] = $this->normalize_local_path((string) $in[$k], $fallback, $k === 'scope');
             } elseif ($k === 'short_name') {
-                $cur[$k] = mb_substr(sanitize_text_field((string) $in[$k]), 0, 12);
+                $cur[$k] = $this->truncate_text(sanitize_text_field((string) $in[$k]), 12);
             } else {
                 $cur[$k] = sanitize_text_field((string) $in[$k]);
             }
@@ -127,23 +129,93 @@ final class Bankai_PWA
             update_option(self::OPT, $cur, false);
         }
 
-        // Flush rewrite rules once when enabling so manifest/SW routes work
-        if (!empty($cur['enabled'])) {
-            flush_rewrite_rules(false);
+        // Keep core module toggle in sync so front-end hooks (head/footer) load
+        if (function_exists('bankai_set_module_active')) {
+            bankai_set_module_active('pwa', !empty($cur['enabled']));
         }
-
         return $cur;
+    }
+
+    public function is_module_on(): bool
+    {
+        if (!function_exists('bankai_is_module_active')) {
+            return true;
+        }
+        if (bankai_is_module_active('pwa')) {
+            return true;
+        }
+        // The central module switch is authoritative. Do not silently reactivate
+        // a module that an administrator intentionally disabled in the dashboard.
+        return false;
     }
 
     public function is_enabled(): bool
     {
-        $s = $this->get_settings();
-        // First-run: if option never saved, treat as enabled so manifest/icons work out of the box
-        $raw = get_option(self::OPT, null);
-        if ($raw === null || $raw === false || $raw === '') {
-            return true;
+        if (!$this->is_module_on()) {
+            return false;
         }
-        return !empty($s['enabled']);
+        $s = $this->get_settings();
+        // defaults() sets enabled=true; empty/missing → on
+        return !array_key_exists('enabled', $s) || !empty($s['enabled']);
+    }
+
+    /**
+     * Diagnostic snapshot for admin / site-audit.
+     */
+    public function status_report(): array
+    {
+        $s = $this->get_settings();
+        $module = $this->is_module_on();
+        $enabled = $this->is_enabled();
+        $has_192 = !empty($s['icon_192']) || (function_exists('get_site_icon_url') && (string) get_site_icon_url(192) !== '');
+        $has_512 = !empty($s['icon_512']) || (function_exists('get_site_icon_url') && (string) get_site_icon_url(512) !== '');
+        $icons_ok = $has_192 && $has_512;
+        $sw_on = !empty($s['service_worker']);
+        $prompt_on = !empty($s['install_prompt']);
+        $https = is_ssl() || str_starts_with(home_url(), 'https') || str_contains((string) home_url(), 'localhost') || str_contains((string) home_url(), '.test');
+        $manifest = $this->build_manifest();
+        $icon_count = count($manifest['icons'] ?? []);
+        $display = (string) ($manifest['display'] ?? 'standalone');
+
+        $issues = [];
+        if (!$module) {
+            $issues[] = 'ماژول PWA در پیشخوان خاموش است — از پیشخوان Bankai یا تنظیمات PWA فعال کنید';
+        }
+        if ($module && empty($s['enabled'])) {
+            $issues[] = 'سوئیچ «فعال» داخل تنظیمات PWA خاموش است';
+        }
+        if (!$icons_ok || $icon_count < 1) {
+            $issues[] = 'آیکون ۱۹۲/۵۱۲ تنظیم نشده';
+        }
+        if (!$sw_on) {
+            $issues[] = 'Service Worker خاموش است';
+        }
+        if (!$https) {
+            $issues[] = 'سایت روی HTTPS نیست (مرورگر نصب را فقط روی HTTPS مجاز می‌داند؛ localhost/.test استثناست)';
+        }
+        if ($enabled && $display === 'browser') {
+            $issues[] = 'display مانیفست روی browser است (باید standalone باشد)';
+        }
+
+        $ready = $module && $enabled && $icons_ok && $sw_on && $https && $display !== 'browser';
+
+        return [
+            'module_active'   => $module,
+            'enabled'         => $enabled,
+            'ready'           => $ready,
+            'icons_ok'        => $icons_ok,
+            'icon_count'      => $icon_count,
+            'service_worker'  => $sw_on,
+            'install_prompt'  => $prompt_on,
+            'https'           => $https,
+            'display'         => $display,
+            'manifest_url'    => home_url('/manifest.webmanifest'),
+            'sw_url'          => home_url('/bankai-sw.js'),
+            'issues'          => $issues,
+            'detail'          => $ready
+                ? ('فعال · ' . $icon_count . ' آیکون · SW ' . ($sw_on ? 'روشن' : 'خاموش') . ' · ' . $display)
+                : (count($issues) ? $issues[0] : 'ناقص'),
+        ];
     }
 
     public function register_rewrites(): void
@@ -190,38 +262,41 @@ final class Bankai_PWA
     public function build_manifest(): array
     {
         $s = $this->get_settings();
+        // Manifest requests must remain read-only and inexpensive. Icon generation
+        // is performed explicitly through the authenticated admin REST endpoint.
         $icons = [];
-        if (!empty($s['icon_192'])) {
+        $add_icon = function (array &$icons, string $src, string $sizes) {
+            if ($src === '') {
+                return;
+            }
             $icons[] = [
-                'src'     => $s['icon_192'],
-                'sizes'   => '192x192',
-                'type'    => 'image/png',
+                'src'     => $src,
+                'sizes'   => $sizes,
+                'type'    => $this->icon_mime_type($src),
                 'purpose' => 'any',
             ];
+        };
+        if (!empty($s['icon_192'])) {
+            $add_icon($icons, (string) $s['icon_192'], '192x192');
         }
         if (!empty($s['icon_512'])) {
-            $icons[] = [
-                'src'     => $s['icon_512'],
-                'sizes'   => '512x512',
-                'type'    => 'image/png',
-                'purpose' => 'any maskable',
-            ];
+            $add_icon($icons, (string) $s['icon_512'], '512x512');
         }
-        if (!$icons) {
-            $fallback = function_exists('get_site_icon_url') ? (string) get_site_icon_url(512) : '';
-            if ($fallback) {
-                $icons[] = [
-                    'src'     => $fallback,
-                    'sizes'   => '512x512',
-                    'type'    => 'image/png',
-                    'purpose' => 'any maskable',
-                ];
+        if (function_exists('get_site_icon_url')) {
+            $fallback_192 = (string) get_site_icon_url(192);
+            $fallback_512 = (string) get_site_icon_url(512);
+
+            if (empty($s['icon_192']) && $fallback_192 !== '') {
+                $add_icon($icons, $fallback_192, '192x192');
+            }
+            if (empty($s['icon_512']) && $fallback_512 !== '') {
+                $add_icon($icons, $fallback_512, '512x512');
             }
         }
 
         return [
             'name'             => $s['name'] ?: get_bloginfo('name'),
-            'short_name'       => $s['short_name'] ?: mb_substr(get_bloginfo('name'), 0, 12),
+            'short_name'       => $s['short_name'] ?: $this->truncate_text((string) get_bloginfo('name'), 12),
             'description'      => $s['description'] ?: get_bloginfo('description'),
             'start_url'        => $this->abs_url($s['start_url'] ?: '/'),
             'scope'            => $this->abs_url($s['scope'] ?: '/'),
@@ -235,14 +310,33 @@ final class Bankai_PWA
         ];
     }
 
+    private function icon_mime_type(string $url): string
+    {
+        $path = (string) (wp_parse_url($url, PHP_URL_PATH) ?: '');
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $types = [
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            'avif' => 'image/avif',
+            'svg' => 'image/svg+xml',
+        ];
+        return $types[$ext] ?? 'image/png';
+    }
+
     private function output_manifest(): void
     {
         nocache_headers();
         header('Content-Type: application/manifest+json; charset=utf-8');
         header('X-Robots-Tag: noindex');
         $data = $this->build_manifest();
+        // Only force non-installable when both module and settings are off
         if (!$this->is_enabled()) {
             $data['display'] = 'browser';
+        } elseif (empty($data['display']) || $data['display'] === 'browser') {
+            // Guard: never ship installable-looking settings with browser display when enabled
+            $data['display'] = 'standalone';
         }
         echo wp_json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
         exit;
@@ -258,15 +352,20 @@ final class Bankai_PWA
             exit;
         }
 
-        $cache_name = 'bankai-pwa-v' . (defined('BANKAI_CORE_VERSION') ? preg_replace('/[^a-zA-Z0-9_.-]/', '', BANKAI_CORE_VERSION) : '1');
-        $offline    = !empty($s['offline_cache']);
-        $start      = $this->abs_url($s['start_url'] ?: '/');
+        $site_hash = substr(md5(home_url('/')), 0, 10);
+        $cache_name = 'bankai-pwa-' . $site_hash . '-v'
+            . (defined('BANKAI_CORE_VERSION') ? preg_replace('/[^a-zA-Z0-9_.-]/', '', BANKAI_CORE_VERSION) : '1');
+        $offline = !empty($s['offline_cache']);
+        $start = $this->abs_url($s['start_url'] ?: '/');
+        $cache_js = wp_json_encode($cache_name, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $start_js = wp_json_encode($start, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $js = <<<JS
 /* Bankai PWA Service Worker */
-const CACHE = '{$cache_name}';
+const CACHE = {$cache_js};
+const CACHE_PREFIX = 'bankai-pwa-{$site_hash}-';
 const OFFLINE = {$this->js_bool($offline)};
-const START = '{$start}';
+const START = {$start_js};
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -281,31 +380,49 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
-    self.clients.claim();
+    // Never delete caches owned by WordPress themes, other plugins, or other apps.
+    await Promise.all(keys.filter((k) => k.indexOf(CACHE_PREFIX) === 0 && k !== CACHE).map((k) => caches.delete(k)));
+    await self.clients.claim();
   })());
 });
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET') return;
-  if (req.url.indexOf(self.location.origin) !== 0) return;
+  if (!OFFLINE || req.method !== 'GET' || req.mode !== 'navigate') return;
+
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Do not cache admin, authentication, API, preview, or commerce-sensitive pages.
+  if (/\/(wp-admin|wp-login\.php|wp-json|cart|checkout|my-account)(\/|$)/i.test(url.pathname)
+      || /(?:^|[?&])(preview|add-to-cart|customize_changeset_uuid)=/i.test(url.search)) return;
 
   event.respondWith((async () => {
     try {
-      const net = await fetch(req);
-      if (OFFLINE && net && net.ok && req.destination === 'document') {
+      const response = await fetch(req);
+      const cacheControl = (response.headers.get('Cache-Control') || '').toLowerCase();
+      const hasSetCookie = response.headers.has('Set-Cookie');
+      const contentType = (response.headers.get('Content-Type') || '').toLowerCase();
+
+      if (response.ok && contentType.indexOf('text/html') !== -1
+          && !hasSetCookie && cacheControl.indexOf('no-store') === -1
+          && cacheControl.indexOf('private') === -1) {
         const cache = await caches.open(CACHE);
-        cache.put(req, net.clone());
+        await cache.put(req, response.clone());
       }
-      return net;
+      return response;
     } catch (err) {
-      if (OFFLINE) {
-        const cache = await caches.open(CACHE);
-        const hit = await cache.match(req) || await cache.match(START);
-        if (hit) return hit;
-      }
-      throw err;
+      const cache = await caches.open(CACHE);
+      const cachedPage = await cache.match(req);
+      if (cachedPage) return cachedPage;
+
+      const fallback = await cache.match(START);
+      if (fallback) return fallback;
+
+      return new Response('صفحه در حالت آفلاین در دسترس نیست.', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+      });
     }
   })());
 });
@@ -313,7 +430,8 @@ JS;
 
         nocache_headers();
         header('Content-Type: application/javascript; charset=utf-8');
-        header('Service-Worker-Allowed: /');
+        $sw_scope = (string) (wp_parse_url($this->abs_url($s['scope'] ?: '/'), PHP_URL_PATH) ?: '/');
+        header('Service-Worker-Allowed: ' . trailingslashit($sw_scope));
         echo $js;
         exit;
     }
@@ -338,7 +456,7 @@ JS;
         if (!empty($s['name'])) {
             echo '<meta name="apple-mobile-web-app-title" content="' . esc_attr($s['short_name'] ?: $s['name']) . '">' . "\n";
         }
-        $icon = (string) ($s['icon_192'] ?: $s['icon_512'] ?? '');
+        $icon = !empty($s['icon_192']) ? (string) $s['icon_192'] : (string) ($s['icon_512'] ?? '');
         if ($icon === '' && function_exists('get_site_icon_url')) {
             $icon = (string) get_site_icon_url(192);
         }
@@ -357,44 +475,301 @@ JS;
         $sw_url = home_url('/bankai-sw.js');
         $need_sw = !empty($s['service_worker']);
         $need_prompt = !empty($s['install_prompt']);
+        $is_admin_user = current_user_can('manage_options');
 
-        if (!$need_sw && !$need_prompt) {
+        if (!$need_sw && !$need_prompt && !$is_admin_user) {
             return;
         }
 
-        echo '<script id="bankai-pwa-runtime">';
-        if ($need_sw) {
-            echo "(function(){if(!('serviceWorker' in navigator))return;window.addEventListener('load',function(){navigator.serviceWorker.register(" . wp_json_encode($sw_url) . ",{scope:'/'}).catch(function(){});});})();";
-        }
-        if ($need_prompt) {
-            echo <<<'JS'
-(function(){
-  var deferred=null;
-  window.addEventListener('beforeinstallprompt',function(e){
-    e.preventDefault();
-    deferred=e;
-    if(document.getElementById('bankai-pwa-install'))return;
-    var btn=document.createElement('button');
-    btn.id='bankai-pwa-install';
-    btn.type='button';
-    btn.textContent='\u0646\u0635\u0628 \u0627\u067e\u0644\u06cc\u06a9\u06cc\u0634\u0646';
-    btn.setAttribute('style','position:fixed;bottom:20px;left:20px;z-index:99999;background:#fc4c2f;color:#fff;border:0;border-radius:10px;padding:12px 18px;font:700 13px/1.2 sans-serif;box-shadow:0 8px 24px rgba(252,76,47,.35);cursor:pointer');
-    btn.addEventListener('click',function(){
-      if(!deferred)return;
-      deferred.prompt();
-      deferred.userChoice.finally(function(){deferred=null;btn.remove();});
-    });
-    document.body.appendChild(btn);
+        $cfg = [
+            'swUrl'      => $sw_url,
+            'scope'      => $this->abs_url($s['scope'] ?: '/'),
+            'needSw'     => $need_sw,
+            'needPrompt' => $need_prompt,
+            'isAdmin'    => $is_admin_user,
+            'name'       => $s['short_name'] ?: ($s['name'] ?: get_bloginfo('name')),
+            'theme'      => $s['theme_color'] ?: '#fc4c2f',
+            'manifest'   => home_url('/manifest.webmanifest'),
+        ];
+        $cfg_json = wp_json_encode($cfg, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $theme_css = esc_attr($cfg['theme']);
+
+        echo '<style id="bankai-pwa-css">'
+            . '#bankai-pwa-banner{position:fixed;z-index:99999;left:16px;right:16px;bottom:16px;max-width:380px;margin-inline-end:auto;'
+            . 'background:#0f172a;color:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 12px 40px rgba(15,23,42,.35);'
+            . 'font-family:Tahoma,Arial,sans-serif;direction:rtl;display:none;align-items:center;gap:12px}'
+            . '#bankai-pwa-banner.is-show{display:flex}'
+            . '#bankai-pwa-banner .bk-pwa-txt{flex:1;min-width:0}'
+            . '#bankai-pwa-banner strong{display:block;font-size:13px;margin-bottom:3px}'
+            . '#bankai-pwa-banner span{font-size:11px;opacity:.85;line-height:1.4}'
+            . '#bankai-pwa-banner button{border:0;border-radius:10px;padding:10px 14px;font:700 12px/1 Tahoma,sans-serif;cursor:pointer}'
+            . '#bankai-pwa-banner .bk-pwa-go{background:' . $theme_css . ';color:#fff}'
+            . '#bankai-pwa-banner .bk-pwa-x{background:transparent;color:#94a3b8;padding:8px}'
+            . '#bankai-pwa-status{position:fixed;z-index:99998;left:16px;bottom:16px;max-width:340px;background:#fff;color:#0f172a;'
+            . 'border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;font:12px/1.55 Tahoma,sans-serif;direction:rtl;'
+            . 'box-shadow:0 8px 24px rgba(15,23,42,.12);display:none}'
+            . '#bankai-pwa-status.is-show{display:block;white-space:pre-line}'
+            . '#bankai-pwa-status b{color:#c2410c}'
+            . '#bankai-pwa-status a{color:#2563eb}'
+            . '</style>';
+
+        echo '<script id="bankai-pwa-runtime">(function(){var C=' . $cfg_json . ';';
+        echo <<<'JS'
+function qs(id){return document.getElementById(id)}
+function showBanner(deferred){
+  if(qs('bankai-pwa-banner'))return;
+  var el=document.createElement('div');
+  el.id='bankai-pwa-banner';el.className='is-show';
+  var text=document.createElement('div');text.className='bk-pwa-txt';
+  var title=document.createElement('strong');title.textContent='نصب '+(C.name||'اپ');
+  var description=document.createElement('span');description.textContent='برای دسترسی سریع‌تر، اپلیکیشن را روی دستگاه نصب کنید.';
+  text.appendChild(title);text.appendChild(description);
+  var install=document.createElement('button');install.type='button';install.className='bk-pwa-go';install.textContent='نصب';
+  var close=document.createElement('button');close.type='button';close.className='bk-pwa-x';close.setAttribute('aria-label','بستن');close.textContent='✕';
+  el.appendChild(text);el.appendChild(install);el.appendChild(close);
+  document.body.appendChild(el);
+  close.onclick=function(){el.remove();try{localStorage.setItem('bankai_pwa_dismiss',String(Date.now()))}catch(e){}};
+  install.onclick=function(){
+    if(!deferred)return;
+    deferred.prompt();
+    deferred.userChoice.finally(function(){deferred=null;el.remove();});
+  };
+}
+function showStatus(lines){
+  if(!C.isAdmin)return;
+  var el=qs('bankai-pwa-status');
+  if(!el){el=document.createElement('div');el.id='bankai-pwa-status';document.body.appendChild(el)}
+  el.className='is-show';
+  el.textContent='وضعیت PWA\n'+lines.join('\n');
+}
+if(C.needSw && 'serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register(C.swUrl,{scope:C.scope || '/',updateViaCache:'none'})
+      .then(function(reg){if(C.isAdmin)console.info('[Bankai PWA] SW ok',reg.scope);try{reg.update()}catch(e){}})
+      .catch(function(err){
+        console.warn('[Bankai PWA] SW fail',err);
+        showStatus(['ثبت Service Worker ناموفق',String(err&&err.message||err),'URL: '+C.swUrl]);
+      });
   });
+} else if(C.isAdmin && C.needSw){
+  showStatus(['مرورگر از Service Worker پشتیبانی نمی‌کند']);
+}
+var deferred=null,dismissed=false;
+try{dismissed=Date.now()-Number(localStorage.getItem('bankai_pwa_dismiss')||0)<7*24*3600*1000}catch(e){}
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();deferred=e;
+  if(C.needPrompt&&!dismissed)showBanner(deferred);
+  if(C.isAdmin)showStatus(['✓ معیارهای نصب برقرار است','دکمه نصب باید نمایش داده شود']);
+});
+window.addEventListener('appinstalled',function(){
+  var b=qs('bankai-pwa-banner');if(b)b.remove();
+  if(C.isAdmin)showStatus(['✓ اپ نصب شد']);
+});
+if(C.isAdmin){
+  setTimeout(function(){
+    if(deferred)return;
+    if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches){
+      showStatus(['✓ در حال اجرا به‌صورت نصب‌شده']);return;
+    }
+    var lines=['وضعیت: منتظر شرط نصب مرورگر'];
+    lines.push('مانیفست: '+C.manifest);
+    lines.push('Service Worker: '+C.swUrl);
+    if(!window.isSecureContext)lines.push('⚠ بستر امن (HTTPS) نیست — نصب فقط روی HTTPS فعال می‌شود');
+    if(!('serviceWorker' in navigator))lines.push('⚠ این مرورگر Service Worker ندارد');
+    lines.push('نکته: رویداد «نصب» فقط وقتی ظاهر می‌شود که مانیفست، SW و آیکون‌های ۱۹۲/۵۱۲ معتبر باشند و اپ قبلاً نصب نشده باشد.');
+    lines.push('اگر آیکون‌ها یک لوگوی مشترک باشند، از پیشخوان Bankai → تنظیمات PWA دکمه «ساخت خودکار آیکون» را بزنید.');
+    showStatus(lines);
+  },4000);
+}
 })();
 JS;
-        }
         echo '</script>';
+    }
+
+    private static function truncate_text(string $value, int $length): string
+    {
+        if (function_exists('mb_substr')) {
+            return mb_substr($value, 0, $length, 'UTF-8');
+        }
+
+        if (preg_match_all('/./us', $value, $matches)) {
+            return implode('', array_slice($matches[0], 0, $length));
+        }
+
+        return substr($value, 0, $length);
+    }
+
+    /**
+     * Accept only same-site paths/URLs for manifest start_url and scope.
+     */
+    private function normalize_local_path(string $value, string $fallback = '/', bool $directory = false): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            $value = $fallback;
+        }
+
+        $parts = wp_parse_url($value);
+        if ($parts === false) {
+            return $fallback;
+        }
+
+        $path = (string) ($parts['path'] ?? '/');
+        if (!empty($parts['host'])) {
+            $home = wp_parse_url(home_url('/'));
+            if (empty($home['host']) || strtolower($parts['host']) !== strtolower($home['host'])) {
+                return $fallback;
+            }
+            if (!empty($parts['scheme']) && !empty($home['scheme'])
+                && strtolower($parts['scheme']) !== strtolower($home['scheme'])) {
+                return $fallback;
+            }
+
+            // Full same-site URLs are converted to paths relative to the WP home URL.
+            $home_path = trailingslashit((string) (wp_parse_url(home_url('/'), PHP_URL_PATH) ?: '/'));
+            if ($home_path !== '/' && strpos(trailingslashit($path), $home_path) === 0) {
+                $path = '/' . ltrim(substr($path, strlen($home_path)), '/');
+            }
+        }
+
+        if ($path === '' || $path[0] !== '/') {
+            $path = '/' . ltrim($path, '/');
+        }
+        $home_path = trailingslashit((string) (wp_parse_url(home_url('/'), PHP_URL_PATH) ?: '/'));
+        if ($home_path !== '/' && strpos(trailingslashit($path), $home_path) === 0) {
+            $path = '/' . ltrim(substr($path, strlen($home_path)), '/');
+        }
+        if (preg_match('#(?:^|/)\.\.(?:/|$)#', $path) || strpos($path, "\0") !== false) {
+            return $fallback;
+        }
+
+        if ($directory) {
+            return trailingslashit($path);
+        }
+
+        $query = isset($parts['query']) ? '?' . sanitize_text_field((string) $parts['query']) : '';
+        return untrailingslashit($path) . $query;
+    }
+
+    /**
+     * Generate real square PNG icons from a local attachment or the site icon.
+     *
+     * @return array{ok:bool,message:string,icons?:array}
+     */
+    public function generate_icons_from_source(?string $source = null, bool $force = false): array
+    {
+        $settings = $this->get_settings();
+        if (!$force && ($source === null || $source === '') && !empty($settings['icon_192']) && !empty($settings['icon_512'])) {
+            return [
+                'ok' => true,
+                'message' => 'آیکون‌ها از قبل تنظیم شده‌اند.',
+                'icons' => ['192' => $settings['icon_192'], '512' => $settings['icon_512']],
+            ];
+        }
+
+        $attachment_id = 0;
+        if ($source !== null && $source !== '') {
+            if (ctype_digit($source)) {
+                $attachment_id = absint($source);
+            } else {
+                $source = esc_url_raw($source);
+                if ($source === '') {
+                    return ['ok' => false, 'message' => 'آدرس تصویر معتبر نیست.'];
+                }
+                $attachment_id = absint(attachment_url_to_postid($source));
+            }
+            if (!$attachment_id) {
+                return ['ok' => false, 'message' => 'تصویر باید از کتابخانه رسانه همین سایت انتخاب شود.'];
+            }
+        } else {
+            $site_icon_id = (int) get_option('site_icon');
+            if ($site_icon_id > 0) {
+                $attachment_id = $site_icon_id;
+            }
+        }
+
+        if (!$attachment_id || get_post_type($attachment_id) !== 'attachment') {
+            return ['ok' => false, 'message' => 'تصویر منبع یافت نشد؛ ابتدا آیکون سایت یا یک تصویر رسانه انتخاب کنید.'];
+        }
+
+        $source_file = get_attached_file($attachment_id);
+        if (!$source_file || !is_readable($source_file) || !@getimagesize($source_file)) {
+            return ['ok' => false, 'message' => 'فایل منبع یک تصویر معتبر و قابل‌خواندن نیست.'];
+        }
+
+        $upload = wp_upload_dir();
+        if (!empty($upload['error'])) {
+            return ['ok' => false, 'message' => (string) $upload['error']];
+        }
+
+        $directory = trailingslashit($upload['basedir']) . 'bankai-pwa';
+        if (!wp_mkdir_p($directory)) {
+            return ['ok' => false, 'message' => 'ساخت پوشه آیکون‌های PWA ناموفق بود.'];
+        }
+
+        $generated = [];
+        foreach ([192, 512] as $size) {
+            $image_editor = wp_get_image_editor($source_file);
+            if (is_wp_error($image_editor)) {
+                return ['ok' => false, 'message' => $image_editor->get_error_message()];
+            }
+
+            $resized = $image_editor->resize($size, $size, true);
+            if (is_wp_error($resized)) {
+                return ['ok' => false, 'message' => $resized->get_error_message()];
+            }
+
+            $destination = trailingslashit($directory) . 'icon-' . $size . '.png';
+            $saved = $image_editor->save($destination, 'image/png');
+            if (is_wp_error($saved) || empty($saved['path']) || !is_file($saved['path'])) {
+                return [
+                    'ok' => false,
+                    'message' => is_wp_error($saved) ? $saved->get_error_message() : 'ذخیره آیکون PNG ناموفق بود.',
+                ];
+            }
+
+            $generated[(string) $size] = trailingslashit($upload['baseurl']) . 'bankai-pwa/icon-' . $size . '.png';
+        }
+
+        $settings['icon_192'] = esc_url_raw($generated['192']);
+        $settings['icon_512'] = esc_url_raw($generated['512']);
+        $this->save_settings($settings);
+
+        return [
+            'ok' => true,
+            'message' => 'آیکون‌های ۱۹۲ و ۵۱۲ پیکسل ساخته شدند.',
+            'icons' => $generated,
+        ];
     }
 
     public function register_rest(): void
     {
         $ns = 'bankai/v1';
+        register_rest_route($ns, '/pwa/generate-icons', [
+            [
+                'methods'             => WP_REST_Server::CREATABLE,
+                'callback'            => function (WP_REST_Request $request) {
+                    $params = $request->get_json_params();
+                    if (!is_array($params)) {
+                        $params = [];
+                    }
+                    $src = isset($params['source']) ? (string) $params['source'] : null;
+                    $force = !empty($params['force']);
+                    $result = $this->generate_icons_from_source($src ?: null, $force);
+                    $code = !empty($result['ok']) ? 200 : 400;
+                    return new WP_REST_Response([
+                        'success' => !empty($result['ok']),
+                        'data'    => array_merge($result, [
+                            'settings'     => $this->get_settings(),
+                            'manifest_url' => home_url('/manifest.webmanifest'),
+                            'status'       => $this->status_report(),
+                        ]),
+                        'message' => $result['message'] ?? '',
+                    ], $code);
+                },
+                'permission_callback' => static fn () => current_user_can('manage_options'),
+            ],
+        ]);
         register_rest_route($ns, '/pwa/settings', [
             [
                 'methods'             => WP_REST_Server::READABLE,
@@ -406,7 +781,8 @@ JS;
                             'manifest' => $this->is_enabled() ? $this->build_manifest() : null,
                             'manifest_url' => home_url('/manifest.webmanifest'),
                             'sw_url' => home_url('/bankai-sw.js'),
-                            'module_active' => function_exists('bankai_is_module_active') ? bankai_is_module_active('pwa') : true,
+                            'module_active' => $this->is_module_on(),
+                            'status' => $this->status_report(),
                         ],
                     ]);
                 },
@@ -427,7 +803,21 @@ JS;
                             'settings' => $saved,
                             'manifest_url' => home_url('/manifest.webmanifest'),
                             'sw_url' => home_url('/bankai-sw.js'),
+                            'status' => $this->status_report(),
                         ],
+                    ]);
+                },
+                'permission_callback' => static fn () => current_user_can('manage_options'),
+            ],
+        ]);
+
+        register_rest_route($ns, '/pwa/status', [
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => function () {
+                    return new WP_REST_Response([
+                        'success' => true,
+                        'data'    => $this->status_report(),
                     ]);
                 },
                 'permission_callback' => static fn () => current_user_can('manage_options'),

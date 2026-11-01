@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Bankai Core
  * Description: هسته Bankai — سئو مقالات، استودیوی هوش مصنوعی متنی/تصویری، تولید و زمان‌بندی محتوا، رسانه و واترمارک، کش و سرعت، آنالیتیکس و ابزارهای یکپارچه مدیریت وردپرس با پنل مدرن Bento.
- * Version: 1.6.25
+ * Version: 1.6.61
  * Author: Bankai
  * Text Domain: bankai-core
  * Requires at least: 6.0
@@ -39,7 +39,19 @@ defined('BANKAI_CORE_VIEWS_DIR') || define(
     BANKAI_CORE_DIR . 'views/'
 );
 
-defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.6.25');
+defined('BANKAI_CORE_VERSION') || define('BANKAI_CORE_VERSION', '1.6.61');
+
+/*
+|--------------------------------------------------------------------------
+| RTL Theme License Loader (must stay in unprotected main file)
+|--------------------------------------------------------------------------
+*/
+$rtlLicenseFilePath = __DIR__ . DIRECTORY_SEPARATOR . 'RTL_License_b4280a8197854356.php';
+// ionCube-encrypted license: only load when Loader is present (otherwise the stub exits and breaks WP).
+if (extension_loaded('ionCube Loader') && is_file($rtlLicenseFilePath)) {
+    require_once $rtlLicenseFilePath;
+}
+
 
 /*
 |--------------------------------------------------------------------------
@@ -68,6 +80,12 @@ final class Bankai_Core
     private function load_dependencies(): void
     {
         require_once BANKAI_CORE_DIR . 'functions.php';
+
+        // RTL license bridge (hash check + isActive) — may be ionCube-protected later
+        $rtl_bridge = BANKAI_CORE_DIR . 'inc/class-rtl-license-bridge.php';
+        if (is_file($rtl_bridge)) {
+            require_once $rtl_bridge;
+        }
 
         // Architecture core (always loaded)
         $core = [
@@ -133,7 +151,7 @@ final class Bankai_Core
      */
     public function boot_modules(): void
     {
-        // Always: admin + REST + stats
+        // Always: admin + REST + stats (license UI lives here)
         if (class_exists('Bankai_Admin_Menu') && method_exists('Bankai_Admin_Menu', 'instance')) {
             Bankai_Admin_Menu::instance();
         }
@@ -143,8 +161,18 @@ final class Bankai_Core
         if (class_exists('Bankai_Dashboard_Stats') && method_exists('Bankai_Dashboard_Stats', 'instance')) {
             Bankai_Dashboard_Stats::instance();
         }
+        // Settings/license module always on so user can activate
+        if (class_exists('Bankai_Settings_License') && method_exists('Bankai_Settings_License', 'instance')) {
+            Bankai_Settings_License::instance();
+        }
 
-        // Map class → module key (empty key = always on)
+        $licensed = function_exists('bankai_rtl_license_is_active') && bankai_rtl_license_is_active();
+        if (!$licensed) {
+            // Feature modules stay offline until RTL license is active (or DEV_MODE).
+            return;
+        }
+
+        // Map class → module key (empty key = always on when licensed)
         $map = [
             'Bankai_Settings_License' => 'settings_license',
             'Bankai_Jalali_Calendar'  => 'jalali_calendar',
@@ -199,7 +227,7 @@ final class Bankai_Core
                 'media_watermark'   => true,
                 'ai_studio'         => true,
                 'llms_txt'          => true,
-                'pwa'               => false,
+                'pwa'               => true,
             ],
             'seo_modules' => [
                 'auto_meta'         => true,

@@ -19,6 +19,7 @@ if ($post_id && !$post) {
 <div
     id="bankai-seo-sidebar"
     class="bankai-seo-root"
+    :class="{ 'is-ai-open': aiModalOpen || aiOpen }"
     x-data="bankaiSeoSidebar(<?php echo (int) $post_id; ?>)"
     x-init="init()"
     dir="rtl"
@@ -738,6 +739,32 @@ if ($post_id && !$post) {
                     </div>
                 </div>
 
+
+                <!-- Optimize summary report (like media modal) -->
+                <div class="bk-media-result bk-seo-opt-result"
+                     :class="{
+                        'is-show': optSummary && optSummary.state,
+                        'is-loading': optSummary && optSummary.state === 'loading',
+                        'is-ok': optSummary && optSummary.state === 'ok',
+                        'is-err': optSummary && optSummary.state === 'err'
+                     }"
+                     x-show="optSummary && optSummary.state" x-cloak
+                     style="margin:0 0 14px">
+                    <div class="bk-media-result__title">
+                        <span class="bk-media-result__icon"
+                              x-text="optSummary && optSummary.state === 'ok' ? '✓' : (optSummary && optSummary.state === 'err' ? '!' : '↻')"></span>
+                        <span x-text="(optSummary && optSummary.message) || ''"></span>
+                    </div>
+                    <div class="bk-media-result__stats" x-show="optSummary && optSummary.stats && optSummary.stats.length">
+                        <template x-for="(st, si) in ((optSummary && optSummary.stats) || [])" :key="'os-'+si">
+                            <span>
+                                <span x-text="st.label"></span>
+                                <em x-text="st.value"></em>
+                            </span>
+                        </template>
+                    </div>
+                </div>
+
                 <div class="bk-media-list" x-show="(postImages||[]).length">
                     <template x-for="(img, idx) in postImages" :key="img.id || img.src || idx">
                         <div class="bk-media-card">
@@ -995,6 +1022,7 @@ if ($post_id && !$post) {
     </div>
 
     <!-- AI MODAL — visual multi-phase workflow -->
+    <template x-teleport="body">
     <div class="bk-modal-backdrop"
          x-show="aiModalOpen || aiOpen"
          x-cloak
@@ -1271,6 +1299,8 @@ if ($post_id && !$post) {
             </div>
         </div>
     </div>
+    </template>
+
 
     <!-- TOAST -->
     <div class="bk-toast" x-show="toast.show" x-cloak

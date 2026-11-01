@@ -76,9 +76,18 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
   --bankai-text-muted: #8A8F98;
   --bankai-text-subtle: #A0A4AB;
   
-  --bankai-accent: #5C6B7A;
-  --bankai-accent-hover: #3D4A57;
-  --bankai-accent-subtle: rgba(92, 107, 122, 0.1);
+  /* Bankai brand palette (banner guide) */
+  --bankai-accent: #3D5C4A;
+  --bankai-accent-hover: #3E5C49;
+  --bankai-accent-subtle: rgba(61, 92, 74, 0.12);
+  --bankai-pistachio: #7AB681;
+  --bankai-pistachio-deep: #3D5C4A;
+  --bankai-pistachio-title: #3E5C49;
+  --bankai-pistachio-soft: #F8FAF6;
+  --bankai-pistachio-mid: #E6EEE2;
+  --bankai-gold: #CFA85C;
+  --bankai-gold-warm: #BC9851;
+  --bankai-text-body: #4B6651;
   
   --bankai-success: #30D158;
   --bankai-success-subtle: rgba(48, 209, 88, 0.12);
@@ -365,16 +374,16 @@ body.toplevel_page_bankai-core .bankai-admin-wrap {
   width: 260px;
   min-width: 260px;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(208, 215, 222, 0.8);
-  border-radius: 14px;
+  background: linear-gradient(180deg, #F3F7EC 0%, #E5EFD9 45%, #D9E8C8 100%);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: none;
+  border-radius: 16px;
   padding: 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  box-shadow: 0 4px 20px -2px rgba(31, 35, 40, 0.04);
+  box-shadow: 0 8px 28px -6px rgba(55, 71, 38, 0.18);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: sticky;
   top: 78px;
@@ -2481,11 +2490,11 @@ body.toplevel_page_bankai-core #wpbody-content {
 #bankai-admin-app,
 .bankai-admin-wrap {
   --ekit-side-w: 260px;
-  --ekit-text: #f5f3ff;
-  --ekit-muted: rgba(245, 243, 255, 0.62);
-  --ekit-content-bg: #f0f2f8;
+  --ekit-text: #3D5C4A;
+  --ekit-muted: rgba(61, 92, 74, 0.72);
+  --ekit-content-bg: #F0F5E8;
   --ekit-card: #ffffff;
-  --ekit-accent: #7c5cff;
+  --ekit-accent: #5D724B;
   background: var(--ekit-content-bg) !important;
   min-height: calc(100vh - 32px);
   max-width: 100%;
@@ -2591,8 +2600,8 @@ body.toplevel_page_bankai-core #wpbody-content {
   width: 40px !important;
   height: 40px !important;
   border-radius: 12px !important;
-  background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
-  box-shadow: 0 8px 18px rgba(124, 92, 255, 0.35) !important;
+  background: linear-gradient(135deg, #A7BD7C, #5D724B) !important;
+  box-shadow: 0 8px 18px rgba(93, 114, 75, 0.35) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -2644,9 +2653,9 @@ body.toplevel_page_bankai-core #wpbody-content {
   color: #fff !important;
 }
 #bankai-admin-sidebar .bankai-nav-btn.active {
-  background: linear-gradient(90deg, rgba(124,92,255,.38), rgba(124,92,255,.12)) !important;
-  color: #fff !important;
-  box-shadow: inset 0 0 0 1px rgba(167,139,250,.28) !important;
+  background: linear-gradient(90deg, rgba(167, 189, 124, 0.55), rgba(93, 114, 75, 0.2)) !important;
+  color: #3D5C4A !important;
+  box-shadow: inset 0 0 0 1px rgba(93, 114, 75, 0.22) !important;
 }
 #bankai-admin-sidebar .bankai-nav-btn.active::before {
   content: "";
@@ -2656,7 +2665,7 @@ body.toplevel_page_bankai-core #wpbody-content {
   bottom: 18%;
   width: 3px;
   border-radius: 99px;
-  background: linear-gradient(180deg, #c4b5fd, #7c5cff);
+  background: linear-gradient(180deg, #D8AB55, #5D724B);
 }
 #bankai-admin-sidebar .bankai-nav-icon {
   width: 32px !important;
@@ -2666,13 +2675,17 @@ body.toplevel_page_bankai-core #wpbody-content {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background: rgba(255,255,255,.07) !important;
-  color: #d8d0ff !important;
+  background: rgba(255, 252, 232, 0.75) !important;
+  border: 1px solid rgba(93, 114, 75, 0.22) !important;
+  color: #5D724B !important;
+  box-shadow: 0 2px 6px rgba(93, 114, 75, 0.08) !important;
 }
 #bankai-admin-sidebar .bankai-nav-btn.active .bankai-nav-icon,
 #bankai-admin-sidebar .bankai-nav-btn:hover .bankai-nav-icon {
-  background: linear-gradient(135deg, rgba(167,139,250,.55), rgba(99,102,241,.45)) !important;
+  background: linear-gradient(135deg, #A7BD7C, #5D724B) !important;
+  border-color: transparent !important;
   color: #fff !important;
+  box-shadow: 0 4px 10px rgba(93, 114, 75, 0.25) !important;
 }
 #bankai-admin-sidebar .bankai-nav-icon svg { width: 17px !important; height: 17px !important; stroke: currentColor !important; }
 #bankai-admin-sidebar .bankai-nav-off-badge {
@@ -5116,3 +5129,526 @@ body.admin-bar #bankai-admin-app .bankai-sidebar {
 .bk-product-feat iconify-icon { color: #fc4c2f; flex-shrink: 0; margin-top: 2px; }
 .bk-product-feat strong { display: block; font-size: 13px; color: #1f2937; margin-bottom: 2px; }
 .bk-product-feat span { font-size: 11px; color: #64748b; line-height: 1.45; }
+
+/* ========== RTL License lock cover ========== */
+.bk-license-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.bk-license-cover__panel {
+  width: min(440px, 100%);
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 26px 24px;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.35);
+  text-align: center;
+  direction: rtl;
+}
+.bk-license-cover__icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 14px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  color: #ea580c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bk-license-cover__panel h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+.bk-license-cover__lead {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #64748b;
+}
+.bk-license-cover__lead a { color: #ea580c; font-weight: 700; }
+.bk-license-cover__status {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  text-align: right;
+}
+.bk-license-field {
+  display: block;
+  text-align: right;
+  margin-bottom: 12px;
+}
+.bk-license-field span {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 6px;
+}
+.bk-license-field input {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.bk-license-field input:focus {
+  outline: none;
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.25);
+}
+.bk-license-cover__btn {
+  width: 100%;
+  margin-top: 6px;
+  justify-content: center;
+}
+.bk-license-cover__hint {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: #b45309;
+}
+.bk-license-cover__meta {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: center;
+  font-size: 11px;
+  color: #94a3b8;
+}
+.bk-license-cover__meta strong { color: #475569; }
+
+
+/* Articles list loader */
+.bk-art-loading-row td { padding: 20px 16px !important; background: #f8fafc; }
+.bk-art-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 12px 8px 8px;
+}
+.bk-art-loader__spin {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid #e2e8f0;
+  border-top-color: #ea580c;
+  animation: bk-art-spin .7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes bk-art-spin { to { transform: rotate(360deg); } }
+.bk-art-loader__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+.bk-art-loader__text strong { font-size: 13px; color: #0f172a; }
+.bk-art-loader__text span { font-size: 11px; color: #94a3b8; }
+.bk-art-skeleton { margin-top: 12px; display: grid; gap: 8px; }
+.bk-art-skeleton__row {
+  height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: bk-art-shimmer 1.2s ease-in-out infinite;
+}
+@keyframes bk-art-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.bk-seo-articles-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 16px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+
+/* ========== Pistachio sidebar harmony (banner darkest green) ========== */
+#bankai-admin-sidebar .bankai-nav-item,
+#bankai-admin-app .bankai-sidebar .bankai-nav-item,
+.bankai-app-wrapper .bankai-sidebar .bankai-nav-item,
+#bankai-admin-sidebar a.bankai-nav-link,
+.bankai-sidebar .bankai-menu-item,
+#bankai-admin-app .bankai-nav-item,
+.bankai-app-wrapper .bankai-nav-item {
+  color: #3B4D28 !important;
+  border-radius: 10px !important;
+  font-weight: 650 !important;
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+}
+#bankai-admin-sidebar .bankai-nav-item span,
+#bankai-admin-sidebar .bankai-nav-item .nav-label,
+.bankai-sidebar .bankai-menu-item span,
+#bankai-admin-app .bankai-nav-item span {
+  color: inherit !important;
+}
+#bankai-admin-sidebar .bankai-nav-item:hover,
+#bankai-admin-app .bankai-sidebar .bankai-nav-item:hover,
+.bankai-sidebar .bankai-menu-item:hover,
+#bankai-admin-sidebar a.bankai-nav-link:hover,
+#bankai-admin-app .bankai-nav-item:hover {
+  background: rgba(255, 255, 255, 0.75) !important;
+  color: #2F3F20 !important;
+}
+#bankai-admin-sidebar .bankai-nav-item.is-active,
+#bankai-admin-sidebar .bankai-nav-item.active,
+#bankai-admin-app .bankai-sidebar .bankai-nav-item.is-active,
+.bankai-sidebar .bankai-menu-item.is-active,
+.bankai-sidebar .bankai-menu-item.active,
+#bankai-admin-sidebar a.bankai-nav-link.is-active,
+#bankai-admin-sidebar a.bankai-nav-link.active,
+#bankai-admin-app .bankai-nav-item.is-active,
+#bankai-admin-app .bankai-nav-item.active,
+.bankai-app-wrapper .bankai-nav-item.is-active,
+.bankai-app-wrapper .bankai-nav-item.active {
+  background: linear-gradient(135deg, #4A6334 0%, #374726 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(55, 71, 38, 0.4) !important;
+}
+#bankai-admin-sidebar .bankai-nav-item.is-active span,
+#bankai-admin-sidebar .bankai-nav-item.active span,
+#bankai-admin-app .bankai-nav-item.is-active span,
+#bankai-admin-app .bankai-nav-item.active span {
+  color: #FFFFFF !important;
+}
+#bankai-admin-sidebar .bankai-brand-card,
+.bankai-sidebar .bankai-brand-card {
+  border-bottom-color: rgba(59, 77, 40, 0.2) !important;
+}
+#bankai-admin-sidebar .bankai-brand-title,
+.bankai-sidebar .bankai-brand-title,
+#bankai-admin-sidebar .bankai-brand-card strong,
+.bankai-sidebar .bankai-brand-name {
+  color: #374726 !important;
+  font-weight: 800 !important;
+}
+#bankai-admin-sidebar .bankai-nav-section-title,
+.bankai-sidebar .bankai-nav-section-title,
+#bankai-admin-sidebar .nav-section-label {
+  color: #3B4D28 !important;
+  opacity: 0.75;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+}
+#bankai-admin-app .bankai-btn-primary,
+.bankai-app-wrapper .bankai-btn-primary,
+.bk-wpr-btn--primary {
+  background: linear-gradient(135deg, #4A6334, #374726) !important;
+  border-color: #374726 !important;
+  color: #fff !important;
+}
+#bankai-admin-app .bankai-btn-primary:hover,
+.bankai-app-wrapper .bankai-btn-primary:hover,
+.bk-wpr-btn--primary:hover {
+  background: linear-gradient(135deg, #374726, #2F3F20) !important;
+}
+#bankai-admin-app .bk-dash-badge.is-ok {
+  background: rgba(59, 77, 40, 0.12) !important;
+  color: #374726 !important;
+}
+/* Icons in sidebar follow title green */
+#bankai-admin-sidebar iconify-icon,
+.bankai-sidebar iconify-icon,
+#bankai-admin-sidebar .bankai-nav-item svg,
+.bankai-sidebar .bankai-menu-item svg {
+  color: #3B4D28 !important;
+}
+#bankai-admin-sidebar .bankai-nav-item.is-active iconify-icon,
+#bankai-admin-sidebar .bankai-nav-item.active iconify-icon,
+#bankai-admin-app .bankai-nav-item.is-active iconify-icon,
+#bankai-admin-app .bankai-nav-item.active iconify-icon,
+#bankai-admin-sidebar .bankai-nav-item.is-active svg,
+#bankai-admin-app .bankai-nav-item.is-active svg {
+  color: #FFFFFF !important;
+}
+
+
+/* ========== Bankai sidebar — design system (dark teal + single accent) ========== */
+#bankai-admin-sidebar,
+#bankai-admin-app .bankai-sidebar,
+#bankai-admin-app .bankai-body-layout > aside#bankai-admin-sidebar,
+.bankai-app-wrapper .bankai-sidebar,
+body.admin-bar #bankai-admin-sidebar {
+  --sb-bg: #0B2E2B;
+  --sb-bg-elevated: #103B37;
+  --sb-border: rgba(255,255,255,0.08);
+  --accent: #2DD4A7;
+  --accent-soft: rgba(45,212,167,0.14);
+  --accent-glow: rgba(45,212,167,0.35);
+  --text-primary: #F1F7F6;
+  --text-secondary: #9DB8B4;
+  --text-muted: #6B8A86;
+  --success: #34D399;
+
+  background: linear-gradient(180deg, #0B2E2B 0%, #0E3733 100%) !important;
+  border: none !important;
+  border-radius: 24px !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,.25) !important;
+  color: var(--text-primary) !important;
+  backdrop-filter: none !important;
+  outline: none !important;
+  padding: 12px !important;
+}
+
+#bankai-admin-sidebar .bankai-brand-card {
+  border-bottom: 1px solid var(--sb-border) !important;
+  padding-bottom: 12px !important;
+  margin-bottom: 8px !important;
+}
+#bankai-admin-sidebar .bankai-brand-logo {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #2DD4A7, #14B8A6) !important;
+  box-shadow: 0 4px 14px var(--accent-glow) !important;
+  color: #062925 !important;
+}
+#bankai-admin-sidebar .bankai-brand-name,
+#bankai-admin-sidebar .bankai-brand-title {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+  font-size: 14px !important;
+}
+#bankai-admin-sidebar .bankai-brand-sub,
+#bankai-admin-sidebar .bankai-brand-version,
+#bankai-admin-sidebar .bankai-brand-status,
+#bankai-admin-sidebar .bankai-nav-group-title {
+  color: var(--text-secondary) !important;
+  opacity: 1 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+#bankai-admin-sidebar .bankai-brand-status .status-dot,
+#bankai-admin-sidebar .status-dot {
+  background: var(--success) !important;
+  box-shadow: 0 0 8px var(--accent-glow) !important;
+}
+
+#bankai-admin-sidebar .bankai-nav-group {
+  gap: 6px !important;
+}
+
+#bankai-admin-sidebar .bankai-nav-btn {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid transparent !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  transition: all .2s ease !important;
+  position: relative !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn span {
+  color: inherit !important;
+}
+
+#bankai-admin-sidebar .bankai-nav-icon {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(255,255,255,0.05) !important;
+  border: none !important;
+  color: #7FB8AF !important;
+  box-shadow: none !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn .bankai-nav-icon,
+#bankai-admin-sidebar .bankai-nav-btn .bankai-nav-icon iconify-icon,
+#bankai-admin-sidebar .bankai-nav-btn iconify-icon {
+  color: #7FB8AF !important;
+}
+#bankai-admin-sidebar .bankai-nav-icon iconify-icon {
+  color: #7FB8AF !important;
+}
+
+/* Hover */
+#bankai-admin-sidebar .bankai-nav-btn:hover {
+  background: var(--sb-bg-elevated) !important;
+  color: var(--text-primary) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn:hover span {
+  color: var(--text-primary) !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn:hover .bankai-nav-icon {
+  background: rgba(255,255,255,0.08) !important;
+  border: none !important;
+  color: var(--accent) !important;
+  box-shadow: none !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn:hover .bankai-nav-icon iconify-icon,
+#bankai-admin-sidebar .bankai-nav-btn:hover iconify-icon {
+  color: var(--accent) !important;
+}
+
+/* Active — soft accent only */
+#bankai-admin-sidebar .bankai-nav-btn.active {
+  background: var(--accent-soft) !important;
+  color: var(--text-primary) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn.active span {
+  color: var(--text-primary) !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn.active .bankai-nav-icon {
+  background: var(--accent) !important;
+  border: none !important;
+  color: #062925 !important;
+  box-shadow: 0 4px 14px var(--accent-glow) !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn.active .bankai-nav-icon iconify-icon,
+#bankai-admin-sidebar .bankai-nav-btn.active iconify-icon {
+  color: #062925 !important;
+}
+#bankai-admin-sidebar .bankai-nav-btn.active::before {
+  content: "" !important;
+  position: absolute !important;
+  inset-inline-start: 0 !important;
+  top: 18% !important;
+  bottom: 18% !important;
+  width: 3px !important;
+  border-radius: 4px !important;
+  background: var(--accent) !important;
+}
+
+#bankai-admin-sidebar .bankai-nav-btn.is-off,
+#bankai-admin-sidebar .bankai-nav-btn.is-disabled {
+  opacity: 0.45 !important;
+  color: var(--text-muted) !important;
+}
+
+/* Telemetry card */
+#bankai-admin-sidebar .bankai-telemetry-card,
+#bankai-admin-sidebar .telemetry-card,
+#bankai-admin-sidebar .bankai-side-foot .card {
+  background: var(--sb-bg-elevated) !important;
+  border: 1px solid var(--sb-border) !important;
+  border-radius: 16px !important;
+  color: var(--text-primary) !important;
+}
+#bankai-admin-sidebar .telemetry-header,
+#bankai-admin-sidebar .status-title,
+#bankai-admin-sidebar .detail-row,
+#bankai-admin-sidebar .detail-val,
+#bankai-admin-sidebar .bankai-telemetry-card,
+.bankai-telemetry-card .status-title {
+  color: var(--text-primary) !important;
+  font-variant-numeric: tabular-nums;
+}
+#bankai-admin-sidebar .detail-row,
+#bankai-admin-sidebar .status-title {
+  color: var(--text-muted) !important;
+  font-size: 11px !important;
+}
+#bankai-admin-sidebar .detail-val {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+}
+#bankai-admin-sidebar .php-badge {
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+  border-radius: 8px !important;
+}
+#bankai-admin-sidebar .progress-bar-fill {
+  background: var(--accent) !important;
+}
+#bankai-admin-sidebar .bankai-sidebar-footer,
+#bankai-admin-sidebar .bankai-side-foot {
+  border-top: 1px solid var(--sb-border) !important;
+}
+
+
+/* Telemetry card text on dark sidebar — readable */
+#bankai-admin-sidebar .bankai-telemetry-card {
+  background: var(--sb-bg-elevated, #103B37) !important;
+  border: 1px solid var(--sb-border, rgba(255,255,255,0.08)) !important;
+  border-radius: 16px !important;
+  padding: 12px 14px !important;
+  color: #F1F7F6 !important;
+}
+#bankai-admin-sidebar .bankai-telemetry-card .status-title,
+#bankai-admin-sidebar .status-title {
+  color: #F1F7F6 !important;
+  font-weight: 700 !important;
+  font-size: 12.5px !important;
+}
+#bankai-admin-sidebar .bankai-telemetry-card .tel-label,
+#bankai-admin-sidebar .bankai-telemetry-card .tel-item > span,
+#bankai-admin-sidebar .bankai-telemetry-card .tel-item span.tel-label {
+  color: #9DB8B4 !important;
+  display: block !important;
+  font-weight: 600 !important;
+  font-size: 10px !important;
+}
+#bankai-admin-sidebar .bankai-telemetry-card .tel-value,
+#bankai-admin-sidebar .bankai-telemetry-card .tel-item > strong,
+#bankai-admin-sidebar .bankai-telemetry-card .tel-item strong.tel-value {
+  color: #F1F7F6 !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  font-variant-numeric: tabular-nums;
+}
+#bankai-admin-sidebar .php-badge {
+  background: rgba(45, 212, 167, 0.14) !important;
+  color: #2DD4A7 !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  padding: 4px 8px !important;
+}
+#bankai-admin-sidebar .ping-dot {
+  background: #34D399 !important;
+  box-shadow: 0 0 8px rgba(45, 212, 167, 0.45) !important;
+}
+#bankai-admin-sidebar .telemetry-grid {
+  color: #F1F7F6 !important;
+}
+
+
+/* Mobile menu toggle: single control in topbar (hamburger <-> X) */
+#bankai-admin-app .bankai-mobile-btn,
+.bankai-app-wrapper .bankai-mobile-btn {
+  position: relative;
+  z-index: 10001;
+}
+#bankai-admin-app .bankai-mobile-btn svg[x-cloak],
+.bankai-app-wrapper .bankai-mobile-btn svg[x-cloak] {
+  display: none !important;
+}
+/* Hide leftover close in sidebar if any theme CSS reintroduces it */
+.bankai-sidebar-mobile-header .bankai-mobile-close-btn {
+  display: none !important;
+}

@@ -20,6 +20,8 @@
       return {
         panel: 'list',
         articles: [],
+        listLoading: true,
+        _articlesAbort: null,
         page: 1,
         perPage: 10,
         totalPages: 1,
@@ -289,16 +291,29 @@
         },
 
         async loadArticles() {
+          // Cancel in-flight request (fast typing / page spam)
+          try {
+            if (this._articlesAbort) this._articlesAbort.abort();
+          } catch (e0) {}
+          this._articlesAbort = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+          var signal = this._articlesAbort ? this._articlesAbort.signal : undefined;
+
+          this.listLoading = true;
           try {
             const params = new URLSearchParams({
               page: String(this.page || 1),
               per_page: String(this.perPage || 10),
               search: this.searchQ || '',
               orderby: this.orderby || 'date',
-              post_type: this.postType || 'post'
+              post_type: this.postType || 'post',
+              light: '1'
             });
             let url = restBase() + 'seo/articles?' + params.toString();
-            let r = await fetch(url, { credentials: 'same-origin', headers: { 'X-WP-Nonce': restNonce() } });
+            let r = await fetch(url, {
+              credentials: 'same-origin',
+              headers: { 'X-WP-Nonce': restNonce() },
+              signal: signal
+            });
             if (!r.ok) {
               const fd = new FormData();
               fd.append('action', 'bankai_articles_list');
@@ -308,15 +323,14 @@
               fd.append('search', this.searchQ || '');
               fd.append('orderby', this.orderby || 'date');
               fd.append('post_type', this.postType || 'post');
-              r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin' });
+              fd.append('light', '1');
+              r = await fetch(ajax(), { method: 'POST', body: fd, credentials: 'same-origin', signal: signal });
             }
             const j = await r.json();
-            // REST: {success, data:{items}}  | AJAX: {success, data:{items}} | raw: {items}
             let data = j;
             if (j && j.data) data = j.data;
             if (data && data.data && (data.data.items || data.data.posts)) data = data.data;
             this.articles = data.items || data.posts || data.articles || [];
-            // normalize edit_link
             this.articles = (this.articles || []).map(function (row) {
               if (row && !row.edit_link && row.edit_url) row.edit_link = row.edit_url;
               if (row && row.score != null && row.seo_score == null) row.seo_score = row.score;
@@ -324,12 +338,12 @@
             });
             this.totalPages = data.total_pages || data.pages || 1;
             this.total = data.total || this.articles.length;
-            if (!this.articles.length && window.console) {
-              console.warn('[Bankai] articles empty', { status: r.status, payload: j });
-            }
           } catch (e) {
+            if (e && e.name === 'AbortError') return;
             this.articles = [];
             if (window.showToast) window.showToast('خطا در بارگذاری محتوا', 'error');
+          } finally {
+            this.listLoading = false;
           }
         },
 

@@ -58,7 +58,7 @@ $positions = [
     </button>
     <button type="button" class="bk-top-tab" :class="{ 'is-active': mediaSubTab === 'compress' }" @click="mediaSubTab = 'compress'; loadMediaLibrary && loadMediaLibrary(true)">
       <iconify-icon icon="solar:minimize-square-2-bold-duotone" width="18"></iconify-icon>
-      <span>فشرده‌سازی</span>
+      <span>فشرده‌سازی و واترمارک</span>
     </button>
   </nav>
 
@@ -92,7 +92,7 @@ $positions = [
             </div>
             <label class="bk-wm-toggle">
                 <span>فعال‌سازی سرویس</span>
-                <input type="checkbox" x-model="watermarkStudio.enabled">
+                <input type="checkbox" :checked="!!watermarkStudio.enabled" @change.stop="watermarkStudio.enabled = $event.target.checked">
                 <i></i>
             </label>
         </div>
@@ -211,14 +211,31 @@ $positions = [
                         <input type="number" min="0" max="2000" x-model.number="watermarkStudio.min_dimension">
                     </label>
                     <div class="bk-wm-checks">
-                        <label class="bk-wm-check"><input type="checkbox" x-model="watermarkStudio.apply_upload"><span>اعمال خودکار روی آپلودهای جدید</span></label>
-                        <label class="bk-wm-check"><input type="checkbox" x-model="watermarkStudio.apply_content"><span>اعمال در تبدیل گروهی</span></label>
-                        <label class="bk-wm-check"><input type="checkbox" x-model="watermarkStudio.lazy_load"><span>سازگاری با Lazy Load</span></label>
+                        <label class="bk-wm-check" @click.stop>
+                            <input type="checkbox" :checked="!!watermarkStudio.apply_upload" @change.stop="watermarkStudio.apply_upload = $event.target.checked">
+                            <span>اعمال خودکار روی آپلودهای جدید</span>
+                        </label>
+                        <label class="bk-wm-check" @click.stop>
+                            <input type="checkbox" :checked="!!watermarkStudio.apply_content" @change.stop="watermarkStudio.apply_content = $event.target.checked">
+                            <span>اعمال در تبدیل گروهی</span>
+                        </label>
+                        <label class="bk-wm-check" @click.stop>
+                            <input type="checkbox" :checked="!!watermarkStudio.lazy_load" @change.stop="watermarkStudio.lazy_load = $event.target.checked">
+                            <span>سازگاری با Lazy Load</span>
+                        </label>
+                    </div>
+                    <div class="bk-wm-actions-bar" style="margin-top:14px">
+                        <div class="bk-wm-actions-bar__btns">
+                            <button type="button" class="bk-wm-btn-primary" :disabled="busy" @click="saveWatermarkStudio()">
+                                <span class="bk-btn-spin" x-show="busy" x-cloak></span>
+                                ذخیره تنظیمات
+                            </button>
+                        </div>
                     </div>
                 </section>
             </div>
 
-            <!-- COL 2: Typography + Exceptions -->
+            <!-- COL 2: Typography + Font -->
             <div class="bk-wm-controls-col">
                 <section class="bk-wm-card">
                     <div class="bk-wm-card__head">
@@ -282,13 +299,33 @@ $positions = [
                                     <option value="none">بدون پس‌زمینه</option>
                                 </select>
                             </label>
-                            <label class="bk-wm-field" x-show="watermarkStudio.box_style !== 'none'">
-                                <span>رنگ پس‌زمینه</span>
-                                <input type="color" x-model="watermarkStudio.box_color">
-                            </label>
+                        </div>
+                        <div class="bk-wm-color-block">
+                            <span class="bk-wm-color-block__lbl">رنگ متن</span>
+                            <div class="bk-wm-swatches">
+                                <template x-for="sw in wmColorSwatches()" :key="'tc-'+sw">
+                                    <button type="button" class="bk-wm-swatch"
+                                            :class="{ 'is-active': watermarkStudio.text_color === sw, 'is-clear': sw === 'transparent' }"
+                                            :style="sw === 'transparent' ? '' : 'background:'+sw"
+                                            @click="watermarkStudio.text_color = sw"></button>
+                                </template>
+                                <input type="color" x-model="watermarkStudio.text_color" style="width:32px;height:28px;border:none;padding:0;cursor:pointer" title="رنگ سفارشی">
+                            </div>
+                        </div>
+                        <div class="bk-wm-color-block" x-show="watermarkStudio.box_style !== 'none'">
+                            <span class="bk-wm-color-block__lbl">رنگ پس‌زمینه کادر</span>
+                            <div class="bk-wm-swatches">
+                                <button type="button" class="bk-wm-swatch is-clear" :class="{ 'is-active': watermarkStudio.box_style === 'none' }" @click="watermarkStudio.box_style='none'" title="بدون پس‌زمینه"></button>
+                                <template x-for="sw in wmBgSwatches()" :key="'bg2-'+sw">
+                                    <button type="button" class="bk-wm-swatch" :class="{ 'is-active': watermarkStudio.box_color === sw }"
+                                            :style="'background:'+sw"
+                                            @click="watermarkStudio.box_color=sw; watermarkStudio.box_style=watermarkStudio.box_style==='none'?'solid':watermarkStudio.box_style"></button>
+                                </template>
+                                <input type="color" x-model="watermarkStudio.box_color" style="width:32px;height:28px;border:none;padding:0;cursor:pointer" title="رنگ سفارشی">
+                            </div>
                         </div>
                         <label class="bk-wm-check">
-                            <input type="checkbox" x-model="watermarkStudio.box_enabled">
+                            <input type="checkbox" :checked="!!watermarkStudio.box_enabled" @change.stop="watermarkStudio.box_enabled = $event.target.checked">
                             <span>کادر دور متن (Background Badge)</span>
                         </label>
                         <div class="bk-wm-grid-2" x-show="watermarkStudio.box_enabled" x-cloak>
@@ -299,16 +336,6 @@ $positions = [
                             <label class="bk-wm-field">
                                 <span>گردی گوشه <em x-text="(watermarkStudio.box_radius||6)+'px'"></em></span>
                                 <input type="range" min="0" max="25" x-model.number="watermarkStudio.box_radius">
-                            </label>
-                        </div>
-                        <div class="bk-wm-grid-2">
-                            <label class="bk-wm-field">
-                                <span>رنگ متن</span>
-                                <input type="color" x-model="watermarkStudio.text_color">
-                            </label>
-                            <label class="bk-wm-field" x-show="watermarkStudio.box_enabled" x-cloak>
-                                <span>رنگ کادر</span>
-                                <input type="color" x-model="watermarkStudio.box_color">
                             </label>
                         </div>
                     </div>
@@ -351,103 +378,24 @@ $positions = [
                            x-text="'فعال: '+watermarkStudio.custom_font_name"></p>
                         <p class="bk-wm-muted" style="margin:6px 0 0;font-size:11px" x-show="wmFontBusy">در حال آپلود…</p>
                     </div>
-                    <!-- Color palette solid + transparent -->
-                    <div style="margin-top:14px">
-                        <span style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">رنگ متن</span>
-                        <div class="bk-wm-swatches">
-                            <template x-for="sw in wmColorSwatches()" :key="sw">
-                                <button type="button" class="bk-wm-swatch" :class="{ 'is-active': watermarkStudio.text_color === sw }"
-                                        :style="sw === 'transparent' ? '' : 'background:'+sw"
-                                        :class="sw==='transparent' ? 'is-clear' : ''"
-                                        @click="watermarkStudio.text_color = sw"></button>
-                            </template>
-                            <input type="color" x-model="watermarkStudio.text_color" style="width:32px;height:28px;border:none;padding:0;cursor:pointer">
-                        </div>
-                        <span style="font-size:12px;font-weight:700;display:block;margin:12px 0 6px">رنگ پس‌زمینه کادر</span>
-                        <div class="bk-wm-swatches">
-                            <button type="button" class="bk-wm-swatch is-clear" :class="{ 'is-active': watermarkStudio.box_style === 'none' }" @click="watermarkStudio.box_style='none'"></button>
-                            <template x-for="sw in wmBgSwatches()" :key="'bg-'+sw">
-                                <button type="button" class="bk-wm-swatch" :class="{ 'is-active': watermarkStudio.box_color === sw }"
-                                        :style="'background:'+sw" @click="watermarkStudio.box_color=sw; watermarkStudio.box_style=watermarkStudio.box_style==='none'?'solid':watermarkStudio.box_style"></button>
-                            </template>
-                            <input type="color" x-model="watermarkStudio.box_color" style="width:32px;height:28px;border:none;padding:0">
-                        </div>
-                    </div>
                 </section>
 
 
                 
 
-                <div class="bk-wm-actions-bar">
-                    <div class="bk-wm-actions-bar__btns">
-                        <button type="button" class="bk-wm-btn-primary" :disabled="busy" @click="saveWatermarkStudio()">
-                            <span class="bk-btn-spin" x-show="busy" x-cloak></span>
-                            ذخیره تنظیمات
-                        </button>
-                        <button type="button" class="bk-wm-btn-ghost" @click="openWmBulkApply && openWmBulkApply()">اعمال گروهی روی کتابخانه</button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
 
 
     
-        <!-- Inline bulk watermark panel -->
-    <div x-show="wmBulkModal.show" x-cloak class="bk-wm-bulk-panel" style="margin:16px 0 28px;padding:18px;border-radius:16px;background:rgba(15,23,42,.04);border:1px solid rgba(148,163,184,.35);">
-        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
-            <div>
-                <strong style="font-size:14px" x-text="wmBulkModal.title || 'اعمال گروهی واترمارک'"></strong>
-                <div style="font-size:12px;color:#64748b;margin-top:4px" x-text="wmBulkModal.progressText"></div>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-                    <input type="checkbox" x-model="wmBulkModal.selectAll" @change="toggleWmBulkSelectAll()">
-                    انتخاب همه
-                </label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-                    <input type="checkbox" x-model="wmBulkModal.alsoCompress">
-                    همزمان فشرده‌سازی
-                </label>
-                <button type="button" class="bk-wm-btn-primary" :disabled="wmBulkModal.running" @click="startWmBulkSelected()">
-                    <span class="bk-btn-spin" x-show="wmBulkModal.running" x-cloak></span>
-                    شروع واترمارک
-                </button>
-                <button type="button" class="bk-wm-btn-ghost" :disabled="wmBulkModal.running" @click="wmBulkModal.show=false">بستن</button>
-            </div>
-        </div>
-        <div class="bk-compress-progress" x-show="wmBulkModal.running || wmBulkModal.progress > 0" style="margin-bottom:12px">
-            <div class="bk-compress-bar"><i :style="'width:'+(wmBulkModal.progress||0)+'%'"></i></div>
-        </div>
-        <div class="bk-wm-bulk-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;max-height:420px;overflow:auto">
-            <template x-for="row in (wmBulkModal.items || [])" :key="row.id">
-                <div class="bk-wm-bulk-card" :class="{'is-done':row.status==='done','is-work':row.status==='work','is-fail':row.status==='fail','is-selected':row.selected}"
-                     @click="!wmBulkModal.running && (row.selected = !row.selected)"
-                     style="position:relative;border-radius:12px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#0f172a">
-                    <div :style="row.selected ? 'border-color:#22c55e' : 'border-color:transparent'" style="position:absolute;inset:0;border:2px solid;border-radius:12px;pointer-events:none;z-index:2"></div>
-                    <img :src="row.thumb || row.url" alt="" style="width:100%;height:110px;object-fit:cover;display:block">
-                    <div style="padding:8px;font-size:11px;color:#e2e8f0;min-height:42px">
-                        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600" x-text="row.title"></div>
-                        <div style="opacity:.7;margin-top:2px" x-text="row.statusText || ''"></div>
-                    </div>
-                    <div x-show="row.selected && row.status==='idle'" style="position:absolute;top:8px;inset-inline-start:8px;background:#22c55e;color:#fff;border-radius:999px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;z-index:3">✓</div>
-                    <div x-show="row.status==='work'" style="position:absolute;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:3">
-                        <span class="bk-btn-spin"></span>
-                    </div>
-                    <div x-show="row.status==='done'" style="position:absolute;top:8px;inset-inline-end:8px;background:#16a34a;color:#fff;border-radius:999px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;z-index:3">✓</div>
-                    <div x-show="row.status==='fail'" style="position:absolute;top:8px;inset-inline-end:8px;background:#dc2626;color:#fff;border-radius:999px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;z-index:3">!</div>
-                </div>
-            </template>
-        </div>
-    </div>
+    <!-- bulk watermark panel removed — use تب «فشرده‌سازی و واترمارک» -->
 
-
-    
     <div x-show="mediaSubTab === 'compress'" x-cloak class="bk-compress-shell">
         <div class="bk-compress-toolbar">
             <div class="bk-compress-toolbar__info">
-                <strong>فشرده‌سازی تصاویر</strong>
-                <p style="margin:4px 0 0;font-size:12px;color:#64748b">فقط فشرده‌سازی — واترمارک از تب استودیو اعمال می‌شود</p>
+                <strong>فشرده‌سازی و واترمارک</strong>
+                <p style="margin:4px 0 0;font-size:12px;color:#64748b">تصاویر را انتخاب کنید، سپس فشرده‌سازی یا واترمارک را اعمال کنید</p>
             </div>
             <div class="bk-compress-opts">
                 <label class="bk-wm-field"><span>فرمت</span>
@@ -467,30 +415,64 @@ $positions = [
                 </label>
             </div>
             <div class="bk-compress-actions">
-                <button type="button" class="bk-wm-btn-primary" :disabled="mediaLib.busy || mediaLib.loading" @click="startBulkCompress && startBulkCompress(false)">
-                    <span class="bk-btn-spin" x-show="mediaLib.busy && !mediaLib.selectedOnly" x-cloak></span>
-                    فشرده‌سازی گروهی
+                <button type="button" class="bk-wm-btn-ghost" :disabled="mediaLib.busy || mediaLib.loading || !(mediaLib.items||[]).length" @click="selectAllMedia && selectAllMedia()">
+                    انتخاب همه
                 </button>
-                <button type="button" class="bk-wm-btn-ghost" :disabled="mediaLib.busy || selectedMediaCount()===0" @click="startBulkCompress && startBulkCompress(true)">
-                    <span class="bk-btn-spin" x-show="mediaLib.busy && mediaLib.selectedOnly" x-cloak></span>
-                    فشرده‌سازی انتخاب‌شده‌ها (<span x-text="selectedMediaCount()">0</span>)
+                <button type="button" class="bk-wm-btn-primary" :disabled="mediaLib.busy || selectedMediaCount()===0" @click="startBulkCompress && startBulkCompress(true)">
+                    <span class="bk-btn-spin" x-show="mediaLib.busy && mediaLib.action==='compress'" x-cloak></span>
+                    فشرده‌سازی (<span x-text="selectedMediaCount()">0</span>)
+                </button>
+                <button type="button" class="bk-wm-btn-ghost" :disabled="mediaLib.busy || selectedMediaCount()===0" @click="startSelectedWatermark && startSelectedWatermark()">
+                    <span class="bk-btn-spin" x-show="mediaLib.busy && mediaLib.action==='watermark'" x-cloak></span>
+                    واترمارک (<span x-text="selectedMediaCount()">0</span>)
                 </button>
             </div>
             <div class="bk-compress-progress" x-show="mediaLib.busy || mediaLib.progress > 0" x-cloak>
                 <div class="bk-compress-bar"><i :style="'width:'+(mediaLib.progress||0)+'%'"></i></div>
                 <span x-text="mediaLib.progressText || ''"></span>
             </div>
+
+            <!-- Bulk operation visual report -->
+            <div class="bk-media-result bk-bulk-result"
+                 :class="{
+                    'is-show': mediaLib.resultState,
+                    'is-loading': mediaLib.resultState === 'loading',
+                    'is-ok': mediaLib.resultState === 'ok',
+                    'is-err': mediaLib.resultState === 'err'
+                 }"
+                 x-show="mediaLib.resultState" x-cloak style="margin-top:12px">
+                <div class="bk-media-result__title">
+                    <span class="bk-media-result__icon" x-text="mediaLib.resultState === 'ok' ? '✓' : (mediaLib.resultState === 'err' ? '!' : '↻')"></span>
+                    <span x-text="mediaLib.resultMessage || mediaLib.progressText || ''"></span>
+                </div>
+                <div class="bk-media-result__stats" x-show="mediaLib.resultStats && mediaLib.resultStats.length">
+                    <template x-for="(st, si) in (mediaLib.resultStats || [])" :key="'bs-'+si">
+                        <span>
+                            <span x-text="st.label"></span>
+                            <em x-text="st.value"></em>
+                        </span>
+                    </template>
+                </div>
+            </div>
         </div>
 
-        <div class="bk-compress-loading" x-show="mediaLib.loading" x-cloak>
-            <div class="bk-compress-spinner"></div>
-            <span>در حال بارگذاری تصاویر…</span>
+        <div class="bk-compress-loading" x-show="mediaLib.loading && !(mediaLib.items||[]).length" x-cloak>
+            <div class="bk-compress-spinner" aria-hidden="true"></div>
+            <strong>در حال بارگذاری تصاویر رسانه…</strong>
+            <span style="font-weight:500;color:#94a3b8;font-size:12px">لطفاً چند لحظه صبر کنید</span>
         </div>
 
-        <div class="bk-compress-grid" x-show="!mediaLib.loading">
+        <div class="bk-compress-grid" x-show="(mediaLib.items||[]).length">
             <template x-for="img in (mediaLib.items || [])" :key="img.id">
-                <div class="bk-c-card" :class="{ 'is-selected': img.selected }" @click="img.selected = !img.selected">
-                    <img class="bk-c-card__img" :src="img.thumb || img.url" :alt="img.title">
+                <div class="bk-c-card" :class="{ 'is-selected': img.selected }">
+                    <button type="button" class="bk-c-card__check"
+                            @click.stop="img.selected = !img.selected"
+                            :aria-pressed="!!img.selected"
+                            :title="img.selected ? 'لغو انتخاب' : 'انتخاب برای عملیات گروهی'">
+                        <span x-text="img.selected ? '✓' : ''"></span>
+                    </button>
+                    <span class="bk-c-card__check-hint" x-show="!img.selected">انتخاب</span>
+                    <img class="bk-c-card__img" :src="img.thumb || img.url" :alt="img.alt || img.title" loading="lazy" decoding="async" @error="$el.style.opacity='0.35'" @click.stop="openMediaDetail && openMediaDetail(img)">
                     <span class="bk-c-chip is-fmt" x-text="(img.mime || img.format || 'IMG').toString().replace('image/','').toUpperCase()"></span>
                     <span class="bk-c-chip is-size" x-text="img.size_label || img.size || '—'"></span>
                     <div class="bk-c-card__name" x-text="img.title || ('#'+img.id)"></div>
@@ -500,10 +482,92 @@ $positions = [
         <div class="bk-wm-card" style="text-align:center;padding:28px;margin-top:12px" x-show="!(mediaLib.items||[]).length && !mediaLib.loading">
             تصویری یافت نشد.
         </div>
-        <div style="margin-top:14px;text-align:center" x-show="mediaLib.hasMore">
-            <button type="button" class="bk-wm-btn-ghost" @click="loadMediaLibrary(false)" :disabled="mediaLib.loading">بارگذاری بیشتر</button>
+        <div style="margin-top:14px;text-align:center" x-show="mediaLib.hasMore || mediaLib.loading">
+            <button type="button" class="bk-wm-btn-ghost" @click="loadMediaLibrary(false)" :disabled="mediaLib.loading">
+                <span class="bk-btn-spin" x-show="mediaLib.loading && (mediaLib.items||[]).length" x-cloak></span>
+                <span x-text="mediaLib.loading && (mediaLib.items||[]).length ? 'در حال بارگذاری…' : 'بارگذاری بیشتر'"></span>
+            </button>
         </div>
-    </div>
+
+        <!-- Image detail modal — only in DOM when open; teleported to body for viewport center -->
+        <template x-teleport="body">
+        <div class="bk-media-detail-bg" x-show="mediaDetail.open" x-cloak
+             x-transition.opacity.duration.150ms
+             @click.self="mediaDetail.open=false"
+             @keydown.escape.window="mediaDetail.open=false">
+            <div class="bk-media-detail" @click.stop x-show="mediaDetail.open">
+                <div class="bk-media-detail__head">
+                    <strong x-text="mediaDetail.item && (mediaDetail.item.title || ('#'+mediaDetail.item.id))"></strong>
+                    <button type="button" class="bk-store-modal__x" @click="mediaDetail.open=false">✕</button>
+                </div>
+                <div class="bk-media-detail__body">
+                    <div class="bk-media-detail__preview"
+                         :class="{ 'is-busy': mediaDetail.busy, 'is-flash': mediaDetail.flash }">
+                        <img :src="(mediaDetail.item && (mediaDetail.item.url || mediaDetail.item.thumb)) || ''"
+                             :alt="mediaDetail.item && mediaDetail.item.alt">
+                    </div>
+                    <div class="bk-media-detail__meta" x-show="mediaDetail.item">
+                        <template x-if="mediaDetail.item">
+                        <div>
+                        <label class="bk-wm-field"><span>عنوان</span>
+                            <input type="text" x-model="mediaDetail.item.title" :disabled="mediaDetail.busy">
+                        </label>
+                        <label class="bk-wm-field"><span>متن جایگزین (Alt)</span>
+                            <input type="text" x-model="mediaDetail.item.alt" :disabled="mediaDetail.busy">
+                        </label>
+                        <label class="bk-wm-field"><span>توضیحات</span>
+                            <textarea rows="3" x-model="mediaDetail.item.caption" :disabled="mediaDetail.busy"></textarea>
+                        </label>
+                        </div>
+                        </template>
+                        <div class="bk-media-detail__info" x-show="mediaDetail.item">
+                            <span x-text="mediaDetail.item && (mediaDetail.item.size_label || mediaDetail.item.size || '')"></span>
+                            <span x-text="mediaDetail.item && (mediaDetail.item.width && mediaDetail.item.height ? (mediaDetail.item.width+'×'+mediaDetail.item.height) : '')"></span>
+                            <span x-text="mediaDetail.item && (mediaDetail.item.mime || '')"></span>
+                        </div>
+                        <div class="bk-media-detail__actions">
+                            <button type="button" class="bk-wm-btn-ghost" :disabled="mediaDetail.saving || mediaDetail.busy" @click="saveMediaDetail && saveMediaDetail()">
+                                <span class="bk-btn-spin" x-show="mediaDetail.saving" x-cloak></span>
+                                <span x-text="mediaDetail.saving ? 'در حال ذخیره…' : 'ذخیره جزئیات'"></span>
+                            </button>
+                            <button type="button" class="bk-wm-btn-primary" :disabled="mediaDetail.busy" @click="compressOneMedia && compressOneMedia(mediaDetail.item)">
+                                <span class="bk-btn-spin" x-show="mediaDetail.busy && mediaDetail.action==='compress'" x-cloak></span>
+                                <span x-text="mediaDetail.busy && mediaDetail.action==='compress' ? 'در حال فشرده‌سازی…' : 'فشرده‌سازی'"></span>
+                            </button>
+                            <button type="button" class="bk-wm-btn-ghost" :disabled="mediaDetail.busy" @click="watermarkOneMedia && watermarkOneMedia(mediaDetail.item)">
+                                <span class="bk-btn-spin" x-show="mediaDetail.busy && mediaDetail.action==='watermark'" x-cloak></span>
+                                <span x-text="mediaDetail.busy && mediaDetail.action==='watermark' ? 'در حال واترمارک…' : 'واترمارک'"></span>
+                            </button>
+                        </div>
+
+                        <!-- Visual result banner -->
+                        <div class="bk-media-result"
+                             :class="{
+                                'is-show': mediaDetail.resultState,
+                                'is-loading': mediaDetail.resultState === 'loading',
+                                'is-ok': mediaDetail.resultState === 'ok',
+                                'is-err': mediaDetail.resultState === 'err'
+                             }"
+                             x-show="mediaDetail.resultState" x-cloak>
+                            <div class="bk-media-result__title">
+                                <span class="bk-media-result__icon" x-text="mediaDetail.resultState === 'ok' ? '✓' : (mediaDetail.resultState === 'err' ? '!' : '↻')"></span>
+                                <span x-text="mediaDetail.message || ''"></span>
+                            </div>
+                            <div class="bk-media-result__stats" x-show="mediaDetail.resultStats && mediaDetail.resultStats.length">
+                                <template x-for="(st, si) in (mediaDetail.resultStats || [])" :key="'rs-'+si">
+                                    <span>
+                                        <span x-text="st.label"></span>
+                                        <em x-text="st.value"></em>
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </template>
+    </div><!-- /.bk-compress-shell -->
 
 
 </div><!-- /.bk-top-body -->

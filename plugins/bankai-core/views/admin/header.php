@@ -20,7 +20,7 @@ defined('ABSPATH') || exit;
                  stroke-width="1.5"
                  stroke-linecap="round"
                  stroke-linejoin="round"
-                 style="display: block; flex-shrink: 0;"
+                 style="flex-shrink: 0;"
                  aria-hidden="true">
                 <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -35,7 +35,7 @@ defined('ABSPATH') || exit;
                  stroke-width="1.5"
                  stroke-linecap="round"
                  stroke-linejoin="round"
-                 style="display: block; flex-shrink: 0;"
+                 style="flex-shrink: 0;"
                  aria-hidden="true">
                 <path d="M18 6L6 18M6 6l12 12" />
             </svg>
@@ -71,7 +71,7 @@ defined('ABSPATH') || exit;
            id="header-theme-link"
            class="bankai-btn-action bankai-btn-theme"
            :title="isRtl ? '<?php echo esc_js(__('قالب Bankai', 'bankai-core')); ?>' : '<?php echo esc_js(__('Bankai Theme', 'bankai-core')); ?>'">
-            <svg class="solar-icon solar-icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display: block; flex-shrink: 0;">
+            <svg class="solar-icon solar-icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink: 0;">
                 <rect x="2" y="3" width="20" height="14" rx="2" />
                 <line x1="8" y1="21" x2="16" y2="21" />
                 <line x1="12" y1="17" x2="12" y2="21" />
@@ -87,7 +87,7 @@ defined('ABSPATH') || exit;
            target="_blank" rel="noopener noreferrer"
            class="bankai-btn-action bankai-btn-preview"
            :title="isRtl ? '<?php echo esc_js(__('پیش‌نمایش سایت', 'bankai-core')); ?>' : '<?php echo esc_js(__('Site Preview', 'bankai-core')); ?>'">
-            <svg class="solar-icon solar-icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display: block; flex-shrink: 0;">
+            <svg class="solar-icon solar-icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink: 0;">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="2" y1="12" x2="22" y2="12"/>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"/>
@@ -103,7 +103,7 @@ defined('ABSPATH') || exit;
                 class="bankai-btn-action bankai-btn-purge"
                 @click="purgeAllCaches()"
                 :title="isRtl ? '<?php echo esc_js(__('تخلیه تمام کش‌ها', 'bankai-core')); ?>' : '<?php echo esc_js(__('Purge All Caches', 'bankai-core')); ?>'">
-            <svg class="solar-icon solar-icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: block; flex-shrink: 0;">
+            <svg class="solar-icon solar-icon-sm" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
                 <path d="M21 12a9 9 0 1 1-3-6.7" />
                 <polyline points="21 3 21 9 15 9" />
             </svg>

@@ -88,33 +88,42 @@ $site_url   = home_url('/');
         <div class="bk-dash-card bk-set-license">
           <div class="bk-dash-card__head">
             <div class="bk-dash-card__title">
-              <iconify-icon icon="solar:verified-check-bold-duotone" width="20" style="color:#16a34a"></iconify-icon>
-              <strong x-text="isRtl ? 'وضعیت لایسنس' : 'License status'"></strong>
+              <iconify-icon icon="solar:verified-check-bold-duotone" width="20" :style="licenseState.active ? 'color:#16a34a' : 'color:#dc2626'"></iconify-icon>
+              <strong x-text="isRtl ? 'وضعیت لایسنس راست‌چین' : 'RTL License'"></strong>
             </div>
-            <span class="bk-dash-badge is-ok" x-text="isRtl ? 'فعال' : 'Active'"></span>
+            <span class="bk-dash-badge" :class="licenseState.active ? 'is-ok' : 'is-off'"
+                  x-text="licenseState.active ? (isRtl ? 'فعال' : 'Active') : (isRtl ? 'غیرفعال' : 'Inactive')"></span>
           </div>
           <div class="bk-set-license__body">
+            <p style="margin:0 0 12px;font-size:12px;color:#64748b;line-height:1.6" x-text="licenseState.message"></p>
             <div class="bk-set-license__row">
-              <span x-text="isRtl ? 'نوع اشتراک' : 'Plan'"></span>
-              <strong x-text="isRtl ? 'نسخه سازمانی (Enterprise)' : 'Enterprise'"></strong>
+              <span x-text="isRtl ? 'وضعیت قفل' : 'Lock status'"></span>
+              <strong x-text="licenseState.active ? (isRtl ? 'باز' : 'Unlocked') : (isRtl ? 'بسته' : 'Locked')"></strong>
             </div>
             <div class="bk-set-license__row">
-              <span x-text="isRtl ? 'وضعیت' : 'Status'"></span>
-              <strong style="color:#15803d" x-text="isRtl ? 'تأیید شده' : 'Verified'"></strong>
-            </div>
-            <div class="bk-set-license__row">
-              <span x-text="isRtl ? 'دسترسی' : 'Access'"></span>
-              <strong x-text="isRtl ? 'سئو · AI · کش · رسانه' : 'SEO · AI · Cache · Media'"></strong>
+              <span>ionCube</span>
+              <strong x-text="licenseState.loader ? (isRtl ? 'نصب' : 'OK') : (isRtl ? 'نیست' : 'Missing')"></strong>
             </div>
             <div class="bk-set-license__row">
               <span x-text="isRtl ? 'نسخه افزونه' : 'Plugin version'"></span>
               <strong>v<?php echo esc_html($plugin_ver); ?></strong>
             </div>
+            <label class="bk-license-field" style="margin-top:12px">
+              <span x-text="isRtl ? 'نام کاربری راست‌چین' : 'RTL username'"></span>
+              <input type="text" x-model="licenseForm.username" :disabled="licenseBusy">
+            </label>
+            <label class="bk-license-field">
+              <span x-text="isRtl ? 'کد خرید / لایسنس' : 'Purchase code'"></span>
+              <input type="text" x-model="licenseForm.code" :disabled="licenseBusy">
+            </label>
           </div>
-          <div class="bk-set-license__actions">
-            <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="showToast && showToast(isRtl ? 'لایسنس مجدداً اعتبارسنجی شد' : 'License revalidated', 'success')">
+          <div class="bk-set-license__actions" style="display:flex;flex-wrap:wrap;gap:8px">
+            <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" :disabled="licenseBusy" @click="activateRtlLicense && activateRtlLicense()">
+              <span x-text="licenseBusy ? (isRtl ? '…' : '…') : (isRtl ? 'فعال‌سازی' : 'Activate')"></span>
+            </button>
+            <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" :disabled="licenseBusy" @click="refreshLicenseStatus && refreshLicenseStatus()">
               <iconify-icon icon="solar:refresh-circle-bold-duotone" width="16"></iconify-icon>
-              <span x-text="isRtl ? 'اعتبارسنجی مجدد' : 'Revalidate'"></span>
+              <span x-text="isRtl ? 'بروزرسانی وضعیت' : 'Refresh'"></span>
             </button>
           </div>
         </div>
@@ -251,13 +260,19 @@ $site_url   = home_url('/');
             <iconify-icon icon="solar:diskette-bold-duotone" width="16"></iconify-icon>
             <span x-text="pwaSaving ? 'در حال ذخیره…' : 'ذخیره تنظیمات PWA'"></span>
           </button>
+          <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="generatePwaIcons()" :disabled="pwaIconBusy || pwaSaving">
+            <iconify-icon icon="solar:gallery-bold-duotone" width="16"></iconify-icon>
+            <span x-text="pwaIconBusy ? 'در حال ساخت آیکون…' : 'ساخت خودکار آیکون ۱۹۲ و ۵۱۲'"></span>
+          </button>
           <a class="bk-wpr-btn bk-wpr-btn--secondary" :href="pwaManifestUrl" target="_blank" rel="noopener" x-show="pwaManifestUrl">
             <iconify-icon icon="solar:link-bold-duotone" width="16"></iconify-icon>
             مشاهده مانیفست
           </a>
         </div>
-        <p style="margin:12px 0 0;font-size:11px;color:#94a3b8;line-height:1.6">
-          پس از ذخیره، یک‌بار پیوندهای یکتا (Permalinks) را ذخیره کنید اگر مانیفست 404 داد.
+        <p style="margin:12px 0 0;font-size:12px;color:#64748b;line-height:1.7">
+          <strong>وضعیت PWA یعنی چه؟</strong><br>
+          «هنوز رویداد نصب نیامده» یعنی مرورگر هنوز دکمه نصب را فعال نکرده — معمولاً به‌خاطر آیکون نامعتبر، Service Worker، یا نصب قبلی است.
+          با «ساخت خودکار آیکون» لوگو به PNG مربعی ۱۹۲×۱۹۲ و ۵۱۲×۵۱۲ تبدیل و در مانیفست ذخیره می‌شود.<br>
           آدرس مانیفست: <code dir="ltr">/manifest.webmanifest</code> · Service Worker: <code dir="ltr">/bankai-sw.js</code>
           · سایت باید روی <strong>HTTPS</strong> باشد.
         </p>

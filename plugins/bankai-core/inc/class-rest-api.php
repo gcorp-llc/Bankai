@@ -569,6 +569,21 @@ public function toggle_module(WP_REST_Request $request): WP_REST_Response
             update_option('bankai_core_settings', $settings, false);
         }
 
+        // Keep PWA settings.enabled in sync with dashboard module toggle
+        if ($key === 'pwa' && class_exists('Bankai_PWA')) {
+            $pwa = Bankai_PWA::instance();
+            $cur = $pwa->get_settings();
+            $cur['enabled'] = $enabled;
+            if (function_exists('bankai_update_option')) {
+                bankai_update_option(Bankai_PWA::OPT, $cur);
+            } else {
+                update_option(Bankai_PWA::OPT, $cur, false);
+            }
+            if ($enabled) {
+                flush_rewrite_rules(false);
+            }
+        }
+
         $count = function_exists('bankai_count_active_modules')
             ? bankai_count_active_modules()
             : $this->count_active_core_modules();
@@ -576,6 +591,9 @@ public function toggle_module(WP_REST_Request $request): WP_REST_Response
         $extra = '';
         if ($key === 'seo_engine' && !$enabled) {
             $extra = ' ' . __('ابزار سئو در ویرایشگر پست و خروجی متا غیرفعال شد.', 'bankai-core');
+        }
+        if ($key === 'pwa' && $enabled) {
+            $extra = ' ' . __('مانیفست و Service Worker فعال شدند — یک‌بار صفحه را رفرش کنید.', 'bankai-core');
         }
 
         return new WP_REST_Response([
@@ -707,32 +725,69 @@ public function toggle_module(WP_REST_Request $request): WP_REST_Response
 
         $q = new \WP_Query($args);
         $items = [];
+        if (!empty($q->posts)) {
+            // Prime thumbnail meta in one go (much faster than per-post thumbnail_url)
+            if (function_exists('update_post_thumbnail_cache')) {
+                update_post_thumbnail_cache($q);
+            }
+        }
+        $status_labels = [];
         foreach ($q->posts as $p) {
             $id = (int) $p->ID;
-            $status_obj = get_post_status_object($p->post_status);
+            $st = $p->post_status;
+            if (!isset($status_labels[$st])) {
+                $so = get_post_status_object($st);
+                $status_labels[$st] = $so->label ?? $st;
+            }
+            // Meta already in cache via update_post_meta_cache
+            $seo_title = (string) get_post_meta($id, '_bankai_seo_title', true);
+            $desc      = (string) get_post_meta($id, '_bankai_seo_description', true);
+            $fk        = (string) get_post_meta($id, '_bankai_seo_focus_keyword', true);
+            if ($fk === '') {
+                $fk = (string) get_post_meta($id, '_bankai_focus_keyword', true);
+            }
+            $seo = (int) get_post_meta($id, '_bankai_audit_seo', true);
+            if (!$seo) {
+                $seo = (int) get_post_meta($id, '_bankai_seo_score', true);
+            }
+            $aeo = (int) get_post_meta($id, '_bankai_audit_aeo', true);
+            if (!$aeo) {
+                $aeo = (int) get_post_meta($id, '_bankai_aeo_score', true);
+            }
+            $geo = (int) get_post_meta($id, '_bankai_audit_geo', true);
+            if (!$geo) {
+                $geo = (int) get_post_meta($id, '_bankai_geo_score', true);
+            }
+            $audit = (int) get_post_meta($id, '_bankai_audit_score', true);
+            $thumb_id = (int) get_post_meta($id, '_thumbnail_id', true);
+            $cover = '';
+            if ($thumb_id) {
+                $src = wp_get_attachment_image_src($thumb_id, 'thumbnail');
+                $cover = (is_array($src) && !empty($src[0])) ? (string) $src[0] : '';
+            }
+            $edit = get_edit_post_link($id, 'raw') ?: '';
             $items[] = [
                 'id'             => $id,
-                'title'          => get_the_title($p) ?: ('#' . $id),
-                'status'         => $p->post_status,
-                'status_label'   => $status_obj->label ?? $p->post_status,
+                'title'          => $p->post_title !== '' ? $p->post_title : ('#' . $id),
+                'status'         => $st,
+                'status_label'   => $status_labels[$st],
                 'type'           => $p->post_type,
                 'permalink'      => get_permalink($p),
-                'edit_url'       => get_edit_post_link($id, 'raw'),
-                'edit_link'      => get_edit_post_link($id, 'raw'),
-                'seo_title'      => (string) get_post_meta($id, '_bankai_seo_title', true),
-                'description'    => (string) get_post_meta($id, '_bankai_seo_description', true),
-                'focus_keyword'  => (string) (get_post_meta($id, '_bankai_seo_focus_keyword', true) ?: get_post_meta($id, '_bankai_focus_keyword', true)),
+                'edit_url'       => $edit,
+                'edit_link'      => $edit,
+                'seo_title'      => $seo_title,
+                'description'    => $desc,
+                'focus_keyword'  => $fk,
                 'views'          => (int) get_post_meta($id, '_bankai_post_views', true),
-                // Unified scores: audit group scores are source of truth for SEO·AEO·GEO
-                'seo_audit'      => (int) (get_post_meta($id, '_bankai_audit_seo', true) ?: get_post_meta($id, '_bankai_seo_score', true)),
-                'aeo_audit'      => (int) (get_post_meta($id, '_bankai_audit_aeo', true) ?: get_post_meta($id, '_bankai_aeo_score', true)),
-                'geo_audit'      => (int) (get_post_meta($id, '_bankai_audit_geo', true) ?: get_post_meta($id, '_bankai_geo_score', true)),
-                'seo_score'      => (int) (get_post_meta($id, '_bankai_audit_seo', true) ?: get_post_meta($id, '_bankai_seo_score', true)),
-                'score'          => (int) (get_post_meta($id, '_bankai_audit_score', true) ?: get_post_meta($id, '_bankai_seo_score', true)),
-                'audit_score'    => (int) get_post_meta($id, '_bankai_audit_score', true),
-                'cover'          => get_the_post_thumbnail_url($id, 'thumbnail') ?: '',
-                'modified'       => get_the_modified_date('Y-m-d H:i', $p),
-                'date'           => get_the_date('Y-m-d H:i', $p),
+                'seo_audit'      => $seo,
+                'aeo_audit'      => $aeo,
+                'geo_audit'      => $geo,
+                'seo_score'      => $seo,
+                'score'          => $audit ?: $seo,
+                'audit_score'    => $audit,
+                'cover'          => $cover,
+                'modified'       => mysql2date('Y-m-d H:i', $p->post_modified),
+                'date'           => mysql2date('Y-m-d H:i', $p->post_date),
                 'internal_links' => 0,
                 'external_links' => 0,
             ];

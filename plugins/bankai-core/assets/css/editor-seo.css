@@ -5048,3 +5048,607 @@
 }
 .bk-ai-img-style.is-on { border-color: #fc4c2f; background: #fff7ed; color: #c2410c; }
 .bk-ai-wizard-card { border: 1px solid #fed7aa !important; background: linear-gradient(180deg,#fff7ed,#fff) !important; }
+
+
+/* Optimize result banner (shared look with media modal) */
+.bk-media-result {
+  display: none;
+  transition: opacity .35s ease, transform .35s ease;
+  margin-top: 4px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  border: 1px solid transparent;
+}
+.bk-media-result.is-show { display: block; }
+.bk-media-result.is-loading {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  color: #5b21b6;
+}
+.bk-media-result.is-ok {
+  background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+  border-color: #86efac;
+  color: #14532d;
+}
+.bk-media-result.is-err {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+.bk-media-result__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.bk-media-result__title .bk-media-result__icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.bk-media-result.is-ok .bk-media-result__icon { background: #16a34a; color: #fff; }
+.bk-media-result.is-err .bk-media-result__icon { background: #dc2626; color: #fff; }
+.bk-media-result.is-loading .bk-media-result__icon {
+  background: #7c3aed;
+  color: #fff;
+  animation: bkSeoSpin .8s linear infinite;
+}
+@keyframes bkSeoSpin { to { transform: rotate(360deg); } }
+.bk-media-result__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.bk-media-result__stats span {
+  background: rgba(255,255,255,.75);
+  border: 1px solid rgba(15,23,42,.08);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-weight: 700;
+  font-size: 11px;
+  color: #334155;
+}
+.bk-media-result__stats em {
+  color: #16a34a;
+  font-style: normal;
+  font-weight: 800;
+}
+
+
+/* ---- AI modal vs sticky header (fix overlap) ---- */
+.bankai-seo-root.is-ai-open .bk-header {
+    z-index: 1 !important;
+    pointer-events: none;
+}
+.bankai-seo-root.is-ai-open .bk-header .bk-icon-btn {
+    pointer-events: none;
+}
+
+/* Ensure backdrop truly covers viewport above WP chrome & sticky header */
+.bankai-seo-root .bk-modal-backdrop,
+#bankai-seo-sidebar .bk-modal-backdrop,
+.bk-modal-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 1000500 !important;
+    background: rgba(15, 23, 42, 0.55) !important;
+    backdrop-filter: blur(8px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px;
+}
+.bankai-seo-root .bk-modal-backdrop.is-open,
+#bankai-seo-sidebar .bk-modal-backdrop.is-open,
+.bk-modal-backdrop.is-open,
+.bk-modal-backdrop[style*="display: flex"],
+.bk-modal-backdrop[x-show] {
+    /* Alpine toggles display; is-open class forces flex */
+}
+.bankai-seo-root .bk-modal-backdrop.is-open,
+.bk-modal-backdrop.is-open {
+    display: flex !important;
+}
+
+/* Beautiful AI modal panel */
+.bankai-seo-root .bk-modal.bk-modal-ai-flow,
+.bk-modal.bk-modal-ai-flow {
+    width: min(920px, calc(100vw - 32px)) !important;
+    max-height: min(90vh, 860px) !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(147, 197, 114, 0.35) !important;
+    box-shadow:
+        0 0 0 1px rgba(255,255,255,0.4) inset,
+        0 24px 64px rgba(15, 23, 42, 0.28),
+        0 8px 24px rgba(107, 155, 76, 0.12) !important;
+    overflow: hidden !important;
+    background: #fff !important;
+    z-index: 1000501 !important;
+    position: relative;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-modal-head,
+.bk-modal-ai-flow .bk-modal-head {
+    background: linear-gradient(135deg, #F2F9EC 0%, #E8F5E1 50%, #F0FDF4 100%) !important;
+    border-bottom: 1px solid rgba(147, 197, 114, 0.3) !important;
+    padding: 14px 18px !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-modal-head strong,
+.bk-modal-ai-flow .bk-modal-head strong {
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    color: #2f4a22 !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-modal-phase-label,
+.bk-modal-ai-flow .bk-modal-phase-label {
+    color: #6B9B4C !important;
+    font-weight: 650 !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-modal-body {
+    padding: 16px 18px 18px !important;
+    background: linear-gradient(180deg, #fafdfa 0%, #ffffff 40%) !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-btn-primary,
+.bk-modal-ai-flow .bk-btn-primary {
+    background: linear-gradient(135deg, #93C572, #6B9B4C) !important;
+    border-color: #6B9B4C !important;
+    color: #fff !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(107, 155, 76, 0.3) !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-ai-hero-banner {
+    border-radius: 14px !important;
+    border-color: rgba(147, 197, 114, 0.4) !important;
+    background: linear-gradient(135deg, #F2F9EC, #F8FAFC) !important;
+}
+/* Close button polish */
+.bankai-seo-root .bk-modal-ai-flow .bk-icon-btn,
+.bk-modal-ai-flow .bk-icon-btn {
+    border-radius: 10px !important;
+    background: rgba(255,255,255,0.8) !important;
+    border: 1px solid rgba(147, 197, 114, 0.35) !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-icon-btn:hover {
+    background: #fff !important;
+    border-color: #6B9B4C !important;
+}
+
+
+/* ---- AI modal: active professional visuals ---- */
+.bankai-seo-root .bk-modal-ai-flow .bk-ai-step span,
+.bk-modal-ai-flow .bk-ai-step span {
+  opacity: 1 !important;
+  filter: none !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-ai-step.is-active span {
+  background: linear-gradient(135deg, #4A6334, #374726) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 3px rgba(169, 190, 126, 0.35) !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-ai-step.is-done span {
+  background: #3B4D28 !important;
+  color: #EAF3E0 !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-ai-step em {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-ai-step.is-active em {
+  color: #3B4D28 !important;
+  font-weight: 700 !important;
+}
+.bankai-seo-root .bk-modal-progress .bk-bar,
+.bk-modal-ai-flow .bk-modal-progress .bk-bar {
+  background: #e2e8f0 !important;
+  height: 8px !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+.bankai-seo-root .bk-modal-progress .bk-bar > i,
+.bk-modal-ai-flow .bk-modal-progress .bk-bar > i {
+  background: linear-gradient(90deg, #6B9B4C, #3B4D28) !important;
+  height: 100% !important;
+  display: block !important;
+  border-radius: 999px !important;
+  transition: width .35s ease !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-ai-run-item,
+.bk-modal-ai-flow .bk-ai-run-item,
+.bankai-seo-root .bk-modal-ai-flow [class*="checklist"] li {
+  opacity: 1 !important;
+  filter: none !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-ai-img-style {
+  opacity: 1 !important;
+  border: 1.5px solid #d1d5db !important;
+  background: #fff !important;
+  color: #334155 !important;
+  border-radius: 10px !important;
+  padding: 8px 10px !important;
+  font-weight: 650 !important;
+  transition: all .18s ease !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-ai-img-style.is-on {
+  border-color: #4A6334 !important;
+  background: linear-gradient(135deg, #F2F9EC, #E8F5E1) !important;
+  color: #2A3820 !important;
+  box-shadow: 0 0 0 2px rgba(74, 99, 52, 0.2) !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-action-card,
+.bankai-seo-root .bk-modal-ai-flow .bk-ai-hero-banner {
+  opacity: 1 !important;
+  filter: none !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #fff !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-alert,
+.bankai-seo-root .bk-modal-ai-flow .bk-warn-box,
+.bk-modal-ai-flow .bk-ai-note {
+  opacity: 1 !important;
+  background: #fffbeb !important;
+  border: 1px solid #fde68a !important;
+  color: #92400e !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-btn-primary {
+  opacity: 1 !important;
+  filter: none !important;
+}
+.bankai-seo-root .bk-modal-ai-flow .bk-btn-primary:disabled {
+  opacity: 0.55 !important;
+}
+
+
+/* ========== Bankai AI modal — brand palette full UI ========== */
+.bk-modal-backdrop.is-open {
+  display: flex !important;
+  background: rgba(62, 92, 73, 0.45) !important;
+  backdrop-filter: blur(10px) !important;
+}
+.bk-modal.bk-modal-ai-flow {
+  width: min(920px, calc(100vw - 28px)) !important;
+  max-height: min(90vh, 880px) !important;
+  background: #F8FAF6 !important;
+  border: 1px solid #DFE9E3 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 28px 80px rgba(61, 92, 74, 0.28) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.bk-modal-ai-flow .bk-modal-head {
+  background: linear-gradient(135deg, #E6EEE2 0%, #F8FAF6 100%) !important;
+  border-bottom: 1px solid #DFE9E3 !important;
+  padding: 14px 18px !important;
+}
+.bk-modal-ai-flow .bk-modal-head strong {
+  color: #3E5C49 !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+}
+.bk-modal-ai-flow .bk-modal-phase-label {
+  color: #BC9851 !important;
+  font-weight: 700 !important;
+}
+.bk-modal-ai-flow .bk-modal-body {
+  background: #F8FAF6 !important;
+  padding: 16px 18px 20px !important;
+  overflow-y: auto !important;
+  flex: 1 !important;
+  color: #4B6651 !important;
+}
+
+/* Stepper */
+.bk-modal-ai-flow .bk-ai-stepper {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 12px 16px !important;
+  background: #FFFFFF !important;
+  border-bottom: 1px solid #DFE9E3 !important;
+}
+.bk-modal-ai-flow .bk-ai-step span {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  background: #E6EEE2 !important;
+  color: #4B6651 !important;
+  opacity: 1 !important;
+}
+.bk-modal-ai-flow .bk-ai-step em {
+  font-style: normal !important;
+  font-size: 11px !important;
+  color: #4B6651 !important;
+  font-weight: 650 !important;
+  opacity: 1 !important;
+}
+.bk-modal-ai-flow .bk-ai-step.is-active span {
+  background: linear-gradient(135deg, #7AB681, #3D5C4A) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 3px rgba(122, 182, 129, 0.35) !important;
+}
+.bk-modal-ai-flow .bk-ai-step.is-active em { color: #3E5C49 !important; font-weight: 800 !important; }
+.bk-modal-ai-flow .bk-ai-step.is-done span {
+  background: #7AB681 !important;
+  color: #fff !important;
+}
+.bk-modal-ai-flow .bk-ai-step-line {
+  width: 36px !important;
+  height: 3px !important;
+  background: #DFE9E3 !important;
+  border-radius: 2px !important;
+}
+.bk-modal-ai-flow .bk-ai-step-line.is-on {
+  background: linear-gradient(90deg, #7AB681, #CFA85C) !important;
+}
+
+/* Running progress */
+.bk-modal-ai-flow .bk-ai-progress-ring-wrap {
+  background: #FFFFFF !important;
+  border: 1px solid #DFE9E3 !important;
+  border-radius: 16px !important;
+  padding: 18px 16px !important;
+  margin-bottom: 14px !important;
+  box-shadow: 0 4px 16px rgba(61, 92, 74, 0.06) !important;
+  text-align: center !important;
+}
+.bk-modal-ai-flow .bk-ai-progress-pct {
+  font-size: 28px !important;
+  font-weight: 800 !important;
+  color: #3E5C49 !important;
+  margin-bottom: 10px !important;
+  letter-spacing: -0.02em !important;
+}
+.bk-modal-ai-flow .bk-ai-progress-track {
+  height: 10px !important;
+  border-radius: 999px !important;
+  background: #E6EEE2 !important;
+  overflow: hidden !important;
+  margin: 0 auto 12px !important;
+  max-width: 420px !important;
+}
+.bk-modal-ai-flow .bk-ai-progress-fill {
+  height: 100% !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, #7AB681 0%, #3D5C4A 70%, #CFA85C 100%) !important;
+  transition: width .4s ease !important;
+  min-width: 2px !important;
+}
+.bk-modal-ai-flow .bk-ai-progress-step {
+  margin: 0 !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  color: #4B6651 !important;
+}
+
+/* Live checklist */
+.bk-modal-ai-flow .bk-ai-live-checklist {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  background: #FFFFFF !important;
+  border: 1px solid #DFE9E3 !important;
+  border-radius: 14px !important;
+  padding: 10px !important;
+}
+.bk-modal-ai-flow .bk-ai-live-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  background: #F8FAF6 !important;
+  border: 1px solid #E6EEE2 !important;
+  color: #4B6651 !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+.bk-modal-ai-flow .bk-ai-live-item.st-success,
+.bk-modal-ai-flow .bk-ai-live-item.st-done {
+  background: rgba(122, 182, 129, 0.15) !important;
+  border-color: rgba(122, 182, 129, 0.45) !important;
+  color: #3D5C4A !important;
+}
+.bk-modal-ai-flow .bk-ai-live-item.st-loading {
+  background: rgba(207, 168, 92, 0.12) !important;
+  border-color: rgba(207, 168, 92, 0.4) !important;
+  color: #3E5C49 !important;
+}
+.bk-modal-ai-flow .bk-ai-live-item.st-error {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #9f1239 !important;
+}
+.bk-modal-ai-flow .bk-ai-live-dot {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  background: #E6EEE2 !important;
+  color: #3D5C4A !important;
+  flex-shrink: 0 !important;
+}
+.bk-modal-ai-flow .bk-ai-live-item.st-success .bk-ai-live-dot,
+.bk-modal-ai-flow .bk-ai-live-item.st-done .bk-ai-live-dot {
+  background: #7AB681 !important;
+  color: #fff !important;
+}
+.bk-modal-ai-flow .bk-ai-live-item.st-loading .bk-ai-live-dot {
+  background: #CFA85C !important;
+  color: #fff !important;
+}
+.bk-modal-ai-flow .bk-ai-live-label {
+  flex: 1 !important;
+  text-align: right !important;
+  color: inherit !important;
+}
+.bk-modal-ai-flow .bk-ai-live-status {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #BC9851 !important;
+}
+.bk-modal-ai-flow .bk-ai-live-item.st-success .bk-ai-live-status,
+.bk-modal-ai-flow .bk-ai-live-item.st-done .bk-ai-live-status {
+  color: #3D5C4A !important;
+}
+.bk-modal-ai-flow .bk-ai-dot-empty {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background: #DFE9E3 !important;
+  display: block !important;
+}
+
+/* Setup cards / plan rows */
+.bk-modal-ai-flow .bk-ai-col-integrated,
+.bk-modal-ai-flow .bk-ai-plan-card {
+  background: #FFFFFF !important;
+  border: 1px solid #DFE9E3 !important;
+  border-radius: 14px !important;
+}
+.bk-modal-ai-flow .bk-ai-plan-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+  background: #F8FAF6 !important;
+  color: #4B6651 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+.bk-modal-ai-flow .bk-ai-plan-num {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  background: #3D5C4A !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+}
+.bk-modal-ai-flow .bk-btn-primary {
+  background: linear-gradient(135deg, #7AB681, #3D5C4A) !important;
+  border: none !important;
+  color: #fff !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px rgba(61, 92, 74, 0.25) !important;
+}
+.bk-modal-ai-flow .bk-ai-img-style {
+  border: 1.5px solid #DFE9E3 !important;
+  background: #fff !important;
+  color: #4B6651 !important;
+  border-radius: 10px !important;
+  opacity: 1 !important;
+}
+.bk-modal-ai-flow .bk-ai-img-style.is-on {
+  border-color: #3D5C4A !important;
+  background: linear-gradient(135deg, #F8FAF6, #E6EEE2) !important;
+  color: #3E5C49 !important;
+  box-shadow: 0 0 0 2px rgba(122, 182, 129, 0.25) !important;
+}
+
+/* Review */
+.bk-modal-ai-flow .bk-ai-review-banner {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 12px 14px !important;
+  border-radius: 12px !important;
+  background: rgba(122, 182, 129, 0.18) !important;
+  border: 1px solid rgba(122, 182, 129, 0.45) !important;
+  color: #3D5C4A !important;
+  font-weight: 700 !important;
+  margin-bottom: 12px !important;
+}
+.bk-modal-ai-flow .bk-ai-result-card {
+  background: #FFFFFF !important;
+  border: 1px solid #DFE9E3 !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  margin-bottom: 10px !important;
+}
+.bk-modal-ai-flow .bk-ai-result-label {
+  color: #3E5C49 !important;
+  font-weight: 800 !important;
+  font-size: 12px !important;
+  margin-bottom: 8px !important;
+}
+.bk-modal-ai-flow .bk-chip {
+  background: #E6EEE2 !important;
+  color: #3D5C4A !important;
+  border-radius: 999px !important;
+  padding: 4px 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+.bk-modal-ai-flow .bk-chip.is-primary {
+  background: #3D5C4A !important;
+  color: #fff !important;
+}
+.bk-modal-ai-flow .bk-ai-edit-area {
+  width: 100% !important;
+  border: 1px solid #DFE9E3 !important;
+  border-radius: 10px !important;
+  padding: 10px !important;
+  color: #4B6651 !important;
+  background: #F8FAF6 !important;
+  font-size: 12.5px !important;
+}
+.bk-modal-ai-flow .bk-ai-mini-link {
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+  background: #F8FAF6 !important;
+  border: 1px solid #E6EEE2 !important;
+  margin-bottom: 6px !important;
+}
+.bk-modal-ai-flow .bk-ai-mini-link strong {
+  color: #3E5C49 !important;
+  display: block !important;
+  font-size: 12px !important;
+}
+.bk-modal-ai-flow .bk-ai-mini-link small {
+  color: #BC9851 !important;
+  font-size: 10.5px !important;
+}
+
+/* SEO sidebar root brand tint */
+.bankai-seo-root {
+  --c-canvas: #F8FAF6 !important;
+  --c-card: #FFFFFF !important;
+  --c-border: #DFE9E3 !important;
+  --c-fg: #4B6651 !important;
+  --c-muted: #4B6651 !important;
+  --c-green: #3D5C4A !important;
+  --c-green-s: #E6EEE2 !important;
+  background: #F8FAF6 !important;
+  color: #4B6651 !important;
+}
+.bankai-seo-root .bk-header {
+  background: linear-gradient(135deg, #E6EEE2, #F8FAF6) !important;
+  border-bottom-color: #DFE9E3 !important;
+}
+.bankai-seo-root .bk-header-text strong {
+  color: #3E5C49 !important;
+}

@@ -180,6 +180,7 @@ class Bankai_Speed_Cache
     /**
      * Ensure URL is safe from SSRF attacks (no internal/private IPs or invalid protocols).
      */
+    
     public function validate_audit_url(string $url): string
     {
         $url = trim($url);
@@ -190,27 +191,37 @@ class Bankai_Speed_Cache
             $url = 'https://' . $url;
         }
 
-        $parsed = wp_parse_url($url);
-        if (!$parsed || empty($parsed['host'])) {
+        $parts = wp_parse_url($url);
+        if (!is_array($parts) || empty($parts['host']) || isset($parts['user']) || isset($parts['pass'])) {
             return '';
         }
 
-        $host = strtolower($parsed['host']);
-
-        // Block localhost and loopback
-        if ($host === 'localhost' || $host === '127.0.0.1' || $host === '::1') {
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            return '';
+        }
+        $host = trim(strtolower((string) $parts['host']), '[]');
+        if ($host === '' || $host === 'localhost' || str_ends_with($host, '.localhost') ||
+            str_ends_with($host, '.local') || str_ends_with($host, '.internal')) {
             return '';
         }
 
-        // Resolve IP and check for private/reserved ranges
-        $ip = gethostbyname($host);
-        if (filter_var($ip, FILTER_VALIDATE_IP)) {
-            if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                return '';
-            }
+        if (isset($parts['port']) && !in_array((int) $parts['port'], [80, 443], true)) {
+            return '';
         }
 
-        return esc_url_raw($url);
+        // Reject literal private/reserved IPs (IPv4 and IPv6).
+        if (filter_var($host, FILTER_VALIDATE_IP) &&
+            !filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return '';
+        }
+
+        // WordPress validates DNS-resolved addresses and rejects unsafe destinations.
+        $validated = esc_url_raw($url, ['http', 'https']);
+        if ($validated === '' || !wp_http_validate_url($validated)) {
+            return '';
+        }
+        return $validated;
     }
 
     public function handle_run_performance_test(): void
@@ -347,153 +358,125 @@ class Bankai_Speed_Cache
         ];
     }
 
+    
     private function run_local_inspection_audit(string $url, string $strategy): array
     {
-        $start_req = microtime(true);
-        $resp = wp_remote_get($url, ['timeout' => 12, 'sslverify' => false, 'user-agent' => 'BankaiPerformanceAuditor/1.0']);
-        $ttfb_ms = (int) round((microtime(true) - $start_req) * 1000);
+        $start = microtime(true);
+        $response = wp_safe_remote_get($url, [
+            'timeout'             => 15,
+            'redirection'         => 3,
+            'sslverify'           => true,
+            'limit_response_size' => 2 * MB_IN_BYTES,
+            'user-agent'          => 'BankaiPerformanceAuditor/2.0; ' . home_url('/'),
+        ]);
+        $elapsed_ms = (int) round((microtime(true) - $start) * 1000);
 
-        $code = is_wp_error($resp) ? 0 : (int) wp_remote_retrieve_response_code($resp);
-        $html = is_wp_error($resp) ? '' : (string) wp_remote_retrieve_body($resp);
-
+        $is_error = is_wp_error($response);
+        $status = $is_error ? 0 : (int) wp_remote_retrieve_response_code($response);
+        $html = $is_error ? '' : (string) wp_remote_retrieve_body($response);
         $opportunities = [];
         $diagnostics = [];
-        $issues_count = 0;
 
-        // Check 1: TTFB
-        if ($ttfb_ms > 600) {
-            $opportunities[] = [
-                'id'          => 'server-response-time',
-                'title'       => __('کاهش زمان پاسخ‌دهی اولیه سرور (TTFB)', 'bankai-core'),
-                'description' => sprintf(__('پاسخ سرور %d میلی‌ثانیه طول کشید. فعال‌سازی کش صفحه (Page Cache) می‌تواند این زمان را به زیر ۲۰۰ میلی‌ثانیه برساند.', 'bankai-core'), $ttfb_ms),
-                'displayValue'=> $ttfb_ms . ' ms',
-                'score'       => max(0.1, round(1 - ($ttfb_ms / 2000), 2)),
-                'fixable'     => true,
-                'action_id'   => 'page_caching',
+        if ($is_error) {
+            $diagnostics[] = [
+                'id' => 'request-failed',
+                'title' => __('دریافت صفحه ناموفق بود', 'bankai-core'),
+                'description' => $response->get_error_message(),
+                'displayValue' => 'HTTP request failed',
+                'score' => null,
+                'fixable' => false,
             ];
-            $issues_count++;
-        }
-
-        if ($html !== '') {
-            // Check 2: Images missing width/height
-            preg_match_all('/<img\b([^>]*?)>/i', $html, $img_matches);
-            $missing_dims = 0;
-            if (!empty($img_matches[1])) {
-                foreach ($img_matches[1] as $img_attr) {
-                    if (!preg_match('/\swidth\s*=/i', $img_attr) || !preg_match('/\sheight\s*=/i', $img_attr)) {
-                        $missing_dims++;
-                    }
-                }
-            }
-            if ($missing_dims > 0) {
+        } else {
+            if ($elapsed_ms > 600) {
                 $opportunities[] = [
-                    'id'          => 'unsized-images',
-                    'title'       => __('افزودن ابعاد صریح (Width & Height) به تصاویر برای جلوگیری از پرش چیدمان (CLS)', 'bankai-core'),
-                    'description' => sprintf(__('تعداد %d تصویر بدون ابعاد مشخص یافت شد که باعث تغییر چیدمان هنگام بارگذاری می‌شوند.', 'bankai-core'), $missing_dims),
-                    'displayValue'=> sprintf(__('%d تصویر بدون ابعاد', 'bankai-core'), $missing_dims),
-                    'score'       => max(0.2, round(1 - ($missing_dims * 0.1), 2)),
-                    'fixable'     => true,
-                    'action_id'   => 'cls_images',
+                    'id' => 'server-response-time',
+                    'title' => __('بررسی زمان پاسخ اولیه سرور (TTFB)', 'bankai-core'),
+                    'description' => sprintf(__('درخواست از سمت سرور افزونه در %d میلی‌ثانیه کامل شد. این اندازه‌گیری جایگزین TTFB آزمایشگاه یا داده میدانی PSI نیست.', 'bankai-core'), $elapsed_ms),
+                    'displayValue' => $elapsed_ms . ' ms (server-side request duration)',
+                    'score' => null,
+                    'fixable' => false,
+                    'action_id' => 'page_caching',
                 ];
-                $issues_count++;
             }
 
-            // Check 3: Render-blocking CSS
-            preg_match_all('/<link\b([^>]*?)rel=["\']stylesheet["\']([^>]*?)>/i', $html, $css_matches);
-            $blocking_css = 0;
-            if (!empty($css_matches[0])) {
-                foreach ($css_matches[0] as $css_tag) {
-                    if (!str_contains($css_tag, 'media=\'print\'') && !str_contains($css_tag, 'media="print"') && !str_contains($css_tag, 'onload=')) {
-                        $blocking_css++;
-                    }
-                }
-            }
-            if ($blocking_css > 2) {
-                $opportunities[] = [
-                    'id'          => 'render-blocking-resources',
-                    'title'       => __('حذف یا بارگذاری غیرهمزمان فایل‌های CSS مسدودکننده رندر', 'bankai-core'),
-                    'description' => sprintf(__('تعداد %d استایل‌شیت مسدودکننده رندر شناسایی شد. بارگذاری غیرهمزمان استایل‌های غیرحیاتی رندر اولیه را تسریع می‌کند.', 'bankai-core'), $blocking_css),
-                    'displayValue'=> sprintf(__('%d فایل CSS مسدودکننده', 'bankai-core'), $blocking_css),
-                    'score'       => max(0.3, round(1 - ($blocking_css * 0.08), 2)),
-                    'fixable'     => true,
-                    'action_id'   => 'async_css',
-                ];
-                $issues_count++;
-            }
-
-            // Check 4: Un-deferred Scripts
-            preg_match_all('/<script\b([^>]*?)src=["\']([^"\']+)["\']([^>]*?)>/i', $html, $js_matches);
-            $un_deferred_js = 0;
-            if (!empty($js_matches[0])) {
-                foreach ($js_matches[0] as $js_tag) {
-                    if (!str_contains($js_tag, ' defer') && !str_contains($js_tag, ' async') && !str_contains($js_tag, 'type="text/bankai-delay"')) {
-                        $un_deferred_js++;
-                    }
-                }
-            }
-            if ($un_deferred_js > 3) {
-                $opportunities[] = [
-                    'id'          => 'defer-unneeded-js',
-                    'title'       => __('بهتعویق‌انداختن اجرای اسکریپت‌های JavaScript غیرضروری (Defer / Delay)', 'bankai-core'),
-                    'description' => sprintf(__('تعداد %d اسکریپت بدون صفت defer یا async شناسایی شد.', 'bankai-core'), $un_deferred_js),
-                    'displayValue'=> sprintf(__('%d اسکریپت عادی', 'bankai-core'), $un_deferred_js),
-                    'score'       => max(0.4, round(1 - ($un_deferred_js * 0.05), 2)),
-                    'fixable'     => true,
-                    'action_id'   => 'defer_js',
-                ];
-                $issues_count++;
-            }
-
-            // Check 5: Font display
-            if (str_contains($html, 'fonts.googleapis.com') && !str_contains($html, 'display=swap')) {
+            if ($status < 200 || $status >= 300) {
                 $diagnostics[] = [
-                    'id'          => 'font-display',
-                    'title'       => __('اطمینان از قابلیت نمایش متن در زمان بارگذاری فونت (font-display: swap)', 'bankai-core'),
-                    'description' => __('فونت‌های گوگل بدون پارامتر display=swap بارگذاری می‌شوند.', 'bankai-core'),
-                    'displayValue'=> 'font-display: swap',
-                    'score'       => 0.5,
-                    'fixable'     => true,
-                    'action_id'   => 'font_display',
+                    'id' => 'http-status',
+                    'title' => __('وضعیت پاسخ HTTP', 'bankai-core'),
+                    'description' => sprintf(__('صفحه با کد HTTP %d پاسخ داده است.', 'bankai-core'), $status),
+                    'displayValue' => 'HTTP ' . $status,
+                    'score' => null,
+                    'fixable' => false,
                 ];
-                $issues_count++;
+            }
+
+            if ($html !== '') {
+                preg_match_all('/<img\b([^>]*)>/i', $html, $images);
+                $missing_dimensions = 0;
+                foreach (($images[1] ?? []) as $attributes) {
+                    if (!preg_match('/\bwidth\s*=/i', $attributes) || !preg_match('/\bheight\s*=/i', $attributes)) {
+                        $missing_dimensions++;
+                    }
+                }
+                if ($missing_dimensions > 0) {
+                    $opportunities[] = [
+                        'id' => 'unsized-images',
+                        'title' => __('تصاویر فاقد ابعاد صریح', 'bankai-core'),
+                        'description' => sprintf(__('%d تصویر فاقد width یا height است. این مورد می‌تواند به CLS منجر شود؛ بررسی دستی نسبت ابعاد نیز لازم است.', 'bankai-core'), $missing_dimensions),
+                        'displayValue' => $missing_dimensions . ' images',
+                        'score' => null,
+                        'fixable' => false,
+                        'action_id' => 'cls_images',
+                    ];
+                }
+
+                preg_match_all('/<link\b[^>]*rel=["\']stylesheet["\'][^>]*>/i', $html, $styles);
+                $diagnostics[] = [
+                    'id' => 'stylesheet-count',
+                    'title' => __('تعداد stylesheetهای HTML', 'bankai-core'),
+                    'description' => __('این شمارش ایستا است و به‌تنهایی ثابت نمی‌کند فایل‌ها render-blocking هستند.', 'bankai-core'),
+                    'displayValue' => (string) count($styles[0] ?? []),
+                    'score' => null,
+                    'fixable' => false,
+                ];
+
+                preg_match_all('/<script\b[^>]*\bsrc=["\'][^"\']+["\'][^>]*>/i', $html, $scripts);
+                $not_deferred = 0;
+                foreach (($scripts[0] ?? []) as $tag) {
+                    if (!preg_match('/\b(?:defer|async)\b/i', $tag) && !preg_match('/\btype=["\']module["\']/i', $tag)) {
+                        $not_deferred++;
+                    }
+                }
+                $diagnostics[] = [
+                    'id' => 'script-loading-inspection',
+                    'title' => __('اسکریپت‌های خارجی بدون defer/async', 'bankai-core'),
+                    'description' => __('این بررسی صرفاً ساختار تگ‌ها را می‌سنجد؛ ترتیب اجرا و وابستگی‌ها باید قبل از تغییر بررسی شود.', 'bankai-core'),
+                    'displayValue' => (string) $not_deferred,
+                    'score' => null,
+                    'fixable' => false,
+                ];
             }
         }
-
-        // Compute scores
-        $penalty = $issues_count * 8 + ($ttfb_ms > 300 ? min(20, ($ttfb_ms - 300) / 30) : 0);
-        $perf_score = (int) max(45, min(100, round(100 - $penalty)));
-        if ($strategy === 'mobile') {
-            $perf_score = (int) max(35, $perf_score - 8);
-        }
-
-        $fcp_val = sprintf('%.1fs', max(0.4, round($ttfb_ms / 1000 + 0.3, 1)));
-        $lcp_val = sprintf('%.1fs', max(0.7, round($ttfb_ms / 1000 + 0.6 + ($missing_dims * 0.1), 1)));
-        $cls_val = sprintf('%.3f', max(0.01, $missing_dims * 0.025));
-        $tbt_val = sprintf('%dms', max(10, $un_deferred_js * 18));
-        $si_val  = sprintf('%.1fs', max(0.9, round($ttfb_ms / 1000 + 0.8, 1)));
 
         return [
-            'id'           => 'local_audit_' . time() . '_' . wp_generate_password(6, false),
-            'url'          => $url,
-            'strategy'     => $strategy,
-            'timestamp'    => current_time('mysql'),
-            'engine'       => 'Bankai Local Performance Inspector',
-            'scores'       => [
-                'performance'    => $perf_score,
-                'accessibility'  => 92,
-                'best_practices' => 96,
-                'seo'            => 98,
+            'id' => 'local_audit_' . time() . '_' . wp_generate_password(6, false),
+            'url' => $url,
+            'strategy' => $strategy,
+            'timestamp' => current_time('mysql'),
+            'engine' => 'Bankai Local Structural Inspection (not Lighthouse)',
+            'measurement' => [
+                'request_duration_ms' => $elapsed_ms,
+                'http_status' => $status,
+                'response_bytes' => strlen($html),
             ],
-            'vitals'       => [
-                'fcp'   => $fcp_val,
-                'lcp'   => $lcp_val,
-                'tbt'   => $tbt_val,
-                'cls'   => $cls_val,
-                'si'    => $si_val,
-                'ttfb'  => $ttfb_ms . 'ms',
+            'scores' => null,
+            'vitals' => null,
+            'opportunities' => $opportunities,
+            'diagnostics' => $diagnostics,
+            'limitations' => [
+                __('این بررسی محلی، LCP، CLS، INP، TBT یا امتیاز Lighthouse را اندازه‌گیری نمی‌کند.', 'bankai-core'),
+                __('برای امتیاز و Core Web Vitals واقعی از Google PageSpeed Insights استفاده کنید.', 'bankai-core'),
             ],
-            'opportunities'=> $opportunities,
-            'diagnostics'  => $diagnostics,
         ];
     }
 
@@ -833,8 +816,7 @@ class Bankai_Speed_Cache
             $cfg['asset_optimization']['minify_js'] = true;
             $cfg['asset_optimization']['defer_js'] = true;
             $cfg['asset_optimization']['delay_js'] = true;
-            $cfg['asset_optimization']['remove_unused_css'] = true;
-            $actions[] = __('فعال‌سازی Minify، Defer و Delay برای فایل‌های CSS و JavaScript', 'bankai-core');
+            $actions[] = __('فعال‌سازی بهینه‌سازی محافظه‌کارانه فایل‌ها و بارگذاری اسکریپت‌ها', 'bankai-core');
         }
 
         // Fix 3: Core Web Vitals & CLS/Font-display fixes
@@ -912,7 +894,7 @@ class Bankai_Speed_Cache
 
         $count = 0;
         foreach (array_unique($urls) as $u) {
-            wp_remote_get($u, ['timeout' => 5, 'sslverify' => false, 'headers' => ['X-Bankai-Preload' => '1']]);
+            wp_safe_remote_get($u, ['timeout' => 8, 'redirection' => 3, 'sslverify' => true, 'headers' => ['X-Bankai-Preload' => '1']]);
             $count++;
         }
 
@@ -1046,112 +1028,105 @@ class Bankai_Speed_Cache
         return '';
     }
 
+    
     public static function minify_css_string(string $css): string
     {
-        if (trim($css) === '') {
-            return '';
-        }
-        $css = preg_replace('!/\*.*?\*/!s', '', $css) ?? $css;
-
-        // Preserve spaces inside calc() for + and - operator syntax requirement
-        $calc_matches = [];
-        $css = preg_replace_callback('/calc\([^)]+\)/i', static function ($m) use (&$calc_matches) {
-            $key = '___BANKAI_CALC_' . count($calc_matches) . '___';
-            $calc_matches[$key] = $m[0];
-            return $key;
-        }, $css) ?? $css;
-
-        $css = preg_replace('/\s*([{}|;:,])\s*/', '$1', $css) ?? $css;
-        $css = preg_replace('/;}/', '}', $css) ?? $css;
-        $css = preg_replace('/\s+/', ' ', $css) ?? $css;
-
-        if ($calc_matches !== []) {
-            $css = strtr($css, $calc_matches);
-        }
-
-        return trim($css);
-    }
-
-    public static function minify_js_string(string $js): string
-    {
-        if (trim($js) === '') {
+        $length = strlen($css);
+        if ($length === 0) {
             return '';
         }
 
-        $len = strlen($js);
-        $clean = '';
-        $in_string = false;
-        $string_char = '';
-        $in_multi_comment = false;
-        $in_single_comment = false;
+        $out = '';
+        $quote = '';
+        $escaped = false;
+        $pending_space = false;
+        $in_calc = 0;
 
-        for ($i = 0; $i < $len; $i++) {
-            $ch = $js[$i];
-            $next = ($i + 1 < $len) ? $js[$i + 1] : '';
+        for ($i = 0; $i < $length; $i++) {
+            $ch = $css[$i];
+            $next = ($i + 1 < $length) ? $css[$i + 1] : '';
 
-            if ($in_multi_comment) {
-                if ($ch === '*' && $next === '/') {
-                    $in_multi_comment = false;
-                    $i++;
+            if ($quote !== '') {
+                $out .= $ch;
+                if ($escaped) {
+                    $escaped = false;
+                } elseif ($ch === '\\') {
+                    $escaped = true;
+                } elseif ($ch === $quote) {
+                    $quote = '';
                 }
                 continue;
             }
 
-            if ($in_single_comment) {
-                if ($ch === "\n" || $ch === "\r") {
-                    $in_single_comment = false;
-                    $clean .= "\n";
+            if ($ch === '"' || $ch === "'") {
+                if ($pending_space && $out !== '' && !preg_match('/[\s{(:,]$/', $out)) {
+                    $out .= ' ';
                 }
-                continue;
-            }
-
-            if ($in_string) {
-                $clean .= $ch;
-                if ($ch === '\\') {
-                    if ($i + 1 < $len) {
-                        $i++;
-                        $clean .= $js[$i];
-                    }
-                } elseif ($ch === $string_char) {
-                    $in_string = false;
-                }
-                continue;
-            }
-
-            if ($ch === '"' || $ch === "'" || $ch === '`') {
-                $in_string = true;
-                $string_char = $ch;
-                $clean .= $ch;
+                $pending_space = false;
+                $quote = $ch;
+                $out .= $ch;
                 continue;
             }
 
             if ($ch === '/' && $next === '*') {
-                $in_multi_comment = true;
-                $i++;
+                $end = strpos($css, '*/', $i + 2);
+                if ($end === false) {
+                    break;
+                }
+                $comment = substr($css, $i, $end + 2 - $i);
+                if (str_starts_with($comment, '/*!')) {
+                    if ($pending_space && $out !== '' && !preg_match('/\s$/', $out)) {
+                        $out .= ' ';
+                    }
+                    $out .= $comment;
+                }
+                $i = $end + 1;
+                $pending_space = true;
                 continue;
             }
 
-            if ($ch === '/' && $next === '/') {
-                $in_single_comment = true;
-                $i++;
+            if (ctype_space($ch)) {
+                $pending_space = true;
                 continue;
             }
 
-            $clean .= $ch;
-        }
-
-        $lines = explode("\n", str_replace("\r\n", "\n", $clean));
-        $clean_lines = [];
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if ($line !== '') {
-                $clean_lines[] = $line;
+            if ($ch === '(') {
+                if (preg_match('/calc\s*$/i', $out)) {
+                    $in_calc++;
+                }
+            } elseif ($ch === ')' && $in_calc > 0) {
+                $in_calc--;
             }
+
+            if ($pending_space) {
+                $last = ($out !== '') ? substr($out, -1) : '';
+                $punctuation = '{}:;,()';
+                $is_calc_operator = ($in_calc > 0 && ($ch === '+' || $ch === '-'));
+                $after_calc_operator = ($in_calc > 0 && ($last === '+' || $last === '-'));
+                if ($out !== '' && (
+                    $is_calc_operator ||
+                    $after_calc_operator ||
+                    (!str_contains($punctuation, $ch) && !str_contains($punctuation, $last))
+                )) {
+                    $out .= ' ';
+                }
+                $pending_space = false;
+            }
+
+            $out .= $ch;
         }
 
-        $js = implode("\n", $clean_lines);
-        $js = preg_replace('/[ \t]+/', ' ', $js) ?? $js;
-        return trim($js);
+        $out = preg_replace('/;}/', '}', $out) ?? $out;
+        return trim($out);
+    }
+
+    
+    public static function minify_js_string(string $js): string
+    {
+        // Intentionally conservative. Regex-based JS minification is unsafe for
+        // template literals, regular expressions, ASI and source-map directives.
+        // Keep source intact unless it is already distributed as a minified file.
+        return $js;
     }
 
     public function handle_rebuild_assets(): void
@@ -1170,21 +1145,16 @@ class Bankai_Speed_Cache
         ]);
     }
 
+    
     public function maybe_send_cache_headers(): void
     {
-        if (is_user_logged_in() || is_admin() || is_preview() || is_feed()) {
+        if (!$this->page_cache_can_cache() || headers_sent()) {
             return;
         }
-        if (defined('DONOTCACHEPAGE') && DONOTCACHEPAGE) {
-            return;
-        }
-        if (headers_sent()) {
-            return;
-        }
-        $ttl = (int) (function_exists('bankai_get_option') ? bankai_get_option('cache_ttl', 3600) : 3600);
-        $ttl = max(60, min($ttl, 86400));
-        header('X-Bankai-Cache: HIT-eligible');
-        header('Cache-Control: public, max-age=' . $ttl . ', s-maxage=' . $ttl . ', stale-while-revalidate=60');
+
+        $ttl = $this->page_cache_ttl();
+        header('X-Bankai-Cache: ELIGIBLE');
+        header('Cache-Control: public, max-age=0, s-maxage=' . $ttl . ', stale-while-revalidate=60');
         header('Vary: Accept-Encoding', false);
     }
 
@@ -1197,19 +1167,12 @@ class Bankai_Speed_Cache
 
         $purged = [];
 
-        if (function_exists('wp_cache_flush')) {
-            wp_cache_flush();
-            $purged[] = 'object_cache';
+        // Avoid flushing the entire Redis/Memcached object cache or deleting
+        // transients owned by unrelated plugins. Purge only Bankai's own caches.
+        if (function_exists('wp_cache_flush_group')) {
+            wp_cache_flush_group('bankai');
+            $purged[] = 'bankai_object_cache_group';
         }
-
-        global $wpdb;
-        $wpdb->query(
-            "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_%' OR option_name LIKE '_site_transient_%'"
-        );
-        $purged[] = 'transients';
-
-        flush_rewrite_rules(false);
-        $purged[] = 'rewrite';
 
         if (function_exists('rocket_clean_domain')) {
             rocket_clean_domain();
@@ -1249,6 +1212,7 @@ class Bankai_Speed_Cache
         ]);
     }
 
+    
     public function handle_optimize_database(): void
     {
         if (!current_user_can('manage_options')) {
@@ -1258,60 +1222,40 @@ class Bankai_Speed_Cache
 
         global $wpdb;
 
-        $deleted_revisions = (int) $wpdb->query(
-            "DELETE FROM {$wpdb->posts} WHERE post_type = 'revision' AND post_modified < DATE_SUB(NOW(), INTERVAL 30 DAY)"
+        // Delete only expired transient timeout rows and their matching values.
+        $deleted_transient_timeouts = (int) $wpdb->query(
+            "DELETE FROM {$wpdb->options}
+             WHERE option_name LIKE '\_transient\_timeout\_%'
+               AND CAST(option_value AS UNSIGNED) < UNIX_TIMESTAMP()"
         );
 
         $deleted_transients = (int) $wpdb->query(
-            "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_%' AND option_value < UNIX_TIMESTAMP()"
-        );
-
-        $deleted_drafts = (int) $wpdb->query(
-            "DELETE FROM {$wpdb->posts} WHERE post_status = 'auto-draft' AND post_modified < DATE_SUB(NOW(), INTERVAL 7 DAY)"
-        );
-
-        $deleted_trash = (int) $wpdb->query(
-            "DELETE FROM {$wpdb->posts} WHERE post_status = 'trash' AND post_modified < DATE_SUB(NOW(), INTERVAL 30 DAY)"
-        );
-
-        $deleted_spam = (int) $wpdb->query(
-            "DELETE FROM {$wpdb->comments} WHERE comment_approved = 'spam'"
-        );
-
-        $deleted_trash_comments = (int) $wpdb->query(
-            "DELETE FROM {$wpdb->comments} WHERE comment_approved = 'trash'"
-        );
-
-        $deleted_orphan_meta = (int) $wpdb->query(
-            "DELETE pm FROM {$wpdb->postmeta} pm LEFT JOIN {$wpdb->posts} p ON p.ID = pm.post_id WHERE p.ID IS NULL"
-        );
-
-        $wpdb->query(
-            "DELETE a, b FROM {$wpdb->options} a
-             INNER JOIN {$wpdb->options} b ON b.option_name = CONCAT('_transient_timeout_', SUBSTRING(a.option_name, 12))
+            "DELETE a FROM {$wpdb->options} a
+             INNER JOIN {$wpdb->options} b
+               ON b.option_name = CONCAT('_transient_timeout_', SUBSTRING(a.option_name, 12))
              WHERE a.option_name LIKE '\_transient\_%'
                AND a.option_name NOT LIKE '\_transient\_timeout\_%'
-               AND b.option_value < UNIX_TIMESTAMP()"
+               AND CAST(b.option_value AS UNSIGNED) < UNIX_TIMESTAMP()"
         );
 
-        $tables = [$wpdb->posts, $wpdb->postmeta, $wpdb->options, $wpdb->comments, $wpdb->commentmeta, $wpdb->terms, $wpdb->term_taxonomy, $wpdb->termmeta];
-        foreach ($tables as $table) {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            $wpdb->query("OPTIMIZE TABLE `{$table}`");
-        }
-
-        $revisions_left = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'revision'");
+        // Keep revisions by default: historical content may be important.
+        // Do not delete comments, trash, orphan metadata, or run OPTIMIZE TABLE
+        // automatically because these operations are destructive/locking.
+        $revisions_left = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'revision'"
+        );
 
         wp_send_json_success([
-            'message'            => __('پایگاه داده با موفقیت بهینه‌سازی شد.', 'bankai-core'),
-            'deleted_revisions'  => $deleted_revisions,
-            'cleaned_transients' => $deleted_transients,
-            'deleted_drafts'     => $deleted_drafts,
-            'deleted_trash'      => $deleted_trash,
-            'deleted_spam'       => $deleted_spam,
-            'deleted_trash_comments' => $deleted_trash_comments,
-            'deleted_orphan_meta'=> $deleted_orphan_meta,
-            'revisions_left'     => $revisions_left,
+            'message' => __('پاک‌سازی ایمن Transientهای منقضی‌شده انجام شد. داده‌های محتوایی حذف نشدند.', 'bankai-core'),
+            'deleted_revisions' => 0,
+            'cleaned_transients' => $deleted_transients + $deleted_transient_timeouts,
+            'deleted_drafts' => 0,
+            'deleted_trash' => 0,
+            'deleted_spam' => 0,
+            'deleted_trash_comments' => 0,
+            'deleted_orphan_meta' => 0,
+            'revisions_left' => $revisions_left,
+            'maintenance_note' => __('برای عملیات سنگین پایگاه داده، ابتدا نسخه پشتیبان بگیرید و از ابزار مدیریت دیتابیس/هاست استفاده کنید.', 'bankai-core'),
         ]);
     }
 
@@ -1816,14 +1760,15 @@ class Bankai_Speed_Cache
             . '</style>' . "\n";
     }
 
+    
     public function speed_image_attributes(array $attr, $attachment = null, $size = null): array
     {
         if (is_admin()) {
             return $attr;
         }
-        if (empty($attr['loading'])) {
-            $attr['loading'] = 'lazy';
-        }
+
+        // WordPress 6.3+ has native LCP-aware loading optimization. Do not
+        // overwrite its loading/fetchpriority decisions.
         if (empty($attr['decoding'])) {
             $attr['decoding'] = 'async';
         }
@@ -2130,12 +2075,16 @@ NGX;
         return $dir;
     }
 
+    
     private function page_cache_key(): string
     {
-        $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/';
-        $host = isset($_SERVER['HTTP_HOST']) ? (string) $_SERVER['HTTP_HOST'] : '';
+        $uri = isset($_SERVER['REQUEST_URI']) ? (string) wp_unslash($_SERVER['REQUEST_URI']) : '/';
+        $host = isset($_SERVER['HTTP_HOST']) ? strtolower((string) wp_unslash($_SERVER['HTTP_HOST'])) : (string) wp_parse_url(home_url('/'), PHP_URL_HOST);
+        $host = preg_replace('/[^a-z0-9.\-:\[\]]/i', '', $host);
         $scheme = is_ssl() ? 'https' : 'http';
-        return md5($scheme . '://' . $host . $uri);
+
+        // The full query string is part of the key, so query variants cannot share HTML.
+        return hash('sha256', $scheme . '://' . $host . $uri . '|v2');
     }
 
     private function page_cache_file(): string
@@ -2155,75 +2104,119 @@ NGX;
         return max(60, min($ttl, 604800));
     }
 
+    
     private function page_cache_is_excluded(): bool
     {
-        $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/';
-        $raw = (string) (function_exists('bankai_get_option') ? bankai_get_option('cache_exclusions', '') : '');
-        $lines = preg_split('/[\r\n]+/', $raw) ?: [];
-        foreach ($lines as $line) {
+        $uri = isset($_SERVER['REQUEST_URI']) ? (string) wp_unslash($_SERVER['REQUEST_URI']) : '/';
+        $path = (string) wp_parse_url($uri, PHP_URL_PATH);
+        $raw = (string) (function_exists('bankai_get_option') ? bankai_get_option('cache_exclusions', '') : get_option('bankai_cache_exclusions', ''));
+
+        foreach (preg_split('/[\r\n]+/', $raw) ?: [] as $line) {
             $line = trim($line);
             if ($line === '') {
                 continue;
             }
-            $pat = '#^' . str_replace(['\*', '\?'], ['.*', '.'], preg_quote($line, '#')) . '#i';
-            if (@preg_match($pat, $uri)) {
+            $pattern = '#^' . str_replace(['\*', '\?'], ['.*', '.'], preg_quote($line, '#')) . '#i';
+            if (preg_match($pattern, $uri) === 1 || preg_match($pattern, $path) === 1) {
                 return true;
             }
         }
-        if (preg_match('#/(cart|checkout|my-account|wp-login|wp-admin)(/|$)#i', $uri)) {
+
+        // Never cache endpoints that are inherently dynamic or personalized.
+        if (preg_match('#/(?:cart|checkout|my-account|wp-login\.php|wp-admin|wp-json)(?:/|$)#i', $path)) {
             return true;
         }
+        if (isset($_GET['add-to-cart']) || isset($_GET['wc-ajax']) || isset($_GET['preview']) ||
+            isset($_GET['customize_changeset_uuid']) || isset($_GET['rest_route'])) {
+            return true;
+        }
+
+        // Bypass cache for any non-analytics cookie. This protects WooCommerce sessions,
+        // consent-dependent pages, membership plugins and custom personalization.
+        if (!empty($_COOKIE) && is_array($_COOKIE)) {
+            $safe_cookie_names = [
+                '_ga', '_gid', '_gat', '_gcl_au', '_fbp', '_fbc',
+                '_ym_uid', '_ym_d', 'hubspotutk'
+            ];
+            foreach (array_keys($_COOKIE) as $cookie_name) {
+                if (!in_array((string) $cookie_name, $safe_cookie_names, true)) {
+                    return true;
+                }
+            }
+        }
+
         return false;
     }
 
+    
     private function page_cache_can_cache(): bool
     {
         if (is_admin() || is_user_logged_in() || is_preview() || is_feed() || is_search() || is_404()) {
             return false;
         }
-        if (defined('DONOTCACHEPAGE') && DONOTCACHEPAGE) {
+        if ((defined('DONOTCACHEPAGE') && DONOTCACHEPAGE) ||
+            (defined('REST_REQUEST') && REST_REQUEST) ||
+            (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) ||
+            (defined('WP_CLI') && WP_CLI)) {
             return false;
         }
-        if (defined('REST_REQUEST') && REST_REQUEST) {
-            return false;
-        }
+
         $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper((string) $_SERVER['REQUEST_METHOD']) : 'GET';
-        if ($method !== 'GET' && $method !== 'HEAD') {
-            return false;
-        }
-        if (!empty($_GET['preview']) || !empty($_GET['customize_changeset_uuid'])) {
+        if (!in_array($method, ['GET', 'HEAD'], true)) {
             return false;
         }
         if ($this->page_cache_is_excluded()) {
             return false;
         }
+
+        // Do not cache when another plugin or application has explicitly marked
+        // the response as private/no-store.
+        foreach (headers_list() as $header) {
+            if (stripos($header, 'Cache-Control:') === 0 &&
+                preg_match('/\b(private|no-store|no-cache)\b/i', $header)) {
+                return false;
+            }
+            if (stripos($header, 'Set-Cookie:') === 0) {
+                return false;
+            }
+        }
         return true;
     }
 
+    
     public function page_cache_maybe_serve(): void
     {
         if (!$this->page_cache_can_cache()) {
             return;
         }
+
         $file = $this->page_cache_file();
-        if (!is_readable($file)) {
+        if (!is_file($file) || !is_readable($file)) {
             return;
         }
-        $mtime = filemtime($file);
-        if (!$mtime || (time() - $mtime) > $this->page_cache_ttl()) {
+
+        $mtime = (int) @filemtime($file);
+        if ($mtime <= 0 || (time() - $mtime) > $this->page_cache_ttl()) {
             @unlink($file);
             return;
         }
-        $html = (string) file_get_contents($file);
-        if ($html === '') {
+
+        $html = @file_get_contents($file);
+        if (!is_string($html) || $html === '') {
             return;
         }
+
         $this->page_cache_bump_stat('hits');
-        header('Content-Type: text/html; charset=UTF-8');
-        header('X-Bankai-Cache: HIT');
-        header('Cache-Control: public, max-age=' . $this->page_cache_ttl());
-        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-        echo $html;
+        if (!headers_sent()) {
+            header('Content-Type: text/html; charset=' . get_bloginfo('charset'));
+            header('X-Bankai-Cache: HIT');
+            // Browser cache remains revalidatable; shared caches may retain the page for TTL.
+            header('Cache-Control: public, max-age=0, s-maxage=' . $this->page_cache_ttl() . ', stale-while-revalidate=60');
+        }
+
+        if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'HEAD') {
+            echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        }
         exit;
     }
 
@@ -2239,35 +2232,62 @@ NGX;
         ob_start();
     }
 
+    
     public function page_cache_end_buffer(): void
     {
         if (!$this->page_cache_buffering) {
             return;
         }
         $this->page_cache_buffering = false;
+
         $html = ob_get_contents();
-        if ($html === false) {
-            return;
-        }
-        if (http_response_code() !== 200) {
-            return;
-        }
-        if (!is_string($html) || strlen($html) < 200) {
+        if (!is_string($html) || strlen($html) < 200 || http_response_code() !== 200) {
             return;
         }
         if (stripos($html, '<html') === false && stripos($html, '<!DOCTYPE') === false) {
             return;
         }
+        if (!$this->page_cache_can_cache()) {
+            return;
+        }
+
+        // A response that sets cookies or opts out of caching must never be stored.
+        foreach (headers_list() as $header) {
+            if (stripos($header, 'Set-Cookie:') === 0) {
+                return;
+            }
+            if (stripos($header, 'Cache-Control:') === 0 &&
+                preg_match('/\b(private|no-store|no-cache)\b/i', $header)) {
+                return;
+            }
+        }
 
         $html = apply_filters('bankai_page_cache_html', $html);
+        if (!is_string($html) || $html === '') {
+            return;
+        }
+
         $file = $this->page_cache_file();
-        $tmp = $file . '.' . getmypid() . '.tmp';
-        if (@file_put_contents($tmp, $html) !== false) {
-            @rename($tmp, $file);
-            $this->page_cache_bump_stat('misses');
-            if (!headers_sent()) {
-                header('X-Bankai-Cache: MISS');
-            }
+        $dir = dirname($file);
+        if (!is_dir($dir) && !wp_mkdir_p($dir)) {
+            return;
+        }
+
+        $tmp = $file . '.' . wp_generate_password(8, false, false) . '.tmp';
+        $written = @file_put_contents($tmp, $html, LOCK_EX);
+        if ($written === false) {
+            @unlink($tmp);
+            return;
+        }
+
+        if (!@rename($tmp, $file)) {
+            @unlink($tmp);
+            return;
+        }
+
+        $this->page_cache_bump_stat('misses');
+        if (!headers_sent()) {
+            header('X-Bankai-Cache: MISS');
         }
     }
 
@@ -2338,18 +2358,24 @@ NGX;
         }
     }
 
+    
     public function page_cache_purge_url(string $url): void
     {
-        $parsed = wp_parse_url($url);
-        $scheme = $parsed['scheme'] ?? 'http';
-        $host   = $parsed['host'] ?? '';
-        $path   = $parsed['path'] ?? '/';
-        $query  = isset($parsed['query']) ? '?' . $parsed['query'] : '';
+        $parts = wp_parse_url($url);
+        if (!is_array($parts) || empty($parts['host'])) {
+            return;
+        }
 
-        $key = md5($scheme . '://' . $host . $path . $query);
-        $sub = substr($key, 0, 2);
-        $file = self::page_cache_dir() . '/' . $sub . '/' . $key . '.html';
+        $scheme = strtolower((string) ($parts['scheme'] ?? 'http'));
+        $host = strtolower((string) $parts['host']);
+        if (!empty($parts['port'])) {
+            $host .= ':' . (int) $parts['port'];
+        }
+        $path = (string) ($parts['path'] ?? '/');
+        $query = isset($parts['query']) ? '?' . $parts['query'] : '';
+        $key = hash('sha256', $scheme . '://' . $host . $path . $query . '|v2');
 
+        $file = self::page_cache_dir() . '/' . substr($key, 0, 2) . '/' . $key . '.html';
         if (is_file($file)) {
             @unlink($file);
         }
@@ -2454,11 +2480,26 @@ NGX;
         return $out;
     }
 
+    
     public function maybe_minify_html(string $html): string
     {
-        $html = preg_replace('/<!--(?!\[if\s)(?!<!)[^\[>].*?-->/s', '', $html) ?? $html;
-        $html = preg_replace('/>\s{2,}</', '><', $html) ?? $html;
-        return $html;
+        if ($html === '' || stripos($html, '<html') === false) {
+            return $html;
+        }
+
+        // Remove ordinary HTML comments only. Preserve conditional comments,
+        // license comments, and whitespace-sensitive elements.
+        $html = preg_replace_callback('/<!--(.*?)-->/s', static function ($m) {
+            $comment = (string) $m[1];
+            if (preg_match('/^\s*(?:\[if|<!|\/?ko\b|googleoff:|googleon:)/i', $comment) ||
+                str_starts_with(trim($comment), '!')) {
+                return $m[0];
+            }
+            return '';
+        }, $html) ?? $html;
+
+        // Collapse whitespace only between tags; do not rewrite text nodes.
+        return preg_replace('/>\s{2,}</', '><', $html) ?? $html;
     }
 
     /* ------------------------------------------------------------------
@@ -2626,23 +2667,26 @@ NGX;
         return '';
     }
 
+    
     public function cwv_dequeue_unused_assets(): void
     {
         if (is_admin() || !$this->cwv_flag('unused_css_js', true)) {
             return;
         }
+
         if (!is_user_logged_in()) {
             wp_dequeue_style('dashicons');
-            wp_deregister_style('dashicons');
         }
+
         wp_dequeue_script('wp-embed');
-        if (!is_singular()) {
-            wp_dequeue_style('wp-block-library-theme');
-            wp_dequeue_style('classic-theme-styles');
-            wp_dequeue_style('global-styles');
-        }
-        if (function_exists('is_cart') && !is_cart() && !is_checkout() && !is_account_page()) {
-            wp_dequeue_script('wc-cart-fragments');
+
+        // Do not dequeue global styles, block CSS, Elementor, or WooCommerce
+        // assets heuristically. They are frequently required above the fold.
+        if (function_exists('is_cart') && function_exists('is_checkout') && function_exists('is_account_page')) {
+            if (!is_cart() && !is_checkout() && !is_account_page()) {
+                // Cart fragments can still be required by mini-cart widgets.
+                // Leave them enabled unless the site owner explicitly excludes them.
+            }
         }
     }
 
@@ -2658,7 +2702,7 @@ NGX;
             'google-analytics', 'gtag', 'googletagmanager', 'gtm',
             'facebook', 'fbevents', 'hotjar', 'clarity', 'intercom',
             'tawk', 'crisp', 'mc.yandex', 'connect.facebook',
-            'recaptcha', 'hcaptcha', 'cloudflareinsights',
+            'cloudflareinsights',
         ];
         $hit = false;
         $hay = $handle . ' ' . $src;
@@ -2694,53 +2738,31 @@ NGX;
             . 'setTimeout(go,4500);})();</script>' . "\n";
     }
 
+    
     public function cwv_async_noncritical_css(string $html, string $handle, string $href, string $media): string
     {
         if (is_admin() || !$this->cwv_flag('async_css', true)) {
             return $html;
         }
-        if (str_contains($html, 'data-bankai-css') || str_contains($html, 'data-bankai-font')) {
+
+        $cfg = $this->get_speed_cfg('cwv_lighthouse');
+        $allowed = $cfg['async_css_handles'] ?? [];
+        if (!is_array($allowed) || !$allowed || !in_array($handle, $allowed, true)) {
             return $html;
         }
-        $critical = ['theme-style', 'stylesheet', 'wp-block-library', 'global-styles', 'woocommerce-general', 'woocommerce-layout'];
-        $theme = wp_get_theme();
-        $critical[] = $theme->get_stylesheet() . '-style';
-        $critical[] = $theme->get_template() . '-style';
-        if (in_array($handle, $critical, true)) {
+
+        if (str_contains($html, 'data-bankai-css') || str_contains($html, 'data-bankai-font') ||
+            stripos($html, 'media="print"') !== false || stripos($html, "media='print'") !== false) {
             return $html;
         }
-        if (str_contains($html, "media='print'") || str_contains($html, 'media="print"')) {
-            return $html;
-        }
-        $async_needles = ['font-awesome', 'elementor', 'swiper', 'slick', 'owl', 'revslider', 'js_composer', 'contact-form', 'dashicons'];
-        $should = false;
-        foreach ($async_needles as $n) {
-            if (str_contains($handle, $n) || str_contains($href, $n)) {
-                $should = true;
-                break;
-            }
-        }
-        if (!$should) {
-            return $html;
-        }
+
+        // Explicit per-handle opt-in only. Do not infer criticality from filenames.
         $html = preg_replace(
-            "/media=['\"]all['\"]/",
-            "media='print' onload=\"this.media='all'\" data-bankai-css='async'",
+            '/\smedia=(["\'])all\1/i',
+            ' media="print" onload="this.media=\'all\'" data-bankai-css="async"',
             $html,
             1
         );
-        if (is_string($html) && !str_contains($html, 'data-bankai-css')) {
-            $html = str_replace(
-                "rel='stylesheet'",
-                "rel='stylesheet' media='print' onload=\"this.media='all'\" data-bankai-css='async'",
-                $html
-            );
-            $html = str_replace(
-                'rel="stylesheet"',
-                'rel="stylesheet" media="print" onload="this.media=\'all\'" data-bankai-css="async"',
-                $html
-            );
-        }
         return is_string($html) ? $html : '';
     }
 

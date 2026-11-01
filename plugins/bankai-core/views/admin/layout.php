@@ -143,6 +143,51 @@ $bankai_state = [
         }
         ?>
 
+
+        <!-- License lock cover: blocks entire app until RTL license is active -->
+        <div class="bk-license-cover"
+             x-show="!licenseState.active"
+             x-cloak
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="bk-license-cover-title">
+          <div class="bk-license-cover__panel">
+            <div class="bk-license-cover__icon">
+              <iconify-icon icon="solar:shield-keyhole-bold-duotone" width="48" height="48"></iconify-icon>
+            </div>
+            <h2 id="bk-license-cover-title">فعال‌سازی لایسنس Bankai Core</h2>
+            <p class="bk-license-cover__lead">
+              برای استفاده از تمام امکانات، کد خرید راست‌چین را وارد کنید.
+              ابتدا در <a href="https://www.rtl-theme.com/" target="_blank" rel="noopener">پنل راست‌چین</a>
+              از بخش دانلودها دامنه سایت را ثبت کنید.
+            </p>
+
+            <div class="bk-license-cover__status" x-show="licenseState.message" x-text="licenseState.message"></div>
+
+            <label class="bk-license-field">
+              <span>نام کاربری راست‌چین</span>
+              <input type="text" x-model="licenseForm.username" placeholder="username" autocomplete="username" :disabled="licenseBusy">
+            </label>
+            <label class="bk-license-field">
+              <span>کد خرید / کد لایسنس</span>
+              <input type="text" x-model="licenseForm.code" placeholder="کد سفارش یا کد فعال‌سازی" autocomplete="off" :disabled="licenseBusy">
+            </label>
+
+            <button type="button"
+                    class="bk-wpr-btn bk-wpr-btn--primary bk-license-cover__btn"
+                    :disabled="licenseBusy || !(licenseForm.code || '').trim()"
+                    @click="activateRtlLicense && activateRtlLicense()">
+              <span class="bk-btn-spin" x-show="licenseBusy" x-cloak></span>
+              <span x-text="licenseBusy ? 'در حال بررسی…' : 'فعال‌سازی لایسنس'"></span>
+            </button>
+
+            <ul class="bk-license-cover__meta">
+              <li>ionCube: <strong x-text="licenseState.loader ? 'نصب است' : 'نصب نیست'"></strong></li>
+              <li>فایل لایسنس: <strong x-text="licenseState.class ? 'بارگذاری شد' : 'بارگذاری نشد'"></strong></li>
+            </ul>
+          </div>
+        </div>
+
         <!-- Main Content -->
         <main id="bankai-main-content" class="bankai-main-content">
             <div class="bankai-tab-loading-overlay"

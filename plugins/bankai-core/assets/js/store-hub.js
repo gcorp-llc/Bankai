@@ -5,20 +5,32 @@
   'use strict';
 
   function nonce() {
-    return (window.bankaiAdmin && bankaiAdmin.nonce) ||
-      (window.bankaiCoreData && bankaiCoreData.nonce) || '';
+    // Must match check_ajax_referer('bankai_admin_nonce')
+    var d = window.bankaiCoreData || window.bankaiData || {};
+    return d.adminNonce || d.admin_nonce || d.nonce || '';
   }
   function ajaxUrl() {
-    return (window.bankaiAdmin && bankaiAdmin.ajaxUrl) ||
-      (window.bankaiCoreData && bankaiCoreData.ajaxUrl) ||
-      window.ajaxurl || '/wp-admin/admin-ajax.php';
+    var d = window.bankaiCoreData || window.bankaiData || {};
+    return d.ajaxUrl || d.ajax_url || window.ajaxurl || '/wp-admin/admin-ajax.php';
   }
   function toast(msg, type) {
-    if (window.bankaiAdmin && typeof bankaiAdmin.showToast === 'function') {
-      bankaiAdmin.showToast(msg, type || 'success');
-    } else if (typeof window.bankaiShowToast === 'function') {
+    if (typeof window.bankaiShowToast === 'function') {
       window.bankaiShowToast(msg, type || 'success');
+      return;
     }
+    // Alpine root may expose showToast via $root — fallback console
+    try {
+      var root = document.querySelector('[x-data]');
+      if (root && root._x_dataStack) {
+        for (var i = 0; i < root._x_dataStack.length; i++) {
+          if (typeof root._x_dataStack[i].showToast === 'function') {
+            root._x_dataStack[i].showToast(msg, type || 'success');
+            return;
+          }
+        }
+      }
+    } catch (e) {}
+    if (window.console) console.log('[Bankai Store]', type || 'info', msg);
   }
   function post(action, data) {
     var fd = new FormData();
@@ -36,17 +48,28 @@
   window.bankaiStoreHub = function () {
     return {
       loading: false,
+      coverBusy: 0,
+      report: { open: false, loading: false, data: null },
+      statsLoading: false,
+      statsError: '',
+      productsError: '',
       items: [],
-      stats: { series: [] },
+      stats: { series: [], order_series: [] },
+      period: 30,
       search: '',
       stock: 'all',
       status: 'all',
       type: 'all',
       on_sale: 'all',
+      category: 0,
+      seo_filter: 'all',
+      price_min: '',
+      price_max: '',
       orderby: 'date',
       page: 1,
       pages: 1,
       total: 0,
+      categories: [],
       wizard: {
         id: 0,
         running: false,
@@ -57,7 +80,7 @@
         bag: {},
         steps: [],
         product: null,
-        conflict: null
+        conflict: { message: '', current: null, proposed: null }
       },
       wizardFields: [],
       create: {
@@ -69,16 +92,65 @@
       init: function () {
         this.loadStats();
         this.loadProducts();
+        this.loadCategories();
+      },
+
+      setPeriod: function (p) {
+        this.period = p;
+        this.loadStats();
+      },
+
+      loadCategories: function () {
+        var self = this;
+        post('bankai_store_categories', {}).then(function (res) {
+          if (res && res.success && res.data) self.categories = res.data.items || [];
+        }).catch(function () {});
       },
 
       formatMoney: function (n) {
-        n = Number(n || 0);
+        if (n === null || n === undefined || n === '') return '—';
+        n = Number(n);
+        if (isNaN(n)) return '—';
         var c = (this.stats && this.stats.currency) || '';
-        try {
-          return (c ? c + ' ' : '') + n.toLocaleString('fa-IR');
-        } catch (e) {
-          return (c ? c + ' ' : '') + n;
+        if ((!c || c.indexOf('&') !== -1) && this.report && this.report.data && this.report.data.currency) {
+          c = this.report.data.currency;
         }
+        // Decode HTML entities like &#xfdfc; → ﷼
+        if (c && c.indexOf('&') !== -1) {
+          var ta = document.createElement('textarea');
+          ta.innerHTML = c;
+          c = ta.value;
+        }
+        try {
+          return n.toLocaleString('fa-IR') + (c ? ' ' + c : '');
+        } catch (e) {
+          return n + (c ? ' ' + c : '');
+        }
+      },
+
+      stripTags: function (html) {
+        if (!html) return '';
+        var d = document.createElement('div');
+        d.innerHTML = String(html);
+        return (d.textContent || d.innerText || '').trim();
+      },
+
+      isHtmlField: function (field) {
+        if (!field) return false;
+        var k = field.key || '';
+        return k === 'faq_html' || k === 'geo_html' || k === 'description' || k === 'schema_json'
+          || (field.value && /<[a-z][\s\S]*>/i.test(String(field.value)));
+      },
+
+      sanitizePreview: function (html) {
+        if (!html) return '<span style="color:#94a3b8">—</span>';
+        // Allow basic tags only
+        var allowed = /<(\/?)(p|br|ul|ol|li|strong|b|em|i|h[1-6]|span|div|a)(\s[^>]*)?>/gi;
+        var s = String(html);
+        // Escape then re-enable allowed via text - simpler: strip scripts
+        s = s.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+        s = s.replace(/on\w+="[^"]*"/gi, '');
+        return s;
       },
 
       barHeight: function (total) {
@@ -113,20 +185,32 @@
 
       loadStats: function () {
         var self = this;
-        post('bankai_store_stats', {}).then(function (res) {
+        self.statsLoading = true;
+        self.statsError = '';
+        post('bankai_store_stats', { period: self.period }).then(function (res) {
+          self.statsLoading = false;
           if (res && res.success && res.data) self.stats = res.data;
-        }).catch(function () {});
+          else self.statsError = (res && res.data && res.data.message) || 'خطا در دریافت آمار';
+        }).catch(function () {
+          self.statsLoading = false;
+          self.statsError = 'خطای شبکه در آمار';
+        });
       },
 
       loadProducts: function () {
         var self = this;
         self.loading = true;
+        self.productsError = '';
         post('bankai_store_products', {
           search: self.search,
           stock: self.stock,
           status: self.status,
           type: self.type,
           on_sale: self.on_sale,
+          category: self.category || 0,
+          seo_filter: self.seo_filter,
+          price_min: self.price_min,
+          price_max: self.price_max,
           orderby: self.orderby,
           page: self.page,
           per_page: 12
@@ -137,9 +221,13 @@
             self.pages = res.data.pages || 1;
             self.page = res.data.page || 1;
             self.total = res.data.total || 0;
+          } else {
+            self.productsError = (res && res.data && res.data.message) || 'خطا در دریافت محصولات';
+            toast(self.productsError, 'error');
           }
         }).catch(function () {
           self.loading = false;
+          self.productsError = 'خطای شبکه';
           toast('خطا در بارگذاری محصولات', 'error');
         });
       },
@@ -150,6 +238,10 @@
         this.status = 'all';
         this.type = 'all';
         this.on_sale = 'all';
+        this.category = 0;
+        this.seo_filter = 'all';
+        this.price_min = '';
+        this.price_max = '';
         this.orderby = 'date';
         this.page = 1;
         this.loadProducts();
@@ -163,10 +255,12 @@
         self.wizard.running = true;
         self.wizard.modal = false;
         self.wizard.bag = {};
-        self.wizard.conflict = null;
+        self.wizard.conflict = { message: '', current: null, proposed: null };
         self.wizardFields = [];
         var steps = [
           { id: 'meta', label: 'تولید متا تگ‌ها', status: 'pending' },
+          { id: 'content', label: 'توضیحات محصول', status: 'pending' },
+          { id: 'taxonomies', label: 'دسته، برچسب و کلمات کلیدی', status: 'pending' },
           { id: 'schema', label: 'اسکیمای محصول', status: 'pending' },
           { id: 'aeo', label: 'AEO / FAQ', status: 'pending' },
           { id: 'geo', label: 'GEO', status: 'pending' },
@@ -225,6 +319,26 @@
           if (meta.focus_keyword) {
             fields.push({ key: 'focus_keyword', step: 'meta', label: 'کلمه کلیدی اصلی', value: meta.focus_keyword || '', current: cur.focus_keyword || '', selected: true, skipped: false, note: '' });
           }
+        }
+        var content = bag.content || {};
+        if (content.short_description) {
+          fields.push({ key: 'short_description', step: 'content', label: 'توضیح کوتاه', value: content.short_description || '', current: cur.short_description || '', selected: true, skipped: false, note: '' });
+        }
+        if (content.description) {
+          fields.push({ key: 'description', step: 'content', label: 'توضیحات کامل', value: content.description || '', current: cur.description || '', selected: true, skipped: false, note: '' });
+        }
+        if (content.slug) {
+          fields.push({ key: 'slug', step: 'content', label: 'Slug پیشنهادی', value: content.slug || '', current: '', selected: false, skipped: false, note: 'اختیاری — در صورت تأیید روی محصول اعمال می‌شود' });
+        }
+        var tax = bag.taxonomies || {};
+        if (tax.categories) {
+          fields.push({ key: 'categories', step: 'taxonomies', label: 'دسته‌بندی‌ها', value: tax.categories || '', current: tax.current_categories || cur.categories || '', selected: true, skipped: false, note: '' });
+        }
+        if (tax.tags) {
+          fields.push({ key: 'tags', step: 'taxonomies', label: 'برچسب‌ها', value: tax.tags || '', current: tax.current_tags || cur.tags || '', selected: true, skipped: false, note: '' });
+        }
+        if (tax.keywords) {
+          fields.push({ key: 'keywords', step: 'taxonomies', label: 'کلمات کلیدی مرتبط', value: tax.keywords || '', current: '', selected: true, skipped: false, note: 'علاوه بر کلمه کلیدی اصلی' });
         }
         var schema = bag.schema || {};
         if (schema.schema_json) {
@@ -298,6 +412,58 @@
         if (this.wizard.product) this.startWizard(this.wizard.product);
       },
 
+
+      openReport: function (item) {
+        var self = this;
+        self.report = { open: true, loading: true, data: null };
+        post('bankai_store_product_report', { product_id: item.id }).then(function (res) {
+          self.report.loading = false;
+          if (res && res.success && res.data) {
+            self.report.data = res.data;
+          } else {
+            toast((res && res.data && res.data.message) || 'خطا در گزارش', 'error');
+            self.report.open = false;
+          }
+        }).catch(function () {
+          self.report.loading = false;
+          self.report.open = false;
+          toast('خطای شبکه', 'error');
+        });
+      },
+
+      reportBarH: function (b) {
+        var series = (this.report.data && this.report.data.series) || [];
+        var max = 1;
+        series.forEach(function (p) { if (Number(p.qty) > max) max = Number(p.qty); });
+        return Math.max(4, Math.round((Number(b.qty || 0) / max) * 100));
+      },
+
+      genCover: function (item) {
+        var self = this;
+        if (!item || !item.id) return;
+        self.coverBusy = item.id;
+        post('bankai_store_gen_cover', { product_id: item.id, apply: 1 }).then(function (res) {
+          self.coverBusy = 0;
+          if (res && res.success) {
+            toast('کاور ایجاد و روی محصول تنظیم شد', 'success');
+            if (res.data && res.data.product) {
+              // Update item in list
+              self.items = (self.items || []).map(function (it) {
+                return it.id === item.id ? Object.assign({}, it, res.data.product) : it;
+              });
+            } else {
+              self.loadProducts();
+            }
+          } else {
+            var msg = (res && res.data && res.data.message) || 'خطا در تولید کاور';
+            toast(msg, 'error');
+          }
+        }).catch(function () {
+          self.coverBusy = 0;
+          toast('خطای شبکه', 'error');
+        });
+      },
+
       buildProposedPayload: function () {
         var proposed = {};
         var bagImages = (this.wizard.bag && this.wizard.bag.images) || {};
@@ -308,6 +474,12 @@
           if (f.key === 'seo_title') proposed.meta = proposed.meta || {}, proposed.meta.seo_title = f.value;
           else if (f.key === 'seo_description') proposed.meta = proposed.meta || {}, proposed.meta.description = f.value;
           else if (f.key === 'focus_keyword') proposed.meta = proposed.meta || {}, proposed.meta.focus_keyword = f.value;
+          else if (f.key === 'short_description') proposed.content = proposed.content || {}, proposed.content.short_description = f.value;
+          else if (f.key === 'description') proposed.content = proposed.content || {}, proposed.content.description = f.value;
+          else if (f.key === 'slug') proposed.content = proposed.content || {}, proposed.content.slug = f.value;
+          else if (f.key === 'categories') proposed.taxonomies = proposed.taxonomies || {}, proposed.taxonomies.categories = f.value;
+          else if (f.key === 'tags') proposed.taxonomies = proposed.taxonomies || {}, proposed.taxonomies.tags = f.value;
+          else if (f.key === 'keywords') proposed.taxonomies = proposed.taxonomies || {}, proposed.taxonomies.keywords = f.value;
           else if (f.key === 'schema_json') proposed.schema = proposed.schema || {}, proposed.schema.schema_json = f.value;
           else if (f.key === 'faq_html') proposed.aeo = proposed.aeo || {}, proposed.aeo.faq_html = f.value;
           else if (f.key === 'geo_html') proposed.geo = proposed.geo || {}, proposed.geo.geo_html = f.value;
@@ -331,7 +503,7 @@
         var self = this;
         if (!self.wizard.id || !self.hasSelectedFields()) return;
         self.wizard.applying = true;
-        self.wizard.conflict = null;
+        self.wizard.conflict = { message: '', current: null, proposed: null };
 
         var payload = {
           product_id: self.wizard.id,
@@ -344,7 +516,7 @@
           if (res && res.success) {
             toast('تغییرات انتخاب‌شده اعمال شد', 'success');
             self.wizard.modal = false;
-            self.wizard.conflict = null;
+            self.wizard.conflict = { message: '', current: null, proposed: null };
             self.wizardFields = [];
             if (res.data && res.data.product) {
               var idx = self.items.findIndex(function (x) { return x.id === res.data.product.id; });
@@ -380,6 +552,7 @@
           open: true, name: '', short_description: '', description: '',
           price: '', sale_price: '', sku: '', stock_status: 'instock',
           status: 'draft', product_type: 'simple',
+          manage_stock: false, stock_qty: '', tags: '', category: 0,
           saving: false, aiBusy: false, coverPrompt: '',
           lastEditUrl: '', lastId: 0
         };
@@ -432,7 +605,11 @@
           sku: self.create.sku,
           stock_status: self.create.stock_status,
           status: self.create.status,
-          product_type: self.create.product_type || 'simple'
+          product_type: self.create.product_type || 'simple',
+          manage_stock: self.create.manage_stock ? 1 : 0,
+          stock_qty: self.create.stock_qty,
+          tags: self.create.tags || '',
+          categories: self.create.category && self.create.category !== '0' ? JSON.stringify([parseInt(self.create.category, 10)]) : '[]'
         };
         var ai = self.create._aiSeo || {};
         if (ai.seo_title) payload.seo_title = ai.seo_title;

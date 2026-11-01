@@ -190,144 +190,89 @@ $page_count  = (int) wp_count_posts('page')->publish;
         </div>
     </div>
 
-    <!-- Audit Banner -->
-    <div class="bankai-card bk-seo-audit-card" x-show="seoPanel === 'tools'" x-cloak style="position:relative">
-        <div class="bk-seo-audit-loading" x-show="seoAudit.running" x-cloak>
-          <span class="bk-btn-spin" style="width:28px;height:28px;border-width:3px;border-color:#fc4c2f transparent #fc4c2f transparent"></span>
-          <strong>در حال بررسی واقعی وضعیت سئو…</strong>
-          <small>نقشه سایت · robots · llms · آنالیتیکس · برند</small>
-        </div>
-        <div class="bk-seo-audit-head">
-            <div style="display:flex;align-items:center;gap:16px;">
-                <div class="bk-score-ring-lg">
-                    <svg viewBox="0 0 36 36">
-                        <circle class="bk-track" cx="18" cy="18" r="14"></circle>
-                        <circle class="bk-progress" cx="18" cy="18" r="14"
-                            stroke-dasharray="87.96"
-                            :stroke-dashoffset="87.96 - (87.96 * Math.min(100, Math.max(0, (seoAudit && seoAudit.score) || 0)) / 100)"
-                            :style="{ stroke: scoreColor((seoAudit && seoAudit.score) || 0) }"></circle>
-                    </svg>
-                    <span class="bk-score-num" x-text="(seoAudit && seoAudit.running) ? '…' : ((seoAudit && seoAudit.score) || 0)">0</span>
-                </div>
-                <div>
-                    <div class="bk-seo-site-hero" style="grid-column:1/-1;">
-                    <div>
-                        <div style="font-weight:800;font-size:18px;color:#0F172A;margin-bottom:6px;">وضعیت کل سئوی سایت</div>
-                        <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">ممیزی فنی، نقشه سایت، robots و اتصال ابزارهای وب‌مستر را از اینجا کنترل کنید.</p>
-                    </div>
-                </div>
-                <div style="font-weight:800;font-size:16px;color:#0F172A;display:none;">وضعیت کل سئوی سایت</div>
-                    <div style="font-size:12px;color:#64748B;margin-top:3px;" x-text="(seoAudit && seoAudit.running) ? 'در حال پروب واقعی endpointها…' : ((seoAudit.passed || 0) + ' از ' + (seoAudit.total || ((seoAudit.items||[]).length)) + ' بررسی ضروری پاس شد')">—</div>
-                </div>
-            </div>
-            <button type="button" class="bk-seo-btn bk-seo-btn-ghost" @click="runSeoAuditInline()" :disabled="seoAudit && seoAudit.running">
-                <span x-text="(seoAudit && seoAudit.running) ? 'در حال ممیزی…' : 'بررسی مجدد'"></span>
-            </button>
-        </div>
-        <ul class="bk-seo-audit-list">
-            <template x-for="item in (seoAudit && seoAudit.items) || []" :key="item.key">
-                <li :class="item.pass ? 'is-pass' : 'is-fail'">
-                    <span class="bk-audit-icon" x-text="item.pass ? '✓' : '!'"></span>
-                    <div>
-                        <strong x-text="item.label || item.label_en"></strong>
-                        <small class="bk-audit-detail" x-show="item.detail" x-text="item.detail"></small>
-                        <a x-show="item.link" :href="item.link" target="_blank" rel="noopener" class="bk-audit-link">مشاهده</a>
-                    </div>
-                </li>
-            </template>
-        </ul>
-    </div>
-
     <!-- SEO Tools Panel -->
     <div x-show="seoPanel === 'tools'" x-cloak>
 
-        <!-- 1) Sitewide SEO -->
-        <h3 class="bk-section-title" style="display:flex;align-items:center;gap:8px">
-          <iconify-icon icon="solar:global-bold-duotone" width="20" style="color:#fc4c2f"></iconify-icon>
-          سئوی سراسری سایت
-        </h3>
-        <div class="bk-site-conn-strip" style="margin-bottom:20px">
-            <div class="bk-site-conn-card bankai-card">
-                <div class="bk-site-conn-card__ico"><iconify-icon icon="solar:map-bold-duotone" width="22"></iconify-icon></div>
+        <!-- 1) Sitewide SEO status -->
+        <div class="bk-sitewide-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+          <h3 class="bk-section-title" style="display:flex;align-items:center;gap:8px;margin:0">
+            <iconify-icon icon="solar:global-bold-duotone" width="20" style="color:#fc4c2f"></iconify-icon>
+            سئوی سراسری سایت
+          </h3>
+          <button type="button" class="bk-seo-btn bk-seo-btn-ghost" @click="runSeoAuditInline()" :disabled="seoAudit && seoAudit.running">
+            <span x-text="(seoAudit && seoAudit.running) ? 'در حال بررسی…' : 'بررسی مجدد وضعیت'"></span>
+          </button>
+        </div>
+        <div class="bk-site-conn-strip bk-sitewide-status" style="margin-bottom:24px">
+            <div class="bk-site-conn-card bankai-card" :class="auditPass('sitemap') ? 'is-ok' : 'is-off'">
+                <div class="bk-site-conn-card__top">
+                  <div class="bk-site-conn-card__ico"><iconify-icon icon="solar:map-bold-duotone" width="22"></iconify-icon></div>
+                  <span class="bk-site-status-tick" :class="auditPass('sitemap') ? 'is-pass' : 'is-fail'" x-text="auditPass('sitemap') ? '✓' : '!'"></span>
+                </div>
                 <div>
                     <strong>نقشه سایت XML</strong>
-                    <p>ایندکس خودکار پست و برگه</p>
+                    <p x-text="auditDetail('sitemap') || 'ایندکس خودکار پست و برگه'"></p>
                     <a class="bk-guide-link" href="<?php echo esc_url(home_url('/sitemap.xml')); ?>" target="_blank" rel="noopener">مشاهده sitemap ↗</a>
-                    <a class="bk-guide-link" href="https://developers.google.com/search/docs/crawling-indexing/sitemaps/overview" target="_blank" rel="noopener">راهنما ↗</a>
                 </div>
             </div>
-            <div class="bk-site-conn-card bankai-card">
-                <div class="bk-site-conn-card__ico"><iconify-icon icon="solar:document-text-bold-duotone" width="22"></iconify-icon></div>
+            <div class="bk-site-conn-card bankai-card" :class="auditPass('llms') ? 'is-ok' : 'is-off'">
+                <div class="bk-site-conn-card__top">
+                  <div class="bk-site-conn-card__ico"><iconify-icon icon="solar:document-text-bold-duotone" width="22"></iconify-icon></div>
+                  <span class="bk-site-status-tick" :class="auditPass('llms') ? 'is-pass' : 'is-fail'" x-text="auditPass('llms') ? '✓' : '!'"></span>
+                </div>
                 <div>
                     <strong>llms.txt</strong>
-                    <p>مانیفست برای موتورهای AI</p>
+                    <p x-text="auditDetail('llms') || 'مانیفست برای موتورهای AI'"></p>
                     <a class="bk-guide-link" href="<?php echo esc_url(home_url('/llms.txt')); ?>" target="_blank" rel="noopener">مشاهده llms.txt ↗</a>
-                    <a class="bk-guide-link" href="https://llmstxt.org/" target="_blank" rel="noopener">استاندارد ↗</a>
                 </div>
             </div>
-            <div class="bk-site-conn-card bankai-card">
-                <div class="bk-site-conn-card__ico"><iconify-icon icon="solar:robot-bold-duotone" width="22"></iconify-icon></div>
+            <div class="bk-site-conn-card bankai-card" :class="auditPass('robots') ? 'is-ok' : 'is-off'">
+                <div class="bk-site-conn-card__top">
+                  <div class="bk-site-conn-card__ico"><iconify-icon icon="solar:robot-bold-duotone" width="22"></iconify-icon></div>
+                  <span class="bk-site-status-tick" :class="auditPass('robots') ? 'is-pass' : 'is-fail'" x-text="auditPass('robots') ? '✓' : '!'"></span>
+                </div>
                 <div>
                     <strong>robots.txt</strong>
-                    <p>مدیریت خزنده‌ها</p>
+                    <p x-text="auditDetail('robots') || 'مدیریت خزنده‌ها'"></p>
                     <a class="bk-guide-link" href="<?php echo esc_url(home_url('/robots.txt')); ?>" target="_blank" rel="noopener">مشاهده ↗</a>
-                    <a class="bk-guide-link" href="https://developers.google.com/search/docs/crawling-indexing/robots/intro" target="_blank" rel="noopener">راهنما ↗</a>
                 </div>
             </div>
-            <div class="bk-site-conn-card bankai-card">
-                <div class="bk-site-conn-card__ico"><iconify-icon icon="solar:smartphone-bold-duotone" width="22"></iconify-icon></div>
+            <div class="bk-site-conn-card bankai-card" :class="auditPass('gsc') ? 'is-ok' : 'is-off'">
+                <div class="bk-site-conn-card__top">
+                  <div class="bk-site-conn-card__ico"><iconify-icon icon="solar:magnifer-bold-duotone" width="22"></iconify-icon></div>
+                  <span class="bk-site-status-tick" :class="auditPass('gsc') ? 'is-pass' : 'is-fail'" x-text="auditPass('gsc') ? '✓' : '!'"></span>
+                </div>
+                <div>
+                    <strong>Search Console</strong>
+                    <p x-text="auditDetail('gsc') || 'تأیید مالکیت گوگل'"></p>
+                    <a class="bk-guide-link" href="https://search.google.com/search-console" target="_blank" rel="noopener">کنسول جستجو ↗</a>
+                </div>
+            </div>
+            <div class="bk-site-conn-card bankai-card" :class="auditPass('ga4') ? 'is-ok' : 'is-off'">
+                <div class="bk-site-conn-card__top">
+                  <div class="bk-site-conn-card__ico"><iconify-icon icon="solar:chart-2-bold-duotone" width="22"></iconify-icon></div>
+                  <span class="bk-site-status-tick" :class="auditPass('ga4') ? 'is-pass' : 'is-fail'" x-text="auditPass('ga4') ? '✓' : '!'"></span>
+                </div>
+                <div>
+                    <strong>Google Analytics 4</strong>
+                    <p x-text="auditDetail('ga4') || 'شناسه اندازه‌گیری GA4'"></p>
+                    <a class="bk-guide-link" href="https://analytics.google.com/" target="_blank" rel="noopener">Analytics ↗</a>
+                </div>
+            </div>
+            <div class="bk-site-conn-card bankai-card" :class="auditPass('pwa') ? 'is-ok' : 'is-off'">
+                <div class="bk-site-conn-card__top">
+                  <div class="bk-site-conn-card__ico"><iconify-icon icon="solar:smartphone-bold-duotone" width="22"></iconify-icon></div>
+                  <span class="bk-site-status-tick" :class="auditPass('pwa') ? 'is-pass' : 'is-fail'" x-text="auditPass('pwa') ? '✓' : '!'"></span>
+                </div>
                 <div>
                     <strong>PWA Manifest</strong>
-                    <p>نصب‌پذیری و آیکون اپ</p>
+                    <p x-text="auditDetail('pwa') || 'نصب‌پذیری و آیکون اپ'"></p>
                     <a class="bk-guide-link" href="<?php echo esc_url(home_url('/manifest.webmanifest')); ?>" target="_blank" rel="noopener">مشاهده ↗</a>
                 </div>
             </div>
         </div>
 
-        <div class="bk-seo-grid-2" style="margin-bottom:24px">
-          <div class="bankai-card" style="padding:18px">
-            <div style="font-weight:800;font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-              <iconify-icon icon="solar:buildings-2-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
-              سازمان / برند (Schema)
-            </div>
-            <label class="bk-seo-label">نام سازمان</label>
-            <input type="text" class="bk-seo-input" x-model="sw.settings.org_name" placeholder="<?php echo esc_attr($site_name); ?>">
-            <label class="bk-seo-label">لوگو سازمان</label>
-            <div class="bk-logo-picker">
-              <div class="bk-logo-preview" x-show="sw.settings.org_logo">
-                <img :src="sw.settings.org_logo" alt="logo" style="max-width:96px;max-height:96px;border-radius:10px;border:1px solid #e5e5e5;background:#fff">
-              </div>
-              <div class="bk-logo-actions">
-                <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="pickOrgLogo()">
-                  <iconify-icon icon="solar:gallery-add-bold-duotone" width="16"></iconify-icon>
-                  انتخاب از رسانه
-                </button>
-                <button type="button" class="bk-seo-btn bk-seo-btn-ghost" x-show="sw.settings.org_logo" @click="clearOrgLogo()">حذف</button>
-              </div>
-              <input type="hidden" x-model="sw.settings.org_logo">
-            </div>
-            <label class="bk-seo-label">شبکه‌های اجتماعی (هر خط یک URL)</label>
-            <textarea class="bk-seo-input" rows="2" dir="ltr" x-model="sw.settings.org_same_as" placeholder="https://twitter.com/…"></textarea>
-            <button type="button" class="bk-seo-btn bk-seo-btn-primary" style="margin-top:10px" @click="saveSitewide()" :disabled="sw.saving">
-              <span x-text="sw.saving ? 'ذخیره…' : 'ذخیره هویت برند'"></span>
-            </button>
-          </div>
-          <div class="bankai-card" style="padding:18px">
-            <div style="font-weight:800;font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-              <iconify-icon icon="solar:eye-closed-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
-              Noindex آرشیوها
-            </div>
-            <p class="bk-fk-desc" style="margin:0 0 10px">جلوگیری از ایندکس صفحات کم‌ارزش برای تمرکز اعتبار روی مقالات.</p>
-            <label class="bk-switch-row"><span>آرشیو نویسنده</span><input type="checkbox" x-model="sw.settings.noindex_author"></label>
-            <label class="bk-switch-row"><span>آرشیو تاریخ</span><input type="checkbox" x-model="sw.settings.noindex_date"></label>
-            <label class="bk-switch-row"><span>آرشیو برچسب</span><input type="checkbox" x-model="sw.settings.noindex_tag"></label>
-            <label class="bk-switch-row"><span>صفحه جستجو</span><input type="checkbox" x-model="sw.settings.noindex_search"></label>
-            <label class="bk-switch-row"><span>پیوست‌ها</span><input type="checkbox" x-model="sw.settings.noindex_attach"></label>
-            <button type="button" class="bk-seo-btn bk-seo-btn-primary" style="margin-top:10px" @click="saveSitewide()" :disabled="sw.saving">ذخیره Noindex</button>
-          </div>
-        </div>
-
-        <!-- 2) Modules -->
+        <!-- 2) Active SEO modules -->
         <h3 class="bk-section-title" style="display:flex;align-items:center;gap:8px">
           <iconify-icon icon="solar:widget-2-bold-duotone" width="20" style="color:#fc4c2f"></iconify-icon>
           ماژول‌های فعال سئو و اسکیما
@@ -377,6 +322,50 @@ $page_count  = (int) wp_count_posts('page')->publish;
                 </div>
             </div>
             <?php endforeach; ?>
+        </div>
+
+        <!-- Brand & Noindex -->
+        <div class="bk-seo-grid-2" style="margin-bottom:24px">
+<div class="bankai-card" style="padding:18px">
+            <div style="font-weight:800;font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+              <iconify-icon icon="solar:buildings-2-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
+              سازمان / برند (Schema)
+            </div>
+            <label class="bk-seo-label">نام سازمان</label>
+            <input type="text" class="bk-seo-input" x-model="sw.settings.org_name" placeholder="<?php echo esc_attr($site_name); ?>">
+            <label class="bk-seo-label">لوگو سازمان</label>
+            <div class="bk-logo-picker">
+              <div class="bk-logo-preview" x-show="sw.settings.org_logo">
+                <img :src="sw.settings.org_logo" alt="logo" style="max-width:96px;max-height:96px;border-radius:10px;border:1px solid #e5e5e5;background:#fff">
+              </div>
+              <div class="bk-logo-actions">
+                <button type="button" class="bk-seo-btn bk-seo-btn-primary" @click="pickOrgLogo()">
+                  <iconify-icon icon="solar:gallery-add-bold-duotone" width="16"></iconify-icon>
+                  انتخاب از رسانه
+                </button>
+                <button type="button" class="bk-seo-btn bk-seo-btn-ghost" x-show="sw.settings.org_logo" @click="clearOrgLogo()">حذف</button>
+              </div>
+              <input type="hidden" x-model="sw.settings.org_logo">
+            </div>
+            <label class="bk-seo-label">شبکه‌های اجتماعی (هر خط یک URL)</label>
+            <textarea class="bk-seo-input" rows="2" dir="ltr" x-model="sw.settings.org_same_as" placeholder="https://twitter.com/…"></textarea>
+            <button type="button" class="bk-seo-btn bk-seo-btn-primary" style="margin-top:10px" @click="saveSitewide()" :disabled="sw.saving">
+              <span x-text="sw.saving ? 'ذخیره…' : 'ذخیره هویت برند'"></span>
+            </button>
+          </div>
+          <div class="bankai-card" style="padding:18px">
+            <div style="font-weight:800;font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+              <iconify-icon icon="solar:eye-closed-bold-duotone" width="18" style="color:#fc4c2f"></iconify-icon>
+              Noindex آرشیوها
+            </div>
+            <p class="bk-fk-desc" style="margin:0 0 10px">جلوگیری از ایندکس صفحات کم‌ارزش برای تمرکز اعتبار روی مقالات.</p>
+            <label class="bk-switch-row"><span>آرشیو نویسنده</span><input type="checkbox" x-model="sw.settings.noindex_author"></label>
+            <label class="bk-switch-row"><span>آرشیو تاریخ</span><input type="checkbox" x-model="sw.settings.noindex_date"></label>
+            <label class="bk-switch-row"><span>آرشیو برچسب</span><input type="checkbox" x-model="sw.settings.noindex_tag"></label>
+            <label class="bk-switch-row"><span>صفحه جستجو</span><input type="checkbox" x-model="sw.settings.noindex_search"></label>
+            <label class="bk-switch-row"><span>پیوست‌ها</span><input type="checkbox" x-model="sw.settings.noindex_attach"></label>
+            <button type="button" class="bk-seo-btn bk-seo-btn-primary" style="margin-top:10px" @click="saveSitewide()" :disabled="sw.saving">ذخیره Noindex</button>
+          </div>
         </div>
 
         <!-- 3) Integrations -->
@@ -705,11 +694,19 @@ $page_count  = (int) wp_count_posts('page')->publish;
                         </tr>
                     </thead>
                     <tbody>
+                        <tr x-show="loading">
+                            <td colspan="8">
+                                <div class="bk-seo-articles-loader" role="status" aria-live="polite">
+                                    <span class="bk-art-loader__spin" aria-hidden="true"></span>
+                                    <span>در حال بارگذاری مقالات…</span>
+                                </div>
+                            </td>
+                        </tr>
                         <tr x-show="!loading && articles.length === 0">
                             <td colspan="8" style="text-align:center;padding:32px;color:#94A3B8;">مقاله‌ای یافت نشد.</td>
                         </tr>
                         <template x-for="row in articles" :key="row.id">
-                            <tr>
+                            <tr x-show="!loading">
                                 <td>
                                     <div class="bk-seo-cover">
                                         <img x-show="row.cover" :src="row.cover" alt="" width="44" height="44">

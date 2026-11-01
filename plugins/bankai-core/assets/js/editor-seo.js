@@ -80,6 +80,7 @@
         // Enhanced image compression with before/after preview and uniform sizing
         postImages: [],
         optReport: [],
+        optSummary: { state: '', message: '', stats: [] },
         optOptions: {
             convertWebp: true,
             resize: true,
@@ -920,6 +921,17 @@
                     if (data.groups && typeof data.groups === 'object') {
                         this.analysis.groups = data.groups;
                     }
+                    // Auto-fix long paragraphs (no button) when checklist warns
+                    try {
+                        const checks = Array.isArray(data.checks) ? data.checks : [];
+                        const shortPara = checks.find((c) => c && (c.id === 'short_paragraphs' || c.key === 'short_paragraphs'));
+                        const bad = shortPara && (shortPara.passed === false || shortPara.status === 'warning' || shortPara.status === 'fail' || shortPara.ok === false);
+                        if (bad && !this._autoParaSplitBusy && typeof this.autoSplitLongParagraphs === 'function') {
+                            this._autoParaSplitBusy = true;
+                            this.autoSplitLongParagraphs(true);
+                            this._autoParaSplitBusy = false;
+                        }
+                    } catch (ePara) {}
                 }
             } catch (e) {
                 console.warn('[Bankai SEO] analyze error', e);
@@ -1008,56 +1020,141 @@
         async smartSuggestInternalLinks() {
             this.linkBusy = true;
             try {
-                const ctx = this.getEditorContext();
+                const ctx = this.getEditorContext ? this.getEditorContext() : {};
                 const kws = Array.isArray(this.keywordList) ? this.keywordList.slice() : [];
                 if (this.seo && this.seo.focus_keyword && !kws.includes(this.seo.focus_keyword)) {
                     kws.unshift(this.seo.focus_keyword);
                 }
-                const res = await fetch(this.restBase() + 'seo/suggest-links', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: this.restHeaders(true),
-                    body: JSON.stringify({
-                        post_id: this.postId,
-                        keywords: kws,
-                        content: ctx.rawHtml || ctx.content || '',
-                        title: ctx.title || '',
-                        limit: 8
-                    })
-                });
-                const json = await res.json();
-                const payload = (json && json.data) ? json.data : json;
-                const suggestions = (payload && Array.isArray(payload.suggestions)) ? payload.suggestions : [];
+                if (this.aiDraft && this.aiDraft.focus_keyword && !kws.includes(this.aiDraft.focus_keyword)) {
+                    kws.unshift(this.aiDraft.focus_keyword);
+                }
+                let suggestions = [];
+
+                // 1) REST ranked suggest-links
+                try {
+                    const res = await fetch(this.restBase() + 'seo/suggest-links', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: this.restHeaders(true),
+                        body: JSON.stringify({
+                            post_id: this.postId,
+                            keywords: kws,
+                            content: (ctx.rawHtml || ctx.content || '').slice(0, 12000),
+                            title: ctx.title || '',
+                            limit: 10
+                        })
+                    });
+                    const json = await res.json();
+                    const payload = (json && json.data) ? json.data : json;
+                    if (payload && Array.isArray(payload.suggestions)) {
+                        suggestions = payload.suggestions;
+                    }
+                } catch (eRest) {}
+
+                // 2) Fallback: AI smart_internal_links (same path as «لینک‌ها» tab)
+                if (!suggestions.length && typeof this.callSeoAi === 'function') {
+                    try {
+                        const aiRes = await this.callSeoAi('smart_internal_links', Object.assign({}, ctx, {
+                            keywords: kws,
+                            focus_keyword: (this.seo && this.seo.focus_keyword) || ''
+                        }));
+                        const list = (aiRes && (aiRes.smartLinks || aiRes.links || aiRes.suggestions)) || [];
+                        if (Array.isArray(list) && list.length) {
+                            suggestions = list.map((s) => ({
+                                suggested_anchor: s.suggested_anchor || s.keyword || s.anchor || s.title || '',
+                                keyword: s.keyword || s.suggested_anchor || s.anchor || '',
+                                target_url: s.target_url || s.permalink || s.url || '',
+                                target_title: s.target_title || s.title || '',
+                                target_post_id: s.target_post_id || s.id || 0,
+                                title: s.title || s.target_title || '',
+                                permalink: s.permalink || s.target_url || s.url || '',
+                                reason: s.reason || 'AI',
+                                score: s.score || 0
+                            }));
+                        }
+                    } catch (eAi) {}
+                }
+
+                // 3) Fallback: site search by first keywords
+                if (!suggestions.length && kws.length) {
+                    try {
+                        const term = String(kws[0] || '').trim();
+                        if (term) {
+                            const res3 = await fetch(this.restBase() + 'seo/search-posts', {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: this.restHeaders(true),
+                                body: JSON.stringify({ s: term, post_id: this.postId })
+                            });
+                            const j3 = await res3.json();
+                            let posts = [];
+                            if (j3 && j3.success && j3.data) posts = j3.data.posts || j3.data || [];
+                            else if (Array.isArray(j3)) posts = j3;
+                            suggestions = (posts || []).slice(0, 8).map((p) => ({
+                                suggested_anchor: p.title || term,
+                                keyword: term,
+                                target_url: p.permalink || p.url || '',
+                                target_title: p.title || '',
+                                target_post_id: p.id || 0,
+                                title: p.title || '',
+                                permalink: p.permalink || '',
+                                reason: 'جستجوی سایت',
+                                score: 1
+                            }));
+                        }
+                    } catch (eSearch) {}
+                }
+
+                if (!Array.isArray(this.pendingAiLinks)) this.pendingAiLinks = [];
                 let added = 0;
                 suggestions.forEach((s) => {
-                    const url = s.target_url || s.permalink || '';
+                    if (!s) return;
+                    const url = String(s.target_url || s.permalink || s.url || '').trim();
                     if (!url) return;
-                    const exists = this.pendingAiLinks.some((p) => p.target_url === url || p.target_post_id === (s.target_post_id || s.id));
+                    const exists = this.pendingAiLinks.some((p) => p.target_url === url || (p.target_post_id && p.target_post_id === (s.target_post_id || s.id)));
                     if (exists) return;
+                    const kw = String(s.suggested_anchor || s.keyword || s.focus_keyword || s.title || s.target_title || '').trim();
+                    if (/example\.(com|org)/i.test(url)) return;
+                    try {
+                        var host = (new URL(url, location.origin)).hostname.replace(/^www\./i,'').toLowerCase();
+                        var site = (location.hostname || '').replace(/^www\./i,'').toLowerCase();
+                        if (host && site && host !== site && url.indexOf('/') !== 0) return;
+                    } catch (eHost) {}
                     this.pendingAiLinks.push({
                         id: 'sugg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                        keyword: s.suggested_anchor || s.keyword || s.focus_keyword || s.title,
+                        keyword: kw || 'لینک مرتبط',
                         target_post_id: s.target_post_id || s.id || 0,
                         target_title: s.target_title || s.title || '',
                         target_url: url,
-                        reason: s.reason || (Array.isArray(s.reasons) ? s.reasons.join(' ') : ''),
+                        reason: s.reason || (Array.isArray(s.reasons) ? s.reasons.join(' ') : 'پیشنهاد هوشمند'),
                         reasons: Array.isArray(s.reasons) ? s.reasons : [],
                         score: typeof s.score === 'number' ? s.score : 0,
                         factors: s.factors || {},
-                        insertion_confidence: s.insertion_confidence || (s.anchor_in_content ? 'high' : 'low'),
+                        insertion_confidence: s.insertion_confidence || 'medium',
                         link_status: s.link_status || 'new',
                         requires_approval: true,
                         status: 'pending'
                     });
                     added++;
                 });
-                this.linksSubTab = 'pending';
+                // Mirror into aiDraft for wizard review
+                this.aiDraft = this.aiDraft || {};
+                this.aiDraft.smartLinks = (this.pendingAiLinks || []).map((l) => ({
+                    keyword: l.keyword,
+                    target_post_id: l.target_post_id,
+                    target_title: l.target_title,
+                    target_url: l.target_url,
+                    reason: l.reason,
+                    score: l.score
+                }));
+                if (this.linksSubTab !== undefined) this.linksSubTab = 'pending';
                 if (added) {
-                    this.showToast(added + ' پیشنهاد لینک رتبه‌بندی‌شده اضافه شد (نیازمند تأیید)', 'success');
+                    this.showToast(added + ' پیشنهاد لینک آماده است', 'success');
                 } else {
-                    this.showToast('پیشنهاد مرتبطی با آستانه کیفیت یافت نشد', 'info');
+                    this.showToast('پیشنهاد مرتبطی یافت نشد', 'info');
                 }
             } catch (e) {
+                console.warn('[Bankai] smartSuggestInternalLinks', e);
                 this.showToast('خطا در دریافت پیشنهادهای لینک', 'error');
             } finally {
                 this.linkBusy = false;
@@ -1599,47 +1696,49 @@
             // user clicks start again
         },
                 scatterAndInsertSmartLinks(links) {
-            if (!Array.isArray(links) || !links.length) return;
-            let content = this.getEditorRawContent() || '';
-            if (!content.trim()) return;
-
-            const parts = content.split(/(?=<p\b|<div\b|<h[2-6]\b|\n\n)/i);
-            if (!parts || !parts.length) return;
-
-            const bodyIndices = [];
-            parts.forEach((p, idx) => {
-                if (idx > 0 && p.length > 20) {
-                    bodyIndices.push(idx);
-                }
-            });
-
-            if (!bodyIndices.length) {
-                parts.forEach((_, idx) => bodyIndices.push(idx));
-            }
-
-            const step = Math.max(1, Math.floor(bodyIndices.length / links.length));
-
-            links.forEach((link, lIdx) => {
-                const targetIdx = bodyIndices[Math.min(lIdx * step, bodyIndices.length - 1)];
-                const keyword = link.keyword || link.anchor || link.title || '';
-                const url = link.url || link.permalink || '';
-
-                if (keyword && url && parts[targetIdx]) {
-                    if (!parts[targetIdx].includes(url)) {
-                        const regex = new RegExp('(' + keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'i');
-                        if (regex.test(parts[targetIdx])) {
-                            parts[targetIdx] = parts[targetIdx].replace(regex, '<a href="' + url + '" title="' + keyword + '">$1</a>');
-                        } else {
-                            parts[targetIdx] += ' <a href="' + url + '" title="' + keyword + '">' + keyword + '</a>';
+            if (!Array.isArray(links) || !links.length) return 0;
+            let applied = 0;
+            // Prefer robust per-link insert (DOM-aware) over naive string split
+            links.forEach((link) => {
+                if (!link) return;
+                const keyword = String(link.keyword || link.anchor || link.phrase || link.title || '').trim();
+                const url = String(
+                    link.target_url || link.url || link.permalink || link.href || ''
+                ).trim();
+                const title = String(link.target_title || link.title || keyword).trim();
+                if (!keyword || !url) return;
+                try {
+                    if (typeof this.insertLinkIntoEditor === 'function') {
+                        const ok = this.insertLinkIntoEditor(keyword, url, title, false, true);
+                        if (ok) {
+                            applied++;
+                            return;
                         }
                     }
-                }
+                } catch (e) {}
             });
-
-            const newContent = parts.join('');
-            if (newContent !== content && typeof this.setEditorRawContent === 'function') {
-                this.setEditorRawContent(newContent);
+            // Fallback: append remaining unapplied as a short related-links block
+            const still = links.filter((link) => {
+                const keyword = String(link.keyword || link.anchor || '').trim();
+                const url = String(link.target_url || link.url || link.permalink || '').trim();
+                if (!keyword || !url) return false;
+                const raw = this.getEditorRawContent() || '';
+                return raw.indexOf(url) === -1;
+            });
+            if (still.length && typeof this.setEditorRawContent === 'function') {
+                let html = this.getEditorRawContent() || '';
+                const items = still.slice(0, 5).map((link) => {
+                    const keyword = String(link.keyword || link.anchor || link.title || '').trim();
+                    const url = String(link.target_url || link.url || link.permalink || '').trim();
+                    return '<li><a href="' + url.replace(/"/g, '&quot;') + '">' + keyword.replace(/</g, '') + '</a></li>';
+                }).join('');
+                if (items) {
+                    html += '\n<div class="bankai-related-links"><h3>مطالب مرتبط</h3><ul>' + items + '</ul></div>';
+                    this.setEditorRawContent(html);
+                    applied += still.length;
+                }
             }
+            return applied;
         },
 
         applyAiReview() {
@@ -1682,7 +1781,12 @@
                 }
                 // Insert & scatter smart internal links in content body
                 if (Array.isArray(this.aiDraft.smartLinks) && this.aiDraft.smartLinks.length) {
-                    this.scatterAndInsertSmartLinks(this.aiDraft.smartLinks);
+                    const n = this.scatterAndInsertSmartLinks(this.aiDraft.smartLinks);
+                    if (!n && typeof this.approveAllPendingLinks === 'function' && this.pendingAiLinks && this.pendingAiLinks.length) {
+                        this.approveAllPendingLinks();
+                    }
+                } else if (typeof this.approveAllPendingLinks === 'function' && this.pendingAiLinks && this.pendingAiLinks.length) {
+                    this.approveAllPendingLinks();
                 }
 
                 if (Array.isArray(this.aiDraft.altTexts)) {
@@ -1911,25 +2015,40 @@
             const paras = this.extractParagraphs();
             const plain = this.getPlainContent();
             const words = this.wordCount(plain);
-            const parts = words > 2000 ? 3 : 2;
+            // Scale image count with article length
+            let parts = 1;
+            if (words > 2800) parts = 4;
+            else if (words > 1600) parts = 3;
+            else if (words > 700) parts = 2;
+            else parts = 1;
             if (!paras.length) {
-                return [{ index: 0, context: plain.slice(0, 400), label: 'بخش ۱' }];
+                return [{ index: 0, context: plain.slice(0, 500), label: 'بخش ۱/۱', words: words }];
             }
             const sections = [];
+            const used = {};
             for (let i = 1; i <= parts; i++) {
                 const ratio = i / (parts + 1);
                 let idx = Math.max(0, Math.min(paras.length - 1, Math.floor(paras.length * ratio)));
-                // جلوگیری از ایندکس تکراری
-                while (sections.some(s => s.index === idx) && idx < paras.length - 1) idx++;
+                // Prefer mid-paragraph zones; skip first/last if enough paras
+                if (paras.length > 4) {
+                    idx = Math.max(1, Math.min(paras.length - 2, idx));
+                }
+                let guard = 0;
+                while (used[idx] && guard < paras.length) {
+                    idx = (idx + 1) % paras.length;
+                    guard++;
+                }
+                used[idx] = true;
                 const before = paras[Math.max(0, idx - 1)] || '';
                 const at = paras[idx] || '';
                 const after = paras[Math.min(paras.length - 1, idx + 1)] || '';
-                const context = [before, at, after].filter(Boolean).join(' ').slice(0, 600);
+                const context = [before, at, after].filter(Boolean).join(' ').slice(0, 700);
                 sections.push({
                     index: idx,
-                    context,
+                    context: context,
                     label: 'بخش ' + i + '/' + parts,
-                    words
+                    words: words,
+                    para_count: paras.length
                 });
             }
             return sections;
@@ -2994,11 +3113,11 @@
             this.analyze(false);
         },
 
-        autoSplitLongParagraphs() {
+        autoSplitLongParagraphs(silent) {
             let html = this.getEditorRawContent();
             if (!html) {
-                this.showToast('محتوایی برای اصلاح نیست', 'warn');
-                return;
+                if (!silent) this.showToast('محتوایی برای اصلاح نیست', 'warn');
+                return 0;
             }
             try {
                 const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -3007,10 +3126,24 @@
                 blocks.forEach((el) => {
                     const text = (el.textContent || '').trim();
                     const words = text.split(/\s+/).filter(Boolean);
-                    if (words.length <= 120) return;
-                    // Split on sentence endings (. ! ? …) while keeping delimiter
+                    // Split if longer than ~90 words OR very long character run
+                    if (words.length <= 90 && text.length < 500) return;
+                    // Split on sentence endings (. ! ? … ۔) 
                     const parts = text.split(/(?<=[.!?…۔])\s+/u).map((s) => s.trim()).filter(Boolean);
-                    if (parts.length < 2) return;
+                    if (parts.length < 2) {
+                        // Try comma / semicolon soft splits for very long blocks without period
+                        const soft = text.split(/(?<=[؛;:])\s+/u).map((s) => s.trim()).filter(Boolean);
+                        if (soft.length < 2) return;
+                        const frag = doc.createDocumentFragment();
+                        soft.forEach((part) => {
+                            const p = doc.createElement('p');
+                            p.textContent = part;
+                            frag.appendChild(p);
+                        });
+                        el.replaceWith(frag);
+                        changed++;
+                        return;
+                    }
                     const frag = doc.createDocumentFragment();
                     parts.forEach((part) => {
                         const p = doc.createElement('p');
@@ -3021,25 +3154,17 @@
                     changed++;
                 });
                 if (!changed) {
-                    // Fallback: whole body text split for classic content without p tags
-                    const body = doc.body;
-                    if (body && (body.textContent || '').split(/\s+/).length > 120) {
-                        const parts = (body.textContent || '').split(/(?<=[.!?…۔])\s+/u).map((s) => s.trim()).filter(Boolean);
-                        if (parts.length > 1) {
-                            body.innerHTML = parts.map((p) => '<p>' + p.replace(/</g, '&lt;') + '</p>').join('');
-                            changed = parts.length;
-                        }
-                    }
-                }
-                if (!changed) {
-                    this.showToast('پاراگراف بلندی برای تقسیم یافت نشد', 'info');
-                    return;
+                    if (!silent) this.showToast('پاراگراف بلندی برای تقسیم یافت نشد', 'info');
+                    return 0;
                 }
                 this.setEditorRawContent(doc.body.innerHTML);
-                this.showToast(changed + ' پاراگراف بلند کوتاه شد', 'success');
-                this.analyze(false);
+                if (!silent) this.showToast(changed + ' پاراگراف بلند به‌صورت خودکار کوتاه شد', 'success');
+                // Re-analyze only when user-triggered to avoid loops
+                if (!silent && typeof this.analyze === 'function') this.analyze(false);
+                return changed;
             } catch (e) {
-                this.showToast('خطا در کوتاه‌سازی پاراگراف', 'error');
+                if (!silent) this.showToast('خطا در کوتاه‌سازی پاراگراف', 'error');
+                return 0;
             }
         },
 
@@ -3447,6 +3572,8 @@
         },
 
         async scanPostImages() {
+            if (this.optSummary && this.optSummary.state === 'ok') { /* keep last report */ }
+
             this.optBusy = true;
             try {
                 const cfg = window.bankaiEditorSeo || {};
@@ -3828,9 +3955,28 @@
             }
         },
 
+        
+        scheduleHideOptSummary(delayMs = 5000) {
+            if (this._optSummaryTimer) {
+                clearTimeout(this._optSummaryTimer);
+                this._optSummaryTimer = null;
+            }
+            const ms = typeof delayMs === 'number' ? delayMs : 5000;
+            this._optSummaryTimer = setTimeout(() => {
+                if (!this.optSummary) return;
+                if (this.optBusy || (this.optSummary.state === 'loading')) return;
+                this.optSummary = { state: '', message: '', stats: [] };
+            }, ms);
+        },
+
         async runOptimizeImages() {
             this.optBusy = true;
             this.optReport = [];
+            this.optSummary = {
+                state: 'loading',
+                message: 'در حال فشرده‌سازی و بهینه‌سازی تصاویر مقاله…',
+                stats: [{ label: 'تصاویر اسکن‌شده: ', value: String((this.postImages || []).length || '…') }]
+            };
             try {
                 // Ensure postImages is updated first before compression
                 await this.scanPostImages();
@@ -3883,8 +4029,58 @@
                 }));
                 // Keep featured/cover in list even if server omitted it
                 this.postImages = this.mergeCoverImage(this.postImages).map((img) => this.normalizeImageRow(img));
+
+                // Visual summary report (modal-style)
+                var report = this.optReport || [];
+                var before = 0, after = 0, converted = 0, resized = 0, watermarked = 0, touched = 0;
+                report.forEach(function (row) {
+                    before += Number(row.size_before || 0);
+                    after += Number(row.size_after != null ? row.size_after : row.size_before || 0);
+                    if (row.converted) converted++;
+                    if (row.resized) resized++;
+                    if (row.watermarked) watermarked++;
+                    if (row.skipped || row.status === 'skip') skipped++;
+                });
+                var saved = Math.max(0, before - after);
+                var pct = before > 0 ? Math.round((saved / before) * 100) : 0;
+                var fmt = (typeof this.formatBytes === 'function')
+                    ? this.formatBytes.bind(this)
+                    : function (n) {
+                        n = Number(n) || 0;
+                        if (n >= 1048576) return (n / 1048576).toFixed(2) + ' MB';
+                        if (n >= 1024) return (n / 1024).toFixed(1) + ' KB';
+                        return n + ' B';
+                    };
+                this.optSummary = {
+                    state: 'ok',
+                    message: data.message || ('بهینه‌سازی ' + report.length + ' تصویر انجام شد'),
+                    stats: [
+                        { label: 'تعداد: ', value: String(report.length) },
+                        { label: 'حجم قبل: ', value: fmt(before) },
+                        { label: 'حجم بعد: ', value: fmt(after) },
+                        { label: 'صرفه‌جویی: ', value: fmt(saved) + (pct ? ' (' + pct + '%)' : '') },
+                        { label: 'WebP: ', value: String(converted) },
+                        { label: 'تغییر سایز: ', value: String(resized) }
+                    ].concat(watermarked ? [{ label: 'واترمارک: ', value: String(watermarked) }] : [])
+                };
+                this.scheduleHideOptSummary(5000);
+
+                // Keep numeric bytes on rows so savings badge works
+                this.postImages = (this.postImages || []).map(function (img, idx) {
+                    var row = report[idx] || {};
+                    img.bytes_before = Number(row.size_before || img.bytes_before || 0);
+                    img.bytes_after = Number(row.size_after != null ? row.size_after : (img.bytes_after || 0));
+                    return img;
+                });
+
                 this.showToast(data.message || 'بهینه‌سازی انجام شد', 'success');
             } catch (e) {
+                this.optSummary = {
+                    state: 'err',
+                    message: (e && e.message) || 'خطا در بهینه‌سازی تصاویر',
+                    stats: []
+                };
+                this.scheduleHideOptSummary(5000);
                 this.showToast((e && e.message) || 'خطا', 'error');
             } finally {
                 this.optBusy = false;

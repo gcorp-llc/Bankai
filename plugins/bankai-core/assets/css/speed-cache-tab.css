@@ -609,3 +609,62 @@
   border-bottom: 1px solid #ffedd5; font-size: 12px; color: #78350f;
 }
 .bk-db-report__row:last-child { border-bottom: 0; }
+
+
+/* Force orange theme — override global green primary buttons inside Speed & Cache only */
+.bk-speed-tab-root.wpr-like .bk-wpr-btn--primary,
+.bk-speed-tab-root .bk-wpr-btn--primary,
+.bk-speed-tab-root .bankai-btn-primary,
+.bk-speed-tab-root .bk-btn-primary,
+#tab-speed-cache .bk-wpr-btn--primary,
+#tab-speed-cache .bankai-btn-primary,
+#tab-speed-cache .bk-btn-primary,
+#bankai-admin-app #tab-speed-cache .bankai-btn-primary,
+#bankai-admin-app .bk-speed-tab-root .bankai-btn-primary {
+  background: #fc4c2f !important;
+  border-color: #fc4c2f !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(252, 76, 47, 0.25) !important;
+}
+.bk-speed-tab-root.wpr-like .bk-wpr-btn--primary:hover,
+.bk-speed-tab-root .bk-wpr-btn--primary:hover,
+.bk-speed-tab-root .bankai-btn-primary:hover,
+#tab-speed-cache .bankai-btn-primary:hover,
+#bankai-admin-app #tab-speed-cache .bankai-btn-primary:hover {
+  background: #e03e22 !important;
+  border-color: #e03e22 !important;
+  color: #ffffff !important;
+}
+.bk-speed-tab-root .bk-wpr-btn--action,
+#tab-speed-cache .bk-wpr-btn--action {
+  background: #fc4c2f !important;
+  border-color: #fc4c2f !important;
+  color: #fff !important;
+}
+.bk-speed-tab-root .bk-wpr-nav__item.is-active,
+#tab-speed-cache .bk-wpr-nav__item.is-active {
+  color: #fc4c2f !important;
+  border-right-color: #fc4c2f !important;
+}
+.bk-speed-tab-root .bk-wpr-toggle input:checked + .bk-wpr-toggle__slider,
+#tab-speed-cache .bk-wpr-toggle input:checked + .bk-wpr-toggle__slider {
+  background: #fc4c2f !important;
+}
+.bk-speed-tab-root .bk-wpr-progress__bar,
+#tab-speed-cache .bk-wpr-progress__bar {
+  background: linear-gradient(90deg, #fc4c2f, #ff8a65) !important;
+}
+/* License module keeps orange too */
+.bk-license-cover .bk-wpr-btn--primary,
+.bk-license-cover__btn,
+#tab-settings-license .bk-wpr-btn--primary,
+#tab-settings-license .bankai-btn-primary {
+  background: #fc4c2f !important;
+  border-color: #fc4c2f !important;
+  color: #fff !important;
+}
+.bk-license-cover .bk-wpr-btn--primary:hover,
+#tab-settings-license .bk-wpr-btn--primary:hover {
+  background: #e03e22 !important;
+  border-color: #e03e22 !important;
+}

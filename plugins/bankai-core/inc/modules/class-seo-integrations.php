@@ -508,6 +508,17 @@ final class Bankai_SEO_Integrations
                 'link' => '',
             ],
             [
+                'key' => 'pwa',
+                'label' => 'PWA Manifest',
+                'detail' => (class_exists('Bankai_PWA')
+                    ? (string) (Bankai_PWA::instance()->status_report()['detail'] ?? '')
+                    : (function_exists('bankai_is_module_active') && bankai_is_module_active('pwa') ? 'ماژول فعال' : 'خاموش')),
+                'pass' => class_exists('Bankai_PWA')
+                    ? !empty(Bankai_PWA::instance()->status_report()['ready'])
+                    : (function_exists('bankai_is_module_active') && bankai_is_module_active('pwa')),
+                'link' => home_url('/manifest.webmanifest'),
+            ],
+            [
                 'key' => 'permalinks',
                 'label' => 'پیوند یکتا',
                 'detail' => get_option('permalink_structure') ?: 'ساختار ساده',

@@ -19,15 +19,139 @@ final class Bankai_Store
     {
         add_action('wp_ajax_bankai_store_stats', [$this, 'ajax_stats']);
         add_action('wp_ajax_bankai_store_products', [$this, 'ajax_products']);
+        add_action('wp_ajax_bankai_store_categories', [$this, 'ajax_categories']);
         add_action('wp_ajax_bankai_store_wizard_step', [$this, 'ajax_wizard_step']);
         add_action('wp_ajax_bankai_store_wizard_apply', [$this, 'ajax_wizard_apply']);
         add_action('wp_ajax_bankai_store_create_product', [$this, 'ajax_create_product']);
         add_action('wp_ajax_bankai_store_ai_complete', [$this, 'ajax_ai_complete']);
+        add_action('wp_ajax_bankai_store_woo_status', [$this, 'ajax_woo_status']);
+        add_action('wp_ajax_bankai_store_product_report', [$this, 'ajax_product_report']);
+        add_action('wp_ajax_bankai_store_gen_cover', [$this, 'ajax_gen_cover']);
     }
 
     public static function woo_active(): bool
     {
         return class_exists('WooCommerce') && class_exists('WC_Product');
+    }
+
+    /**
+     * Three-state WooCommerce dependency.
+     * @return array{status:string,installed:bool,active:bool,message:string,action_url:string}
+     */
+    public static function woo_status(): array
+    {
+        $installed = false;
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        if (function_exists('get_plugins')) {
+            foreach (get_plugins() as $file => $data) {
+                if ($file === 'woocommerce/woocommerce.php' || str_contains((string) $file, 'woocommerce.php')) {
+                    $installed = true;
+                    break;
+                }
+            }
+        }
+        // Fallback: class may exist even if detection failed
+        if (!$installed && (class_exists('WooCommerce') || defined('WC_PLUGIN_FILE'))) {
+            $installed = true;
+        }
+        $active = self::woo_active();
+        if ($active) {
+            return [
+                'status' => 'active',
+                'installed' => true,
+                'active' => true,
+                'message' => 'WooCommerce فعال است',
+                'action_url' => '',
+            ];
+        }
+        if ($installed) {
+            return [
+                'status' => 'inactive',
+                'installed' => true,
+                'active' => false,
+                'message' => 'WooCommerce نصب است اما فعال نیست',
+                'action_url' => admin_url('plugins.php'),
+            ];
+        }
+        return [
+            'status' => 'missing',
+            'installed' => false,
+            'active' => false,
+            'message' => 'WooCommerce نصب نیست',
+            'action_url' => admin_url('plugin-install.php?s=woocommerce&tab=search&type=term'),
+        ];
+    }
+
+    public function ajax_woo_status(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options') && !current_user_can('manage_woocommerce')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        wp_send_json_success(self::woo_status());
+    }
+
+    /** Detect primary SEO plugin for meta ownership. */
+    public static function seo_plugin(): string
+    {
+        if (defined('RANK_MATH_VERSION') || class_exists('RankMath')) {
+            return 'rankmath';
+        }
+        if (defined('WPSEO_VERSION') || class_exists('WPSEO_Meta')) {
+            return 'yoast';
+        }
+        return 'bankai';
+    }
+
+    /** Write SEO title/desc/keyword to the correct meta owner. */
+    private function write_seo_meta(int $product_id, string $title, string $desc, string $keyword): void
+    {
+        $plugin = self::seo_plugin();
+        if ($title !== '') {
+            update_post_meta($product_id, '_bankai_seo_title', sanitize_text_field($title));
+            if ($plugin === 'yoast') {
+                update_post_meta($product_id, '_yoast_wpseo_title', sanitize_text_field($title));
+            } elseif ($plugin === 'rankmath') {
+                update_post_meta($product_id, 'rank_math_title', sanitize_text_field($title));
+            }
+        }
+        if ($desc !== '') {
+            update_post_meta($product_id, '_bankai_seo_description', sanitize_textarea_field($desc));
+            if ($plugin === 'yoast') {
+                update_post_meta($product_id, '_yoast_wpseo_metadesc', sanitize_textarea_field($desc));
+            } elseif ($plugin === 'rankmath') {
+                update_post_meta($product_id, 'rank_math_description', sanitize_textarea_field($desc));
+            }
+        }
+        if ($keyword !== '') {
+            update_post_meta($product_id, '_bankai_seo_focus_keyword', sanitize_text_field($keyword));
+            update_post_meta($product_id, '_bankai_seo_keyword', sanitize_text_field($keyword));
+            if ($plugin === 'yoast') {
+                update_post_meta($product_id, '_yoast_wpseo_focuskw', sanitize_text_field($keyword));
+            } elseif ($plugin === 'rankmath') {
+                update_post_meta($product_id, 'rank_math_focus_keyword', sanitize_text_field($keyword));
+            }
+        }
+    }
+
+    private function read_seo_meta(int $product_id): array
+    {
+        $plugin = self::seo_plugin();
+        $title = (string) get_post_meta($product_id, '_bankai_seo_title', true);
+        $desc  = (string) get_post_meta($product_id, '_bankai_seo_description', true);
+        $kw    = (string) get_post_meta($product_id, '_bankai_seo_focus_keyword', true);
+        if ($plugin === 'yoast') {
+            if ($title === '') $title = (string) get_post_meta($product_id, '_yoast_wpseo_title', true);
+            if ($desc === '')  $desc  = (string) get_post_meta($product_id, '_yoast_wpseo_metadesc', true);
+            if ($kw === '')    $kw    = (string) get_post_meta($product_id, '_yoast_wpseo_focuskw', true);
+        } elseif ($plugin === 'rankmath') {
+            if ($title === '') $title = (string) get_post_meta($product_id, 'rank_math_title', true);
+            if ($desc === '')  $desc  = (string) get_post_meta($product_id, 'rank_math_description', true);
+            if ($kw === '')    $kw    = (string) get_post_meta($product_id, 'rank_math_focus_keyword', true);
+        }
+        return ['seo_title' => $title, 'seo_description' => $desc, 'focus_keyword' => $kw, 'plugin' => $plugin];
     }
 
     public function ajax_stats(): void
@@ -37,42 +161,31 @@ final class Bankai_Store
             wp_send_json_error(['message' => 'Permission denied'], 403);
         }
         if (!self::woo_active()) {
-            wp_send_json_error(['message' => 'WooCommerce inactive', 'woo' => false], 400);
+            wp_send_json_error(['message' => 'WooCommerce inactive', 'woo' => false, 'woo_status' => self::woo_status()], 400);
+        }
+
+        $period = absint($_POST['period'] ?? 30);
+        if (!in_array($period, [7, 30, 90], true)) {
+            $period = 30;
         }
 
         $counts = (array) wp_count_posts('product');
         $published = (int) ($counts['publish'] ?? 0);
         $draft = (int) ($counts['draft'] ?? 0);
 
-        $instock = 0;
-        $outofstock = 0;
-        $lowstock = 0;
-        $onsale = 0;
-
-        // Prefer direct meta counts when possible to avoid loading 500 products
         $instock = (int) (new WP_Query([
-            'post_type' => 'product',
-            'post_status' => 'publish',
-            'posts_per_page' => 1,
-            'fields' => 'ids',
+            'post_type' => 'product', 'post_status' => 'publish', 'posts_per_page' => 1, 'fields' => 'ids',
             'meta_query' => [['key' => '_stock_status', 'value' => 'instock']],
         ]))->found_posts;
 
         $outofstock = (int) (new WP_Query([
-            'post_type' => 'product',
-            'post_status' => 'publish',
-            'posts_per_page' => 1,
-            'fields' => 'ids',
+            'post_type' => 'product', 'post_status' => 'publish', 'posts_per_page' => 1, 'fields' => 'ids',
             'meta_query' => [['key' => '_stock_status', 'value' => 'outofstock']],
         ]))->found_posts;
 
-        // Low stock (managed stock with qty <= threshold)
-        $low_threshold = function_exists('get_option') ? (int) get_option('woocommerce_notify_low_stock_amount', 2) : 2;
+        $low_threshold = (int) get_option('woocommerce_notify_low_stock_amount', 2);
         $lowstock = (int) (new WP_Query([
-            'post_type' => 'product',
-            'post_status' => 'publish',
-            'posts_per_page' => 1,
-            'fields' => 'ids',
+            'post_type' => 'product', 'post_status' => 'publish', 'posts_per_page' => 1, 'fields' => 'ids',
             'meta_query' => [
                 'relation' => 'AND',
                 ['key' => '_manage_stock', 'value' => 'yes'],
@@ -81,12 +194,8 @@ final class Bankai_Store
             ],
         ]))->found_posts;
 
-        // On sale products
         $onsale = (int) (new WP_Query([
-            'post_type' => 'product',
-            'post_status' => 'publish',
-            'posts_per_page' => 1,
-            'fields' => 'ids',
+            'post_type' => 'product', 'post_status' => 'publish', 'posts_per_page' => 1, 'fields' => 'ids',
             'meta_query' => [
                 'relation' => 'AND',
                 ['key' => '_sale_price', 'value' => '', 'compare' => '!='],
@@ -94,20 +203,24 @@ final class Bankai_Store
             ],
         ]))->found_posts;
 
-        // Sales last 30 days
         $sales_total = 0.0;
         $orders_count = 0;
         $series = [];
-        for ($i = 29; $i >= 0; $i--) {
+        $order_series = [];
+        for ($i = $period - 1; $i >= 0; $i--) {
             $day = gmdate('Y-m-d', strtotime("-{$i} days"));
             $series[$day] = 0.0;
+            $order_series[$day] = 0;
         }
+
+        $prev_sales = 0.0;
+        $prev_orders = 0;
 
         if (function_exists('wc_get_orders')) {
             $orders = wc_get_orders([
-                'limit' => 300,
+                'limit' => 500,
                 'status' => ['wc-completed', 'wc-processing'],
-                'date_created' => '>' . (time() - 30 * DAY_IN_SECONDS),
+                'date_created' => '>' . (time() - $period * DAY_IN_SECONDS),
                 'return' => 'objects',
             ]);
             foreach ($orders as $order) {
@@ -117,14 +230,30 @@ final class Bankai_Store
                 $d = $order->get_date_created() ? $order->get_date_created()->date('Y-m-d') : '';
                 if ($d && isset($series[$d])) {
                     $series[$d] += $total;
+                    $order_series[$d]++;
                 }
+            }
+            // Previous period comparison
+            $prev_orders_list = wc_get_orders([
+                'limit' => 500,
+                'status' => ['wc-completed', 'wc-processing'],
+                'date_created' => (time() - 2 * $period * DAY_IN_SECONDS) . '...' . (time() - $period * DAY_IN_SECONDS),
+                'return' => 'objects',
+            ]);
+            foreach ($prev_orders_list as $order) {
+                $prev_orders++;
+                $prev_sales += (float) $order->get_total();
             }
         }
 
         $avg_order = $orders_count > 0 ? round($sales_total / $orders_count, 2) : 0;
+        $sales_change = $prev_sales > 0 ? round((($sales_total - $prev_sales) / $prev_sales) * 100, 1) : null;
+        $orders_change = $prev_orders > 0 ? round((($orders_count - $prev_orders) / $prev_orders) * 100, 1) : null;
 
         wp_send_json_success([
             'woo' => true,
+            'woo_status' => self::woo_status(),
+            'period' => $period,
             'products' => $published,
             'drafts' => $draft,
             'in_stock' => $instock,
@@ -134,10 +263,20 @@ final class Bankai_Store
             'orders_30d' => $orders_count,
             'sales_30d' => round($sales_total, 2),
             'avg_order' => $avg_order,
-            'currency' => function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '',
+            'sales_change' => $sales_change,
+            'orders_change' => $orders_change,
+            'currency' => function_exists('get_woocommerce_currency_symbol') ? html_entity_decode(get_woocommerce_currency_symbol(), ENT_QUOTES, 'UTF-8') : '',
             'series' => array_values(array_map(static function ($k, $v) {
                 return ['day' => $k, 'total' => round((float) $v, 2)];
             }, array_keys($series), array_values($series))),
+            'order_series' => array_values(array_map(static function ($k, $v) {
+                return ['day' => $k, 'count' => (int) $v];
+            }, array_keys($order_series), array_values($order_series))),
+            'inventory_dist' => [
+                'in_stock' => $instock,
+                'low_stock' => $lowstock,
+                'out_of_stock' => $outofstock,
+            ],
         ]);
     }
 
@@ -160,6 +299,9 @@ final class Bankai_Store
         $page     = max(1, absint($_POST['page'] ?? 1));
         $per      = min(48, max(6, absint($_POST['per_page'] ?? 12)));
         $cat      = absint($_POST['category'] ?? 0);
+        $price_min = isset($_POST['price_min']) && $_POST['price_min'] !== '' ? (float) wp_unslash($_POST['price_min']) : null;
+        $price_max = isset($_POST['price_max']) && $_POST['price_max'] !== '' ? (float) wp_unslash($_POST['price_max']) : null;
+        $seo_filter = sanitize_key($_POST['seo_filter'] ?? 'all'); // all|needs_seo|has_seo
 
         $args = [
             'post_type'      => 'product',
@@ -214,6 +356,22 @@ final class Bankai_Store
             ];
         }
 
+        if ($price_min !== null) {
+            $meta_query[] = ['key' => '_price', 'value' => $price_min, 'compare' => '>=', 'type' => 'NUMERIC'];
+        }
+        if ($price_max !== null) {
+            $meta_query[] = ['key' => '_price', 'value' => $price_max, 'compare' => '<=', 'type' => 'NUMERIC'];
+        }
+        if ($seo_filter === 'needs_seo') {
+            $meta_query[] = [
+                'relation' => 'OR',
+                ['key' => '_bankai_seo_title', 'compare' => 'NOT EXISTS'],
+                ['key' => '_bankai_seo_title', 'value' => ''],
+            ];
+        } elseif ($seo_filter === 'has_seo') {
+            $meta_query[] = ['key' => '_bankai_seo_title', 'value' => '', 'compare' => '!='];
+        }
+
         if (count($meta_query) > 1) {
             $args['meta_query'] = $meta_query;
         }
@@ -237,6 +395,9 @@ final class Bankai_Store
         if ($orderby === 'title') {
             $args['orderby'] = 'title';
             $args['order'] = 'ASC';
+        } elseif ($orderby === 'oldest') {
+            $args['orderby'] = 'date';
+            $args['order'] = 'ASC';
         } elseif ($orderby === 'price_asc') {
             $args['meta_key'] = '_price';
             $args['orderby'] = 'meta_value_num';
@@ -249,6 +410,10 @@ final class Bankai_Store
             $args['meta_key'] = '_stock';
             $args['orderby'] = 'meta_value_num';
             $args['order'] = 'ASC';
+        } elseif ($orderby === 'seo') {
+            $args['meta_key'] = '_bankai_product_scores';
+            $args['orderby'] = 'meta_value';
+            $args['order'] = 'DESC';
         } else {
             $args['orderby'] = 'date';
             $args['order'] = 'DESC';
@@ -268,6 +433,34 @@ final class Bankai_Store
         ]);
     }
 
+
+    public function ajax_categories(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_products') && !current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        if (!self::woo_active()) {
+            wp_send_json_error(['message' => 'WooCommerce inactive'], 400);
+        }
+        $terms = get_terms([
+            'taxonomy' => 'product_cat',
+            'hide_empty' => false,
+            'number' => 200,
+        ]);
+        $out = [];
+        if (!is_wp_error($terms)) {
+            foreach ($terms as $t) {
+                $out[] = [
+                    'id' => (int) $t->term_id,
+                    'name' => $t->name,
+                    'count' => (int) $t->count,
+                ];
+            }
+        }
+        wp_send_json_success(['items' => $out]);
+    }
+
     private function product_card_data(int $id): array
     {
         $p = wc_get_product($id);
@@ -283,6 +476,27 @@ final class Bankai_Store
         $thumb_id = get_post_thumbnail_id($id);
         $current_alt = $thumb_id ? (string) get_post_meta($thumb_id, '_wp_attachment_image_alt', true) : '';
 
+        $cats = [];
+        $tags = [];
+        $term_cats = get_the_terms($id, 'product_cat');
+        if (is_array($term_cats)) {
+            foreach ($term_cats as $t) {
+                $cats[] = ['id' => (int) $t->term_id, 'name' => $t->name];
+            }
+        }
+        $term_tags = get_the_terms($id, 'product_tag');
+        if (is_array($term_tags)) {
+            foreach ($term_tags as $t) {
+                $tags[] = ['id' => (int) $t->term_id, 'name' => $t->name];
+            }
+        }
+        $short_plain = $p ? wp_strip_all_tags((string) $p->get_short_description()) : '';
+        if (function_exists('mb_substr')) {
+            $short_plain = mb_substr($short_plain, 0, 160);
+        } else {
+            $short_plain = substr($short_plain, 0, 160);
+        }
+
         return [
             'id' => $id,
             'name' => get_the_title($id),
@@ -294,6 +508,7 @@ final class Bankai_Store
             'regular_price' => $regular,
             'sale_price' => $sale,
             'discount' => $discount,
+            'on_sale' => $discount > 0,
             'price_html' => $p ? wp_strip_all_tags($p->get_price_html()) : '',
             'stock_status' => $p ? $p->get_stock_status() : 'outofstock',
             'stock_qty' => $p ? $p->get_stock_quantity() : null,
@@ -302,16 +517,21 @@ final class Bankai_Store
             'seo' => $scores['seo'],
             'aeo' => $scores['aeo'],
             'geo' => $scores['geo'],
-            // Current SEO field values for wizard comparison
-            'fields' => [
-                'seo_title'       => (string) get_post_meta($id, '_bankai_seo_title', true),
-                'seo_description' => (string) get_post_meta($id, '_bankai_seo_description', true),
-                'focus_keyword'   => (string) get_post_meta($id, '_bankai_seo_focus_keyword', true),
-                'schema_json'     => (string) get_post_meta($id, '_bankai_seo_schema', true),
-                'faq_html'        => (string) get_post_meta($id, '_bankai_seo_faq_html', true),
-                'geo_html'        => (string) get_post_meta($id, '_bankai_seo_geo_html', true),
-                'image_alt'       => $current_alt,
-            ],
+            'categories' => $cats,
+            'tags' => $tags,
+            'short_description' => $short_plain,
+            // Current SEO field values for wizard comparison (respect Yoast/Rank Math)
+            'fields' => array_merge($this->read_seo_meta($id), [
+                'schema_json' => (string) get_post_meta($id, '_bankai_seo_schema', true),
+                'faq_html'    => (string) get_post_meta($id, '_bankai_seo_faq_html', true),
+                'geo_html'    => (string) get_post_meta($id, '_bankai_seo_geo_html', true),
+                'image_alt'   => $current_alt,
+                'short_description' => $p ? (string) $p->get_short_description() : '',
+                'description' => $p ? (string) $p->get_description() : '',
+                'categories'  => implode(', ', array_map(static fn($c) => $c['name'], $cats)),
+                'tags'        => implode(', ', array_map(static fn($t) => $t['name'], $tags)),
+            ]),
+            'type' => $p ? $p->get_type() : 'simple',
         ];
     }
 
@@ -412,6 +632,36 @@ final class Bankai_Store
                         'You are an expert WooCommerce SEO specialist for Persian/RTL stores.',
                         "Product name: {$name}\nPrice: {$price}\nShort: {$short}\nContent: " . mb_substr($content, 0, 1200) . "\n\nReturn JSON only:\n{\"seo_title\":\"max 60 chars\",\"description\":\"meta description 120-155 chars\",\"focus_keyword\":\"main keyword\",\"og_title\":\"\",\"og_description\":\"\"}"
                     );
+                    break;
+
+                case 'content':
+                    $label = 'تولید توضیحات محصول';
+                    $draft = $this->ai_json(
+                        'You are a Persian ecommerce copywriter. Improve product short and long descriptions without inventing technical specs.',
+                        "Product: {$name}\nPrice: {$price}\nCurrent short: " . mb_substr(wp_strip_all_tags((string)$short), 0, 400) . "\nCurrent content: " . mb_substr($content, 0, 800) . "\n\nReturn JSON only:\n{\"short_description\":\"2-3 sentences Persian\",\"description\":\"HTML paragraphs Persian product intro\",\"slug\":\"url-friendly-slug\"}"
+                    );
+                    break;
+
+                case 'taxonomies':
+                    $label = 'دسته‌بندی و برچسب‌ها';
+                    $existing_cats = wp_get_post_terms($product_id, 'product_cat', ['fields' => 'names']);
+                    $existing_tags = wp_get_post_terms($product_id, 'product_tag', ['fields' => 'names']);
+                    if (is_wp_error($existing_cats)) {
+                        $existing_cats = [];
+                    }
+                    if (is_wp_error($existing_tags)) {
+                        $existing_tags = [];
+                    }
+                    $all_cats = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => false, 'number' => 80, 'fields' => 'names']);
+                    if (is_wp_error($all_cats)) {
+                        $all_cats = [];
+                    }
+                    $draft = $this->ai_json(
+                        'You help assign WooCommerce product categories and tags in Persian. Only suggest from existing store categories when possible. Do not invent prices.',
+                        "Product: {$name}\nExisting categories: " . implode('، ', $existing_cats) . "\nExisting tags: " . implode('، ', $existing_tags) . "\nAvailable categories: " . implode('، ', array_slice((array) $all_cats, 0, 40)) . "\n\nReturn JSON only:\n{\"categories\":\"comma separated category names\",\"tags\":\"comma separated tags\",\"keywords\":\"comma separated related keywords\"}"
+                    );
+                    $draft['current_categories'] = implode('، ', $existing_cats);
+                    $draft['current_tags'] = implode('، ', $existing_tags);
                     break;
 
                 case 'schema':
@@ -688,21 +938,64 @@ final class Bankai_Store
         }
 
         $meta = $bag['meta'] ?? [];
-        if (!empty($meta['seo_title'])) {
-            update_post_meta($product_id, '_bankai_seo_title', sanitize_text_field($meta['seo_title']));
-        }
-        if (!empty($meta['description'])) {
-            update_post_meta($product_id, '_bankai_seo_description', sanitize_textarea_field($meta['description']));
-        }
-        if (!empty($meta['focus_keyword'])) {
-            update_post_meta($product_id, '_bankai_seo_focus_keyword', sanitize_text_field($meta['focus_keyword']));
-            update_post_meta($product_id, '_bankai_seo_keyword', sanitize_text_field($meta['focus_keyword']));
-        }
+        $this->write_seo_meta(
+            $product_id,
+            (string) ($meta['seo_title'] ?? ''),
+            (string) ($meta['description'] ?? ''),
+            (string) ($meta['focus_keyword'] ?? '')
+        );
         if (!empty($meta['og_title'])) {
             update_post_meta($product_id, '_bankai_seo_og_title', sanitize_text_field($meta['og_title']));
         }
         if (!empty($meta['og_description'])) {
             update_post_meta($product_id, '_bankai_seo_og_description', sanitize_textarea_field($meta['og_description']));
+        }
+
+        // Product content (short/long description) — only if explicitly proposed
+        $content = $bag['content'] ?? [];
+        if (!empty($content['short_description']) || !empty($content['description'])) {
+            $product_obj = wc_get_product($product_id);
+            if ($product_obj) {
+                if (!empty($content['short_description'])) {
+                    $product_obj->set_short_description(wp_kses_post($content['short_description']));
+                }
+                if (!empty($content['description'])) {
+                    $product_obj->set_description(wp_kses_post($content['description']));
+                }
+                $product_obj->save();
+            }
+        }
+        if (!empty($content['slug'])) {
+            wp_update_post([
+                'ID' => $product_id,
+                'post_name' => sanitize_title($content['slug']),
+            ]);
+        }
+
+        // Categories / tags / related keywords
+        $tax = $bag['taxonomies'] ?? [];
+        if (!empty($tax['categories'])) {
+            $names = array_filter(array_map('trim', explode(',', (string) $tax['categories'])));
+            if ($names) {
+                wp_set_object_terms($product_id, $names, 'product_cat', false);
+            }
+        }
+        if (!empty($tax['tags'])) {
+            $names = array_filter(array_map('trim', explode(',', (string) $tax['tags'])));
+            if ($names) {
+                wp_set_object_terms($product_id, $names, 'product_tag', false);
+            }
+        }
+        if (!empty($tax['keywords'])) {
+            update_post_meta($product_id, '_bankai_seo_related_keywords', sanitize_text_field($tax['keywords']));
+            // Merge into focus keyword meta as secondary list
+            $fk = (string) get_post_meta($product_id, '_bankai_seo_focus_keyword', true);
+            if ($fk === '' && !empty($tax['keywords'])) {
+                $first = trim(explode(',', (string) $tax['keywords'])[0]);
+                if ($first !== '') {
+                    $this->write_seo_meta($product_id, '', '', $first);
+                }
+            }
         }
 
         if (!empty($bag['schema']['schema_json'])) {
@@ -816,10 +1109,44 @@ final class Bankai_Store
         } elseif ($ptype === 'downloadable') {
             $product->set_downloadable(true);
             $product->set_virtual(true);
+        } elseif ($ptype === 'external') {
+            // External requires WC_Product_External — create simple then note
+            $product->set_catalog_visibility('visible');
         }
+
+        $manage_stock = !empty($_POST['manage_stock']);
+        $stock_qty = isset($_POST['stock_qty']) ? wc_stock_amount(wp_unslash($_POST['stock_qty'])) : null;
+        if ($manage_stock) {
+            $product->set_manage_stock(true);
+            if ($stock_qty !== null && $stock_qty !== '') {
+                $product->set_stock_quantity($stock_qty);
+                $product->set_stock_status(((float) $stock_qty > 0) ? 'instock' : 'outofstock');
+            }
+        }
+
         $id = $product->save();
         if (!$id) {
             wp_send_json_error(['message' => 'خطا در ایجاد محصول'], 500);
+        }
+
+        // Categories
+        $cats = isset($_POST['categories']) ? wp_unslash($_POST['categories']) : '';
+        if (is_string($cats) && $cats !== '') {
+            $decoded = json_decode($cats, true);
+            if (is_array($decoded)) {
+                $term_ids = array_filter(array_map('absint', $decoded));
+                if ($term_ids) {
+                    wp_set_object_terms($id, $term_ids, 'product_cat');
+                }
+            }
+        }
+        // Tags (comma-separated names)
+        $tags = sanitize_text_field(wp_unslash($_POST['tags'] ?? ''));
+        if ($tags !== '') {
+            $tag_names = array_filter(array_map('trim', explode(',', $tags)));
+            if ($tag_names) {
+                wp_set_object_terms($id, $tag_names, 'product_tag');
+            }
         }
 
         // Optional AI SEO fields (only if explicitly sent)
@@ -936,4 +1263,185 @@ final class Bankai_Store
             'note' => 'پاسخ پیش‌فرض — موتور AI پیش‌فرض پیکربندی نشده',
         ];
     }
+
+
+    public function ajax_product_report(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_products') && !current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        if (!self::woo_active()) {
+            wp_send_json_error(['message' => 'WooCommerce inactive'], 400);
+        }
+        $id = absint($_POST['product_id'] ?? 0);
+        $product = $id ? wc_get_product($id) : null;
+        if (!$product) {
+            wp_send_json_error(['message' => 'محصول یافت نشد'], 404);
+        }
+
+        $card = $this->product_card_data($id);
+
+        // Sales last 30 days for this product
+        $sold_qty = 0;
+        $sold_total = 0.0;
+        $series = [];
+        for ($i = 29; $i >= 0; $i--) {
+            $day = gmdate('Y-m-d', strtotime("-{$i} days"));
+            $series[$day] = ['qty' => 0, 'total' => 0.0];
+        }
+        if (function_exists('wc_get_orders')) {
+            $orders = wc_get_orders([
+                'limit' => 200,
+                'status' => ['wc-completed', 'wc-processing'],
+                'date_created' => '>' . (time() - 30 * DAY_IN_SECONDS),
+                'return' => 'objects',
+            ]);
+            foreach ($orders as $order) {
+                foreach ($order->get_items() as $item) {
+                    if ((int) $item->get_product_id() !== $id && (int) $item->get_variation_id() !== $id) {
+                        continue;
+                    }
+                    $q = (int) $item->get_quantity();
+                    $t = (float) $item->get_total();
+                    $sold_qty += $q;
+                    $sold_total += $t;
+                    $d = $order->get_date_created() ? $order->get_date_created()->date('Y-m-d') : '';
+                    if ($d && isset($series[$d])) {
+                        $series[$d]['qty'] += $q;
+                        $series[$d]['total'] += $t;
+                    }
+                }
+            }
+        }
+
+        $views = (int) get_post_meta($id, 'bankai_views', true);
+        if ($views <= 0) {
+            $views = (int) get_post_meta($id, '_bankai_views', true);
+        }
+
+        $gateways = [];
+        if (function_exists('WC') && WC()->payment_gateways()) {
+            foreach (WC()->payment_gateways()->get_available_payment_gateways() as $gw) {
+                $gateways[] = $gw->get_title();
+            }
+        }
+
+        $shipping = [];
+        if (class_exists('WC_Shipping_Zones')) {
+            foreach (WC_Shipping_Zones::get_zones() as $zone) {
+                $methods = [];
+                foreach ($zone['shipping_methods'] as $m) {
+                    if ($m->is_enabled()) {
+                        $methods[] = $m->get_title();
+                    }
+                }
+                $shipping[] = [
+                    'zone' => $zone['zone_name'] ?? '',
+                    'methods' => $methods,
+                ];
+            }
+        }
+
+        wp_send_json_success([
+            'product' => $card,
+            'sold_qty_30d' => $sold_qty,
+            'sold_total_30d' => round($sold_total, 2),
+            'views' => $views,
+            'series' => array_values(array_map(static function ($k, $v) {
+                return ['day' => $k, 'qty' => (int) $v['qty'], 'total' => round((float) $v['total'], 2)];
+            }, array_keys($series), array_values($series))),
+            'payment_methods' => $gateways,
+            'shipping' => $shipping,
+            'manage_stock' => $product->get_manage_stock(),
+            'stock_quantity' => $product->get_stock_quantity(),
+            'weight' => $product->get_weight(),
+            'dimensions' => [
+                'length' => $product->get_length(),
+                'width' => $product->get_width(),
+                'height' => $product->get_height(),
+            ],
+            'currency' => function_exists('get_woocommerce_currency_symbol')
+                ? html_entity_decode(get_woocommerce_currency_symbol(), ENT_QUOTES, 'UTF-8')
+                : '',
+        ]);
+    }
+
+    public function ajax_gen_cover(): void
+    {
+        check_ajax_referer('bankai_admin_nonce', 'nonce');
+        if (!current_user_can('edit_products') && !current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied'], 403);
+        }
+        if (!self::woo_active()) {
+            wp_send_json_error(['message' => 'WooCommerce inactive'], 400);
+        }
+        $id = absint($_POST['product_id'] ?? 0);
+        $product = $id ? wc_get_product($id) : null;
+        if (!$product) {
+            wp_send_json_error(['message' => 'محصول یافت نشد'], 404);
+        }
+        $apply = !empty($_POST['apply']);
+        $name = $product->get_name();
+        $prompt = sanitize_text_field(wp_unslash($_POST['prompt'] ?? ''));
+        if ($prompt === '') {
+            $prompt = "Professional ecommerce product photography of \"{$name}\", studio lighting, clean white background, catalog style, no text, no watermark";
+        }
+
+        if (!class_exists('Bankai_AI_Studio')) {
+            wp_send_json_error(['message' => 'استودیو AI در دسترس نیست', 'prompt' => $prompt]);
+        }
+        $ai = Bankai_AI_Studio::instance();
+        $provider = method_exists($ai, 'get_default_image_provider') ? $ai->get_default_image_provider() : '';
+        $ready_err = method_exists($ai, 'image_provider_readiness_error') ? $ai->image_provider_readiness_error($provider) : '';
+        if ($ready_err) {
+            wp_send_json_error(['message' => $ready_err, 'prompt' => $prompt]);
+        }
+        if (!method_exists($ai, 'generate_image_bytes')) {
+            wp_send_json_error(['message' => 'موتور تولید تصویر پیکربندی نشده', 'prompt' => $prompt]);
+        }
+        try {
+            $result = $ai->generate_image_bytes($provider, $prompt, ['width' => 1024, 'height' => 1024]);
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage(), 'prompt' => $prompt]);
+        }
+        $bytes = is_array($result) ? ($result['bytes'] ?? $result['data'] ?? '') : '';
+        $mime = is_array($result) ? ($result['mime'] ?? 'image/png') : 'image/png';
+        if ($bytes === '') {
+            wp_send_json_error(['message' => 'خروجی تصویر خالی بود', 'prompt' => $prompt]);
+        }
+
+        $upload = wp_upload_bits('bankai-cover-' . $id . '-' . time() . '.png', null, $bytes);
+        if (!empty($upload['error'])) {
+            wp_send_json_error(['message' => $upload['error'], 'prompt' => $prompt]);
+        }
+        $filetype = wp_check_filetype($upload['file'], null);
+        $attachment = [
+            'post_mime_type' => $filetype['type'] ?: $mime,
+            'post_title' => 'Cover: ' . $name,
+            'post_content' => '',
+            'post_status' => 'inherit',
+        ];
+        $attach_id = wp_insert_attachment($attachment, $upload['file'], $id);
+        if (is_wp_error($attach_id) || !$attach_id) {
+            wp_send_json_error(['message' => 'ذخیره پیوست ناموفق', 'prompt' => $prompt]);
+        }
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        $meta = wp_generate_attachment_metadata($attach_id, $upload['file']);
+        wp_update_attachment_metadata($attach_id, $meta);
+        update_post_meta($attach_id, '_wp_attachment_image_alt', $name);
+
+        if ($apply) {
+            set_post_thumbnail($id, $attach_id);
+        }
+
+        wp_send_json_success([
+            'attachment_id' => (int) $attach_id,
+            'url' => wp_get_attachment_url($attach_id),
+            'applied' => (bool) $apply,
+            'prompt' => $prompt,
+            'product' => $this->product_card_data($id),
+        ]);
+    }
+
 }

@@ -286,10 +286,49 @@ echo wp_json_encode($__bp, JSON_UNESCAPED_UNICODE);
                         </tr>
                     </thead>
                     <tbody>
-                        <template x-if="!articles || !articles.length">
-                            <tr><td colspan="6" style="text-align:center;padding:28px;color:#94a3b8">موردی یافت نشد</td></tr>
+                        <template x-if="listLoading">
+                            <tr class="bk-art-loading-row">
+                                <td colspan="6">
+                                    <div class="bk-art-loader" role="status" aria-live="polite">
+                                        <div class="bk-art-loader__orb" aria-hidden="true">
+                                            <span class="bk-art-loader__spin"></span>
+                                        </div>
+                                        <div class="bk-art-loader__text">
+                                            <strong>در حال بارگذاری مقالات…</strong>
+                                            <span>امتیاز SEO / AEO / GEO و فهرست محتوا در حال آماده‌سازی است</span>
+                                        </div>
+                                    </div>
+                                    <div class="bk-art-skeleton" aria-hidden="true">
+                                        <div class="bk-art-skeleton__row"></div>
+                                        <div class="bk-art-skeleton__row"></div>
+                                        <div class="bk-art-skeleton__row"></div>
+                                        <div class="bk-art-skeleton__row"></div>
+                                        <div class="bk-art-skeleton__row"></div>
+                                    </div>
+                                </td>
+                            </tr>
                         </template>
-                        <template x-for="row in articles" :key="row.id">
+                        <template x-if="!listLoading && (!articles || !articles.length)">
+                            <tr class="bk-art-empty-row">
+                                <td colspan="6">
+                                    <div class="bk-art-empty">
+                                        <div class="bk-art-empty__icon" aria-hidden="true">
+                                            <svg viewBox="0 0 48 48" width="48" height="48" fill="none">
+                                                <rect x="8" y="10" width="32" height="28" rx="6" stroke="currentColor" stroke-width="2"/>
+                                                <path d="M14 18h20M14 24h14M14 30h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            </svg>
+                                        </div>
+                                        <strong class="bk-art-empty__title">موردی یافت نشد</strong>
+                                        <p class="bk-art-empty__desc">هنوز مقاله‌ای با این فیلتر وجود ندارد. جستجو را پاک کنید یا محتوای جدید بسازید.</p>
+                                        <div class="bk-art-empty__actions">
+                                            <button type="button" class="bk-wpr-btn bk-wpr-btn--primary" @click="searchQ=''; loadArticles && loadArticles()">نمایش همه</button>
+                                            <button type="button" class="bk-wpr-btn bk-wpr-btn--secondary" @click="panel='generate'">تولید با AI</button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                        <template x-for="row in (listLoading ? [] : articles)" :key="row.id">
                             <tr>
                                 <td>
                                     <strong class="bk-art-title" x-text="row.title" :title="row.title"></strong>

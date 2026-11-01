@@ -231,6 +231,13 @@ final class Bankai_Dashboard_Stats
                 'desc_fa'  => 'داشبورد فروشگاه و ویزارد سئوی محصول (نیاز به ووکامرس).',
                 'icon'     => 'solar:shop-bold-duotone',
             ],
+            'pwa' => [
+                'label'    => 'Progressive Web App',
+                'label_fa' => 'اپلیکیشن وب (PWA)',
+                'desc'     => 'Installable app, offline cache, manifest and service worker.',
+                'desc_fa'  => 'نصب‌پذیر، کش آفلاین، مانیفست و Service Worker.',
+                'icon'     => 'solar:smartphone-bold-duotone',
+            ],
         ];
 
         $out = [];
