@@ -7,30 +7,32 @@ if (!defined('ABSPATH')) {
     define('ABSPATH', __DIR__ . '/../../../');
 }
 
+$passed = 0;
+$failed = 0;
+
+function assert_equals($expected, $actual, $msg)
+{
+    global $passed, $failed;
+    if ($expected === $actual) {
+        echo "[PASS] $msg\n";
+        $passed++;
+    } else {
+        echo "[FAIL] $msg\n";
+        echo "  Expected: " . var_export($expected, true) . "\n";
+        echo "  Actual:   " . var_export($actual, true) . "\n";
+        $failed++;
+    }
+}
+
+function assert_true($condition, $msg)
+{
+    assert_equals(true, (bool) $condition, $msg);
+}
+
 function run_speed_cache_tests()
 {
+    global $passed, $failed;
     echo "=== Running Bankai Speed & Cache Unit & Integration Tests ===\n";
-    $passed = 0;
-    $failed = 0;
-
-    function assert_equals($expected, $actual, $msg)
-    {
-        global $passed, $failed;
-        if ($expected === $actual) {
-            echo "[PASS] $msg\n";
-            $passed++;
-        } else {
-            echo "[FAIL] $msg\n";
-            echo "  Expected: " . var_export($expected, true) . "\n";
-            echo "  Actual:   " . var_export($actual, true) . "\n";
-            $failed++;
-        }
-    }
-
-    function assert_true($condition, $msg)
-    {
-        assert_equals(true, (bool) $condition, $msg);
-    }
 
     // 1. Minify CSS Test
     $raw_css = "/* Comment */ body { color: #333; margin: 0px; } calc(100% - 20px);";

@@ -1123,10 +1123,128 @@ class Bankai_Speed_Cache
     
     public static function minify_js_string(string $js): string
     {
-        // Intentionally conservative. Regex-based JS minification is unsafe for
-        // template literals, regular expressions, ASI and source-map directives.
-        // Keep source intact unless it is already distributed as a minified file.
-        return $js;
+        // Standard JS minification:
+        // Strip single-line and multi-line comments while strictly preserving string literals,
+        // template strings, and regular expression literals (without spanning across newlines).
+        $len = strlen($js);
+        $out = '';
+        $i = 0;
+        $prev_token = '';
+
+        while ($i < $len) {
+            $ch = $js[$i];
+
+            // 1. Strings: '...', "...", `...`
+            if ($ch === '"' || $ch === "'" || $ch === '`') {
+                $quote = $ch;
+                $out .= $ch;
+                $i++;
+                while ($i < $len) {
+                    $c = $js[$i];
+                    $out .= $c;
+                    if ($c === '\\') {
+                        $i++;
+                        if ($i < $len) {
+                            $out .= $js[$i];
+                        }
+                    } elseif ($c === $quote) {
+                        break;
+                    }
+                    $i++;
+                }
+                $i++;
+                $prev_token = 'literal';
+                continue;
+            }
+
+            // 2. Comments
+            if ($ch === '/' && $i + 1 < $len) {
+                $next = $js[$i + 1];
+                if ($next === '/') {
+                    // Single-line comment: skip until newline
+                    $i += 2;
+                    while ($i < $len && $js[$i] !== "\n" && $js[$i] !== "\r") {
+                        $i++;
+                    }
+                    continue;
+                } elseif ($next === '*') {
+                    // Multi-line comment: skip until */
+                    $i += 2;
+                    while ($i + 1 < $len && !($js[$i] === '*' && $js[$i + 1] === '/')) {
+                        $i++;
+                    }
+                    $i += 2;
+                    continue;
+                }
+            }
+
+            // 3. Regular expression literal
+            // When a slash appears in expression position (after operators, punctuation, keywords like return)
+            if ($ch === '/') {
+                $regex_starters = ['(', '[', '{', ';', ',', '=', ':', '!', '&', '|', '?', '+', '-', '*', '%', '^', '~', '<', '>', 'return', 'case', 'delete', 'typeof', 'void'];
+                if ($prev_token === '' || in_array($prev_token, $regex_starters, true)) {
+                    $out .= $ch;
+                    $i++;
+                    $in_char_class = false;
+                    while ($i < $len) {
+                        $c = $js[$i];
+                        if ($c === '\\') {
+                            $out .= $c;
+                            $i++;
+                            if ($i < $len) {
+                                $out .= $js[$i];
+                                $i++;
+                            }
+                            continue;
+                        } elseif ($c === '[') {
+                            $in_char_class = true;
+                        } elseif ($c === ']') {
+                            $in_char_class = false;
+                        } elseif ($c === '/' && !$in_char_class) {
+                            $out .= $c;
+                            $i++;
+                            break;
+                        }
+                        // JavaScript regex literals cannot span unescaped newlines
+                        if ($c === "\n" || $c === "\r") {
+                            break;
+                        }
+                        $out .= $c;
+                        $i++;
+                    }
+                    // Flags
+                    while ($i < $len && ctype_alpha($js[$i])) {
+                        $out .= $js[$i];
+                        $i++;
+                    }
+                    $prev_token = 'literal';
+                    continue;
+                }
+            }
+
+            // 4. Token identification for expression context
+            if (!ctype_space($ch)) {
+                if (ctype_alnum($ch) || $ch === '_' || $ch === '$') {
+                    $word = $ch;
+                    $j = $i + 1;
+                    while ($j < $len && (ctype_alnum($js[$j]) || $js[$j] === '_' || $js[$j] === '$')) {
+                        $word .= $js[$j];
+                        $j++;
+                    }
+                    $out .= substr($js, $i, strlen($word));
+                    $i = $j;
+                    $prev_token = $word;
+                    continue;
+                } else {
+                    $prev_token = $ch;
+                }
+            }
+
+            $out .= $ch;
+            $i++;
+        }
+
+        return trim($out);
     }
 
     public function handle_rebuild_assets(): void
@@ -2373,11 +2491,17 @@ NGX;
         }
         $path = (string) ($parts['path'] ?? '/');
         $query = isset($parts['query']) ? '?' . $parts['query'] : '';
-        $key = hash('sha256', $scheme . '://' . $host . $path . $query . '|v2');
+        $full_url = $scheme . '://' . $host . $path . $query;
+        $keys = [
+            hash('sha256', $full_url . '|v2'),
+            md5($full_url),
+        ];
 
-        $file = self::page_cache_dir() . '/' . substr($key, 0, 2) . '/' . $key . '.html';
-        if (is_file($file)) {
-            @unlink($file);
+        foreach ($keys as $key) {
+            $file = self::page_cache_dir() . '/' . substr($key, 0, 2) . '/' . $key . '.html';
+            if (is_file($file)) {
+                @unlink($file);
+            }
         }
     }
 
